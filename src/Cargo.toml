@@ -1,0 +1,11 @@
+[workspace]
+members = ["slipway-lib", "slipway-cli", "component-url-loader"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["James Thurley"]
+
+[workspace.dependencies]
+float-cmp = "0.9.0"
+mockall = "0.11.3"

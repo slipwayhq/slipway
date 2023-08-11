@@ -1,0 +1,38 @@
+{
+  "id": "weather-url-resolver",
+  "name": "Weather URL Resolver",
+  "description": "Converts a weather provider and location into a URL.",
+  "version": "0.1",
+  "inputs": [
+    {
+      "id": "provider",
+      "name": "Weather Data Provider",
+      "schema_reference": ".string:1.0",
+      "default_component": {
+        "reference": ".select:1.0",
+        "inputs": [
+          {
+            "id": "yahoo",
+            "value": "Yahoo Weather"
+          },
+          {
+            "id": "met",
+            "value": "The Met Office"
+          }
+        ]
+      }
+    },
+    {
+      "id": "location",
+      "name": "Location",
+      "description": "The location for which the weather will be fetched.",
+      "schema_reference": ".string:1.0",
+      "default_component": {
+        "reference": ".string:1.0"
+      }
+    }
+  ],
+  "output": {
+    "schema_reference": ".url:1.0"
+  }
+}

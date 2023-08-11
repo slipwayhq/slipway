@@ -1,0 +1,8 @@
+[package]
+name = "slipway-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+slipway-lib = { path = "../slipway-lib" }

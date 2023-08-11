@@ -1,0 +1,23 @@
+{
+  "name": "Weather Loader",
+  "description": "Reads weather data from a supported source and outputs it in a standard format.",
+  "version": "0.1",
+  "inputs": [
+    {
+      "id": "url",
+      "default_component": {
+        "id": "url-loader",
+        "version": "0.1",
+        "inputs": [
+          {
+            "id": "url",
+            "component": {
+              "id": "weather-url-resolver",
+              "version": "0.1"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

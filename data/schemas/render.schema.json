@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Untitled-1",
+  "type": "object",
+  "properties": {
+    "canvas": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "integer"
+        },
+        "height": {
+          "type": "integer"
+        },
+        "argb": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "width",
+        "height",
+        "argb"
+      ]
+    },
+    "buttons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "x": {
+            "type": "integer"
+          },
+          "y": {
+            "type": "integer"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "action": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "x",
+          "y",
+          "width",
+          "height",
+          "action"
+        ]
+      }
+    }
+  },
+  "required": [
+    "canvas",
+    "buttons"
+  ]
+}
