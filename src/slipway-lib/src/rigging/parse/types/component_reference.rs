@@ -1,10 +1,10 @@
-use crate::SlipwayError;
+use crate::errors::SlipwayError;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::str::FromStr;
 
 #[derive(Serialize, Deserialize)]
 #[serde(from = "ComponentReferenceEnum")]
-pub(crate) struct ComponentReference {
+pub struct ComponentReference {
     pub id: String,
     pub version: String,
 }
@@ -43,7 +43,7 @@ impl FromStr for ComponentReference {
         let (id, version) = match s.find(':') {
             Some(i) => (&s[..i], &s[i + 1..]),
             None => {
-                return Err(SlipwayError::InvalidRigging(
+                return Err(SlipwayError::InvalidComponentReference(
                     "Component reference must be in the form of <id>:<version>".to_string(),
                 ))
             }

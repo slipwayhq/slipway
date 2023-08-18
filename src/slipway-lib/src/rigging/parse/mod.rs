@@ -1,53 +1,11 @@
-mod component_reference;
+use crate::errors::SlipwayError;
 
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use self::types::Component;
 
-pub(crate) use self::component_reference::ComponentReference;
+pub mod types;
 
-#[derive(Serialize, Deserialize)]
-pub(crate) struct Component {
-    pub id: String,
-    pub description: Option<String>,
-    pub version: String,
-    pub inputs: Vec<ComponentInput>,
-    pub output: ComponentOutput,
-}
-
-#[derive(Serialize, Deserialize)]
-pub(crate) struct ComponentOutput {
-    pub schema: Option<Value>,
-    pub schema_reference: Option<ComponentReference>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub(crate) struct ComponentInput {
-    pub id: String,
-    pub name: Option<String>,
-    pub description: Option<String>,
-    pub schema: Option<Value>,
-    pub default_component: Option<ComponentInputSpecification>,
-    pub default_value: Option<Value>,
-}
-
-impl ComponentInput {
-    pub fn get_name(&self) -> String {
-        self.name.clone().unwrap_or_else(|| self.id.clone())
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-pub(crate) struct ComponentInputSpecification {
-    pub reference: ComponentReference,
-    pub inputs: Option<Vec<ComponentInputOverride>>, // Override the input defaults.
-    pub output: Option<Value>,                       // Set the output value explicitly.
-}
-
-#[derive(Serialize, Deserialize)]
-pub(crate) struct ComponentInputOverride {
-    pub id: String,
-    pub component: Option<ComponentInputSpecification>,
-    pub value: Option<Value>,
+pub fn parse_component(input: &str) -> Result<Component, SlipwayError> {
+    serde_json::from_str(input).map_err(SlipwayError::RiggingParseFailed)
 }
 
 #[cfg(test)]
@@ -103,6 +61,6 @@ mod tests {
             }
         }"#;
 
-        let _component: Component = serde_json::from_str(json).unwrap();
+        let _component = parse_component(json).unwrap();
     }
 }

@@ -1,12 +1,17 @@
 {
+  "id": "weather-renderer",
   "name": "Weather Renderer",
   "description": "Renders weather data into an interactive UI.",
   "version": "0.1",
   "inputs": [
     {
-      "name": "weatherData",
-      "component": "weather-loader:0.1"
+      "id": "weather-data",
+      "default_component": {
+        "reference": "weather-loader:0.1"
+      }
     }
   ],
-  "output": "@render"
+  "output": {
+    "schema_reference": ".render/0.1"
+  }
 }
