@@ -1,37 +1,26 @@
 use crate::errors::SlipwayError;
 use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 use std::str::FromStr;
 
-#[derive(Serialize, Deserialize)]
-#[serde(from = "ComponentReferenceEnum")]
+#[derive(Serialize)]
+// #[serde(from = "ComponentReferenceEnum")]
 pub struct ComponentReference {
     pub id: String,
     pub version: String,
 }
 
 #[derive(Serialize, Deserialize)]
-struct ComponentReferenceInner {
+struct ComponentReferenceFull {
     id: String,
     version: String,
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(untagged)]
-enum ComponentReferenceEnum {
-    #[serde(deserialize_with = "deserialize_component_reference_from_str")]
-    FromStr(ComponentReferenceInner),
-    FromDict(ComponentReferenceInner),
-}
-
-impl From<ComponentReferenceEnum> for ComponentReference {
-    fn from(e: ComponentReferenceEnum) -> ComponentReference {
-        let h = match e {
-            ComponentReferenceEnum::FromStr(h) => h,
-            ComponentReferenceEnum::FromDict(h) => h,
-        };
+impl From<ComponentReferenceFull> for ComponentReference {
+    fn from(val: ComponentReferenceFull) -> Self {
         ComponentReference {
-            id: h.id,
-            version: h.version,
+            id: val.id,
+            version: val.version,
         }
     }
 }
@@ -56,20 +45,19 @@ impl FromStr for ComponentReference {
     }
 }
 
-fn deserialize_component_reference_from_str<'de, D>(
-    deserializer: D,
-) -> Result<ComponentReferenceInner, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let value = String::deserialize(deserializer)?;
-    let component_reference = value.parse::<ComponentReference>();
-    match component_reference {
-        Ok(component_reference) => Ok(ComponentReferenceInner {
-            id: component_reference.id,
-            version: component_reference.version,
-        }),
-        Err(e) => Err(serde::de::Error::custom(e.to_string())),
+impl<'de> Deserialize<'de> for ComponentReference {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = Value::deserialize(deserializer)?;
+        match value.as_str() {
+            Some(reference_as_string) => {
+                ComponentReference::from_str(reference_as_string).map_err(serde::de::Error::custom)
+            }
+
+            None => match ComponentReferenceFull::deserialize(value) {
+                Ok(cr) => Ok(cr.into()),
+                Err(e) => Err(serde::de::Error::custom(e.to_string())),
+            },
+        }
     }
 }
 

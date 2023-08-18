@@ -12,6 +12,6 @@
     }
   ],
   "output": {
-    "schema_reference": ".render/0.1"
+    "schema_reference": ".renderer:0.1"
   }
 }
