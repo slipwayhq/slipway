@@ -105,23 +105,23 @@ fn validate_component_input_specification(
 ) -> Vec<ValidationFailure> {
     let mut failures = vec![];
 
-    let inputs_context = Rc::new(ValidationContext {
-        node_name: "inputs".to_string(),
+    let input_overrides_context = Rc::new(ValidationContext {
+        node_name: "input_overrides".to_string(),
         previous_context: Some(Rc::clone(&context)),
     });
 
-    if let Some(inputs) = &default_component.inputs {
+    if let Some(inputs) = &default_component.input_overrides {
         for (index, input) in inputs.iter().enumerate() {
             if inputs.iter().skip(index + 1).any(|i| i.id == input.id) {
                 failures.push(ValidationFailure::Error(
-                    format!("Duplicate override input id: {}", input.id),
-                    Rc::clone(&inputs_context),
+                    format!("Duplicate input override id: {}", input.id),
+                    Rc::clone(&input_overrides_context),
                 ));
             }
 
             let input_context = Rc::new(ValidationContext {
                 node_name: input.id.clone(),
-                previous_context: Some(Rc::clone(&inputs_context)),
+                previous_context: Some(Rc::clone(&input_overrides_context)),
             });
 
             failures.append(&mut validate_input_override(input, input_context));
@@ -296,7 +296,7 @@ mod tests {
                         id: "default_component".to_string(),
                         version: "1.0".to_string(),
                     },
-                    inputs: None,
+                    input_overrides: None,
                 }),
                 default_value: Some(json!(3)),
             }],
@@ -335,7 +335,7 @@ mod tests {
                         id: "default_component".to_string(),
                         version: "1.0".to_string(),
                     },
-                    inputs: Some(vec![
+                    input_overrides: Some(vec![
                         ComponentInputOverride {
                             id: "sub-input-one".to_string(),
                             component: None,
@@ -365,7 +365,7 @@ mod tests {
 
         assert_eq!(
             failures[0].to_string(),
-            r#"Error: Duplicate override input id: sub-input-one (test.inputs.input-one.default_component.inputs)"#
+            r#"Error: Duplicate input override id: sub-input-one (test.inputs.input-one.default_component.input_overrides)"#
         );
     }
 
@@ -385,14 +385,14 @@ mod tests {
                         id: "default_component".to_string(),
                         version: "1.0".to_string(),
                     },
-                    inputs: Some(vec![ComponentInputOverride {
+                    input_overrides: Some(vec![ComponentInputOverride {
                         id: "sub-input-one".to_string(),
                         component: Some(ComponentInputSpecification {
                             reference: ComponentReference {
                                 id: "default_component_2".to_string(),
                                 version: "1.0".to_string(),
                             },
-                            inputs: Some(vec![
+                            input_overrides: Some(vec![
                                 ComponentInputOverride {
                                     id: "sub-sub-input-one".to_string(),
                                     component: None,
@@ -425,7 +425,7 @@ mod tests {
 
         assert_eq!(
             failures[0].to_string(),
-            r#"Error: Duplicate override input id: sub-sub-input-one (test.inputs.input-one.default_component.inputs.sub-input-one.component.inputs)"#
+            r#"Error: Duplicate input override id: sub-sub-input-one (test.inputs.input-one.default_component.input_overrides.sub-input-one.component.input_overrides)"#
         );
     }
 
@@ -445,14 +445,14 @@ mod tests {
                         id: "default_component".to_string(),
                         version: "1.0".to_string(),
                     },
-                    inputs: Some(vec![ComponentInputOverride {
+                    input_overrides: Some(vec![ComponentInputOverride {
                         id: "sub-input-one".to_string(),
                         component: Some(ComponentInputSpecification {
                             reference: ComponentReference {
                                 id: "default_component_2".to_string(),
                                 version: "1.0".to_string(),
                             },
-                            inputs: None,
+                            input_overrides: None,
                         }),
                         value: Some(json!(3)),
                     }]),
@@ -474,7 +474,7 @@ mod tests {
 
         assert_eq!(
             failures[0].to_string(),
-            r#"Error: Input override "sub-input-one" has both a component and a value (test.inputs.input-one.default_component.inputs.sub-input-one)"#
+            r#"Error: Input override "sub-input-one" has both a component and a value (test.inputs.input-one.default_component.input_overrides.sub-input-one)"#
         );
     }
 }

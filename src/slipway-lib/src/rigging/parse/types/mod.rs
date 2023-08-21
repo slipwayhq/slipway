@@ -39,7 +39,7 @@ impl ComponentInput {
 #[derive(Serialize, Deserialize)]
 pub struct ComponentInputSpecification {
     pub reference: ComponentReference,
-    pub inputs: Option<Vec<ComponentInputOverride>>, // Override the input defaults.
+    pub input_overrides: Option<Vec<ComponentInputOverride>>, // Override the input defaults.
 }
 
 #[derive(Serialize, Deserialize)]

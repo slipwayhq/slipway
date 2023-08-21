@@ -10,6 +10,8 @@ pub fn parse_component(input: &str) -> Result<Component, SlipwayError> {
 
 #[cfg(test)]
 mod tests {
+    use crate::errors::INVALID_COMPONENT_REFERENCE;
+
     use super::*;
 
     #[test]
@@ -62,5 +64,44 @@ mod tests {
         }"#;
 
         let _component = parse_component(json).unwrap();
+    }
+
+    #[test]
+    fn it_should_provide_a_sensible_message_when_component_reference_cannot_be_parsed() {
+        let json = r#"
+        {
+            "id": "test",
+            "description": "Test component",
+            "version": "1.0.0",
+            "inputs": [
+                {
+                    "id": "input1",
+                    "name": "Input 1",
+                    "description": "The first input",
+                    "schema": {
+                        "type": "string"
+                    },
+                    "default_component": {
+                        "reference": "test2/1.0.0",
+                    }
+                }
+            ],
+            "output": {
+                "schema_reference": {
+                    "id": "test2",
+                    "version": "1.0.0"
+                }
+            }
+        }"#;
+
+        match parse_component(json) {
+            Ok(_) => panic!("Expected an error"),
+            Err(e) => match e {
+                SlipwayError::RiggingParseFailed(e) => {
+                    assert!(e.to_string().starts_with(INVALID_COMPONENT_REFERENCE))
+                }
+                _ => panic!("Expected a InvalidComponentReference error"),
+            },
+        }
     }
 }
