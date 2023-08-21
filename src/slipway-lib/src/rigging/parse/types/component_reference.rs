@@ -4,20 +4,19 @@ use serde_json::Value;
 use std::str::FromStr;
 
 #[derive(Serialize)]
-// #[serde(from = "ComponentReferenceEnum")]
 pub struct ComponentReference {
     pub id: String,
     pub version: String,
 }
 
 #[derive(Serialize, Deserialize)]
-struct ComponentReferenceFull {
+struct ComponentReferenceInner {
     id: String,
     version: String,
 }
 
-impl From<ComponentReferenceFull> for ComponentReference {
-    fn from(val: ComponentReferenceFull) -> Self {
+impl From<ComponentReferenceInner> for ComponentReference {
+    fn from(val: ComponentReferenceInner) -> Self {
         ComponentReference {
             id: val.id,
             version: val.version,
@@ -53,7 +52,7 @@ impl<'de> Deserialize<'de> for ComponentReference {
                 ComponentReference::from_str(reference_as_string).map_err(serde::de::Error::custom)
             }
 
-            None => match ComponentReferenceFull::deserialize(value) {
+            None => match ComponentReferenceInner::deserialize(value) {
                 Ok(cr) => Ok(cr.into()),
                 Err(e) => Err(serde::de::Error::custom(e.to_string())),
             },
