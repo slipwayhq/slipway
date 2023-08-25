@@ -20,7 +20,7 @@ fn validate_rigging_command(input: std::path::PathBuf) -> anyhow::Result<()> {
     println!("Validating {}", input.display());
     let file_contents = std::fs::read_to_string(input)?;
     let component = parse_component(file_contents.as_str())?;
-    let failures = validate_component(&component);
+    let failures = validate_component(None, &component).failures;
     if !failures.is_empty() {
         println!("Rigging was invalid");
         for failure in failures {

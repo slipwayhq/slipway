@@ -1,40 +1,101 @@
-pub mod validation_context;
 pub mod validation_failure;
 
 use std::rc::Rc;
 
-use self::{validation_context::ValidationContext, validation_failure::ValidationFailure};
+use self::validation_failure::ValidationFailure;
 
-use super::parse::types::{
-    Component, ComponentInput, ComponentInputOverride, ComponentInputSpecification,
+use super::{
+    node_context::NodeContext,
+    parse::types::{
+        Component, ComponentInput, ComponentInputOverride, ComponentInputSpecification,
+        ComponentReference,
+    },
 };
 
+pub struct ValidationResult {
+    pub reference: ComponentReference,
+    pub failures: Vec<ValidationFailure>,
+}
+
 #[must_use]
-pub fn validate_component(component: &Component) -> Vec<ValidationFailure> {
+pub fn validate_component(expected_id: Option<String>, component: &Component) -> ValidationResult {
     let mut failures = vec![];
 
-    let context = Rc::new(ValidationContext {
+    let context = Rc::new(NodeContext {
         node_name: component.id.clone(),
         previous_context: None,
     });
 
-    let inputs_context = Rc::new(ValidationContext {
+    // We check the ID to ensure this is the component we were expecting.
+    // We don't check the version as the expected version string may be a semver range.
+    if let Some(expected_id) = expected_id {
+        if expected_id != component.id {
+            failures.push(ValidationFailure::Error(
+                format!(
+                    r#"Expected component ID "{}" but found "{}""#,
+                    expected_id, component.id
+                ),
+                Rc::clone(&context),
+            ));
+        }
+    }
+
+    let inputs_context = Rc::new(NodeContext {
         node_name: "inputs".to_string(),
         previous_context: Some(Rc::clone(&context)),
     });
 
-    failures.append(&mut validate_inputs(&component.inputs, inputs_context));
+    validate_inputs(&mut failures, &component.inputs, inputs_context);
 
-    failures
+    let output_context = Rc::new(NodeContext {
+        node_name: "output".to_string(),
+        previous_context: Some(Rc::clone(&context)),
+    });
+    validate_reference_option(
+        &mut failures,
+        &component.output.schema_reference,
+        &output_context,
+    );
+
+    ValidationResult {
+        reference: ComponentReference {
+            id: component.id.clone(),
+            version: component.version.clone(),
+        },
+        failures,
+    }
 }
 
-#[must_use]
-fn validate_inputs(
-    inputs: &[ComponentInput],
-    context: Rc<ValidationContext>,
-) -> Vec<ValidationFailure> {
-    let mut failures = vec![];
+fn validate_reference_option(
+    failures: &mut Vec<ValidationFailure>,
+    reference: &Option<ComponentReference>,
+    context: &Rc<NodeContext>,
+) {
+    if let Some(reference) = reference {
+        validate_reference(failures, reference, context);
+    }
+}
 
+fn validate_reference(
+    failures: &mut Vec<ValidationFailure>,
+    reference: &ComponentReference,
+    context: &Rc<NodeContext>,
+) {
+    // Referencing the special root ID is guaranteed to
+    // be a circular reference.
+    if reference.id == ComponentReference::ROOT_ID {
+        failures.push(ValidationFailure::Error(
+            format!("Invalid component reference: {}", reference.id),
+            Rc::clone(context),
+        ));
+    }
+}
+
+fn validate_inputs(
+    failures: &mut Vec<ValidationFailure>,
+    inputs: &[ComponentInput],
+    context: Rc<NodeContext>,
+) {
     for (index, input) in inputs.iter().enumerate() {
         if inputs.iter().skip(index + 1).any(|i| i.id == input.id) {
             failures.push(ValidationFailure::Error(
@@ -55,24 +116,20 @@ fn validate_inputs(
             ));
         }
 
-        let input_context = Rc::new(ValidationContext {
+        let input_context = Rc::new(NodeContext {
             node_name: input.id.clone(),
             previous_context: Some(Rc::clone(&context)),
         });
 
-        failures.append(&mut validate_input(input, input_context));
+        validate_input(failures, input, input_context);
     }
-
-    failures
 }
 
-#[must_use]
 fn validate_input(
+    failures: &mut Vec<ValidationFailure>,
     input: &ComponentInput,
-    context: Rc<ValidationContext>,
-) -> Vec<ValidationFailure> {
-    let mut failures = vec![];
-
+    context: Rc<NodeContext>,
+) {
     if input.default_component.is_some() && input.default_value.is_some() {
         failures.push(ValidationFailure::Error(
             format!(
@@ -84,28 +141,27 @@ fn validate_input(
     }
 
     if let Some(default_component) = &input.default_component {
-        let default_component_context = Rc::new(ValidationContext {
+        let default_component_context = Rc::new(NodeContext {
             node_name: "default_component".to_string(),
             previous_context: Some(Rc::clone(&context)),
         });
 
-        failures.append(&mut validate_component_input_specification(
+        validate_component_input_specification(
+            failures,
             default_component,
             default_component_context,
-        ));
+        );
     }
-
-    failures
 }
 
-#[must_use]
 fn validate_component_input_specification(
+    failures: &mut Vec<ValidationFailure>,
     default_component: &ComponentInputSpecification,
-    context: Rc<ValidationContext>,
-) -> Vec<ValidationFailure> {
-    let mut failures = vec![];
+    context: Rc<NodeContext>,
+) {
+    validate_reference(failures, &default_component.reference, &context);
 
-    let input_overrides_context = Rc::new(ValidationContext {
+    let input_overrides_context = Rc::new(NodeContext {
         node_name: "input_overrides".to_string(),
         previous_context: Some(Rc::clone(&context)),
     });
@@ -119,25 +175,21 @@ fn validate_component_input_specification(
                 ));
             }
 
-            let input_context = Rc::new(ValidationContext {
+            let input_context = Rc::new(NodeContext {
                 node_name: input.id.clone(),
                 previous_context: Some(Rc::clone(&input_overrides_context)),
             });
 
-            failures.append(&mut validate_input_override(input, input_context));
+            validate_input_override(failures, input, input_context);
         }
     }
-
-    failures
 }
 
-#[must_use]
 fn validate_input_override(
+    failures: &mut Vec<ValidationFailure>,
     input: &ComponentInputOverride,
-    context: Rc<ValidationContext>,
-) -> Vec<ValidationFailure> {
-    let mut failures = vec![];
-
+    context: Rc<NodeContext>,
+) {
     if input.component.is_some() && input.value.is_some() {
         failures.push(ValidationFailure::Error(
             format!(
@@ -149,18 +201,13 @@ fn validate_input_override(
     }
 
     if let Some(component) = &input.component {
-        let component_context = Rc::new(ValidationContext {
+        let component_context = Rc::new(NodeContext {
             node_name: "component".to_string(),
             previous_context: Some(Rc::clone(&context)),
         });
 
-        failures.append(&mut validate_component_input_specification(
-            component,
-            component_context,
-        ));
+        validate_component_input_specification(failures, component, component_context);
     }
-
-    failures
 }
 
 #[cfg(test)]
@@ -189,7 +236,57 @@ mod tests {
             },
         };
 
-        let failures = validate_component(&component);
+        let validate_result = validate_component(Some("test".to_string()), &component);
+        let failures = validate_result.failures;
+
+        assert_eq!(failures.len(), 0);
+    }
+
+    #[test]
+    fn when_component_has_unexpected_id_it_should_return_error() {
+        let component = Component {
+            id: "test".to_string(),
+            description: Some("Test component".to_string()),
+            version: "1.0.0".to_string(),
+            inputs: vec![],
+            output: ComponentOutput {
+                schema_reference: Some(ComponentReference {
+                    id: "output_schema".to_string(),
+                    version: "1.0".to_string(),
+                }),
+                schema: None,
+            },
+        };
+
+        let validate_result = validate_component(Some("test2".to_string()), &component);
+        let failures = validate_result.failures;
+
+        assert_eq!(failures.len(), 1);
+
+        assert_eq!(
+            failures[0].to_string(),
+            r#"Error: Expected component ID "test2" but found "test" (test)"#
+        );
+    }
+
+    #[test]
+    fn when_no_expected_id_it_should_no_failures() {
+        let component = Component {
+            id: "test".to_string(),
+            description: Some("Test component".to_string()),
+            version: "1.0.0".to_string(),
+            inputs: vec![],
+            output: ComponentOutput {
+                schema_reference: Some(ComponentReference {
+                    id: "output_schema".to_string(),
+                    version: "1.0".to_string(),
+                }),
+                schema: None,
+            },
+        };
+
+        let validate_result = validate_component(None, &component);
+        let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 0);
     }
@@ -227,7 +324,8 @@ mod tests {
             },
         };
 
-        let failures = validate_component(&component);
+        let validate_result = validate_component(Some("test".to_string()), &component);
+        let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 1);
 
@@ -270,7 +368,8 @@ mod tests {
             },
         };
 
-        let failures = validate_component(&component);
+        let validate_result = validate_component(Some("test".to_string()), &component);
+        let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 1);
 
@@ -309,13 +408,147 @@ mod tests {
             },
         };
 
-        let failures = validate_component(&component);
+        let validate_result = validate_component(Some("test".to_string()), &component);
+        let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 1);
 
         assert_eq!(
             failures[0].to_string(),
             r#"Error: Input "input-one" has both a default component and a default value (test.inputs.input-one)"#
+        );
+    }
+
+    #[test]
+    fn when_component_has_invalid_output_component_reference_it_should_return_error() {
+        let component = Component {
+            id: "test".to_string(),
+            description: Some("Test component".to_string()),
+            version: "1.0.0".to_string(),
+            inputs: vec![ComponentInput {
+                id: "input-one".to_string(),
+                name: Some("Input 1".to_string()),
+                description: Some("Input 1 description".to_string()),
+                schema: None,
+                default_component: None,
+                default_value: None,
+            }],
+            output: ComponentOutput {
+                schema_reference: Some(ComponentReference {
+                    id: ComponentReference::ROOT_ID.to_string(),
+                    version: "1.0".to_string(),
+                }),
+                schema: None,
+            },
+        };
+
+        let validate_result = validate_component(Some("test".to_string()), &component);
+        let failures = validate_result.failures;
+
+        assert_eq!(failures.len(), 1);
+
+        assert_eq!(
+            failures[0].to_string(),
+            format!(
+                "Error: Invalid component reference: {} (test.output)",
+                ComponentReference::ROOT_ID
+            )
+        );
+    }
+
+    #[test]
+    fn when_component_override_has_invalid_reference_it_should_return_error() {
+        let component = Component {
+            id: "test".to_string(),
+            description: Some("Test component".to_string()),
+            version: "1.0.0".to_string(),
+            inputs: vec![ComponentInput {
+                id: "input-one".to_string(),
+                name: Some("Input 1".to_string()),
+                description: Some("Input 1 description".to_string()),
+                schema: None,
+                default_component: Some(ComponentInputSpecification {
+                    reference: ComponentReference {
+                        id: ComponentReference::ROOT_ID.to_string(),
+                        version: "1.0".to_string(),
+                    },
+                    input_overrides: None,
+                }),
+                default_value: None,
+            }],
+            output: ComponentOutput {
+                schema_reference: Some(ComponentReference {
+                    id: "output_schema".to_string(),
+                    version: "1.0".to_string(),
+                }),
+                schema: None,
+            },
+        };
+
+        let validate_result = validate_component(Some("test".to_string()), &component);
+        let failures = validate_result.failures;
+
+        assert_eq!(failures.len(), 1);
+
+        assert_eq!(
+            failures[0].to_string(),
+            format!(
+                r#"Error: Invalid component reference: {} (test.inputs.input-one.default_component)"#,
+                ComponentReference::ROOT_ID
+            )
+        );
+    }
+
+    #[test]
+    fn when_component_input_override_has_invalid_reference_it_should_return_error() {
+        let component = Component {
+            id: "test".to_string(),
+            description: Some("Test component".to_string()),
+            version: "1.0.0".to_string(),
+            inputs: vec![ComponentInput {
+                id: "input-one".to_string(),
+                name: Some("Input 1".to_string()),
+                description: Some("Input 1 description".to_string()),
+                schema: None,
+                default_component: Some(ComponentInputSpecification {
+                    reference: ComponentReference {
+                        id: "default_component".to_string(),
+                        version: "1.0".to_string(),
+                    },
+                    input_overrides: Some(vec![ComponentInputOverride {
+                        id: "sub-input-one".to_string(),
+                        component: Some(ComponentInputSpecification {
+                            reference: ComponentReference {
+                                id: ComponentReference::ROOT_ID.to_string(),
+                                version: "1.0".to_string(),
+                            },
+                            input_overrides: None,
+                        }),
+                        value: None,
+                    }]),
+                }),
+                default_value: None,
+            }],
+            output: ComponentOutput {
+                schema_reference: Some(ComponentReference {
+                    id: "output_schema".to_string(),
+                    version: "1.0".to_string(),
+                }),
+                schema: None,
+            },
+        };
+
+        let validate_result = validate_component(Some("test".to_string()), &component);
+        let failures = validate_result.failures;
+
+        assert_eq!(failures.len(), 1);
+
+        assert_eq!(
+            failures[0].to_string(),
+            format!(
+                r#"Error: Invalid component reference: {} (test.inputs.input-one.default_component.input_overrides.sub-input-one.component)"#,
+                ComponentReference::ROOT_ID
+            )
         );
     }
 
@@ -359,7 +592,8 @@ mod tests {
             },
         };
 
-        let failures = validate_component(&component);
+        let validate_result = validate_component(Some("test".to_string()), &component);
+        let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 1);
 
@@ -419,7 +653,8 @@ mod tests {
             },
         };
 
-        let failures = validate_component(&component);
+        let validate_result = validate_component(Some("test".to_string()), &component);
+        let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 1);
 
@@ -468,7 +703,8 @@ mod tests {
             },
         };
 
-        let failures = validate_component(&component);
+        let validate_result = validate_component(Some("test".to_string()), &component);
+        let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 1);
 

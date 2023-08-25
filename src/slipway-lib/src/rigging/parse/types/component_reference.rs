@@ -1,9 +1,9 @@
 use crate::errors::SlipwayError;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ComponentReference {
     pub id: String,
     pub version: String,
@@ -21,6 +21,12 @@ impl From<ComponentReferenceInner> for ComponentReference {
             id: val.id,
             version: val.version,
         }
+    }
+}
+
+impl Display for ComponentReference {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}:{}", self.id, self.version))
     }
 }
 
@@ -57,6 +63,24 @@ impl<'de> Deserialize<'de> for ComponentReference {
                 Err(e) => Err(serde::de::Error::custom(e.to_string())),
             },
         }
+    }
+}
+
+impl ComponentReference {
+    pub(crate) const ROOT_ID: &str = ".root";
+    const ROOT_VERSION: &str = "0.0.0";
+
+    pub fn root() -> Self {
+        ComponentReference {
+            id: ComponentReference::ROOT_ID.to_string(),
+            version: ComponentReference::ROOT_VERSION.to_string(),
+        }
+    }
+
+    pub fn is_root(&self) -> bool {
+        // We don't bother testing the version, as any version
+        // is still technically root if the ID is root.
+        self.id == ComponentReference::ROOT_ID
     }
 }
 

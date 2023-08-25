@@ -1,12 +1,12 @@
 use std::rc::Rc;
 
 #[derive(Debug)]
-pub struct ValidationContext {
+pub struct NodeContext {
     pub node_name: String,
-    pub previous_context: Option<Rc<ValidationContext>>,
+    pub previous_context: Option<Rc<NodeContext>>,
 }
 
-impl ValidationContext {
+impl NodeContext {
     pub fn get_path(&self) -> String {
         let mut path = self.node_name.clone();
 
@@ -27,9 +27,9 @@ mod tests {
 
     #[test]
     fn it_should_return_context_path() {
-        let context = Rc::new(ValidationContext {
+        let context = Rc::new(NodeContext {
             node_name: "inputs".to_string(),
-            previous_context: Some(Rc::new(ValidationContext {
+            previous_context: Some(Rc::new(NodeContext {
                 node_name: "component".to_string(),
                 previous_context: None,
             })),

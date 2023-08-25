@@ -4,6 +4,9 @@ pub(crate) const INVALID_COMPONENT_REFERENCE: &str = "Invalid component referenc
 
 #[derive(Error, Debug)]
 pub enum SlipwayError {
+    #[error("Rigging resolve failed")]
+    RiggingResolveFailed(String),
+
     #[error("Rigging parse failed")]
     RiggingParseFailed(#[from] serde_json::Error),
 
