@@ -1,4 +1,9 @@
-use std::{collections::HashMap, fmt::Display, sync::Arc};
+use std::{
+    cell::OnceCell,
+    collections::HashMap,
+    fmt::Display,
+    sync::{Arc, OnceLock},
+};
 
 use async_executor::LocalExecutor;
 use async_trait::async_trait;
@@ -31,6 +36,7 @@ pub(crate) fn resolve_components(
 pub(crate) struct ResolvedComponents {
     resolved: HashMap<ComponentReference, Component>,
     failed: HashMap<ComponentReference, BuildComponentFailure>,
+    root_warnings: Vec<ValidationFailure>,
 }
 
 async fn resolve_components_async(
@@ -41,11 +47,12 @@ async fn resolve_components_async(
     // fetched, or possibly have completed being fetched and are waiting to be
     // processed. We add the root component to the list as the first item to process.
     let mut futures = vec![future::ready(Result::<
-        ResolvedReference,
+        ResolvedReferenceContent,
         ComponentReferenceResolveError,
-    >::Ok(ResolvedReference {
+    >::Ok(ResolvedReferenceContent {
         context: Arc::new(BuildContext {
             reference: ComponentReference::root(),
+            resolved_reference: OnceLock::new(),
             previous_context: None,
         }),
         rigging: root_component,
@@ -54,6 +61,7 @@ async fn resolve_components_async(
 
     let mut validated = HashMap::new();
     let mut failed = HashMap::new();
+    let mut root_warnings = Vec::new();
 
     // When any task which has not been processed is ready, process it.
     while !futures.is_empty() {
@@ -96,39 +104,69 @@ async fn resolve_components_async(
                         let validation_result =
                             validate_component(expected_component_id, &component);
 
-                        let mut failures = validation_result.failures;
+                        let (warnings, errors) = validation_result
+                            .failures
+                            .into_iter()
+                            .partition(|f| matches!(f, ValidationFailure::Warning(_, _)));
 
-                        if !is_root {
-                            failures.retain(|f| matches!(f, ValidationFailure::Error(_, _)));
+                        if is_root {
+                            root_warnings = warnings;
                         }
 
-                        if !failures.is_empty() {
+                        if !errors.is_empty() {
                             failed.insert(
                                 context_component_reference.clone(),
                                 BuildComponentFailure::Validate {
-                                    validation_failures: failures,
+                                    validation_errors: errors,
                                     path: context.get_list(),
                                 },
                             );
                         } else {
                             let references = find_component_references(&component);
 
-                            validated.insert(context_component_reference.clone(), component);
+                            // Set the resolved reference.
+                            context
+                                .resolved_reference
+                                .set(component.get_reference())
+                                .unwrap_or_else(|v| {
+                                    panic!(
+                                        r#"Resolved component reference "{v}" should only be set once"#,
+                                    )
+                                });
 
-                            for reference in references {
-                                if validated.contains_key(&reference)
-                                    || failed.contains_key(&reference)
-                                {
-                                    break;
+                            let circular_reference = references
+                                .iter()
+                                .find(|reference| context.contains_resolved_id(&reference.id));
+
+                            if let Some(circular_reference) = circular_reference {
+                                failed.insert(
+                                    context_component_reference.clone(),
+                                    BuildComponentFailure::CircularReference {
+                                        context: context.clone(),
+                                        reference: circular_reference.clone(),
+                                    },
+                                );
+                            } else {
+                                validated.insert(context_component_reference.clone(), component);
+
+                                for reference in references {
+                                    if validated.contains_key(&reference)
+                                        || failed.contains_key(&reference)
+                                    {
+                                        break;
+                                    }
+
+                                    let new_context = BuildContext {
+                                        reference: reference.clone(),
+                                        resolved_reference: OnceLock::new(),
+                                        previous_context: Some(Arc::clone(&context)),
+                                    };
+
+                                    futures.push(
+                                        component_reference_resolver
+                                            .resolve(reference, new_context),
+                                    );
                                 }
-
-                                let context = BuildContext {
-                                    reference: reference.clone(),
-                                    previous_context: Some(Arc::clone(&context)),
-                                };
-
-                                futures
-                                    .push(component_reference_resolver.resolve(reference, context));
                             }
                         }
                     }
@@ -140,6 +178,7 @@ async fn resolve_components_async(
     ResolvedComponents {
         resolved: validated,
         failed,
+        root_warnings,
     }
 }
 
@@ -154,8 +193,12 @@ enum BuildComponentFailure {
         path: Vec<ComponentReference>,
     },
     Validate {
-        validation_failures: Vec<ValidationFailure>,
+        validation_errors: Vec<ValidationFailure>,
         path: Vec<ComponentReference>,
+    },
+    CircularReference {
+        context: Arc<BuildContext>,
+        reference: ComponentReference,
     },
 }
 
@@ -172,10 +215,10 @@ pub(crate) trait ComponentReferenceResolver {
         &self,
         reference: ComponentReference,
         context: BuildContext,
-    ) -> Result<ResolvedReference, ComponentReferenceResolveError>;
+    ) -> Result<ResolvedReferenceContent, ComponentReferenceResolveError>;
 }
 
-pub(crate) struct ResolvedReference {
+pub(crate) struct ResolvedReferenceContent {
     pub context: Arc<BuildContext>,
     pub rigging: String,
 }
@@ -183,6 +226,7 @@ pub(crate) struct ResolvedReference {
 #[derive(Debug, Clone)]
 pub(crate) struct BuildContext {
     pub reference: ComponentReference,
+    pub resolved_reference: OnceLock<ComponentReference>,
     pub previous_context: Option<Arc<BuildContext>>,
 }
 
@@ -210,6 +254,21 @@ impl BuildContext {
         }
 
         result
+    }
+
+    pub fn contains_resolved_id(&self, id: &str) -> bool {
+        let current_resolved_reference = self.resolved_reference.get();
+        if let Some(resolved_reference) = current_resolved_reference {
+            if resolved_reference.id == id {
+                return true;
+            }
+        }
+
+        if let Some(previous_context) = &self.previous_context {
+            return previous_context.contains_resolved_id(id);
+        }
+
+        false
     }
 }
 
@@ -443,12 +502,12 @@ mod tests {
             .collect::<Vec<&BuildComponentFailure>>()[0];
         match test1_component_failure {
             BuildComponentFailure::Validate {
-                validation_failures,
+                validation_errors: validation_failures,
                 path,
             } => {
                 assert_eq!(path[0], ComponentReference::root());
 
-                assert_eq!(validation_failures.len(), 2);
+                assert_eq!(validation_failures.len(), 1);
                 assert_eq!(
                     validation_failures
                         .iter()
@@ -461,11 +520,13 @@ mod tests {
                         .iter()
                         .filter(|f| matches!(f, ValidationFailure::Warning(_, _)))
                         .count(),
-                    1
+                    0
                 );
             }
             _ => panic!("Unexpected failure type: {:?}", test1_component_failure),
         }
+
+        assert_eq!(test1_resolved_components.root_warnings.len(), 1);
 
         let test2_component_failure = test2_resolved_components
             .failed
@@ -473,7 +534,7 @@ mod tests {
             .collect::<Vec<&BuildComponentFailure>>()[0];
         match test2_component_failure {
             BuildComponentFailure::Validate {
-                validation_failures,
+                validation_errors: validation_failures,
                 path,
             } => {
                 assert_eq!(
@@ -502,16 +563,254 @@ mod tests {
             }
             _ => panic!("Unexpected failure type: {:?}", test2_component_failure),
         }
+
+        assert_eq!(test2_resolved_components.root_warnings.len(), 0);
     }
 
     #[test]
     fn it_should_return_warnings_for_root_component_on_success() {
-        todo!();
+        // This contains a duplicate name (warning), but is otherwise valid.
+        let test_component = r#"
+        {
+            "id": "test1",
+            "version": "1.0.0",
+            "inputs": [
+                {
+                    "id": "input1",
+                    "name": "Input One",
+                    "default_value": 1
+                },
+                {
+                    "id": "input2",
+                    "name": "Input One",
+                    "default_value": 2
+                }
+            ],
+            "output": {
+                "schema": {
+                    "type": "string"
+                }
+            }
+        }"#;
+
+        let test_resolver = MockComponentReferenceResolver {
+            resolved: HashMap::new(),
+        };
+
+        let resolved_components =
+            resolve_components(test_component.to_string(), Box::new(test_resolver));
+
+        print_failures(&resolved_components);
+
+        assert_eq!(resolved_components.failed.len(), 0);
+        assert_eq!(resolved_components.resolved.len(), 1);
+
+        assert_eq!(resolved_components.root_warnings.len(), 1);
     }
 
     #[test]
-    fn it_should_resolve_root_once_for_circular_reference() {
-        todo!();
+    fn it_should_detect_circular_references_ignoring_versions() {
+        let root_component = r#"
+        {
+            "id": "test",
+            "version": "1.0.0",
+            "inputs": [
+                {
+                    "id": "input1",
+                    "default_component": {
+                        "reference": {
+                            "id": "test2",
+                            "version": "1.0.0"
+                        }
+                    }
+                }
+            ],
+            "output": {
+                "schema": {
+                    "type": "string"
+                }
+            }
+        }"#;
+
+        let test2_v1_component = r#"
+        {
+            "id": "test2",
+            "version": "1.0.0",
+            "inputs": [
+                {
+                    "id": "input1",
+                    "default_component": {
+                        "reference": {
+                            "id": "test3",
+                            "version": "1.0.0"
+                        },
+                        "input_overrides": [
+                            {
+                                "id": "input1",
+                                "component": {
+                                    "reference": {
+                                        "id": "test4",
+                                        "version": "1.0.0"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            ],
+            "output": {
+                "schema_reference": "test3:2.0.0"
+            }
+        }"#;
+
+        let test3_v1_component = r#"
+        {
+            "id": "test3",
+            "version": "1.0.0",
+            "inputs": [],
+            "output": {
+                "schema": {
+                    "type": "string"
+                }
+            }
+        }"#;
+
+        let test3_v2_component = r#"
+        {
+            "id": "test3",
+            "version": "2.0.0",
+            "inputs": [],
+            "output": {
+                "schema": {
+                    "type": "string"
+                }
+            }
+        }"#;
+
+        let test4_v1_component = r#"
+        {
+            "id": "test4",
+            "version": "1.0.0",
+            "inputs": [],
+            "output": {
+                "schema_reference": "test2:5.0.0"
+            }
+        }"#;
+
+        let resolver = MockComponentReferenceResolver {
+            resolved: vec![
+                (
+                    ComponentReference {
+                        id: "test2".to_string(),
+                        version: "1.0.0".to_string(),
+                    },
+                    test2_v1_component.to_string(),
+                ),
+                (
+                    ComponentReference {
+                        id: "test3".to_string(),
+                        version: "1.0.0".to_string(),
+                    },
+                    test3_v1_component.to_string(),
+                ),
+                (
+                    ComponentReference {
+                        id: "test3".to_string(),
+                        version: "2.0.0".to_string(),
+                    },
+                    test3_v2_component.to_string(),
+                ),
+                (
+                    ComponentReference {
+                        id: "test4".to_string(),
+                        version: "1.0.0".to_string(),
+                    },
+                    test4_v1_component.to_string(),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        };
+
+        let resolved_components =
+            resolve_components(root_component.to_string(), Box::new(resolver));
+
+        print_failures(&resolved_components);
+
+        assert_eq!(resolved_components.failed.len(), 1);
+        assert_eq!(resolved_components.resolved.len(), 4);
+
+        let component_failure = resolved_components
+            .failed
+            .values()
+            .collect::<Vec<&BuildComponentFailure>>()[0];
+        match component_failure {
+            BuildComponentFailure::CircularReference {
+                context: _,
+                reference: circular_reference,
+            } => {
+                assert_eq!(
+                    circular_reference,
+                    &ComponentReference {
+                        id: "test2".to_string(),
+                        version: "5.0.0".to_string(),
+                    }
+                );
+            }
+            _ => panic!("Unexpected failure type: {:?}", component_failure),
+        }
+    }
+
+    #[test]
+    fn it_should_detect_circular_reference_to_root() {
+        // This contains a reference to itself.
+        let test_component = r#"
+        {
+            "id": "test1",
+            "version": "1.0.0",
+            "inputs": [
+                {
+                    "id": "input1",
+                    "name": "Input One",
+                    "default_value": 1
+                }
+            ],
+            "output": {
+                "schema_reference": "test1:1.0.0"
+            }
+        }"#;
+
+        let test_resolver = MockComponentReferenceResolver {
+            resolved: HashMap::new(),
+        };
+
+        let resolved_components =
+            resolve_components(test_component.to_string(), Box::new(test_resolver));
+
+        print_failures(&resolved_components);
+
+        assert_eq!(resolved_components.failed.len(), 1);
+        assert_eq!(resolved_components.resolved.len(), 0);
+
+        let component_failure = resolved_components
+            .failed
+            .values()
+            .collect::<Vec<&BuildComponentFailure>>()[0];
+        match component_failure {
+            BuildComponentFailure::CircularReference {
+                context: _,
+                reference: circular_reference,
+            } => {
+                assert_eq!(
+                    circular_reference,
+                    &ComponentReference {
+                        id: "test1".to_string(),
+                        version: "1.0.0".to_string(),
+                    }
+                );
+            }
+            _ => panic!("Unexpected failure type: {:?}", component_failure),
+        }
     }
 
     struct MockComponentReferenceResolver {
@@ -524,9 +823,9 @@ mod tests {
             &self,
             reference: ComponentReference,
             context: BuildContext,
-        ) -> Result<ResolvedReference, ComponentReferenceResolveError> {
+        ) -> Result<ResolvedReferenceContent, ComponentReferenceResolveError> {
             match self.resolved.get(&reference) {
-                Some(rigging) => Ok(ResolvedReference {
+                Some(rigging) => Ok(ResolvedReferenceContent {
                     context: Arc::new(context),
                     rigging: rigging.clone(),
                 }),

@@ -14,6 +14,15 @@ pub struct Component {
     pub output: ComponentOutput,
 }
 
+impl Component {
+    pub fn get_reference(&self) -> ComponentReference {
+        ComponentReference {
+            id: self.id.clone(),
+            version: self.version.clone(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct ComponentOutput {
     pub schema: Option<Value>,
