@@ -58,10 +58,7 @@ pub fn validate_component(expected_id: Option<String>, component: &Component) ->
     );
 
     ValidationResult {
-        reference: ComponentReference {
-            id: component.id.clone(),
-            version: component.version.clone(),
-        },
+        reference: component.get_reference(),
         failures,
     }
 }
@@ -228,10 +225,7 @@ mod tests {
             version: "1.0.0".to_string(),
             inputs: vec![],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference {
-                    id: "output_schema".to_string(),
-                    version: "1.0".to_string(),
-                }),
+                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
                 schema: None,
             },
         };
@@ -250,10 +244,7 @@ mod tests {
             version: "1.0.0".to_string(),
             inputs: vec![],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference {
-                    id: "output_schema".to_string(),
-                    version: "1.0".to_string(),
-                }),
+                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
                 schema: None,
             },
         };
@@ -277,10 +268,7 @@ mod tests {
             version: "1.0.0".to_string(),
             inputs: vec![],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference {
-                    id: "output_schema".to_string(),
-                    version: "1.0".to_string(),
-                }),
+                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
                 schema: None,
             },
         };
@@ -316,10 +304,7 @@ mod tests {
                 },
             ],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference {
-                    id: "output_schema".to_string(),
-                    version: "1.0".to_string(),
-                }),
+                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
                 schema: None,
             },
         };
@@ -360,10 +345,7 @@ mod tests {
                 },
             ],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference {
-                    id: "output_schema".to_string(),
-                    version: "1.0".to_string(),
-                }),
+                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
                 schema: None,
             },
         };
@@ -391,19 +373,13 @@ mod tests {
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: ComponentReference {
-                        id: "default_component".to_string(),
-                        version: "1.0".to_string(),
-                    },
+                    reference: ComponentReference::exact("default_component", "1.0"),
                     input_overrides: None,
                 }),
                 default_value: Some(json!(3)),
             }],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference {
-                    id: "output_schema".to_string(),
-                    version: "1.0".to_string(),
-                }),
+                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
                 schema: None,
             },
         };
@@ -434,10 +410,10 @@ mod tests {
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference {
-                    id: ComponentReference::ROOT_ID.to_string(),
-                    version: "1.0".to_string(),
-                }),
+                schema_reference: Some(ComponentReference::exact(
+                    ComponentReference::ROOT_ID,
+                    "1.0",
+                )),
                 schema: None,
             },
         };
@@ -468,19 +444,13 @@ mod tests {
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: ComponentReference {
-                        id: ComponentReference::ROOT_ID.to_string(),
-                        version: "1.0".to_string(),
-                    },
+                    reference: ComponentReference::exact(ComponentReference::ROOT_ID, "1.0"),
                     input_overrides: None,
                 }),
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference {
-                    id: "output_schema".to_string(),
-                    version: "1.0".to_string(),
-                }),
+                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
                 schema: None,
             },
         };
@@ -511,17 +481,14 @@ mod tests {
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: ComponentReference {
-                        id: "default_component".to_string(),
-                        version: "1.0".to_string(),
-                    },
+                    reference: ComponentReference::exact("default_component", "1.0"),
                     input_overrides: Some(vec![ComponentInputOverride {
                         id: "sub-input-one".to_string(),
                         component: Some(ComponentInputSpecification {
-                            reference: ComponentReference {
-                                id: ComponentReference::ROOT_ID.to_string(),
-                                version: "1.0".to_string(),
-                            },
+                            reference: ComponentReference::exact(
+                                ComponentReference::ROOT_ID,
+                                "1.0",
+                            ),
                             input_overrides: None,
                         }),
                         value: None,
@@ -530,10 +497,7 @@ mod tests {
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference {
-                    id: "output_schema".to_string(),
-                    version: "1.0".to_string(),
-                }),
+                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
                 schema: None,
             },
         };
@@ -564,10 +528,7 @@ mod tests {
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: ComponentReference {
-                        id: "default_component".to_string(),
-                        version: "1.0".to_string(),
-                    },
+                    reference: ComponentReference::exact("default_component", "1.0"),
                     input_overrides: Some(vec![
                         ComponentInputOverride {
                             id: "sub-input-one".to_string(),
@@ -584,10 +545,7 @@ mod tests {
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference {
-                    id: "output_schema".to_string(),
-                    version: "1.0".to_string(),
-                }),
+                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
                 schema: None,
             },
         };
@@ -615,17 +573,11 @@ mod tests {
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: ComponentReference {
-                        id: "default_component".to_string(),
-                        version: "1.0".to_string(),
-                    },
+                    reference: ComponentReference::exact("default_component", "1.0"),
                     input_overrides: Some(vec![ComponentInputOverride {
                         id: "sub-input-one".to_string(),
                         component: Some(ComponentInputSpecification {
-                            reference: ComponentReference {
-                                id: "default_component_2".to_string(),
-                                version: "1.0".to_string(),
-                            },
+                            reference: ComponentReference::exact("default_component_2", "1.0"),
                             input_overrides: Some(vec![
                                 ComponentInputOverride {
                                     id: "sub-sub-input-one".to_string(),
@@ -645,10 +597,7 @@ mod tests {
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference {
-                    id: "output_schema".to_string(),
-                    version: "1.0".to_string(),
-                }),
+                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
                 schema: None,
             },
         };
@@ -676,17 +625,11 @@ mod tests {
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: ComponentReference {
-                        id: "default_component".to_string(),
-                        version: "1.0".to_string(),
-                    },
+                    reference: ComponentReference::exact("default_component", "1.0"),
                     input_overrides: Some(vec![ComponentInputOverride {
                         id: "sub-input-one".to_string(),
                         component: Some(ComponentInputSpecification {
-                            reference: ComponentReference {
-                                id: "default_component_2".to_string(),
-                                version: "1.0".to_string(),
-                            },
+                            reference: ComponentReference::exact("default_component_2", "1.0"),
                             input_overrides: None,
                         }),
                         value: Some(json!(3)),
@@ -695,10 +638,7 @@ mod tests {
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference {
-                    id: "output_schema".to_string(),
-                    version: "1.0".to_string(),
-                }),
+                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
                 schema: None,
             },
         };

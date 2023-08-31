@@ -16,10 +16,7 @@ pub struct Component {
 
 impl Component {
     pub fn get_reference(&self) -> ComponentReference {
-        ComponentReference {
-            id: self.id.clone(),
-            version: self.version.clone(),
-        }
+        ComponentReference::exact(&self.id, &self.version)
     }
 }
 

@@ -332,31 +332,19 @@ mod tests {
         let resolver = MockComponentReferenceResolver {
             resolved: vec![
                 (
-                    ComponentReference {
-                        id: "test2".to_string(),
-                        version: "1.0.0".to_string(),
-                    },
+                    ComponentReference::exact("test2", "1.0.0"),
                     test2_v1_component.to_string(),
                 ),
                 (
-                    ComponentReference {
-                        id: "test3".to_string(),
-                        version: "1.0.0".to_string(),
-                    },
+                    ComponentReference::exact("test3", "1.0.0"),
                     test3_v1_component.to_string(),
                 ),
                 (
-                    ComponentReference {
-                        id: "test3".to_string(),
-                        version: "2.0.0".to_string(),
-                    },
+                    ComponentReference::exact("test3", "2.0.0"),
                     test3_v2_component.to_string(),
                 ),
                 (
-                    ComponentReference {
-                        id: "test4".to_string(),
-                        version: "1.0.0".to_string(),
-                    },
+                    ComponentReference::exact("test4", "1.0.0"),
                     test4_v1_component.to_string(),
                 ),
             ]
@@ -421,10 +409,7 @@ mod tests {
 
         let test2_resolver = MockComponentReferenceResolver {
             resolved: vec![(
-                ComponentReference {
-                    id: "test1".to_string(),
-                    version: "1.0.0".to_string(),
-                },
+                ComponentReference::exact("test1", "1.0.0"),
                 test1_component.to_string(),
             )]
             .into_iter()
@@ -490,13 +475,7 @@ mod tests {
                 validation_errors: validation_failures,
                 path,
             } => {
-                assert_eq!(
-                    path[0],
-                    ComponentReference {
-                        id: "test1".to_string(),
-                        version: "1.0.0".to_string()
-                    }
-                );
+                assert_eq!(path[0], ComponentReference::exact("test1", "1.0.0"),);
 
                 assert_eq!(validation_failures.len(), 1);
                 assert_eq!(
@@ -657,31 +636,19 @@ mod tests {
         let resolver = MockComponentReferenceResolver {
             resolved: vec![
                 (
-                    ComponentReference {
-                        id: "test2".to_string(),
-                        version: "1.0.0".to_string(),
-                    },
+                    ComponentReference::exact("test2", "1.0.0"),
                     test2_v1_component.to_string(),
                 ),
                 (
-                    ComponentReference {
-                        id: "test3".to_string(),
-                        version: "1.0.0".to_string(),
-                    },
+                    ComponentReference::exact("test3", "1.0.0"),
                     test3_v1_component.to_string(),
                 ),
                 (
-                    ComponentReference {
-                        id: "test3".to_string(),
-                        version: "2.0.0".to_string(),
-                    },
+                    ComponentReference::exact("test3", "2.0.0"),
                     test3_v2_component.to_string(),
                 ),
                 (
-                    ComponentReference {
-                        id: "test4".to_string(),
-                        version: "1.0.0".to_string(),
-                    },
+                    ComponentReference::exact("test4", "1.0.0"),
                     test4_v1_component.to_string(),
                 ),
             ]
@@ -708,10 +675,7 @@ mod tests {
             } => {
                 assert_eq!(
                     circular_reference,
-                    &ComponentReference {
-                        id: "test2".to_string(),
-                        version: "5.0.0".to_string(),
-                    }
+                    &ComponentReference::exact("test2", "5.0.0")
                 );
             }
             _ => panic!("Unexpected failure type: {:?}", component_failure),
@@ -760,10 +724,7 @@ mod tests {
             } => {
                 assert_eq!(
                     circular_reference,
-                    &ComponentReference {
-                        id: "test1".to_string(),
-                        version: "1.0.0".to_string(),
-                    }
+                    &ComponentReference::exact("test1", "1.0.0")
                 );
             }
             _ => panic!("Unexpected failure type: {:?}", component_failure),

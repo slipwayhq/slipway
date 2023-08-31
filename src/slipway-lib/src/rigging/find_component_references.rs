@@ -58,10 +58,7 @@ mod tests {
                     description: None,
                     schema: None,
                     default_component: Some(ComponentInputSpecification {
-                        reference: ComponentReference {
-                            id: "component1".to_string(),
-                            version: "1.0".to_string(),
-                        },
+                        reference: ComponentReference::exact("component1", "1.0"),
                         input_overrides: None,
                     }),
                     default_value: None,
@@ -72,25 +69,19 @@ mod tests {
                     description: None,
                     schema: None,
                     default_component: Some(ComponentInputSpecification {
-                        reference: ComponentReference {
-                            id: "component2".to_string(),
-                            version: "1.0".to_string(),
-                        },
+                        reference: ComponentReference::exact("component2", "1.0"),
                         input_overrides: Some(vec![
                             ComponentInputOverride {
                                 id: "input3".to_string(),
                                 component: Some(ComponentInputSpecification {
-                                    reference: ComponentReference {
-                                        id: "component3".to_string(),
-                                        version: "1.0".to_string(),
-                                    },
+                                    reference: ComponentReference::exact("component3", "1.0"),
                                     input_overrides: Some(vec![ComponentInputOverride {
                                         id: "input4".to_string(),
                                         component: Some(ComponentInputSpecification {
-                                            reference: ComponentReference {
-                                                id: "component2".to_string(),
-                                                version: "1.0".to_string(),
-                                            },
+                                            reference: ComponentReference::exact(
+                                                "component2",
+                                                "1.0",
+                                            ),
                                             input_overrides: None,
                                         }),
                                         value: None,
@@ -101,10 +92,7 @@ mod tests {
                             ComponentInputOverride {
                                 id: "input5".to_string(),
                                 component: Some(ComponentInputSpecification {
-                                    reference: ComponentReference {
-                                        id: "component2".to_string(),
-                                        version: "1.1".to_string(),
-                                    },
+                                    reference: ComponentReference::exact("component2", "1.1"),
                                     input_overrides: None,
                                 }),
                                 value: None,
@@ -116,10 +104,7 @@ mod tests {
             ],
             output: ComponentOutput {
                 schema: None,
-                schema_reference: Some(ComponentReference {
-                    id: "component4".to_string(),
-                    version: "1.0".to_string(),
-                }),
+                schema_reference: Some(ComponentReference::exact("component4", "1.0")),
             },
         };
 
@@ -137,26 +122,11 @@ mod tests {
         assert_eq!(
             references,
             vec![
-                ComponentReference {
-                    id: "component1".to_string(),
-                    version: "1.0".to_string(),
-                },
-                ComponentReference {
-                    id: "component2".to_string(),
-                    version: "1.0".to_string(),
-                },
-                ComponentReference {
-                    id: "component2".to_string(),
-                    version: "1.1".to_string(),
-                },
-                ComponentReference {
-                    id: "component3".to_string(),
-                    version: "1.0".to_string(),
-                },
-                ComponentReference {
-                    id: "component4".to_string(),
-                    version: "1.0".to_string(),
-                },
+                ComponentReference::exact("component1", "1.0"),
+                ComponentReference::exact("component2", "1.0"),
+                ComponentReference::exact("component2", "1.1"),
+                ComponentReference::exact("component3", "1.0"),
+                ComponentReference::exact("component4", "1.0"),
             ]
         );
     }

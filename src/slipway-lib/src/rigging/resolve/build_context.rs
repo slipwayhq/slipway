@@ -58,10 +58,7 @@ mod tests {
     #[test]
     fn get_path_should_return_path_to_current_context_when_one_context_node() {
         let context = BuildContext {
-            reference: ComponentReference {
-                id: "root".to_string(),
-                version: "1.0.0".to_string(),
-            },
+            reference: ComponentReference::exact("root", "1.0.0"),
             resolved_reference: OnceLock::new(),
             previous_context: None,
         };
@@ -72,16 +69,10 @@ mod tests {
     #[test]
     fn get_path_should_return_path_to_current_context_when_multiple_context_nodes() {
         let context = BuildContext {
-            reference: ComponentReference {
-                id: "root".to_string(),
-                version: "1.0.0".to_string(),
-            },
+            reference: ComponentReference::exact("root", "1.0.0"),
             resolved_reference: OnceLock::new(),
             previous_context: Some(Arc::new(BuildContext {
-                reference: ComponentReference {
-                    id: "child".to_string(),
-                    version: "1.0.0".to_string(),
-                },
+                reference: ComponentReference::exact("child", "1.0.0"),
                 resolved_reference: OnceLock::new(),
                 previous_context: None,
             })),
@@ -93,16 +84,10 @@ mod tests {
     #[test]
     fn get_list_should_return_list_of_references_in_current_context() {
         let context = BuildContext {
-            reference: ComponentReference {
-                id: "root".to_string(),
-                version: "1.0.0".to_string(),
-            },
+            reference: ComponentReference::exact("root", "1.0.0"),
             resolved_reference: OnceLock::new(),
             previous_context: Some(Arc::new(BuildContext {
-                reference: ComponentReference {
-                    id: "child".to_string(),
-                    version: "1.0.0".to_string(),
-                },
+                reference: ComponentReference::exact("child", "1.0.0"),
                 resolved_reference: OnceLock::new(),
                 previous_context: None,
             })),
@@ -118,29 +103,16 @@ mod tests {
     #[test]
     fn contains_resolved_it_should_return_true_if_context_contains_specified_id() {
         let context = BuildContext {
-            reference: ComponentReference {
-                id: ComponentReference::ROOT_ID.to_string(),
-                version: "1.0.0".to_string(),
-            },
-            resolved_reference: OnceLock::from(ComponentReference {
-                id: "my-component".to_string(),
-                version: "1.0.0".to_string(),
-            }),
+            reference: ComponentReference::exact(ComponentReference::ROOT_ID, "1.0.0"),
+            resolved_reference: OnceLock::from(ComponentReference::exact("my-component", "1.0.0")),
             previous_context: Some(Arc::new(BuildContext {
-                reference: ComponentReference {
-                    id: "child".to_string(),
-                    version: "1.0.0".to_string(),
-                },
+                reference: ComponentReference::exact("child", "1.0.0"),
                 resolved_reference: OnceLock::new(),
                 previous_context: Some(Arc::new(BuildContext {
-                    reference: ComponentReference {
-                        id: "child2".to_string(),
-                        version: "1.0.0".to_string(),
-                    },
-                    resolved_reference: OnceLock::from(ComponentReference {
-                        id: "child2".to_string(),
-                        version: "1.0.0".to_string(),
-                    }),
+                    reference: ComponentReference::exact("child2", "1.0.0"),
+                    resolved_reference: OnceLock::from(ComponentReference::exact(
+                        "child2", "1.0.0",
+                    )),
                     previous_context: None,
                 })),
             })),

@@ -11,6 +11,31 @@ pub struct ComponentReference {
     pub version: String,
 }
 
+impl ComponentReference {
+    pub(crate) const ROOT_ID: &str = ".root";
+    const ROOT_VERSION: &str = "0.0.0";
+
+    pub fn root() -> Self {
+        ComponentReference::exact(
+            ComponentReference::ROOT_ID,
+            ComponentReference::ROOT_VERSION,
+        )
+    }
+
+    pub fn is_root(&self) -> bool {
+        // We don't bother testing the version, as any version
+        // is still technically root if the ID is root.
+        self.id == ComponentReference::ROOT_ID
+    }
+
+    pub fn exact(id: &str, version: &str) -> Self {
+        ComponentReference {
+            id: id.to_string(),
+            version: version.to_string(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 struct ComponentReferenceInner {
     id: String,
@@ -68,24 +93,6 @@ impl<'de> Deserialize<'de> for ComponentReference {
                 Err(e) => Err(serde::de::Error::custom(e.to_string())),
             },
         }
-    }
-}
-
-impl ComponentReference {
-    pub(crate) const ROOT_ID: &str = ".root";
-    const ROOT_VERSION: &str = "0.0.0";
-
-    pub fn root() -> Self {
-        ComponentReference {
-            id: ComponentReference::ROOT_ID.to_string(),
-            version: ComponentReference::ROOT_VERSION.to_string(),
-        }
-    }
-
-    pub fn is_root(&self) -> bool {
-        // We don't bother testing the version, as any version
-        // is still technically root if the ID is root.
-        self.id == ComponentReference::ROOT_ID
     }
 }
 
