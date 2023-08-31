@@ -66,7 +66,7 @@ mod tests {
             previous_context: None,
         };
 
-        assert_eq!("root:1.0.0", context.get_path());
+        assert_eq!("root@1.0.0", context.get_path());
     }
 
     #[test]
@@ -87,7 +87,7 @@ mod tests {
             })),
         };
 
-        assert_eq!("child:1.0.0 > root:1.0.0", context.get_path());
+        assert_eq!("child@1.0.0 > root@1.0.0", context.get_path());
     }
 
     #[test]

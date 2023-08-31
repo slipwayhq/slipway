@@ -3,6 +3,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::{fmt::Display, str::FromStr};
 
+const COMPONENT_REFERENCE_VERSION_SEPARATOR: char = '@';
+
 #[derive(Serialize, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ComponentReference {
     pub id: String,
@@ -26,7 +28,10 @@ impl From<ComponentReferenceInner> for ComponentReference {
 
 impl Display for ComponentReference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{}:{}", self.id, self.version))
+        f.write_fmt(format_args!(
+            "{}{}{}",
+            self.id, COMPONENT_REFERENCE_VERSION_SEPARATOR, self.version
+        ))
     }
 }
 
@@ -34,7 +39,7 @@ impl FromStr for ComponentReference {
     type Err = SlipwayError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (id, version) = match s.find(':') {
+        let (id, version) = match s.find(COMPONENT_REFERENCE_VERSION_SEPARATOR) {
             Some(i) => (&s[..i], &s[i + 1..]),
             None => {
                 return Err(SlipwayError::InvalidComponentReference(
@@ -90,7 +95,7 @@ mod tests {
 
     #[test]
     fn it_should_deserialize_component_reference_from_string() {
-        let json = r#""test:1.0.0""#;
+        let json = r#""test@1.0.0""#;
 
         let reference: ComponentReference = serde_json::from_str(json).unwrap();
 

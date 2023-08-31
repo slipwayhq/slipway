@@ -289,7 +289,7 @@ mod tests {
                 }
             ],
             "output": {
-                "schema_reference": "test3:2.0.0"
+                "schema_reference": "test3@2.0.0"
             }
         }"#;
 
@@ -399,7 +399,7 @@ mod tests {
                 }
             ],
             "output": {
-                "schema_reference": "foo:1.0"
+                "schema_reference": "foo@1.0"
             }
         }"#;
 
@@ -411,7 +411,7 @@ mod tests {
             "inputs": [
             ],
             "output": {
-                "schema_reference": "test1:1.0.0"
+                "schema_reference": "test1@1.0.0"
             }
         }"#;
 
@@ -564,7 +564,7 @@ mod tests {
     #[test]
     fn it_should_detect_circular_references_ignoring_versions() {
         // The circular reference here is going to be:
-        // test:1.0.0 -> test2:1.0.0 -> test4:1.0.0 -> test2:5.0.0
+        // test@1.0.0 -> test2@1.0.0 -> test4@1.0.0 -> test2@5.0.0
 
         let root_component = r#"
         {
@@ -615,7 +615,7 @@ mod tests {
                 }
             ],
             "output": {
-                "schema_reference": "test3:2.0.0"
+                "schema_reference": "test3@2.0.0"
             }
         }"#;
 
@@ -650,7 +650,7 @@ mod tests {
             "version": "1.0.0",
             "inputs": [],
             "output": {
-                "schema_reference": "test2:5.0.0"
+                "schema_reference": "test2@5.0.0"
             }
         }"#;
 
@@ -733,7 +733,7 @@ mod tests {
                 }
             ],
             "output": {
-                "schema_reference": "test1:1.0.0"
+                "schema_reference": "test1@1.0.0"
             }
         }"#;
 

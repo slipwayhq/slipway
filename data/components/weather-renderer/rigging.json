@@ -7,11 +7,11 @@
     {
       "id": "weather-data",
       "default_component": {
-        "reference": "weather-loader:0.1"
+        "reference": "weather-loader@0.1"
       }
     }
   ],
   "output": {
-    "schema_reference": ".renderer:0.1"
+    "schema_reference": ".renderer@0.1"
   }
 }
