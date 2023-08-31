@@ -1,7 +1,7 @@
+mod build_context;
+
 use std::{
-    cell::OnceCell,
     collections::HashMap,
-    fmt::Display,
     sync::{Arc, OnceLock},
 };
 
@@ -12,6 +12,8 @@ use thiserror::Error;
 
 use crate::errors::SlipwayError;
 use crate::rigging::find_component_references::find_component_references;
+
+pub(crate) use build_context::BuildContext;
 
 use super::{
     parse::{
@@ -221,55 +223,6 @@ pub(crate) trait ComponentReferenceResolver {
 pub(crate) struct ResolvedReferenceContent {
     pub context: Arc<BuildContext>,
     pub rigging: String,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct BuildContext {
-    pub reference: ComponentReference,
-    pub resolved_reference: OnceLock<ComponentReference>,
-    pub previous_context: Option<Arc<BuildContext>>,
-}
-
-impl BuildContext {
-    pub fn get_path(&self) -> String {
-        let mut path = self.reference.to_string();
-
-        let mut current_context = self.previous_context.clone();
-        while let Some(context) = current_context {
-            path.insert_str(0, " > ");
-            path.insert_str(0, &context.reference.to_string());
-            current_context = context.previous_context.clone();
-        }
-
-        path
-    }
-
-    pub fn get_list(&self) -> Vec<ComponentReference> {
-        let mut result = vec![self.reference.clone()];
-
-        let mut current_context = self.previous_context.clone();
-        while let Some(context) = current_context {
-            result.push(context.reference.clone());
-            current_context = context.previous_context.clone();
-        }
-
-        result
-    }
-
-    pub fn contains_resolved_id(&self, id: &str) -> bool {
-        let current_resolved_reference = self.resolved_reference.get();
-        if let Some(resolved_reference) = current_resolved_reference {
-            if resolved_reference.id == id {
-                return true;
-            }
-        }
-
-        if let Some(previous_context) = &self.previous_context {
-            return previous_context.contains_resolved_id(id);
-        }
-
-        false
-    }
 }
 
 #[cfg(test)]
@@ -610,6 +563,9 @@ mod tests {
 
     #[test]
     fn it_should_detect_circular_references_ignoring_versions() {
+        // The circular reference here is going to be:
+        // test:1.0.0 -> test2:1.0.0 -> test4:1.0.0 -> test2:5.0.0
+
         let root_component = r#"
         {
             "id": "test",
@@ -687,6 +643,7 @@ mod tests {
             }
         }"#;
 
+        // This contains a reference back to a different version of test2.
         let test4_v1_component = r#"
         {
             "id": "test4",
