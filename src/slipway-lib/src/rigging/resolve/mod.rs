@@ -1,19 +1,19 @@
 mod build_context;
 
-use std::{
-    collections::HashMap,
-    sync::{Arc, OnceLock},
-};
+use std::{collections::HashMap, sync::OnceLock};
 
 use async_executor::LocalExecutor;
 use async_trait::async_trait;
 use futures_lite::{future, FutureExt};
 use thiserror::Error;
+use typed_arena::Arena;
 
 use crate::errors::SlipwayError;
 use crate::rigging::find_component_references::find_component_references;
 
 pub(crate) use build_context::BuildContext;
+
+use self::build_context::BuildContextSnapshot;
 
 use super::{
     parse::{
@@ -45,6 +45,16 @@ async fn resolve_components_async(
     root_component: String,
     component_reference_resolver: Box<dyn ComponentReferenceResolver>,
 ) -> ResolvedComponents {
+    // We're going to create all the contexts in an arena, so they can hold
+    // references to each other and all have the same lifetime.
+    let context_arena = Arena::new();
+
+    let root_context = context_arena.alloc(BuildContext {
+        reference: ComponentReference::root(),
+        resolved_reference: OnceLock::new(),
+        previous_context: None,
+    });
+
     // This is a list of component references which are in the process of being
     // fetched, or possibly have completed being fetched and are waiting to be
     // processed. We add the root component to the list as the first item to process.
@@ -52,11 +62,7 @@ async fn resolve_components_async(
         ResolvedReferenceContent,
         ComponentReferenceResolveError,
     >::Ok(ResolvedReferenceContent {
-        context: Arc::new(BuildContext {
-            reference: ComponentReference::root(),
-            resolved_reference: OnceLock::new(),
-            previous_context: None,
-        }),
+        context: root_context,
         rigging: root_component,
     }))
     .boxed()];
@@ -76,7 +82,7 @@ async fn resolve_components_async(
                     e.context.reference.clone(),
                     BuildComponentFailure::Resolve {
                         source: e.source,
-                        path: e.context.get_list(),
+                        context: e.context.as_list(),
                     },
                 );
             }
@@ -93,7 +99,7 @@ async fn resolve_components_async(
                             context_component_reference,
                             BuildComponentFailure::Parse {
                                 source: e,
-                                path: context.get_list(),
+                                context: context.as_list(),
                             },
                         );
                     }
@@ -120,7 +126,7 @@ async fn resolve_components_async(
                                 context_component_reference.clone(),
                                 BuildComponentFailure::Validate {
                                     validation_errors: errors,
-                                    path: context.get_list(),
+                                    context: context.as_list(),
                                 },
                             );
                         } else {
@@ -144,8 +150,8 @@ async fn resolve_components_async(
                                 failed.insert(
                                     context_component_reference.clone(),
                                     BuildComponentFailure::CircularReference {
-                                        context: context.clone(),
                                         reference: circular_reference.clone(),
+                                        context: context.as_list(),
                                     },
                                 );
                             } else {
@@ -158,11 +164,11 @@ async fn resolve_components_async(
                                         break;
                                     }
 
-                                    let new_context = BuildContext {
+                                    let new_context = context_arena.alloc(BuildContext {
                                         reference: reference.clone(),
                                         resolved_reference: OnceLock::new(),
-                                        previous_context: Some(Arc::clone(&context)),
-                                    };
+                                        previous_context: Some(context),
+                                    });
 
                                     futures.push(
                                         component_reference_resolver
@@ -188,47 +194,47 @@ async fn resolve_components_async(
 enum BuildComponentFailure {
     Resolve {
         source: SlipwayError,
-        path: Vec<ComponentReference>,
+        context: Vec<BuildContextSnapshot>,
     },
     Parse {
         source: SlipwayError,
-        path: Vec<ComponentReference>,
+        context: Vec<BuildContextSnapshot>,
     },
     Validate {
         validation_errors: Vec<ValidationFailure>,
-        path: Vec<ComponentReference>,
+        context: Vec<BuildContextSnapshot>,
     },
     CircularReference {
-        context: Arc<BuildContext>,
         reference: ComponentReference,
+        context: Vec<BuildContextSnapshot>,
     },
-}
-
-#[derive(Error, Debug)]
-#[error("Rigging parse failed")]
-pub(crate) struct ComponentReferenceResolveError {
-    pub context: Arc<BuildContext>,
-    pub source: SlipwayError,
 }
 
 #[async_trait]
 pub(crate) trait ComponentReferenceResolver {
-    async fn resolve(
+    async fn resolve<'a, 'b>(
         &self,
         reference: ComponentReference,
-        context: BuildContext,
-    ) -> Result<ResolvedReferenceContent, ComponentReferenceResolveError>;
+        context: &'a BuildContext<'a>,
+    ) -> Result<ResolvedReferenceContent<'b>, ComponentReferenceResolveError<'b>>
+    where
+        'a: 'b;
 }
 
-pub(crate) struct ResolvedReferenceContent {
-    pub context: Arc<BuildContext>,
+pub(crate) struct ResolvedReferenceContent<'a> {
+    pub context: &'a BuildContext<'a>,
     pub rigging: String,
+}
+
+#[derive(Error, Debug)]
+#[error("Rigging parse failed")]
+pub(crate) struct ComponentReferenceResolveError<'a> {
+    pub context: &'a BuildContext<'a>,
+    pub source: SlipwayError,
 }
 
 #[cfg(test)]
 mod tests {
-    use std::hash::Hash;
-
     use super::*;
 
     fn print_failures(resolved_components: &ResolvedComponents) {
@@ -440,21 +446,21 @@ mod tests {
             .collect::<Vec<&BuildComponentFailure>>()[0];
         match test1_component_failure {
             BuildComponentFailure::Validate {
-                validation_errors: validation_failures,
-                path,
+                validation_errors,
+                context,
             } => {
-                assert_eq!(path[0], ComponentReference::root());
+                assert_eq!(context[0].reference, ComponentReference::root());
 
-                assert_eq!(validation_failures.len(), 1);
+                assert_eq!(validation_errors.len(), 1);
                 assert_eq!(
-                    validation_failures
+                    validation_errors
                         .iter()
                         .filter(|f| matches!(f, ValidationFailure::Error(_, _)))
                         .count(),
                     1
                 );
                 assert_eq!(
-                    validation_failures
+                    validation_errors
                         .iter()
                         .filter(|f| matches!(f, ValidationFailure::Warning(_, _)))
                         .count(),
@@ -472,21 +478,24 @@ mod tests {
             .collect::<Vec<&BuildComponentFailure>>()[0];
         match test2_component_failure {
             BuildComponentFailure::Validate {
-                validation_errors: validation_failures,
-                path,
+                validation_errors,
+                context,
             } => {
-                assert_eq!(path[0], ComponentReference::exact("test1", "1.0.0"),);
-
-                assert_eq!(validation_failures.len(), 1);
                 assert_eq!(
-                    validation_failures
+                    context[0].reference,
+                    ComponentReference::exact("test1", "1.0.0"),
+                );
+
+                assert_eq!(validation_errors.len(), 1);
+                assert_eq!(
+                    validation_errors
                         .iter()
                         .filter(|f| matches!(f, ValidationFailure::Error(_, _)))
                         .count(),
                     1
                 );
                 assert_eq!(
-                    validation_failures
+                    validation_errors
                         .iter()
                         .filter(|f| matches!(f, ValidationFailure::Warning(_, _)))
                         .count(),
@@ -737,18 +746,21 @@ mod tests {
 
     #[async_trait]
     impl ComponentReferenceResolver for MockComponentReferenceResolver {
-        async fn resolve(
+        async fn resolve<'a, 'b>(
             &self,
             reference: ComponentReference,
-            context: BuildContext,
-        ) -> Result<ResolvedReferenceContent, ComponentReferenceResolveError> {
+            context: &'a BuildContext<'a>,
+        ) -> Result<ResolvedReferenceContent<'b>, ComponentReferenceResolveError<'b>>
+        where
+            'a: 'b,
+        {
             match self.resolved.get(&reference) {
                 Some(rigging) => Ok(ResolvedReferenceContent {
-                    context: Arc::new(context),
+                    context,
                     rigging: rigging.clone(),
                 }),
                 None => Err(ComponentReferenceResolveError {
-                    context: Arc::new(context),
+                    context,
                     source: SlipwayError::RiggingResolveFailed(
                         "MockComponentReferenceResolver does not have a rigging for this reference"
                             .to_string(),

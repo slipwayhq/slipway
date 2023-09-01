@@ -28,11 +28,14 @@ struct ComponentReferenceResolverImpl {}
 
 #[async_trait]
 impl ComponentReferenceResolver for ComponentReferenceResolverImpl {
-    async fn resolve(
+    async fn resolve<'a, 'b>(
         &self,
         _reference: ComponentReference,
-        _context: BuildContext,
-    ) -> Result<ResolvedReferenceContent, ComponentReferenceResolveError> {
+        _context: &'a BuildContext<'a>,
+    ) -> Result<ResolvedReferenceContent<'b>, ComponentReferenceResolveError<'b>>
+    where
+        'a: 'b,
+    {
         todo!();
     }
 }

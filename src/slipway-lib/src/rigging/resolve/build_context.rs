@@ -1,35 +1,26 @@
-use std::sync::{Arc, OnceLock};
+use std::sync::OnceLock;
 
 use crate::rigging::parse::types::ComponentReference;
 
 #[derive(Debug, Clone)]
-pub(crate) struct BuildContext {
+pub(crate) struct BuildContext<'a> {
     pub reference: ComponentReference,
+
+    // We're using OnceLock rather than OnceCell so that the BuildContext is Send
+    // so we can use it in a future.
     pub resolved_reference: OnceLock<ComponentReference>,
-    pub previous_context: Option<Arc<BuildContext>>,
+
+    pub previous_context: Option<&'a BuildContext<'a>>,
 }
 
-impl BuildContext {
-    pub fn get_path(&self) -> String {
-        let mut path = self.reference.to_string();
+impl<'a> BuildContext<'a> {
+    pub fn as_list(&self) -> Vec<BuildContextSnapshot> {
+        let mut result = vec![self.to_snapshot()];
 
-        let mut current_context = self.previous_context.clone();
+        let mut current_context = self.previous_context;
         while let Some(context) = current_context {
-            path.insert_str(0, " > ");
-            path.insert_str(0, &context.reference.to_string());
-            current_context = context.previous_context.clone();
-        }
-
-        path
-    }
-
-    pub fn get_list(&self) -> Vec<ComponentReference> {
-        let mut result = vec![self.reference.clone()];
-
-        let mut current_context = self.previous_context.clone();
-        while let Some(context) = current_context {
-            result.push(context.reference.clone());
-            current_context = context.previous_context.clone();
+            result.push(context.to_snapshot());
+            current_context = context.previous_context;
         }
 
         result
@@ -49,6 +40,19 @@ impl BuildContext {
 
         false
     }
+
+    pub fn to_snapshot(&self) -> BuildContextSnapshot {
+        BuildContextSnapshot {
+            reference: self.reference.clone(),
+            resolved_reference: self.resolved_reference.get().cloned(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct BuildContextSnapshot {
+    pub reference: ComponentReference,
+    pub resolved_reference: Option<ComponentReference>,
 }
 
 #[cfg(test)]
@@ -56,72 +60,56 @@ mod tests {
     use super::*;
 
     #[test]
-    fn get_path_should_return_path_to_current_context_when_one_context_node() {
-        let context = BuildContext {
-            reference: ComponentReference::exact("root", "1.0.0"),
-            resolved_reference: OnceLock::new(),
+    fn get_list_should_return_list_of_references_in_current_context() {
+        let context_0 = BuildContext {
+            reference: ComponentReference::exact("context-0", "1.0.0"),
+            resolved_reference: OnceLock::from(ComponentReference::exact(
+                "context-0-resolved",
+                "1.0.0",
+            )),
             previous_context: None,
         };
-
-        assert_eq!("root@1.0.0", context.get_path());
-    }
-
-    #[test]
-    fn get_path_should_return_path_to_current_context_when_multiple_context_nodes() {
-        let context = BuildContext {
-            reference: ComponentReference::exact("root", "1.0.0"),
+        let context_1 = BuildContext {
+            reference: ComponentReference::exact("context-1", "1.0.0"),
             resolved_reference: OnceLock::new(),
-            previous_context: Some(Arc::new(BuildContext {
-                reference: ComponentReference::exact("child", "1.0.0"),
-                resolved_reference: OnceLock::new(),
-                previous_context: None,
-            })),
+            previous_context: Some(&context_0),
         };
 
-        assert_eq!("child@1.0.0 > root@1.0.0", context.get_path());
-    }
+        let list = context_1.as_list();
 
-    #[test]
-    fn get_list_should_return_list_of_references_in_current_context() {
-        let context = BuildContext {
-            reference: ComponentReference::exact("root", "1.0.0"),
-            resolved_reference: OnceLock::new(),
-            previous_context: Some(Arc::new(BuildContext {
-                reference: ComponentReference::exact("child", "1.0.0"),
-                resolved_reference: OnceLock::new(),
-                previous_context: None,
-            })),
-        };
-
-        let list = context.get_list();
-
-        assert_eq!(2, list.len());
-        assert_eq!("root", list[0].id);
-        assert_eq!("child", list[1].id);
+        assert_eq!(list, vec![context_1.to_snapshot(), context_0.to_snapshot()]);
     }
 
     #[test]
     fn contains_resolved_it_should_return_true_if_context_contains_specified_id() {
-        let context = BuildContext {
+        let context_0 = BuildContext {
             reference: ComponentReference::exact(ComponentReference::ROOT_ID, "1.0.0"),
-            resolved_reference: OnceLock::from(ComponentReference::exact("my-component", "1.0.0")),
-            previous_context: Some(Arc::new(BuildContext {
-                reference: ComponentReference::exact("child", "1.0.0"),
-                resolved_reference: OnceLock::new(),
-                previous_context: Some(Arc::new(BuildContext {
-                    reference: ComponentReference::exact("child2", "1.0.0"),
-                    resolved_reference: OnceLock::from(ComponentReference::exact(
-                        "child2", "1.0.0",
-                    )),
-                    previous_context: None,
-                })),
-            })),
+            resolved_reference: OnceLock::from(ComponentReference::exact(
+                "context-0-resolved",
+                "1.0.0",
+            )),
+            previous_context: None,
         };
 
-        assert!(context.contains_resolved_id("my-component"));
-        assert!(context.contains_resolved_id("child2"));
+        let context_1 = BuildContext {
+            reference: ComponentReference::exact("context-1", "1.0.0"),
+            resolved_reference: OnceLock::new(),
+            previous_context: Some(&context_0),
+        };
 
-        assert!(!context.contains_resolved_id("child"));
-        assert!(!context.contains_resolved_id(ComponentReference::ROOT_ID));
+        let context_2 = BuildContext {
+            reference: ComponentReference::exact("context-2", "1.0.0"),
+            resolved_reference: OnceLock::from(ComponentReference::exact(
+                "context-2-resolved",
+                "1.0.0",
+            )),
+            previous_context: Some(&context_1),
+        };
+
+        assert!(context_2.contains_resolved_id("context-0-resolved"));
+        assert!(context_2.contains_resolved_id("context-2-resolved"));
+
+        assert!(!context_2.contains_resolved_id("context-1"));
+        assert!(!context_2.contains_resolved_id(ComponentReference::ROOT_ID));
     }
 }
