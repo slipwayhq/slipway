@@ -5,6 +5,7 @@ use std::{collections::HashMap, sync::OnceLock};
 
 use async_executor::LocalExecutor;
 use futures_lite::{future, FutureExt};
+use thiserror::Error;
 use typed_arena::Arena;
 
 use crate::errors::SlipwayError;
@@ -48,9 +49,13 @@ async fn recursively_resolve_components_async(
     loader: Box<dyn LoadComponentRigging>,
 ) -> ResolvedComponents {
     // We're going to create all the contexts in an arena, so they can hold
-    // references to each other and all have the same lifetime.
+    // references to each other while all having the same lifetime.
     let context_arena = Arena::new();
 
+    // We already have the rigging for the root component, so we can create
+    // the context for it now.
+    // We use ComponentReference::root() because we do not know the actual id
+    // or version yet.
     let root_context = context_arena.alloc(Context {
         reference: ComponentReference::root(),
         resolved_reference: OnceLock::new(),
@@ -58,9 +63,9 @@ async fn recursively_resolve_components_async(
     });
 
     // This is a list of component references which are in the process of being
-    // fetched, or possibly have completed being fetched and are waiting to be
-    // processed. We add the root component to the list as the first item to process.
-    let mut futures = vec![future::ready(Result::<ComponentRigging, LoadError>::Ok(
+    // loaded, or have completed being loaded but have not been processed.
+    // We add the root component to the list as the first item to process.
+    let mut loader_futures = vec![future::ready(Result::<ComponentRigging, LoadError>::Ok(
         ComponentRigging {
             context: root_context,
             rigging: root_component_rigging,
@@ -68,126 +73,180 @@ async fn recursively_resolve_components_async(
     ))
     .boxed()];
 
-    let mut validated = HashMap::new();
+    // Set up the collections to store the results.
+    let mut resolved = HashMap::new();
     let mut failed = HashMap::new();
     let mut root_warnings = Vec::new();
 
-    // When any task which has not been processed is ready, process it.
-    while !futures.is_empty() {
-        let (result, _, remaining_futures) = futures_util::future::select_all(futures).await;
-        futures = remaining_futures;
+    // The first component we resolve is always the root, as it is the only one
+    // in the list of futures.
+    let mut is_root_component = true;
 
-        match result {
+    while !loader_futures.is_empty() {
+        // When any task which has not been processed is ready, process it.
+        let (next, _, remaining_futures) = futures_util::future::select_all(loader_futures).await;
+        loader_futures = remaining_futures;
+
+        let result = resolve_component(next, is_root_component);
+
+        let warnings = match result {
             Err(e) => {
-                failed.insert(
-                    e.context.reference.clone(),
-                    ResolveComponentFailure::Load {
-                        source: e.source,
-                        context: e.context.as_list(),
-                    },
-                );
+                // The component failed to be completely resolved, so add it to the failed list.
+                failed.insert(e.context.reference.clone(), e.failure);
+
+                e.warnings
             }
             Ok(result) => {
-                let context = result.context;
-                let context_component_reference = context.reference.clone();
-                let is_root = context_component_reference.is_root();
+                // The component was successfully resolved, so add it to the resolved list.
+                resolved.insert(result.context.reference.clone(), result.component);
 
-                let parse_result = parse_component(&result.rigging);
+                // Filter the list of found references to remove ones we've already seen.
+                // TODO: Does this have a race condition if two components reference the same component?
+                // Yes, if a reference is loading, it will not be in the resolved or failed lists.
+                // We should keep a list of seen references and check that instead.
+                // But first, create a test that fails.
+                let new_references = result.found_references.into_iter().filter(|reference| {
+                    !resolved.contains_key(reference) && !failed.contains_key(reference)
+                });
 
-                match parse_result {
-                    Err(e) => {
-                        failed.insert(
-                            context_component_reference,
-                            ResolveComponentFailure::Parse {
-                                source: e,
-                                context: context.as_list(),
-                            },
-                        );
-                    }
-                    Ok(component) => {
-                        let expected_component_id = match is_root {
-                            true => None,
-                            false => Some(context_component_reference.id.clone()),
-                        };
+                // For each new reference, load the component rigging and add it to the list of futures.
+                for reference in new_references {
+                    let new_context = context_arena.alloc(Context {
+                        reference: reference.clone(),
+                        resolved_reference: OnceLock::new(),
+                        previous_context: Some(result.context),
+                    });
 
-                        let validation_result =
-                            validate_component(expected_component_id, &component);
-
-                        let (warnings, errors) = validation_result
-                            .failures
-                            .into_iter()
-                            .partition(|f| matches!(f, ValidationFailure::Warning(_, _)));
-
-                        if is_root {
-                            root_warnings = warnings;
-                        }
-
-                        if !errors.is_empty() {
-                            failed.insert(
-                                context_component_reference.clone(),
-                                ResolveComponentFailure::Validate {
-                                    validation_errors: errors,
-                                    context: context.as_list(),
-                                },
-                            );
-                        } else {
-                            let references = find_component_references(&component);
-
-                            // Set the resolved reference.
-                            context
-                                .resolved_reference
-                                .set(component.get_reference())
-                                .unwrap_or_else(|v| {
-                                    panic!(
-                                        r#"Resolved component reference "{v}" should only be set once"#,
-                                    )
-                                });
-
-                            let circular_reference = references
-                                .iter()
-                                .find(|reference| context.contains_resolved_id(&reference.id));
-
-                            if let Some(circular_reference) = circular_reference {
-                                failed.insert(
-                                    context_component_reference.clone(),
-                                    ResolveComponentFailure::CircularReference {
-                                        reference: circular_reference.clone(),
-                                        context: context.as_list(),
-                                    },
-                                );
-                            } else {
-                                validated.insert(context_component_reference.clone(), component);
-
-                                for reference in references {
-                                    if validated.contains_key(&reference)
-                                        || failed.contains_key(&reference)
-                                    {
-                                        break;
-                                    }
-
-                                    let new_context = context_arena.alloc(Context {
-                                        reference: reference.clone(),
-                                        resolved_reference: OnceLock::new(),
-                                        previous_context: Some(context),
-                                    });
-
-                                    futures.push(
-                                        loader.load_component_rigging(reference, new_context),
-                                    );
-                                }
-                            }
-                        }
-                    }
+                    loader_futures.push(loader.load_component_rigging(reference, new_context));
                 }
+
+                result.warnings
             }
+        };
+
+        // If this is the root component, we need to store the warnings.
+        // We don't care about the warnings of other components because they are not in our control.
+        if is_root_component {
+            root_warnings = warnings;
         }
+
+        // Any component after the first one is not the root component.
+        is_root_component = false;
     }
 
     ResolvedComponents {
-        resolved: validated,
+        resolved,
         failed,
         root_warnings,
     }
+}
+
+struct ResolvedComponentData<'a> {
+    context: &'a Context<'a>,
+    component: Component,
+    warnings: Vec<ValidationFailure>,
+    found_references: Vec<ComponentReference>,
+}
+
+#[derive(Error, Debug)]
+#[error("Failed to resolve component")]
+struct ResolvedComponentError<'a> {
+    context: &'a Context<'a>,
+    warnings: Vec<ValidationFailure>,
+    failure: ResolveComponentFailure,
+}
+
+fn resolve_component<'a>(
+    load_result: Result<ComponentRigging<'a>, LoadError<'a>>,
+    is_root_component: bool,
+) -> Result<ResolvedComponentData<'a>, ResolvedComponentError<'a>> {
+    // Load.
+    let result = load_result.map_err(|e| ResolvedComponentError {
+        context: e.context,
+        warnings: Vec::new(),
+        failure: ResolveComponentFailure::Load {
+            source: e.source,
+            context: e.context.as_list(),
+        },
+    })?;
+
+    let context = result.context;
+    let unresolved_reference = context.reference.clone();
+
+    // Parse.
+    let component = parse_component(&result.rigging).map_err(|e| ResolvedComponentError {
+        context,
+        warnings: Vec::new(),
+        failure: ResolveComponentFailure::Parse {
+            source: e,
+            context: context.as_list(),
+        },
+    })?;
+
+    // Validate.
+    let expected_component_id = match is_root_component {
+        true => None,
+        false => Some(unresolved_reference.id.clone()),
+    };
+    let validation_result = validate_component(expected_component_id, &component);
+
+    let (warnings, errors): (Vec<ValidationFailure>, Vec<ValidationFailure>) = validation_result
+        .failures
+        .into_iter()
+        .partition(|f| matches!(f, ValidationFailure::Warning(_, _)));
+
+    if !errors.is_empty() {
+        return Err(ResolvedComponentError {
+            context,
+            warnings,
+            failure: ResolveComponentFailure::Validate {
+                validation_errors: errors,
+                context: context.as_list(),
+            },
+        });
+    }
+
+    // The component is valid, so we can safely read the resolved reference for it.
+    let resolved_reference = component.get_reference();
+
+    // Update the context with the resolved reference.
+    // We must do this before checking for circular references.
+    context
+        .resolved_reference
+        .set(resolved_reference)
+        .unwrap_or_else(|resolved_reference| {
+            panic!(
+                r#"Resolved component reference for "{unresolved_reference}" should only be set once (setting to {resolved_reference}, existing was {})"#,
+                context.resolved_reference.get().expect("Resolved reference should have been set"),
+            )
+        });
+
+    // Find components referenced by this component.
+    let found_references = find_component_references(&component);
+
+    // Check for circular references.
+    let circular_reference = found_references
+        .iter()
+        .find(|reference| context.contains_resolved_id(&reference.id));
+
+    if let Some(circular_reference) = circular_reference {
+        return Err(ResolvedComponentError {
+            context,
+            warnings,
+            failure: ResolveComponentFailure::CircularReference {
+                reference: circular_reference.clone(),
+                context: context.as_list(),
+            },
+        });
+    }
+
+    // Everything looks good, so return what we found.
+    Ok(ResolvedComponentData {
+        context,
+        component,
+        warnings,
+        found_references,
+    })
 }
 
 #[derive(Debug)]
@@ -220,7 +279,7 @@ mod tests {
         resolved_components
             .failed
             .iter()
-            .for_each(|e| print!("{:?}", e));
+            .for_each(|e| println!("{:?}", e));
     }
 
     #[test]
@@ -347,7 +406,7 @@ mod tests {
     }
 
     #[test]
-    fn it_should_return_errors_and_warnings_for_root_component_but_only_errors_for_referenced_components(
+    fn it_should_return_errors_and_warnings_for_root_component_on_failure_but_only_errors_for_referenced_components(
     ) {
         // This contains a duplicate name (warning) and
         // a duplicate id (error).
@@ -717,6 +776,15 @@ mod tests {
             }
             _ => panic!("Unexpected failure type: {:?}", component_failure),
         }
+    }
+
+    #[test]
+    fn it_should_not_resolve_references_twice_if_they_are_in_the_process_of_being_loaded() {
+        // A completes, returns B and C.
+        // B and C complete, both return D.
+        // D should not get loaded twice.
+        // We can check this by looking at how many times the loader is called.
+        todo!();
     }
 
     struct LoadComponentRiggingMock {
