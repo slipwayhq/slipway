@@ -1,19 +1,21 @@
-mod build_context;
+pub(crate) mod context;
+pub(crate) mod load;
 
 use std::{collections::HashMap, sync::OnceLock};
 
 use async_executor::LocalExecutor;
-use async_trait::async_trait;
 use futures_lite::{future, FutureExt};
-use thiserror::Error;
 use typed_arena::Arena;
 
 use crate::errors::SlipwayError;
 use crate::rigging::find_component_references::find_component_references;
 
-pub(crate) use build_context::BuildContext;
+pub(crate) use context::Context;
 
-use self::build_context::BuildContextSnapshot;
+use self::{
+    context::ContextSnapshot,
+    load::{ComponentRigging, LoadComponentRigging, LoadError},
+};
 
 use super::{
     parse::{
@@ -23,33 +25,33 @@ use super::{
     validate::{validate_component, validation_failure::ValidationFailure},
 };
 
-pub(crate) fn resolve_components(
-    root_component: String,
-    component_reference_resolver: Box<dyn ComponentReferenceResolver>,
+pub(crate) fn recursively_resolve_components(
+    root_component_rigging: String,
+    loader: Box<dyn LoadComponentRigging>,
 ) -> ResolvedComponents {
     let local_executor = LocalExecutor::new();
 
-    future::block_on(local_executor.run(resolve_components_async(
-        root_component,
-        component_reference_resolver,
+    future::block_on(local_executor.run(recursively_resolve_components_async(
+        root_component_rigging,
+        loader,
     )))
 }
 
 pub(crate) struct ResolvedComponents {
     resolved: HashMap<ComponentReference, Component>,
-    failed: HashMap<ComponentReference, BuildComponentFailure>,
+    failed: HashMap<ComponentReference, ResolveComponentFailure>,
     root_warnings: Vec<ValidationFailure>,
 }
 
-async fn resolve_components_async(
-    root_component: String,
-    component_reference_resolver: Box<dyn ComponentReferenceResolver>,
+async fn recursively_resolve_components_async(
+    root_component_rigging: String,
+    loader: Box<dyn LoadComponentRigging>,
 ) -> ResolvedComponents {
     // We're going to create all the contexts in an arena, so they can hold
     // references to each other and all have the same lifetime.
     let context_arena = Arena::new();
 
-    let root_context = context_arena.alloc(BuildContext {
+    let root_context = context_arena.alloc(Context {
         reference: ComponentReference::root(),
         resolved_reference: OnceLock::new(),
         previous_context: None,
@@ -58,13 +60,12 @@ async fn resolve_components_async(
     // This is a list of component references which are in the process of being
     // fetched, or possibly have completed being fetched and are waiting to be
     // processed. We add the root component to the list as the first item to process.
-    let mut futures = vec![future::ready(Result::<
-        ResolvedReferenceContent,
-        ComponentReferenceResolveError,
-    >::Ok(ResolvedReferenceContent {
-        context: root_context,
-        rigging: root_component,
-    }))
+    let mut futures = vec![future::ready(Result::<ComponentRigging, LoadError>::Ok(
+        ComponentRigging {
+            context: root_context,
+            rigging: root_component_rigging,
+        },
+    ))
     .boxed()];
 
     let mut validated = HashMap::new();
@@ -80,7 +81,7 @@ async fn resolve_components_async(
             Err(e) => {
                 failed.insert(
                     e.context.reference.clone(),
-                    BuildComponentFailure::Resolve {
+                    ResolveComponentFailure::Load {
                         source: e.source,
                         context: e.context.as_list(),
                     },
@@ -97,7 +98,7 @@ async fn resolve_components_async(
                     Err(e) => {
                         failed.insert(
                             context_component_reference,
-                            BuildComponentFailure::Parse {
+                            ResolveComponentFailure::Parse {
                                 source: e,
                                 context: context.as_list(),
                             },
@@ -124,7 +125,7 @@ async fn resolve_components_async(
                         if !errors.is_empty() {
                             failed.insert(
                                 context_component_reference.clone(),
-                                BuildComponentFailure::Validate {
+                                ResolveComponentFailure::Validate {
                                     validation_errors: errors,
                                     context: context.as_list(),
                                 },
@@ -149,7 +150,7 @@ async fn resolve_components_async(
                             if let Some(circular_reference) = circular_reference {
                                 failed.insert(
                                     context_component_reference.clone(),
-                                    BuildComponentFailure::CircularReference {
+                                    ResolveComponentFailure::CircularReference {
                                         reference: circular_reference.clone(),
                                         context: context.as_list(),
                                     },
@@ -164,15 +165,14 @@ async fn resolve_components_async(
                                         break;
                                     }
 
-                                    let new_context = context_arena.alloc(BuildContext {
+                                    let new_context = context_arena.alloc(Context {
                                         reference: reference.clone(),
                                         resolved_reference: OnceLock::new(),
                                         previous_context: Some(context),
                                     });
 
                                     futures.push(
-                                        component_reference_resolver
-                                            .resolve(reference, new_context),
+                                        loader.load_component_rigging(reference, new_context),
                                     );
                                 }
                             }
@@ -191,50 +191,29 @@ async fn resolve_components_async(
 }
 
 #[derive(Debug)]
-enum BuildComponentFailure {
-    Resolve {
+enum ResolveComponentFailure {
+    Load {
         source: SlipwayError,
-        context: Vec<BuildContextSnapshot>,
+        context: Vec<ContextSnapshot>,
     },
     Parse {
         source: SlipwayError,
-        context: Vec<BuildContextSnapshot>,
+        context: Vec<ContextSnapshot>,
     },
     Validate {
         validation_errors: Vec<ValidationFailure>,
-        context: Vec<BuildContextSnapshot>,
+        context: Vec<ContextSnapshot>,
     },
     CircularReference {
         reference: ComponentReference,
-        context: Vec<BuildContextSnapshot>,
+        context: Vec<ContextSnapshot>,
     },
-}
-
-#[async_trait]
-pub(crate) trait ComponentReferenceResolver {
-    async fn resolve<'a, 'b>(
-        &self,
-        reference: ComponentReference,
-        context: &'a BuildContext<'a>,
-    ) -> Result<ResolvedReferenceContent<'b>, ComponentReferenceResolveError<'b>>
-    where
-        'a: 'b;
-}
-
-pub(crate) struct ResolvedReferenceContent<'a> {
-    pub context: &'a BuildContext<'a>,
-    pub rigging: String,
-}
-
-#[derive(Error, Debug)]
-#[error("Rigging parse failed")]
-pub(crate) struct ComponentReferenceResolveError<'a> {
-    pub context: &'a BuildContext<'a>,
-    pub source: SlipwayError,
 }
 
 #[cfg(test)]
 mod tests {
+    use async_trait::async_trait;
+
     use super::*;
 
     fn print_failures(resolved_components: &ResolvedComponents) {
@@ -335,7 +314,7 @@ mod tests {
             }
         }"#;
 
-        let resolver = MockComponentReferenceResolver {
+        let loader = LoadComponentRiggingMock {
             resolved: vec![
                 (
                     ComponentReference::exact("test2", "1.0.0"),
@@ -359,7 +338,7 @@ mod tests {
         };
 
         let resolved_components =
-            resolve_components(root_component.to_string(), Box::new(resolver));
+            recursively_resolve_components(root_component.to_string(), Box::new(loader));
 
         print_failures(&resolved_components);
 
@@ -409,11 +388,11 @@ mod tests {
             }
         }"#;
 
-        let test1_resolver = MockComponentReferenceResolver {
+        let test1_loader = LoadComponentRiggingMock {
             resolved: HashMap::new(),
         };
 
-        let test2_resolver = MockComponentReferenceResolver {
+        let test2_loader = LoadComponentRiggingMock {
             resolved: vec![(
                 ComponentReference::exact("test1", "1.0.0"),
                 test1_component.to_string(),
@@ -423,10 +402,10 @@ mod tests {
         };
 
         let test1_resolved_components =
-            resolve_components(test1_component.to_string(), Box::new(test1_resolver));
+            recursively_resolve_components(test1_component.to_string(), Box::new(test1_loader));
 
         let test2_resolved_components =
-            resolve_components(test2_component.to_string(), Box::new(test2_resolver));
+            recursively_resolve_components(test2_component.to_string(), Box::new(test2_loader));
 
         println!("Test 1 failures:");
         print_failures(&test1_resolved_components);
@@ -443,9 +422,9 @@ mod tests {
         let test1_component_failure = test1_resolved_components
             .failed
             .values()
-            .collect::<Vec<&BuildComponentFailure>>()[0];
+            .collect::<Vec<&ResolveComponentFailure>>()[0];
         match test1_component_failure {
-            BuildComponentFailure::Validate {
+            ResolveComponentFailure::Validate {
                 validation_errors,
                 context,
             } => {
@@ -475,9 +454,9 @@ mod tests {
         let test2_component_failure = test2_resolved_components
             .failed
             .values()
-            .collect::<Vec<&BuildComponentFailure>>()[0];
+            .collect::<Vec<&ResolveComponentFailure>>()[0];
         match test2_component_failure {
-            BuildComponentFailure::Validate {
+            ResolveComponentFailure::Validate {
                 validation_errors,
                 context,
             } => {
@@ -534,12 +513,12 @@ mod tests {
             }
         }"#;
 
-        let test_resolver = MockComponentReferenceResolver {
+        let loader = LoadComponentRiggingMock {
             resolved: HashMap::new(),
         };
 
         let resolved_components =
-            resolve_components(test_component.to_string(), Box::new(test_resolver));
+            recursively_resolve_components(test_component.to_string(), Box::new(loader));
 
         print_failures(&resolved_components);
 
@@ -642,7 +621,7 @@ mod tests {
             }
         }"#;
 
-        let resolver = MockComponentReferenceResolver {
+        let loader = LoadComponentRiggingMock {
             resolved: vec![
                 (
                     ComponentReference::exact("test2", "1.0.0"),
@@ -666,7 +645,7 @@ mod tests {
         };
 
         let resolved_components =
-            resolve_components(root_component.to_string(), Box::new(resolver));
+            recursively_resolve_components(root_component.to_string(), Box::new(loader));
 
         print_failures(&resolved_components);
 
@@ -676,9 +655,9 @@ mod tests {
         let component_failure = resolved_components
             .failed
             .values()
-            .collect::<Vec<&BuildComponentFailure>>()[0];
+            .collect::<Vec<&ResolveComponentFailure>>()[0];
         match component_failure {
-            BuildComponentFailure::CircularReference {
+            ResolveComponentFailure::CircularReference {
                 context: _,
                 reference: circular_reference,
             } => {
@@ -710,12 +689,12 @@ mod tests {
             }
         }"#;
 
-        let test_resolver = MockComponentReferenceResolver {
+        let loader = LoadComponentRiggingMock {
             resolved: HashMap::new(),
         };
 
         let resolved_components =
-            resolve_components(test_component.to_string(), Box::new(test_resolver));
+            recursively_resolve_components(test_component.to_string(), Box::new(loader));
 
         print_failures(&resolved_components);
 
@@ -725,9 +704,9 @@ mod tests {
         let component_failure = resolved_components
             .failed
             .values()
-            .collect::<Vec<&BuildComponentFailure>>()[0];
+            .collect::<Vec<&ResolveComponentFailure>>()[0];
         match component_failure {
-            BuildComponentFailure::CircularReference {
+            ResolveComponentFailure::CircularReference {
                 context: _,
                 reference: circular_reference,
             } => {
@@ -740,26 +719,26 @@ mod tests {
         }
     }
 
-    struct MockComponentReferenceResolver {
+    struct LoadComponentRiggingMock {
         resolved: HashMap<ComponentReference, String>,
     }
 
     #[async_trait]
-    impl ComponentReferenceResolver for MockComponentReferenceResolver {
-        async fn resolve<'a, 'b>(
+    impl LoadComponentRigging for LoadComponentRiggingMock {
+        async fn load_component_rigging<'a, 'b>(
             &self,
             reference: ComponentReference,
-            context: &'a BuildContext<'a>,
-        ) -> Result<ResolvedReferenceContent<'b>, ComponentReferenceResolveError<'b>>
+            context: &'a Context<'a>,
+        ) -> Result<ComponentRigging<'b>, LoadError<'b>>
         where
             'a: 'b,
         {
             match self.resolved.get(&reference) {
-                Some(rigging) => Ok(ResolvedReferenceContent {
+                Some(rigging) => Ok(ComponentRigging {
                     context,
                     rigging: rigging.clone(),
                 }),
-                None => Err(ComponentReferenceResolveError {
+                None => Err(LoadError {
                     context,
                     source: SlipwayError::RiggingResolveFailed(
                         "MockComponentReferenceResolver does not have a rigging for this reference"

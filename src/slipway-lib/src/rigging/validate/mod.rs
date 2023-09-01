@@ -1,15 +1,13 @@
+pub mod context;
 pub mod validation_failure;
 
 use std::rc::Rc;
 
-use self::validation_failure::ValidationFailure;
+use self::{context::Context, validation_failure::ValidationFailure};
 
-use super::{
-    node_context::NodeContext,
-    parse::types::{
-        Component, ComponentInput, ComponentInputOverride, ComponentInputSpecification,
-        ComponentReference,
-    },
+use super::parse::types::{
+    Component, ComponentInput, ComponentInputOverride, ComponentInputSpecification,
+    ComponentReference,
 };
 
 pub struct ValidationResult {
@@ -21,7 +19,7 @@ pub struct ValidationResult {
 pub fn validate_component(expected_id: Option<String>, component: &Component) -> ValidationResult {
     let mut failures = vec![];
 
-    let context = Rc::new(NodeContext {
+    let context = Rc::new(Context {
         node_name: component.id.clone(),
         previous_context: None,
     });
@@ -40,14 +38,14 @@ pub fn validate_component(expected_id: Option<String>, component: &Component) ->
         }
     }
 
-    let inputs_context = Rc::new(NodeContext {
+    let inputs_context = Rc::new(Context {
         node_name: "inputs".to_string(),
         previous_context: Some(Rc::clone(&context)),
     });
 
     validate_inputs(&mut failures, &component.inputs, inputs_context);
 
-    let output_context = Rc::new(NodeContext {
+    let output_context = Rc::new(Context {
         node_name: "output".to_string(),
         previous_context: Some(Rc::clone(&context)),
     });
@@ -66,7 +64,7 @@ pub fn validate_component(expected_id: Option<String>, component: &Component) ->
 fn validate_reference_option(
     failures: &mut Vec<ValidationFailure>,
     reference: &Option<ComponentReference>,
-    context: &Rc<NodeContext>,
+    context: &Rc<Context>,
 ) {
     if let Some(reference) = reference {
         validate_reference(failures, reference, context);
@@ -76,7 +74,7 @@ fn validate_reference_option(
 fn validate_reference(
     failures: &mut Vec<ValidationFailure>,
     reference: &ComponentReference,
-    context: &Rc<NodeContext>,
+    context: &Rc<Context>,
 ) {
     // Referencing the special root ID is guaranteed to
     // be a circular reference.
@@ -91,7 +89,7 @@ fn validate_reference(
 fn validate_inputs(
     failures: &mut Vec<ValidationFailure>,
     inputs: &[ComponentInput],
-    context: Rc<NodeContext>,
+    context: Rc<Context>,
 ) {
     for (index, input) in inputs.iter().enumerate() {
         if inputs.iter().skip(index + 1).any(|i| i.id == input.id) {
@@ -113,7 +111,7 @@ fn validate_inputs(
             ));
         }
 
-        let input_context = Rc::new(NodeContext {
+        let input_context = Rc::new(Context {
             node_name: input.id.clone(),
             previous_context: Some(Rc::clone(&context)),
         });
@@ -125,7 +123,7 @@ fn validate_inputs(
 fn validate_input(
     failures: &mut Vec<ValidationFailure>,
     input: &ComponentInput,
-    context: Rc<NodeContext>,
+    context: Rc<Context>,
 ) {
     if input.default_component.is_some() && input.default_value.is_some() {
         failures.push(ValidationFailure::Error(
@@ -138,7 +136,7 @@ fn validate_input(
     }
 
     if let Some(default_component) = &input.default_component {
-        let default_component_context = Rc::new(NodeContext {
+        let default_component_context = Rc::new(Context {
             node_name: "default_component".to_string(),
             previous_context: Some(Rc::clone(&context)),
         });
@@ -154,11 +152,11 @@ fn validate_input(
 fn validate_component_input_specification(
     failures: &mut Vec<ValidationFailure>,
     default_component: &ComponentInputSpecification,
-    context: Rc<NodeContext>,
+    context: Rc<Context>,
 ) {
     validate_reference(failures, &default_component.reference, &context);
 
-    let input_overrides_context = Rc::new(NodeContext {
+    let input_overrides_context = Rc::new(Context {
         node_name: "input_overrides".to_string(),
         previous_context: Some(Rc::clone(&context)),
     });
@@ -172,7 +170,7 @@ fn validate_component_input_specification(
                 ));
             }
 
-            let input_context = Rc::new(NodeContext {
+            let input_context = Rc::new(Context {
                 node_name: input.id.clone(),
                 previous_context: Some(Rc::clone(&input_overrides_context)),
             });
@@ -185,7 +183,7 @@ fn validate_component_input_specification(
 fn validate_input_override(
     failures: &mut Vec<ValidationFailure>,
     input: &ComponentInputOverride,
-    context: Rc<NodeContext>,
+    context: Rc<Context>,
 ) {
     if input.component.is_some() && input.value.is_some() {
         failures.push(ValidationFailure::Error(
@@ -198,7 +196,7 @@ fn validate_input_override(
     }
 
     if let Some(component) = &input.component {
-        let component_context = Rc::new(NodeContext {
+        let component_context = Rc::new(Context {
             node_name: "component".to_string(),
             previous_context: Some(Rc::clone(&context)),
         });

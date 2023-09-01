@@ -3,18 +3,18 @@ use std::sync::OnceLock;
 use crate::rigging::parse::types::ComponentReference;
 
 #[derive(Debug, Clone)]
-pub(crate) struct BuildContext<'a> {
+pub(crate) struct Context<'a> {
     pub reference: ComponentReference,
 
     // We're using OnceLock rather than OnceCell so that the BuildContext is Send
     // so we can use it in a future.
     pub resolved_reference: OnceLock<ComponentReference>,
 
-    pub previous_context: Option<&'a BuildContext<'a>>,
+    pub previous_context: Option<&'a Context<'a>>,
 }
 
-impl<'a> BuildContext<'a> {
-    pub fn as_list(&self) -> Vec<BuildContextSnapshot> {
+impl<'a> Context<'a> {
+    pub fn as_list(&self) -> Vec<ContextSnapshot> {
         let mut result = vec![self.to_snapshot()];
 
         let mut current_context = self.previous_context;
@@ -41,8 +41,8 @@ impl<'a> BuildContext<'a> {
         false
     }
 
-    pub fn to_snapshot(&self) -> BuildContextSnapshot {
-        BuildContextSnapshot {
+    pub fn to_snapshot(&self) -> ContextSnapshot {
+        ContextSnapshot {
             reference: self.reference.clone(),
             resolved_reference: self.resolved_reference.get().cloned(),
         }
@@ -50,7 +50,7 @@ impl<'a> BuildContext<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct BuildContextSnapshot {
+pub(crate) struct ContextSnapshot {
     pub reference: ComponentReference,
     pub resolved_reference: Option<ComponentReference>,
 }
@@ -61,7 +61,7 @@ mod tests {
 
     #[test]
     fn get_list_should_return_list_of_references_in_current_context() {
-        let context_0 = BuildContext {
+        let context_0 = Context {
             reference: ComponentReference::exact("context-0", "1.0.0"),
             resolved_reference: OnceLock::from(ComponentReference::exact(
                 "context-0-resolved",
@@ -69,7 +69,7 @@ mod tests {
             )),
             previous_context: None,
         };
-        let context_1 = BuildContext {
+        let context_1 = Context {
             reference: ComponentReference::exact("context-1", "1.0.0"),
             resolved_reference: OnceLock::new(),
             previous_context: Some(&context_0),
@@ -82,7 +82,7 @@ mod tests {
 
     #[test]
     fn contains_resolved_it_should_return_true_if_context_contains_specified_id() {
-        let context_0 = BuildContext {
+        let context_0 = Context {
             reference: ComponentReference::exact(ComponentReference::ROOT_ID, "1.0.0"),
             resolved_reference: OnceLock::from(ComponentReference::exact(
                 "context-0-resolved",
@@ -91,13 +91,13 @@ mod tests {
             previous_context: None,
         };
 
-        let context_1 = BuildContext {
+        let context_1 = Context {
             reference: ComponentReference::exact("context-1", "1.0.0"),
             resolved_reference: OnceLock::new(),
             previous_context: Some(&context_0),
         };
 
-        let context_2 = BuildContext {
+        let context_2 = Context {
             reference: ComponentReference::exact("context-2", "1.0.0"),
             resolved_reference: OnceLock::from(ComponentReference::exact(
                 "context-2-resolved",

@@ -4,35 +4,35 @@ use crate::errors::SlipwayError;
 
 use super::{
     parse::types::ComponentReference,
-    resolve::{
-        resolve_components, BuildContext, ComponentReferenceResolveError,
-        ComponentReferenceResolver, ResolvedReferenceContent,
+    recursive_resolve::{
+        load::{ComponentRigging, LoadComponentRigging, LoadError},
+        recursively_resolve_components, Context,
     },
 };
 
 pub fn build_resolved_component(root_component: String) -> Result<(), SlipwayError> {
-    let component_reference_resolver = Box::new(ComponentReferenceResolverImpl {});
+    let component_reference_resolver = Box::new(LoadComponentRiggingImpl {});
     build_resolved_component_with_resolver(root_component, component_reference_resolver)
 }
 
 pub(crate) fn build_resolved_component_with_resolver(
     root_component: String,
-    component_reference_resolver: Box<dyn ComponentReferenceResolver>,
+    component_reference_resolver: Box<dyn LoadComponentRigging>,
 ) -> Result<(), SlipwayError> {
-    let _resolved_components = resolve_components(root_component, component_reference_resolver);
-    // TODO: Build full hierarchy.
-    Ok(())
+    let _resolved_components =
+        recursively_resolve_components(root_component, component_reference_resolver);
+    todo!("Build full hierarchy");
 }
 
-struct ComponentReferenceResolverImpl {}
+struct LoadComponentRiggingImpl {}
 
 #[async_trait]
-impl ComponentReferenceResolver for ComponentReferenceResolverImpl {
-    async fn resolve<'a, 'b>(
+impl LoadComponentRigging for LoadComponentRiggingImpl {
+    async fn load_component_rigging<'a, 'b>(
         &self,
         _reference: ComponentReference,
-        _context: &'a BuildContext<'a>,
-    ) -> Result<ResolvedReferenceContent<'b>, ComponentReferenceResolveError<'b>>
+        _context: &'a Context<'a>,
+    ) -> Result<ComponentRigging<'b>, LoadError<'b>>
     where
         'a: 'b,
     {

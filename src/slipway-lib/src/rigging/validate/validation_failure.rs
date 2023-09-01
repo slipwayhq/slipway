@@ -1,11 +1,11 @@
 use std::rc::Rc;
 
-use crate::rigging::node_context::NodeContext;
+use super::context::Context;
 
 #[derive(Debug)]
 pub enum ValidationFailure {
-    Error(String, Rc<NodeContext>),
-    Warning(String, Rc<NodeContext>),
+    Error(String, Rc<Context>),
+    Warning(String, Rc<Context>),
 }
 
 impl std::fmt::Display for ValidationFailure {
@@ -27,9 +27,9 @@ mod tests {
 
     #[test]
     fn it_should_render_friendly_message() {
-        let context = Rc::new(NodeContext {
+        let context = Rc::new(Context {
             node_name: "inputs".to_string(),
-            previous_context: Some(Rc::new(NodeContext {
+            previous_context: Some(Rc::new(Context {
                 node_name: "component".to_string(),
                 previous_context: None,
             })),
