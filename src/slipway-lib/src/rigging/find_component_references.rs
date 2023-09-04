@@ -50,7 +50,7 @@ mod tests {
         let component = Component {
             id: "component".to_string(),
             description: None,
-            version: "1.0.0".to_string(),
+            version: "1".to_string(),
             inputs: vec![
                 ComponentInput {
                     id: "input1".to_string(),

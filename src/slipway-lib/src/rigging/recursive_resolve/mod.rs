@@ -44,6 +44,16 @@ pub(crate) struct ResolvedComponents {
     root_warnings: Vec<ValidationFailure>,
 }
 
+// This will recursively load, parse and validate the entire
+// component tree.
+// One current limitation is it has the potential to redundantly load
+// components twice if they are reference using version ranges, because
+// we match on the reference in the rigging, not the resolved reference.
+// This could potentially be improved, but is an inefficiency rather
+// than an error.
+// The loader implementation itself may be the simplest to improve this
+// as it could cache resolved components and match version ranges to previously
+// loaded components.
 async fn recursively_resolve_components_async(
     root_component_rigging: String,
     loader: Box<dyn LoadComponentRigging>,
@@ -73,6 +83,12 @@ async fn recursively_resolve_components_async(
     ))
     .boxed()];
 
+    // Set up a map of seen references, so we don't load them twice.
+    // We don't need to include the root component because it is a validation
+    // error to reference ComponentReference::ROOT_ID, and a circular reference
+    // error to reference the resolved root reference.
+    let mut seen_references = HashMap::new();
+
     // Set up the collections to store the results.
     let mut resolved = HashMap::new();
     let mut failed = HashMap::new();
@@ -100,23 +116,24 @@ async fn recursively_resolve_components_async(
                 // The component was successfully resolved, so add it to the resolved list.
                 resolved.insert(result.context.reference.clone(), result.component);
 
-                // Filter the list of found references to remove ones we've already seen.
-                // TODO: Does this have a race condition if two components reference the same component?
-                // Yes, if a reference is loading, it will not be in the resolved or failed lists.
-                // We should keep a list of seen references and check that instead.
-                // But first, create a test that fails.
-                let new_references = result.found_references.into_iter().filter(|reference| {
-                    !resolved.contains_key(reference) && !failed.contains_key(reference)
-                });
+                // Process each reference found in the component.
+                for reference in result.found_references {
+                    // If we've seen this reference already, skip it.
+                    if seen_references.contains_key(&reference) {
+                        continue;
+                    }
 
-                // For each new reference, load the component rigging and add it to the list of futures.
-                for reference in new_references {
+                    // Otherwise add it to the list of seen references.
+                    seen_references.insert(reference.clone(), ());
+
+                    // Create a new context for the reference.
                     let new_context = context_arena.alloc(Context {
                         reference: reference.clone(),
                         resolved_reference: OnceLock::new(),
                         previous_context: Some(result.context),
                     });
 
+                    // Load the component rigging and add it to the list of futures.
                     loader_futures.push(loader.load_component_rigging(reference, new_context));
                 }
 
@@ -271,6 +288,11 @@ enum ResolveComponentFailure {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        sync::{Arc, Condvar, Mutex, MutexGuard},
+        thread::spawn,
+    };
+
     use async_trait::async_trait;
 
     use super::*;
@@ -287,15 +309,12 @@ mod tests {
         let root_component = r#"
         {
             "id": "test",
-            "version": "1.0.0",
+            "version": "1",
             "inputs": [
                 {
                     "id": "input1",
                     "default_component": {
-                        "reference": {
-                            "id": "test2",
-                            "version": "1.0.0"
-                        }
+                        "reference": "test2@1"
                     }
                 }
             ],
@@ -309,23 +328,17 @@ mod tests {
         let test2_v1_component = r#"
         {
             "id": "test2",
-            "version": "1.0.0",
+            "version": "1",
             "inputs": [
                 {
                     "id": "input1",
                     "default_component": {
-                        "reference": {
-                            "id": "test3",
-                            "version": "1.0.0"
-                        },
+                        "reference": "test3@1",
                         "input_overrides": [
                             {
                                 "id": "input1",
                                 "component": {
-                                    "reference": {
-                                        "id": "test4",
-                                        "version": "1.0.0"
-                                    }
+                                    "reference": "test4@1"
                                 }
                             }
                         ]
@@ -333,14 +346,14 @@ mod tests {
                 }
             ],
             "output": {
-                "schema_reference": "test3@2.0.0"
+                "schema_reference": "test3@2"
             }
         }"#;
 
         let test3_v1_component = r#"
         {
             "id": "test3",
-            "version": "1.0.0",
+            "version": "1",
             "inputs": [],
             "output": {
                 "schema": {
@@ -352,7 +365,7 @@ mod tests {
         let test3_v2_component = r#"
         {
             "id": "test3",
-            "version": "2.0.0",
+            "version": "2",
             "inputs": [],
             "output": {
                 "schema": {
@@ -364,7 +377,7 @@ mod tests {
         let test4_v1_component = r#"
         {
             "id": "test4",
-            "version": "1.0.0",
+            "version": "1",
             "inputs": [],
             "output": {
                 "schema": {
@@ -376,19 +389,19 @@ mod tests {
         let loader = LoadComponentRiggingMock {
             resolved: vec![
                 (
-                    ComponentReference::exact("test2", "1.0.0"),
+                    ComponentReference::exact("test2", "1"),
                     test2_v1_component.to_string(),
                 ),
                 (
-                    ComponentReference::exact("test3", "1.0.0"),
+                    ComponentReference::exact("test3", "1"),
                     test3_v1_component.to_string(),
                 ),
                 (
-                    ComponentReference::exact("test3", "2.0.0"),
+                    ComponentReference::exact("test3", "2"),
                     test3_v2_component.to_string(),
                 ),
                 (
-                    ComponentReference::exact("test4", "1.0.0"),
+                    ComponentReference::exact("test4", "1"),
                     test4_v1_component.to_string(),
                 ),
             ]
@@ -413,7 +426,7 @@ mod tests {
         let test1_component = r#"
         {
             "id": "test1",
-            "version": "1.0.0",
+            "version": "1",
             "inputs": [
                 {
                     "id": "input1",
@@ -439,11 +452,11 @@ mod tests {
         let test2_component = r#"
         {
             "id": "test2",
-            "version": "1.0.0",
+            "version": "1",
             "inputs": [
             ],
             "output": {
-                "schema_reference": "test1@1.0.0"
+                "schema_reference": "test1@1"
             }
         }"#;
 
@@ -453,7 +466,7 @@ mod tests {
 
         let test2_loader = LoadComponentRiggingMock {
             resolved: vec![(
-                ComponentReference::exact("test1", "1.0.0"),
+                ComponentReference::exact("test1", "1"),
                 test1_component.to_string(),
             )]
             .into_iter()
@@ -521,7 +534,7 @@ mod tests {
             } => {
                 assert_eq!(
                     context[0].reference,
-                    ComponentReference::exact("test1", "1.0.0"),
+                    ComponentReference::exact("test1", "1"),
                 );
 
                 assert_eq!(validation_errors.len(), 1);
@@ -552,7 +565,7 @@ mod tests {
         let test_component = r#"
         {
             "id": "test1",
-            "version": "1.0.0",
+            "version": "1",
             "inputs": [
                 {
                     "id": "input1",
@@ -590,20 +603,17 @@ mod tests {
     #[test]
     fn it_should_detect_circular_references_ignoring_versions() {
         // The circular reference here is going to be:
-        // test@1.0.0 -> test2@1.0.0 -> test4@1.0.0 -> test2@5.0.0
+        // test@1 -> test2@1 -> test4@1 -> test2@5
 
         let root_component = r#"
         {
             "id": "test",
-            "version": "1.0.0",
+            "version": "1",
             "inputs": [
                 {
                     "id": "input1",
                     "default_component": {
-                        "reference": {
-                            "id": "test2",
-                            "version": "1.0.0"
-                        }
+                        "reference": "test2@1"
                     }
                 }
             ],
@@ -617,23 +627,17 @@ mod tests {
         let test2_v1_component = r#"
         {
             "id": "test2",
-            "version": "1.0.0",
+            "version": "1",
             "inputs": [
                 {
                     "id": "input1",
                     "default_component": {
-                        "reference": {
-                            "id": "test3",
-                            "version": "1.0.0"
-                        },
+                        "reference": "test3@1",
                         "input_overrides": [
                             {
                                 "id": "input1",
                                 "component": {
-                                    "reference": {
-                                        "id": "test4",
-                                        "version": "1.0.0"
-                                    }
+                                    "reference": "test4@1"
                                 }
                             }
                         ]
@@ -641,14 +645,14 @@ mod tests {
                 }
             ],
             "output": {
-                "schema_reference": "test3@2.0.0"
+                "schema_reference": "test3@2"
             }
         }"#;
 
         let test3_v1_component = r#"
         {
             "id": "test3",
-            "version": "1.0.0",
+            "version": "1",
             "inputs": [],
             "output": {
                 "schema": {
@@ -660,7 +664,7 @@ mod tests {
         let test3_v2_component = r#"
         {
             "id": "test3",
-            "version": "2.0.0",
+            "version": "2",
             "inputs": [],
             "output": {
                 "schema": {
@@ -673,29 +677,29 @@ mod tests {
         let test4_v1_component = r#"
         {
             "id": "test4",
-            "version": "1.0.0",
+            "version": "1",
             "inputs": [],
             "output": {
-                "schema_reference": "test2@5.0.0"
+                "schema_reference": "test2@5"
             }
         }"#;
 
         let loader = LoadComponentRiggingMock {
             resolved: vec![
                 (
-                    ComponentReference::exact("test2", "1.0.0"),
+                    ComponentReference::exact("test2", "1"),
                     test2_v1_component.to_string(),
                 ),
                 (
-                    ComponentReference::exact("test3", "1.0.0"),
+                    ComponentReference::exact("test3", "1"),
                     test3_v1_component.to_string(),
                 ),
                 (
-                    ComponentReference::exact("test3", "2.0.0"),
+                    ComponentReference::exact("test3", "2"),
                     test3_v2_component.to_string(),
                 ),
                 (
-                    ComponentReference::exact("test4", "1.0.0"),
+                    ComponentReference::exact("test4", "1"),
                     test4_v1_component.to_string(),
                 ),
             ]
@@ -720,10 +724,7 @@ mod tests {
                 context: _,
                 reference: circular_reference,
             } => {
-                assert_eq!(
-                    circular_reference,
-                    &ComponentReference::exact("test2", "5.0.0")
-                );
+                assert_eq!(circular_reference, &ComponentReference::exact("test2", "5"));
             }
             _ => panic!("Unexpected failure type: {:?}", component_failure),
         }
@@ -735,7 +736,7 @@ mod tests {
         let test_component = r#"
         {
             "id": "test1",
-            "version": "1.0.0",
+            "version": "1",
             "inputs": [
                 {
                     "id": "input1",
@@ -744,7 +745,7 @@ mod tests {
                 }
             ],
             "output": {
-                "schema_reference": "test1@1.0.0"
+                "schema_reference": "test1@1"
             }
         }"#;
 
@@ -769,22 +770,10 @@ mod tests {
                 context: _,
                 reference: circular_reference,
             } => {
-                assert_eq!(
-                    circular_reference,
-                    &ComponentReference::exact("test1", "1.0.0")
-                );
+                assert_eq!(circular_reference, &ComponentReference::exact("test1", "1"));
             }
             _ => panic!("Unexpected failure type: {:?}", component_failure),
         }
-    }
-
-    #[test]
-    fn it_should_not_resolve_references_twice_if_they_are_in_the_process_of_being_loaded() {
-        // A completes, returns B and C.
-        // B and C complete, both return D.
-        // D should not get loaded twice.
-        // We can check this by looking at how many times the loader is called.
-        todo!();
     }
 
     struct LoadComponentRiggingMock {
@@ -812,6 +801,217 @@ mod tests {
                         "MockComponentReferenceResolver does not have a rigging for this reference"
                             .to_string(),
                     ),
+                }),
+            }
+        }
+    }
+
+    // This test is going to check that we don't try to resolve the same reference twice if two different
+    // components reference it, and they are both processed before the referenced component has loaded.
+    #[test]
+    fn it_should_not_resolve_references_twice_if_they_are_in_the_process_of_being_loaded() {
+        // A completes, returns references to B and C.
+        let a = r#"
+        {
+            "id": "a",
+            "version": "1",
+            "inputs": [
+                {
+                    "id": "input1",
+                    "default_component": {
+                        "reference": "b@1"
+                    }
+                }
+            ],
+            "output": {
+                "schema_reference": "c@1"
+            }
+        }"#;
+
+        // B and C will load next, both return a reference to D.
+        let b = r#"
+        {
+            "id": "b",
+            "version": "1",
+            "inputs": [],
+            "output": {
+                "schema_reference": "d@1"
+            }
+        }"#;
+        let c = r#"
+        {
+            "id": "c",
+            "version": "1",
+            "inputs": [],
+            "output": {
+                "schema_reference": "d@1"
+            }
+        }"#;
+
+        // Once both B adn C have loaded, D will load.
+        // D should not get requested from the loader twice.
+        let d = r#"
+        {
+            "id": "d",
+            "version": "1",
+            "inputs": [],
+            "output": {
+                "schema": {
+                    "type": "string"
+                }
+            }
+        }"#;
+
+        // Set up the references, one set for this thread and one for the background thread.
+        let b_ref = ComponentReference::exact("b", "1");
+        let c_ref = ComponentReference::exact("c", "1");
+        let d_ref = ComponentReference::exact("d", "1");
+        let b_ref_thread = b_ref.clone();
+        let c_ref_thread = c_ref.clone();
+        let d_ref_thread = d_ref.clone();
+
+        // Set up oneshot channels for B, C and D, which we will use to "load" each component.
+        let (b_sender, b_receiver) = oneshot::channel();
+        let (c_sender, c_receiver) = oneshot::channel();
+        let (d_sender, d_receiver) = oneshot::channel();
+
+        // Set up a list of calls to the loader. This uses a Condvar so that the test thread can
+        // wait for the background thread to make the calls.
+        let calls = Arc::new((Mutex::new(Vec::new()), Condvar::new()));
+        let calls_on_thread = calls.clone();
+
+        // Set up the background thread which will run the loader, and make sure they all load successfully.
+        let runner_thread = spawn(move || {
+            // Create our mock loader.
+            let loader = Box::new(LoadComponentRiggingDelayMock {
+                resolved: Mutex::new(
+                    vec![
+                        (b_ref_thread, b_receiver),
+                        (c_ref_thread, c_receiver),
+                        (d_ref_thread, d_receiver),
+                    ]
+                    .into_iter()
+                    .collect(),
+                ),
+
+                calls: calls_on_thread,
+            });
+
+            // Resolve all the components.
+            let resolved_components = recursively_resolve_components(a.to_string(), loader);
+
+            print_failures(&resolved_components);
+
+            // Make sure all the components were resolved successfully.
+            assert_eq!(resolved_components.failed.len(), 0);
+            assert_eq!(resolved_components.resolved.len(), 4);
+        });
+
+        let (lock, cvar) = &*calls;
+        {
+            let mut calls = lock.lock().unwrap();
+
+            // Helper function to wait until the specified number of loader calls have been made.
+            fn wait_for_calls<'a>(
+                mut calls: MutexGuard<'a, Vec<ComponentReference>>,
+                // lock: &Mutex<Vec<ComponentReference>>,
+                cvar: &Condvar,
+                call_count: usize,
+            ) -> MutexGuard<'a, Vec<ComponentReference>> {
+                // Wait for the background thread to make the requested number of calls.
+                while (*calls).len() < call_count {
+                    calls = cvar.wait(calls).unwrap();
+                }
+
+                // CHeck the number of load calls is expected.
+                assert_eq!(calls.len(), call_count);
+                calls
+            }
+
+            // Helper function to ensure a particular reference load request has been made.
+            fn assert_reference_load_requested(
+                calls: &MutexGuard<'_, Vec<ComponentReference>>,
+                reference: &ComponentReference,
+            ) {
+                assert!(calls.iter().any(|call| call == reference));
+            }
+
+            // Once A has been processed, B and C will have load requests.
+            calls = wait_for_calls(calls, cvar, 2);
+            assert_reference_load_requested(&calls, &b_ref);
+            assert_reference_load_requested(&calls, &c_ref);
+
+            // Load B, which will return a reference to D.
+            b_sender.send(b.to_string()).unwrap();
+
+            // Wait D to have a load request.
+            calls = wait_for_calls(calls, cvar, 3);
+            assert_reference_load_requested(&calls, &d_ref);
+
+            // Next we load C, which will also return a reference to D, before
+            // the previous D load request has completed.
+            c_sender.send(c.to_string()).unwrap();
+
+            // If this results in two attempts to load D, we will get a LoadError because
+            // we're removing each receiver from the Loader's map when we use it.
+
+            // Finally, we can load D to allow the background thread to complete.
+            d_sender.send(d.to_string()).unwrap();
+        }
+
+        // Wait for the background thread to complete.
+        runner_thread.join().unwrap();
+
+        // Check that the loader was only called once for each reference.
+        let total_calls = lock.lock().unwrap().len();
+        assert_eq!(total_calls, 3);
+    }
+
+    // Mock loader which waits for a oneshot channel to be sent to before returning
+    // the rigging for a reference.
+    struct LoadComponentRiggingDelayMock {
+        resolved: Mutex<HashMap<ComponentReference, oneshot::Receiver<String>>>,
+        calls: Arc<(Mutex<Vec<ComponentReference>>, Condvar)>,
+    }
+
+    #[async_trait]
+    impl LoadComponentRigging for LoadComponentRiggingDelayMock {
+        async fn load_component_rigging<'a, 'b>(
+            &self,
+            reference: ComponentReference,
+            context: &'a Context<'a>,
+        ) -> Result<ComponentRigging<'b>, LoadError<'b>>
+        where
+            'a: 'b,
+        {
+            // Add the reference to the list of calls, and notify the test thread that
+            // a call has been made. We do this before awaiting the receiver so that the
+            // test thread can know the call has been made before the component is "loaded".
+            let (lock, cvar) = &*self.calls;
+            {
+                let mut started = lock.lock().unwrap();
+                started.push(reference.clone());
+                cvar.notify_one();
+            }
+
+            // Remove the receiver from the map, which will cause the next call to this method
+            // with the same reference to fail with a LoadError below.
+            // We must remove it because we need to release the lock on the hashmap before awaiting
+            // the receiver.
+            let receiver = self.resolved.lock().unwrap().remove(&reference);
+
+            match receiver {
+                Some(receiver) => {
+                    // Wait for the receiver to be sent the rigging.
+                    let rigging = receiver.await.unwrap();
+                    Ok(ComponentRigging { context, rigging })
+                }
+                None => Err(LoadError {
+                    context,
+                    source: SlipwayError::RiggingResolveFailed(format!(
+                        r#"Loader does not have rigging for reference {:?}. Either it never existed, or it was loaded twice."#,
+                        reference
+                    )),
                 }),
             }
         }

@@ -62,15 +62,15 @@ mod tests {
     #[test]
     fn get_list_should_return_list_of_references_in_current_context() {
         let context_0 = Context {
-            reference: ComponentReference::exact("context-0", "1.0.0"),
+            reference: ComponentReference::exact("context-0", "1"),
             resolved_reference: OnceLock::from(ComponentReference::exact(
                 "context-0-resolved",
-                "1.0.0",
+                "1",
             )),
             previous_context: None,
         };
         let context_1 = Context {
-            reference: ComponentReference::exact("context-1", "1.0.0"),
+            reference: ComponentReference::exact("context-1", "1"),
             resolved_reference: OnceLock::new(),
             previous_context: Some(&context_0),
         };
@@ -83,25 +83,25 @@ mod tests {
     #[test]
     fn contains_resolved_it_should_return_true_if_context_contains_specified_id() {
         let context_0 = Context {
-            reference: ComponentReference::exact(ComponentReference::ROOT_ID, "1.0.0"),
+            reference: ComponentReference::exact(ComponentReference::ROOT_ID, "1"),
             resolved_reference: OnceLock::from(ComponentReference::exact(
                 "context-0-resolved",
-                "1.0.0",
+                "1",
             )),
             previous_context: None,
         };
 
         let context_1 = Context {
-            reference: ComponentReference::exact("context-1", "1.0.0"),
+            reference: ComponentReference::exact("context-1", "1"),
             resolved_reference: OnceLock::new(),
             previous_context: Some(&context_0),
         };
 
         let context_2 = Context {
-            reference: ComponentReference::exact("context-2", "1.0.0"),
+            reference: ComponentReference::exact("context-2", "1"),
             resolved_reference: OnceLock::from(ComponentReference::exact(
                 "context-2-resolved",
-                "1.0.0",
+                "1",
             )),
             previous_context: Some(&context_1),
         };

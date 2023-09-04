@@ -220,7 +220,7 @@ mod tests {
         let component = Component {
             id: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1.0.0".to_string(),
+            version: "1".to_string(),
             inputs: vec![],
             output: ComponentOutput {
                 schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
@@ -239,7 +239,7 @@ mod tests {
         let component = Component {
             id: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1.0.0".to_string(),
+            version: "1".to_string(),
             inputs: vec![],
             output: ComponentOutput {
                 schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
@@ -263,7 +263,7 @@ mod tests {
         let component = Component {
             id: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1.0.0".to_string(),
+            version: "1".to_string(),
             inputs: vec![],
             output: ComponentOutput {
                 schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
@@ -282,7 +282,7 @@ mod tests {
         let component = Component {
             id: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1.0.0".to_string(),
+            version: "1".to_string(),
             inputs: vec![
                 ComponentInput {
                     id: "input-one".to_string(),
@@ -323,7 +323,7 @@ mod tests {
         let component = Component {
             id: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1.0.0".to_string(),
+            version: "1".to_string(),
             inputs: vec![
                 ComponentInput {
                     id: "input-one".to_string(),
@@ -364,7 +364,7 @@ mod tests {
         let component = Component {
             id: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1.0.0".to_string(),
+            version: "1".to_string(),
             inputs: vec![ComponentInput {
                 id: "input-one".to_string(),
                 name: Some("Input 1".to_string()),
@@ -398,7 +398,7 @@ mod tests {
         let component = Component {
             id: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1.0.0".to_string(),
+            version: "1".to_string(),
             inputs: vec![ComponentInput {
                 id: "input-one".to_string(),
                 name: Some("Input 1".to_string()),
@@ -435,7 +435,7 @@ mod tests {
         let component = Component {
             id: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1.0.0".to_string(),
+            version: "1".to_string(),
             inputs: vec![ComponentInput {
                 id: "input-one".to_string(),
                 name: Some("Input 1".to_string()),
@@ -472,7 +472,7 @@ mod tests {
         let component = Component {
             id: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1.0.0".to_string(),
+            version: "1".to_string(),
             inputs: vec![ComponentInput {
                 id: "input-one".to_string(),
                 name: Some("Input 1".to_string()),
@@ -519,7 +519,7 @@ mod tests {
         let component = Component {
             id: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1.0.0".to_string(),
+            version: "1".to_string(),
             inputs: vec![ComponentInput {
                 id: "input-one".to_string(),
                 name: Some("Input 1".to_string()),
@@ -564,7 +564,7 @@ mod tests {
         let component = Component {
             id: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1.0.0".to_string(),
+            version: "1".to_string(),
             inputs: vec![ComponentInput {
                 id: "input-one".to_string(),
                 name: Some("Input 1".to_string()),
@@ -616,7 +616,7 @@ mod tests {
         let component = Component {
             id: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1.0.0".to_string(),
+            version: "1".to_string(),
             inputs: vec![ComponentInput {
                 id: "input-one".to_string(),
                 name: Some("Input 1".to_string()),

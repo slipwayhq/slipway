@@ -20,7 +20,7 @@ mod tests {
         {
             "id": "test",
             "description": "Test component",
-            "version": "1.0.0",
+            "version": "1",
             "inputs": [
                 {
                     "id": "input1",
@@ -32,7 +32,7 @@ mod tests {
                     "default_component": {
                         "reference": {
                             "id": "test2",
-                            "version": "1.0.0"
+                            "version": "1"
                         },
                         "inputs": [
                             {
@@ -58,7 +58,7 @@ mod tests {
                 },
                 "schema_reference": {
                     "id": "test2",
-                    "version": "1.0.0"
+                    "version": "1"
                 }
             }
         }"#;
@@ -72,7 +72,7 @@ mod tests {
         {
             "id": "test",
             "description": "Test component",
-            "version": "1.0.0",
+            "version": "1",
             "inputs": [
                 {
                     "id": "input1",
@@ -82,14 +82,14 @@ mod tests {
                         "type": "string"
                     },
                     "default_component": {
-                        "reference": "test2/1.0.0",
+                        "reference": "test2/1",
                     }
                 }
             ],
             "output": {
                 "schema_reference": {
                     "id": "test2",
-                    "version": "1.0.0"
+                    "version": "1"
                 }
             }
         }"#;

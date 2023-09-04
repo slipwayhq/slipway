@@ -13,7 +13,7 @@ pub struct ComponentReference {
 
 impl ComponentReference {
     pub(crate) const ROOT_ID: &str = ".root";
-    const ROOT_VERSION: &str = "0.0.0";
+    const ROOT_VERSION: &str = "0";
 
     pub fn root() -> Self {
         ComponentReference::exact(
@@ -102,12 +102,12 @@ mod tests {
 
     #[test]
     fn it_should_deserialize_component_reference_from_string() {
-        let json = r#""test@1.0.0""#;
+        let json = r#""test@1""#;
 
         let reference: ComponentReference = serde_json::from_str(json).unwrap();
 
         assert_eq!(reference.id, "test");
-        assert_eq!(reference.version, "1.0.0");
+        assert_eq!(reference.version, "1");
     }
 
     #[test]
@@ -121,11 +121,11 @@ mod tests {
 
     #[test]
     fn it_should_deserialize_component_reference_from_struct() {
-        let json = r#"{"id": "test", "version": "1.0.0"}"#;
+        let json = r#"{"id": "test", "version": "1"}"#;
 
         let reference: ComponentReference = serde_json::from_str(json).unwrap();
 
         assert_eq!(reference.id, "test");
-        assert_eq!(reference.version, "1.0.0");
+        assert_eq!(reference.version, "1");
     }
 }
