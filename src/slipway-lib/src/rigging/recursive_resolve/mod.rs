@@ -314,7 +314,7 @@ mod tests {
                 {
                     "id": "input1",
                     "default_component": {
-                        "reference": "test2@1"
+                        "reference": "test2#1"
                     }
                 }
             ],
@@ -333,12 +333,12 @@ mod tests {
                 {
                     "id": "input1",
                     "default_component": {
-                        "reference": "test3@1",
+                        "reference": "test3#1",
                         "input_overrides": [
                             {
                                 "id": "input1",
                                 "component": {
-                                    "reference": "test4@1"
+                                    "reference": "test4#1"
                                 }
                             }
                         ]
@@ -346,7 +346,7 @@ mod tests {
                 }
             ],
             "output": {
-                "schema_reference": "test3@2"
+                "schema_reference": "test3#2"
             }
         }"#;
 
@@ -444,7 +444,7 @@ mod tests {
                 }
             ],
             "output": {
-                "schema_reference": "foo@1.0"
+                "schema_reference": "foo#1.0"
             }
         }"#;
 
@@ -456,7 +456,7 @@ mod tests {
             "inputs": [
             ],
             "output": {
-                "schema_reference": "test1@1"
+                "schema_reference": "test1#1"
             }
         }"#;
 
@@ -603,7 +603,7 @@ mod tests {
     #[test]
     fn it_should_detect_circular_references_ignoring_versions() {
         // The circular reference here is going to be:
-        // test@1 -> test2@1 -> test4@1 -> test2@5
+        // test#1 -> test2#1 -> test4#1 -> test2#5
 
         let root_component = r#"
         {
@@ -613,7 +613,7 @@ mod tests {
                 {
                     "id": "input1",
                     "default_component": {
-                        "reference": "test2@1"
+                        "reference": "test2#1"
                     }
                 }
             ],
@@ -632,12 +632,12 @@ mod tests {
                 {
                     "id": "input1",
                     "default_component": {
-                        "reference": "test3@1",
+                        "reference": "test3#1",
                         "input_overrides": [
                             {
                                 "id": "input1",
                                 "component": {
-                                    "reference": "test4@1"
+                                    "reference": "test4#1"
                                 }
                             }
                         ]
@@ -645,7 +645,7 @@ mod tests {
                 }
             ],
             "output": {
-                "schema_reference": "test3@2"
+                "schema_reference": "test3#2"
             }
         }"#;
 
@@ -680,7 +680,7 @@ mod tests {
             "version": "1",
             "inputs": [],
             "output": {
-                "schema_reference": "test2@5"
+                "schema_reference": "test2#5"
             }
         }"#;
 
@@ -745,7 +745,7 @@ mod tests {
                 }
             ],
             "output": {
-                "schema_reference": "test1@1"
+                "schema_reference": "test1#1"
             }
         }"#;
 
@@ -819,12 +819,12 @@ mod tests {
                 {
                     "id": "input1",
                     "default_component": {
-                        "reference": "b@1"
+                        "reference": "b#1"
                     }
                 }
             ],
             "output": {
-                "schema_reference": "c@1"
+                "schema_reference": "c#1"
             }
         }"#;
 
@@ -835,7 +835,7 @@ mod tests {
             "version": "1",
             "inputs": [],
             "output": {
-                "schema_reference": "d@1"
+                "schema_reference": "d#1"
             }
         }"#;
         let c = r#"
@@ -844,7 +844,7 @@ mod tests {
             "version": "1",
             "inputs": [],
             "output": {
-                "schema_reference": "d@1"
+                "schema_reference": "d#1"
             }
         }"#;
 
@@ -1009,7 +1009,7 @@ mod tests {
                 None => Err(LoadError {
                     context,
                     source: SlipwayError::RiggingResolveFailed(format!(
-                        r#"Loader does not have rigging for reference {:?}. Either it never existed, or it was loaded twice."#,
+                        r#"loader does not have rigging for reference {:?}. Either it never existed, or it was loaded twice."#,
                         reference
                     )),
                 }),

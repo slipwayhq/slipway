@@ -3,7 +3,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::{fmt::Display, str::FromStr};
 
-const COMPONENT_REFERENCE_VERSION_SEPARATOR: char = '@';
+const COMPONENT_REFERENCE_VERSION_SEPARATOR: char = '#';
 
 #[derive(Serialize, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ComponentReference {
@@ -68,7 +68,7 @@ impl FromStr for ComponentReference {
             Some(i) => (&s[..i], &s[i + 1..]),
             None => {
                 return Err(SlipwayError::InvalidComponentReference(
-                    "Component reference must be in the form of <id>:<version>".to_string(),
+                    "component reference must be in the form of <id>:<version>".to_string(),
                 ))
             }
         };
@@ -102,7 +102,7 @@ mod tests {
 
     #[test]
     fn it_should_deserialize_component_reference_from_string() {
-        let json = r#""test@1""#;
+        let json = r#""test#1""#;
 
         let reference: ComponentReference = serde_json::from_str(json).unwrap();
 

@@ -1,4 +1,6 @@
 mod component_reference;
+mod resolved_component_reference;
+mod unresolved_component_reference;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
