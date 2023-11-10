@@ -126,7 +126,7 @@ mod tests {
 
         let mut references = find_component_references(&component);
 
-        references.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+        references.sort_by_key(|a| a.to_string());
 
         assert_eq!(
             references,

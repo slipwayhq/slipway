@@ -126,10 +126,7 @@ impl FromStr for GitHubVersion {
 
 impl UnresolvedComponentReference {
     pub fn is_root(&self) -> bool {
-        match self {
-            UnresolvedComponentReference::Root => true,
-            _ => false,
-        }
+        matches!(self, UnresolvedComponentReference::Root)
     }
 
     #[cfg(test)]
@@ -184,7 +181,7 @@ impl Display for UnresolvedComponentReference {
                 version
             )),
             UnresolvedComponentReference::Local { path } => {
-                let url = Url::from_file_path(&path).map_err(|_| std::fmt::Error {})?;
+                let url = Url::from_file_path(path).map_err(|_| std::fmt::Error {})?;
                 f.write_fmt(format_args!("{}", url))
             }
             UnresolvedComponentReference::Url { url } => f.write_fmt(format_args!("{}", url)),
