@@ -65,7 +65,7 @@ fn check_component_matches_unresolved_reference(
         UnresolvedComponentReference::Registry {
             publisher,
             name,
-            version,
+            version: _,
         } => {
             if publisher != &component.publisher || name != &component.name {
                 failures.push(ValidationFailure::Error(
@@ -78,9 +78,48 @@ fn check_component_matches_unresolved_reference(
             }
         }
 
-        _ => {
-            // TODO: Do a best effort validation of other reference types... e.g. the URL should contain the component name.
+        UnresolvedComponentReference::GitHub {
+            user,
+            repository,
+            version: _,
+        } => {
+            if user != &component.publisher || repository != &component.name {
+                failures.push(ValidationFailure::Warning(
+                    format!(
+                        r#"Expected component ID "{}.{}" but found "{}.{}""#,
+                        user, repository, component.publisher, component.name
+                    ),
+                    Rc::clone(context),
+                ));
+            }
         }
+
+        UnresolvedComponentReference::Url { url } => {
+            if !url.as_str().contains(&component.name) {
+                failures.push(ValidationFailure::Warning(
+                    format!(
+                        r#"URL reference "{}" resolved to component with name "{}" but the name was not present in the URL"#,
+                        url, component.name
+                    ),
+                    Rc::clone(context),
+                ));
+            }
+        }
+
+        UnresolvedComponentReference::Local { path } => {
+            let lossy_path = path.to_string_lossy();
+            if !lossy_path.contains(&component.name) {
+                failures.push(ValidationFailure::Warning(
+                    format!(
+                        r#"Local reference "{}" resolved to component with name "{}" but the name was not present in the path"#,
+                        lossy_path, component.name
+                    ),
+                    Rc::clone(context),
+                ));
+            }
+        }
+
+        UnresolvedComponentReference::Root => {}
     }
 }
 
@@ -100,14 +139,11 @@ fn validate_reference(
     context: &Rc<Context>,
 ) {
     // Referencing root is guaranteed to be a circular reference, and is forbidden.
-    match reference {
-        UnresolvedComponentReference::Root => {
-            failures.push(ValidationFailure::Error(
-                ROOT_REFERENCE_NOT_ALLOWED.to_string(),
-                Rc::clone(context),
-            ));
-        }
-        _ => {}
+    if reference == &UnresolvedComponentReference::Root {
+        failures.push(ValidationFailure::Error(
+            ROOT_REFERENCE_NOT_ALLOWED.to_string(),
+            Rc::clone(context),
+        ));
     }
 }
 
