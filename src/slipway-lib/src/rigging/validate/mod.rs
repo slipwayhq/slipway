@@ -7,36 +7,29 @@ use self::{context::Context, validation_failure::ValidationFailure};
 
 use super::parse::types::{
     Component, ComponentInput, ComponentInputOverride, ComponentInputSpecification,
-    ComponentReference,
+    ResolvedComponentReference, UnresolvedComponentReference,
 };
 
 pub struct ValidationResult {
-    pub reference: ComponentReference,
+    pub reference: ResolvedComponentReference,
     pub failures: Vec<ValidationFailure>,
 }
 
+const ROOT_REFERENCE_NOT_ALLOWED: &str = "Root component is not a valid reference";
+
 #[must_use]
-pub fn validate_component(expected_id: Option<String>, component: &Component) -> ValidationResult {
+pub fn validate_component(
+    expected: &UnresolvedComponentReference,
+    component: &Component,
+) -> ValidationResult {
     let mut failures = vec![];
 
     let context = Rc::new(Context {
-        node_name: component.id.clone(),
+        node_name: component.name.clone(),
         previous_context: None,
     });
 
-    // We check the ID to ensure this is the component we were expecting.
-    // We don't check the version as the expected version string may be a semver range.
-    if let Some(expected_id) = expected_id {
-        if expected_id != component.id {
-            failures.push(ValidationFailure::Error(
-                format!(
-                    r#"Expected component ID "{}" but found "{}""#,
-                    expected_id, component.id
-                ),
-                Rc::clone(&context),
-            ));
-        }
-    }
+    check_component_matches_unresolved_reference(&mut failures, expected, component, &context);
 
     let inputs_context = Rc::new(Context {
         node_name: "inputs".to_string(),
@@ -61,9 +54,39 @@ pub fn validate_component(expected_id: Option<String>, component: &Component) ->
     }
 }
 
+fn check_component_matches_unresolved_reference(
+    failures: &mut Vec<ValidationFailure>,
+    expected: &UnresolvedComponentReference,
+    component: &Component,
+    context: &Rc<Context>,
+) {
+    // We check the unresolved reference to ensure this is the component we were expecting.
+    match expected {
+        UnresolvedComponentReference::Registry {
+            publisher,
+            name,
+            version,
+        } => {
+            if publisher != &component.publisher || name != &component.name {
+                failures.push(ValidationFailure::Error(
+                    format!(
+                        r#"Expected component ID "{}.{}" but found "{}.{}""#,
+                        publisher, name, component.publisher, component.name
+                    ),
+                    Rc::clone(context),
+                ));
+            }
+        }
+
+        _ => {
+            // TODO: Do a best effort validation of other reference types... e.g. the URL should contain the component name.
+        }
+    }
+}
+
 fn validate_reference_option(
     failures: &mut Vec<ValidationFailure>,
-    reference: &Option<ComponentReference>,
+    reference: &Option<UnresolvedComponentReference>,
     context: &Rc<Context>,
 ) {
     if let Some(reference) = reference {
@@ -73,16 +96,18 @@ fn validate_reference_option(
 
 fn validate_reference(
     failures: &mut Vec<ValidationFailure>,
-    reference: &ComponentReference,
+    reference: &UnresolvedComponentReference,
     context: &Rc<Context>,
 ) {
-    // Referencing the special root ID is guaranteed to
-    // be a circular reference.
-    if reference.id == ComponentReference::ROOT_ID {
-        failures.push(ValidationFailure::Error(
-            format!("Invalid component reference: {}", reference.id),
-            Rc::clone(context),
-        ));
+    // Referencing root is guaranteed to be a circular reference, and is forbidden.
+    match reference {
+        UnresolvedComponentReference::Root => {
+            failures.push(ValidationFailure::Error(
+                ROOT_REFERENCE_NOT_ALLOWED.to_string(),
+                Rc::clone(context),
+            ));
+        }
+        _ => {}
     }
 }
 
@@ -99,11 +124,11 @@ fn validate_inputs(
             ));
         }
 
-        let input_name = input.get_name();
+        let input_name = input.get_display_name();
         if inputs
             .iter()
             .skip(index + 1)
-            .any(|i| i.get_name() == input_name)
+            .any(|i| i.get_display_name() == input_name)
         {
             failures.push(ValidationFailure::Warning(
                 format!("Duplicate input name: {}", input_name),
@@ -207,10 +232,11 @@ fn validate_input_override(
 
 #[cfg(test)]
 mod tests {
+    use semver::Version;
     use serde_json::json;
 
     use crate::rigging::parse::types::{
-        ComponentInputOverride, ComponentOutput, ComponentReference,
+        ComponentInputOverride, ComponentOutput, UnresolvedComponentReference, TEST_PUBLISHER,
     };
 
     use super::*;
@@ -218,60 +244,97 @@ mod tests {
     #[test]
     fn when_component_is_valid_it_should_return_no_failures() {
         let component = Component {
-            id: "test".to_string(),
+            publisher: TEST_PUBLISHER.to_string(),
+            name: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1".to_string(),
+            version: Version::new(1, 0, 0),
             inputs: vec![],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
                 schema: None,
             },
         };
 
-        let validate_result = validate_component(Some("test".to_string()), &component);
+        let validate_result = validate_component(
+            &UnresolvedComponentReference::test("test", "1.1"),
+            &component,
+        );
         let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 0);
     }
 
     #[test]
-    fn when_component_has_unexpected_id_it_should_return_error() {
+    fn when_component_has_unexpected_name_it_should_return_error() {
         let component = Component {
-            id: "test".to_string(),
+            publisher: TEST_PUBLISHER.to_string(),
+            name: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1".to_string(),
+            version: Version::new(1, 0, 0),
             inputs: vec![],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
                 schema: None,
             },
         };
 
-        let validate_result = validate_component(Some("test2".to_string()), &component);
+        let validate_result = validate_component(
+            &UnresolvedComponentReference::test("test2", "1.1"),
+            &component,
+        );
         let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 1);
 
         assert_eq!(
             failures[0].to_string(),
-            r#"Error: Expected component ID "test2" but found "test" (test)"#
+            r#"Error: Expected component ID "test-publisher.test2" but found "test-publisher.test" (test)"#
+        );
+    }
+
+    #[test]
+    fn when_component_has_unexpected_publisher_it_should_return_error() {
+        let component = Component {
+            publisher: "other-publisher".to_string(),
+            name: "test".to_string(),
+            description: Some("Test component".to_string()),
+            version: Version::new(1, 0, 0),
+            inputs: vec![],
+            output: ComponentOutput {
+                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
+                schema: None,
+            },
+        };
+
+        let validate_result = validate_component(
+            &UnresolvedComponentReference::test("test", "1.1"),
+            &component,
+        );
+        let failures = validate_result.failures;
+
+        assert_eq!(failures.len(), 1);
+
+        assert_eq!(
+            failures[0].to_string(),
+            r#"Error: Expected component ID "test-publisher.test" but found "other-publisher.test" (test)"#
         );
     }
 
     #[test]
     fn when_no_expected_id_it_should_no_failures() {
         let component = Component {
-            id: "test".to_string(),
+            publisher: TEST_PUBLISHER.to_string(),
+            name: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1".to_string(),
+            version: Version::new(1, 0, 0),
             inputs: vec![],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
                 schema: None,
             },
         };
 
-        let validate_result = validate_component(None, &component);
+        let validate_result = validate_component(&UnresolvedComponentReference::Root, &component);
         let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 0);
@@ -280,13 +343,14 @@ mod tests {
     #[test]
     fn when_component_is_has_duplicate_input_ids_it_should_return_error() {
         let component = Component {
-            id: "test".to_string(),
+            publisher: TEST_PUBLISHER.to_string(),
+            name: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1".to_string(),
+            version: Version::new(1, 0, 0),
             inputs: vec![
                 ComponentInput {
                     id: "input-one".to_string(),
-                    name: Some("Input 1".to_string()),
+                    display_name: Some("Input 1".to_string()),
                     description: Some("Input 1 description".to_string()),
                     schema: None,
                     default_component: None,
@@ -294,7 +358,7 @@ mod tests {
                 },
                 ComponentInput {
                     id: "input-one".to_string(),
-                    name: Some("Input 2".to_string()),
+                    display_name: Some("Input 2".to_string()),
                     description: Some("Input 2 description".to_string()),
                     schema: None,
                     default_component: None,
@@ -302,12 +366,12 @@ mod tests {
                 },
             ],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
                 schema: None,
             },
         };
 
-        let validate_result = validate_component(Some("test".to_string()), &component);
+        let validate_result = validate_component(&UnresolvedComponentReference::Root, &component);
         let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 1);
@@ -321,13 +385,14 @@ mod tests {
     #[test]
     fn when_component_is_has_duplicate_input_names_it_should_return_warning() {
         let component = Component {
-            id: "test".to_string(),
+            publisher: TEST_PUBLISHER.to_string(),
+            name: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1".to_string(),
+            version: Version::new(1, 0, 0),
             inputs: vec![
                 ComponentInput {
                     id: "input-one".to_string(),
-                    name: Some("Input 1".to_string()),
+                    display_name: Some("Input 1".to_string()),
                     description: Some("Input 1 description".to_string()),
                     schema: None,
                     default_component: None,
@@ -335,7 +400,7 @@ mod tests {
                 },
                 ComponentInput {
                     id: "input-two".to_string(),
-                    name: Some("Input 1".to_string()),
+                    display_name: Some("Input 1".to_string()),
                     description: Some("Input 2 description".to_string()),
                     schema: None,
                     default_component: None,
@@ -343,12 +408,12 @@ mod tests {
                 },
             ],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
                 schema: None,
             },
         };
 
-        let validate_result = validate_component(Some("test".to_string()), &component);
+        let validate_result = validate_component(&UnresolvedComponentReference::Root, &component);
         let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 1);
@@ -362,27 +427,28 @@ mod tests {
     #[test]
     fn when_component_is_has_both_default_component_and_value_it_should_return_error() {
         let component = Component {
-            id: "test".to_string(),
+            publisher: TEST_PUBLISHER.to_string(),
+            name: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1".to_string(),
+            version: Version::new(1, 0, 0),
             inputs: vec![ComponentInput {
                 id: "input-one".to_string(),
-                name: Some("Input 1".to_string()),
+                display_name: Some("Input 1".to_string()),
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: ComponentReference::exact("default_component", "1.0"),
+                    reference: UnresolvedComponentReference::test("default_component", "1.0"),
                     input_overrides: None,
                 }),
                 default_value: Some(json!(3)),
             }],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
                 schema: None,
             },
         };
 
-        let validate_result = validate_component(Some("test".to_string()), &component);
+        let validate_result = validate_component(&UnresolvedComponentReference::Root, &component);
         let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 1);
@@ -394,66 +460,62 @@ mod tests {
     }
 
     #[test]
-    fn when_component_has_invalid_output_component_reference_it_should_return_error() {
+    fn when_component_references_root_component_it_should_return_error() {
         let component = Component {
-            id: "test".to_string(),
+            publisher: TEST_PUBLISHER.to_string(),
+            name: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1".to_string(),
+            version: Version::new(1, 0, 0),
             inputs: vec![ComponentInput {
                 id: "input-one".to_string(),
-                name: Some("Input 1".to_string()),
+                display_name: Some("Input 1".to_string()),
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: None,
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference::exact(
-                    ComponentReference::ROOT_ID,
-                    "1.0",
-                )),
+                schema_reference: Some(UnresolvedComponentReference::Root),
                 schema: None,
             },
         };
 
-        let validate_result = validate_component(Some("test".to_string()), &component);
+        let validate_result = validate_component(&UnresolvedComponentReference::Root, &component);
         let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 1);
 
         assert_eq!(
             failures[0].to_string(),
-            format!(
-                "Error: Invalid component reference: {} (test.output)",
-                ComponentReference::ROOT_ID
-            )
+            format!("Error: {} (test.output)", ROOT_REFERENCE_NOT_ALLOWED)
         );
     }
 
     #[test]
-    fn when_component_override_has_invalid_reference_it_should_return_error() {
+    fn when_component_override_references_root_component_it_should_return_error() {
         let component = Component {
-            id: "test".to_string(),
+            publisher: TEST_PUBLISHER.to_string(),
+            name: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1".to_string(),
+            version: Version::new(1, 0, 0),
             inputs: vec![ComponentInput {
                 id: "input-one".to_string(),
-                name: Some("Input 1".to_string()),
+                display_name: Some("Input 1".to_string()),
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: ComponentReference::exact(ComponentReference::ROOT_ID, "1.0"),
+                    reference: UnresolvedComponentReference::Root,
                     input_overrides: None,
                 }),
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
                 schema: None,
             },
         };
 
-        let validate_result = validate_component(Some("test".to_string()), &component);
+        let validate_result = validate_component(&UnresolvedComponentReference::Root, &component);
         let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 1);
@@ -461,32 +523,30 @@ mod tests {
         assert_eq!(
             failures[0].to_string(),
             format!(
-                r#"Error: Invalid component reference: {} (test.inputs.input-one.default_component)"#,
-                ComponentReference::ROOT_ID
+                r#"Error: {} (test.inputs.input-one.default_component)"#,
+                ROOT_REFERENCE_NOT_ALLOWED
             )
         );
     }
 
     #[test]
-    fn when_component_input_override_has_invalid_reference_it_should_return_error() {
+    fn when_component_input_override_references_root_component_it_should_return_error() {
         let component = Component {
-            id: "test".to_string(),
+            publisher: TEST_PUBLISHER.to_string(),
+            name: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1".to_string(),
+            version: Version::new(1, 0, 0),
             inputs: vec![ComponentInput {
                 id: "input-one".to_string(),
-                name: Some("Input 1".to_string()),
+                display_name: Some("Input 1".to_string()),
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: ComponentReference::exact("default_component", "1.0"),
+                    reference: UnresolvedComponentReference::test("default_component", "1.0"),
                     input_overrides: Some(vec![ComponentInputOverride {
                         id: "sub-input-one".to_string(),
                         component: Some(ComponentInputSpecification {
-                            reference: ComponentReference::exact(
-                                ComponentReference::ROOT_ID,
-                                "1.0",
-                            ),
+                            reference: UnresolvedComponentReference::Root,
                             input_overrides: None,
                         }),
                         value: None,
@@ -495,12 +555,12 @@ mod tests {
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
                 schema: None,
             },
         };
 
-        let validate_result = validate_component(Some("test".to_string()), &component);
+        let validate_result = validate_component(&UnresolvedComponentReference::Root, &component);
         let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 1);
@@ -508,8 +568,8 @@ mod tests {
         assert_eq!(
             failures[0].to_string(),
             format!(
-                r#"Error: Invalid component reference: {} (test.inputs.input-one.default_component.input_overrides.sub-input-one.component)"#,
-                ComponentReference::ROOT_ID
+                r#"Error: {} (test.inputs.input-one.default_component.input_overrides.sub-input-one.component)"#,
+                ROOT_REFERENCE_NOT_ALLOWED
             )
         );
     }
@@ -517,16 +577,17 @@ mod tests {
     #[test]
     fn when_component_override_has_duplicate_input_id_it_should_return_error() {
         let component = Component {
-            id: "test".to_string(),
+            publisher: TEST_PUBLISHER.to_string(),
+            name: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1".to_string(),
+            version: Version::new(1, 0, 0),
             inputs: vec![ComponentInput {
                 id: "input-one".to_string(),
-                name: Some("Input 1".to_string()),
+                display_name: Some("Input 1".to_string()),
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: ComponentReference::exact("default_component", "1.0"),
+                    reference: UnresolvedComponentReference::test("default_component", "1.0"),
                     input_overrides: Some(vec![
                         ComponentInputOverride {
                             id: "sub-input-one".to_string(),
@@ -543,12 +604,12 @@ mod tests {
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
                 schema: None,
             },
         };
 
-        let validate_result = validate_component(Some("test".to_string()), &component);
+        let validate_result = validate_component(&UnresolvedComponentReference::Root, &component);
         let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 1);
@@ -562,20 +623,24 @@ mod tests {
     #[test]
     fn when_component_override_has_deep_duplicate_input_id_it_should_return_error() {
         let component = Component {
-            id: "test".to_string(),
+            publisher: TEST_PUBLISHER.to_string(),
+            name: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1".to_string(),
+            version: Version::new(1, 0, 0),
             inputs: vec![ComponentInput {
                 id: "input-one".to_string(),
-                name: Some("Input 1".to_string()),
+                display_name: Some("Input 1".to_string()),
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: ComponentReference::exact("default_component", "1.0"),
+                    reference: UnresolvedComponentReference::test("default_component", "1.0"),
                     input_overrides: Some(vec![ComponentInputOverride {
                         id: "sub-input-one".to_string(),
                         component: Some(ComponentInputSpecification {
-                            reference: ComponentReference::exact("default_component_2", "1.0"),
+                            reference: UnresolvedComponentReference::test(
+                                "default_component_2",
+                                "1.0",
+                            ),
                             input_overrides: Some(vec![
                                 ComponentInputOverride {
                                     id: "sub-sub-input-one".to_string(),
@@ -595,12 +660,12 @@ mod tests {
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
                 schema: None,
             },
         };
 
-        let validate_result = validate_component(Some("test".to_string()), &component);
+        let validate_result = validate_component(&UnresolvedComponentReference::Root, &component);
         let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 1);
@@ -614,20 +679,24 @@ mod tests {
     #[test]
     fn when_component_input_override_has_both_component_and_value_return_error() {
         let component = Component {
-            id: "test".to_string(),
+            publisher: TEST_PUBLISHER.to_string(),
+            name: "test".to_string(),
             description: Some("Test component".to_string()),
-            version: "1".to_string(),
+            version: Version::new(1, 0, 0),
             inputs: vec![ComponentInput {
                 id: "input-one".to_string(),
-                name: Some("Input 1".to_string()),
+                display_name: Some("Input 1".to_string()),
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: ComponentReference::exact("default_component", "1.0"),
+                    reference: UnresolvedComponentReference::test("default_component", "1.0"),
                     input_overrides: Some(vec![ComponentInputOverride {
                         id: "sub-input-one".to_string(),
                         component: Some(ComponentInputSpecification {
-                            reference: ComponentReference::exact("default_component_2", "1.0"),
+                            reference: UnresolvedComponentReference::test(
+                                "default_component_2",
+                                "1.0",
+                            ),
                             input_overrides: None,
                         }),
                         value: Some(json!(3)),
@@ -636,12 +705,12 @@ mod tests {
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(ComponentReference::exact("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
                 schema: None,
             },
         };
 
-        let validate_result = validate_component(Some("test".to_string()), &component);
+        let validate_result = validate_component(&UnresolvedComponentReference::Root, &component);
         let failures = validate_result.failures;
 
         assert_eq!(failures.len(), 1);

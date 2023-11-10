@@ -18,23 +18,21 @@ mod tests {
     fn it_should_deserialize_complex_component_rigging() {
         let json = r#"
         {
-            "id": "test",
+            "name": "test",
+            "publisher": "test-publisher",
             "description": "Test component",
-            "version": "1",
+            "version": "1.0.0",
             "inputs": [
                 {
                     "id": "input1",
-                    "name": "Input 1",
+                    "display_name": "Input 1",
                     "description": "The first input",
                     "schema": {
                         "type": "string"
                     },
                     "default_component": {
-                        "reference": {
-                            "id": "test2",
-                            "version": "1"
-                        },
-                        "inputs": [
+                        "reference": "test-publisher.test2#1",
+                        "input_overrides": [
                             {
                                 "id": "input1",
                                 "value": "test"
@@ -44,7 +42,7 @@ mod tests {
                 },
                 {
                     "id": "input2",
-                    "name": "Input 2",
+                    "display_name": "Input 2",
                     "description": "The second input",
                     "schema": {
                         "type": "string"
@@ -56,10 +54,7 @@ mod tests {
                 "schema": {
                     "type": "string"
                 },
-                "schema_reference": {
-                    "id": "test2",
-                    "version": "1"
-                }
+                "schema_reference": "test-publisher.test2#1"
             }
         }"#;
 
@@ -70,13 +65,14 @@ mod tests {
     fn it_should_provide_a_sensible_message_when_component_reference_cannot_be_parsed() {
         let json = r#"
         {
-            "id": "test",
+            "name": "test",
+            "publisher": "test-publisher",
             "description": "Test component",
-            "version": "1",
+            "version": "1.0.0",
             "inputs": [
                 {
                     "id": "input1",
-                    "name": "Input 1",
+                    "display_name": "Input 1",
                     "description": "The first input",
                     "schema": {
                         "type": "string"
@@ -87,10 +83,7 @@ mod tests {
                 }
             ],
             "output": {
-                "schema_reference": {
-                    "id": "test2",
-                    "version": "1"
-                }
+                "schema_reference": "test2#1"
             }
         }"#;
 
@@ -98,7 +91,12 @@ mod tests {
             Ok(_) => panic!("Expected an error"),
             Err(e) => match e {
                 SlipwayError::RiggingParseFailed(e) => {
-                    assert!(e.to_string().starts_with(INVALID_COMPONENT_REFERENCE))
+                    assert!(
+                        e.to_string().starts_with(INVALID_COMPONENT_REFERENCE),
+                        "Expected error to start with {} but it was {}",
+                        INVALID_COMPONENT_REFERENCE,
+                        e
+                    );
                 }
                 _ => panic!("Expected a InvalidComponentReference error"),
             },

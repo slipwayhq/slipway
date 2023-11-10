@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use crate::errors::SlipwayError;
 
 use super::{
-    parse::types::ComponentReference,
+    parse::types::UnresolvedComponentReference,
     recursive_resolve::{
         load::{ComponentRigging, LoadComponentRigging, LoadError},
         recursively_resolve_components, Context,
@@ -30,7 +30,7 @@ struct LoadComponentRiggingImpl {}
 impl LoadComponentRigging for LoadComponentRiggingImpl {
     async fn load_component_rigging<'a, 'b>(
         &self,
-        _reference: ComponentReference,
+        _reference: UnresolvedComponentReference,
         _context: &'a Context<'a>,
     ) -> Result<ComponentRigging<'b>, LoadError<'b>>
     where

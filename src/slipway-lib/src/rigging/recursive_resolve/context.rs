@@ -1,14 +1,14 @@
 use std::sync::OnceLock;
 
-use crate::rigging::parse::types::ComponentReference;
+use crate::rigging::parse::types::{ResolvedComponentReference, UnresolvedComponentReference};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Context<'a> {
-    pub reference: ComponentReference,
+    pub reference: UnresolvedComponentReference,
 
     // We're using OnceLock rather than OnceCell so that the BuildContext is Send
     // so we can use it in a future.
-    pub resolved_reference: OnceLock<ComponentReference>,
+    pub resolved_reference: OnceLock<ResolvedComponentReference>,
 
     pub previous_context: Option<&'a Context<'a>>,
 }
@@ -26,16 +26,91 @@ impl<'a> Context<'a> {
         result
     }
 
-    pub fn contains_resolved_id(&self, id: &str) -> bool {
-        let current_resolved_reference = self.resolved_reference.get();
-        if let Some(resolved_reference) = current_resolved_reference {
-            if resolved_reference.id == id {
+    pub fn contains_any_resolved_version(&self, reference: &ResolvedComponentReference) -> bool {
+        let context_resolved_reference = self.resolved_reference.get();
+        if let Some(context_resolved_reference) = context_resolved_reference {
+            if context_resolved_reference.publisher == reference.publisher
+                && context_resolved_reference.name == reference.name
+            {
                 return true;
             }
         }
 
         if let Some(previous_context) = &self.previous_context {
-            return previous_context.contains_resolved_id(id);
+            return previous_context.contains_any_resolved_version(reference);
+        }
+
+        false
+    }
+
+    pub fn contains_any_unresolved_version(
+        &self,
+        reference: &UnresolvedComponentReference,
+    ) -> bool {
+        let found = match reference {
+            UnresolvedComponentReference::Root => {
+                matches!(&self.reference, UnresolvedComponentReference::Root)
+            }
+            UnresolvedComponentReference::Registry {
+                publisher, name, ..
+            } => {
+                (match &self.reference {
+                    UnresolvedComponentReference::Registry {
+                        publisher: other_publisher,
+                        name: other_name,
+                        ..
+                    } => publisher == other_publisher && name == other_name,
+                    UnresolvedComponentReference::GitHub {
+                        user, repository, ..
+                    } => publisher == user && name == repository,
+                    _ => false,
+                }) || (match self.resolved_reference.get() {
+                    Some(resolved_reference) => {
+                        publisher == &resolved_reference.publisher
+                            && name == &resolved_reference.name
+                    }
+                    None => false,
+                })
+            }
+            UnresolvedComponentReference::GitHub {
+                user, repository, ..
+            } => {
+                (match &self.reference {
+                    UnresolvedComponentReference::GitHub {
+                        user: other_user,
+                        repository: other_repository,
+                        ..
+                    } => user == other_user && repository == other_repository,
+                    UnresolvedComponentReference::Registry {
+                        publisher, name, ..
+                    } => publisher == user && name == repository,
+                    _ => false,
+                }) || (match self.resolved_reference.get() {
+                    Some(resolved_reference) => {
+                        user == &resolved_reference.publisher
+                            && repository == &resolved_reference.name
+                    }
+                    None => false,
+                })
+            }
+            UnresolvedComponentReference::Local { path, .. } => match &self.reference {
+                UnresolvedComponentReference::Local {
+                    path: other_path, ..
+                } => path == other_path,
+                _ => false,
+            },
+            UnresolvedComponentReference::Url { url, .. } => match &self.reference {
+                UnresolvedComponentReference::Url { url: other_url, .. } => url == other_url,
+                _ => false,
+            },
+        };
+
+        if found {
+            return true;
+        }
+
+        if let Some(previous_context) = &self.previous_context {
+            return previous_context.contains_any_unresolved_version(reference);
         }
 
         false
@@ -51,26 +126,28 @@ impl<'a> Context<'a> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ContextSnapshot {
-    pub reference: ComponentReference,
-    pub resolved_reference: Option<ComponentReference>,
+    pub reference: UnresolvedComponentReference,
+    pub resolved_reference: Option<ResolvedComponentReference>,
 }
 
 #[cfg(test)]
 mod tests {
+    use semver::Version;
+
     use super::*;
 
     #[test]
     fn get_list_should_return_list_of_references_in_current_context() {
         let context_0 = Context {
-            reference: ComponentReference::exact("context-0", "1"),
-            resolved_reference: OnceLock::from(ComponentReference::exact(
+            reference: UnresolvedComponentReference::test("context-0", "1"),
+            resolved_reference: OnceLock::from(ResolvedComponentReference::test(
                 "context-0-resolved",
-                "1",
+                Version::new(1, 0, 0),
             )),
             previous_context: None,
         };
         let context_1 = Context {
-            reference: ComponentReference::exact("context-1", "1"),
+            reference: UnresolvedComponentReference::test("context-1", "1"),
             resolved_reference: OnceLock::new(),
             previous_context: Some(&context_0),
         };
@@ -81,35 +158,70 @@ mod tests {
     }
 
     #[test]
-    fn contains_resolved_it_should_return_true_if_context_contains_specified_id() {
+    fn contains_reference_it_should_return_true_if_context_contains_specified_reference() {
         let context_0 = Context {
-            reference: ComponentReference::exact(ComponentReference::ROOT_ID, "1"),
-            resolved_reference: OnceLock::from(ComponentReference::exact(
+            reference: UnresolvedComponentReference::Root,
+            resolved_reference: OnceLock::from(ResolvedComponentReference::test(
                 "context-0-resolved",
-                "1",
+                Version::new(1, 0, 0),
             )),
             previous_context: None,
         };
 
         let context_1 = Context {
-            reference: ComponentReference::exact("context-1", "1"),
+            reference: UnresolvedComponentReference::test("context-1", "1"),
             resolved_reference: OnceLock::new(),
             previous_context: Some(&context_0),
         };
 
         let context_2 = Context {
-            reference: ComponentReference::exact("context-2", "1"),
-            resolved_reference: OnceLock::from(ComponentReference::exact(
+            reference: UnresolvedComponentReference::test("context-2", "1"),
+            resolved_reference: OnceLock::from(ResolvedComponentReference::test(
                 "context-2-resolved",
-                "1",
+                Version::new(1, 0, 0),
             )),
             previous_context: Some(&context_1),
         };
 
-        assert!(context_2.contains_resolved_id("context-0-resolved"));
-        assert!(context_2.contains_resolved_id("context-2-resolved"));
+        assert!(
+            context_2.contains_any_resolved_version(&ResolvedComponentReference::test(
+                "context-0-resolved",
+                Version::new(1, 0, 0)
+            ))
+        );
+        assert!(
+            context_2.contains_any_resolved_version(&ResolvedComponentReference::test(
+                "context-2-resolved",
+                Version::new(2, 0, 0)
+            ))
+        );
 
-        assert!(!context_2.contains_resolved_id("context-1"));
-        assert!(!context_2.contains_resolved_id(ComponentReference::ROOT_ID));
+        assert!(
+            !context_2.contains_any_resolved_version(&ResolvedComponentReference::new(
+                "foo",
+                "context-0-resolved",
+                &Version::new(1, 0, 0)
+            ))
+        );
+        assert!(
+            !context_2.contains_any_resolved_version(&ResolvedComponentReference::test(
+                "context-1",
+                Version::new(2, 0, 0)
+            ))
+        );
+
+        assert!(context_2.contains_any_unresolved_version(&UnresolvedComponentReference::Root));
+        assert!(
+            context_2.contains_any_unresolved_version(&UnresolvedComponentReference::test(
+                "context-1",
+                "1"
+            ))
+        );
+        assert!(
+            context_2.contains_any_unresolved_version(&UnresolvedComponentReference::test(
+                "context-1",
+                "2"
+            ))
+        );
     }
 }

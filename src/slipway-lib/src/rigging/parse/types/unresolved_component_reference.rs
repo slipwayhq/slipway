@@ -2,28 +2,28 @@ use crate::errors::SlipwayError;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use semver::VersionReq;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::{fmt::Display, path::PathBuf, str::FromStr};
 use url::Url;
 
-const COMPONENT_REFERENCE_REGISTRY_OWNER_SEPARATOR: char = '.';
+pub(crate) const COMPONENT_REFERENCE_REGISTRY_PUBLISHER_SEPARATOR: char = '.';
+pub(crate) const COMPONENT_REFERENCE_VERSION_SEPARATOR: char = '#';
 const COMPONENT_REFERENCE_GIT_USER_SEPARATOR: char = '/';
-const COMPONENT_REFERENCE_VERSION_SEPARATOR: char = '#';
 
 const ROOT_REFERENCE: &str = ".root";
 
 pub(crate) static REGISTRY_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(?<owner>[\w-]+)\.(?<name>[\w-]+)#(?<version>.+)$").unwrap());
+    Lazy::new(|| Regex::new(r"^(?<publisher>[\w-]+)\.(?<name>[\w-]+)#(?<version>.+)$").unwrap());
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum UnresolvedComponentReference {
     // .root
     Root,
 
-    // owner.id#version
+    // publisher.name#version
     Registry {
-        owner: String,
+        publisher: String,
         name: String,
         version: VersionReq,
     },
@@ -58,7 +58,7 @@ impl FromStr for UnresolvedComponentReference {
             let version = parse_version_requirement(&caps["version"])?;
 
             return Ok(UnresolvedComponentReference::Registry {
-                owner: caps["owner"].to_string(),
+                publisher: caps["publisher"].to_string(),
                 name: caps["name"].to_string(),
                 version,
             });
@@ -133,9 +133,11 @@ impl UnresolvedComponentReference {
     }
 
     #[cfg(test)]
-    pub fn exact(id: &str, version: &str) -> Self {
+    pub fn test(id: &str, version: &str) -> Self {
+        use super::TEST_PUBLISHER;
+
         UnresolvedComponentReference::Registry {
-            owner: "".to_string(),
+            publisher: TEST_PUBLISHER.to_string(),
             name: id.to_string(),
             version: VersionReq::parse(version).expect("Invalid version"),
         }
@@ -158,13 +160,13 @@ impl Display for UnresolvedComponentReference {
         match self {
             UnresolvedComponentReference::Root => f.write_str(".root"),
             UnresolvedComponentReference::Registry {
-                owner,
+                publisher,
                 name,
                 version,
             } => f.write_fmt(format_args!(
                 "{}{}{}{}{}",
-                owner,
-                COMPONENT_REFERENCE_REGISTRY_OWNER_SEPARATOR,
+                publisher,
+                COMPONENT_REFERENCE_REGISTRY_PUBLISHER_SEPARATOR,
                 name,
                 COMPONENT_REFERENCE_VERSION_SEPARATOR,
                 version
@@ -182,7 +184,8 @@ impl Display for UnresolvedComponentReference {
                 version
             )),
             UnresolvedComponentReference::Local { path } => {
-                f.write_fmt(format_args!("{}", path.to_string_lossy()))
+                let url = Url::from_file_path(&path).map_err(|_| std::fmt::Error {})?;
+                f.write_fmt(format_args!("{}", url))
             }
             UnresolvedComponentReference::Url { url } => f.write_fmt(format_args!("{}", url)),
         }
@@ -202,6 +205,12 @@ impl<'de> Deserialize<'de> for UnresolvedComponentReference {
                 "reference should be in string format",
             )),
         }
+    }
+}
+
+impl Serialize for UnresolvedComponentReference {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
     }
 }
 
@@ -227,52 +236,52 @@ mod registry_tests {
 
     #[test]
     fn it_should_deserialize_unresolved_component_reference_from_string() {
-        let json = r#""test-owner.test-name#1.2.3""#;
+        let json = r#""test-publisher.test-name#1.2.3""#;
 
         let reference: UnresolvedComponentReference = serde_json::from_str(json).unwrap();
 
-        let UnresolvedComponentReference::Registry { owner, name, version } = reference else {
+        let UnresolvedComponentReference::Registry { publisher, name, version } = reference else {
             panic!("Unexpected unresolved reference: {reference:?}");
         };
 
-        assert_eq!(owner, "test-owner");
+        assert_eq!(publisher, "test-publisher");
         assert_eq!(name, "test-name");
         assert_eq!(version, VersionReq::parse("1.2.3").unwrap());
     }
 
     #[test]
     fn it_should_parse_unresolved_component_reference_from_string() {
-        let s = r"test-owner.test-name#1.2.3";
+        let s = r"test-publisher.test-name#1.2.3";
 
         let reference = UnresolvedComponentReference::from_str(s).unwrap();
 
-        let UnresolvedComponentReference::Registry { owner, name, version } = reference else {
+        let UnresolvedComponentReference::Registry { publisher, name, version } = reference else {
             panic!("Unexpected unresolved reference: {reference:?}");
         };
 
-        assert_eq!(owner, "test-owner");
+        assert_eq!(publisher, "test-publisher");
         assert_eq!(name, "test-name");
         assert_eq!(version, VersionReq::parse("1.2.3").unwrap());
     }
 
     #[test]
     fn it_should_parse_unresolved_component_reference_from_string_with_short_version() {
-        let s = r"test-owner.test-name#1";
+        let s = r"test-publisher.test-name#1";
 
         let reference = UnresolvedComponentReference::from_str(s).unwrap();
 
-        let UnresolvedComponentReference::Registry { owner, name, version } = reference else {
+        let UnresolvedComponentReference::Registry { publisher, name, version } = reference else {
             panic!("Unexpected unresolved reference: {reference:?}");
         };
 
-        assert_eq!(owner, "test-owner");
+        assert_eq!(publisher, "test-publisher");
         assert_eq!(name, "test-name");
         assert_eq!(version, VersionReq::parse("1").unwrap());
     }
 
     #[test]
     fn it_should_fail_to_parse_unresolved_component_reference_from_string_if_no_version() {
-        let s = "test-owner.test-name";
+        let s = "test-publisher.test-name";
 
         let reference_result = UnresolvedComponentReference::from_str(s);
 
@@ -281,7 +290,7 @@ mod registry_tests {
 
     #[test]
     fn it_should_fail_to_parse_unresolved_component_reference_from_string_if_empty_version() {
-        let s = "test-owner.test-name#";
+        let s = "test-publisher.test-name#";
 
         let reference_result = UnresolvedComponentReference::from_str(s);
 
@@ -289,7 +298,7 @@ mod registry_tests {
     }
 
     #[test]
-    fn it_should_fail_to_parse_unresolved_component_reference_from_string_if_no_owner() {
+    fn it_should_fail_to_parse_unresolved_component_reference_from_string_if_no_publisher() {
         let s = "test-name#1.2.3";
 
         let reference_result = UnresolvedComponentReference::from_str(s);
@@ -298,7 +307,7 @@ mod registry_tests {
     }
 
     #[test]
-    fn it_should_fail_to_parse_unresolved_component_reference_from_string_if_empty_owner() {
+    fn it_should_fail_to_parse_unresolved_component_reference_from_string_if_empty_publisher() {
         let s = ".test-name#1.2.3";
 
         let reference_result = UnresolvedComponentReference::from_str(s);

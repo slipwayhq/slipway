@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use thiserror::Error;
 
-use crate::{errors::SlipwayError, rigging::parse::types::ComponentReference};
+use crate::{errors::SlipwayError, rigging::parse::types::UnresolvedComponentReference};
 
 use super::Context;
 
@@ -9,7 +9,7 @@ use super::Context;
 pub(crate) trait LoadComponentRigging {
     async fn load_component_rigging<'a, 'b>(
         &self,
-        reference: ComponentReference,
+        reference: UnresolvedComponentReference,
         context: &'a Context<'a>,
     ) -> Result<ComponentRigging<'b>, LoadError<'b>>
     where

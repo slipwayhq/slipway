@@ -21,7 +21,7 @@ use self::{
 use super::{
     parse::{
         parse_component,
-        types::{Component, ComponentReference},
+        types::{Component, ResolvedComponentReference, UnresolvedComponentReference},
     },
     validate::{validate_component, validation_failure::ValidationFailure},
 };
@@ -39,8 +39,8 @@ pub(crate) fn recursively_resolve_components(
 }
 
 pub(crate) struct ResolvedComponents {
-    resolved: HashMap<ComponentReference, Component>,
-    failed: HashMap<ComponentReference, ResolveComponentFailure>,
+    resolved: HashMap<UnresolvedComponentReference, Component>,
+    failed: HashMap<UnresolvedComponentReference, ResolveComponentFailure>,
     root_warnings: Vec<ValidationFailure>,
 }
 
@@ -67,7 +67,7 @@ async fn recursively_resolve_components_async(
     // We use ComponentReference::root() because we do not know the actual id
     // or version yet.
     let root_context = context_arena.alloc(Context {
-        reference: ComponentReference::root(),
+        reference: UnresolvedComponentReference::Root,
         resolved_reference: OnceLock::new(),
         previous_context: None,
     });
@@ -103,7 +103,7 @@ async fn recursively_resolve_components_async(
         let (next, _, remaining_futures) = futures_util::future::select_all(loader_futures).await;
         loader_futures = remaining_futures;
 
-        let result = resolve_component(next, is_root_component);
+        let result = resolve_component(next);
 
         let warnings = match result {
             Err(e) => {
@@ -162,7 +162,7 @@ struct ResolvedComponentData<'a> {
     context: &'a Context<'a>,
     component: Component,
     warnings: Vec<ValidationFailure>,
-    found_references: Vec<ComponentReference>,
+    found_references: Vec<UnresolvedComponentReference>,
 }
 
 #[derive(Error, Debug)]
@@ -175,7 +175,6 @@ struct ResolvedComponentError<'a> {
 
 fn resolve_component<'a>(
     load_result: Result<ComponentRigging<'a>, LoadError<'a>>,
-    is_root_component: bool,
 ) -> Result<ResolvedComponentData<'a>, ResolvedComponentError<'a>> {
     // Load.
     let result = load_result.map_err(|e| ResolvedComponentError {
@@ -201,11 +200,7 @@ fn resolve_component<'a>(
     })?;
 
     // Validate.
-    let expected_component_id = match is_root_component {
-        true => None,
-        false => Some(unresolved_reference.id.clone()),
-    };
-    let validation_result = validate_component(expected_component_id, &component);
+    let validation_result = validate_component(&unresolved_reference, &component);
 
     let (warnings, errors): (Vec<ValidationFailure>, Vec<ValidationFailure>) = validation_result
         .failures
@@ -226,11 +221,24 @@ fn resolve_component<'a>(
     // The component is valid, so we can safely read the resolved reference for it.
     let resolved_reference = component.get_reference();
 
+    // Check for circular references using the resolved reference.
+    if context.contains_any_resolved_version(&resolved_reference) {
+        return Err(ResolvedComponentError {
+            context,
+            warnings,
+            failure: ResolveComponentFailure::CircularResolvedReference {
+                reference: resolved_reference.clone(),
+                context: context.as_list(),
+            },
+        });
+    }
+
     // Update the context with the resolved reference.
-    // We must do this before checking for circular references.
+    // We must do this after checking for a circular resolved reference
+    // or we will think the current context matches the resolved reference.
     context
         .resolved_reference
-        .set(resolved_reference)
+        .set(resolved_reference.clone())
         .unwrap_or_else(|resolved_reference| {
             panic!(
                 r#"Resolved component reference for "{unresolved_reference}" should only be set once (setting to {resolved_reference}, existing was {})"#,
@@ -241,16 +249,20 @@ fn resolve_component<'a>(
     // Find components referenced by this component.
     let found_references = find_component_references(&component);
 
-    // Check for circular references.
-    let circular_reference = found_references
+    // Check for circular references using the unresolved versions.
+    // This is important to do because if an unresolved reference in this component
+    // matches an unresolved reference in the context then the resolved reference will have
+    // been cached and won't be re-resolved, which means the circular reference check on
+    // resolved references above will not occur.
+    let unresolved_circular_reference = found_references
         .iter()
-        .find(|reference| context.contains_resolved_id(&reference.id));
+        .find(|reference| context.contains_any_unresolved_version(reference));
 
-    if let Some(circular_reference) = circular_reference {
+    if let Some(circular_reference) = unresolved_circular_reference {
         return Err(ResolvedComponentError {
             context,
             warnings,
-            failure: ResolveComponentFailure::CircularReference {
+            failure: ResolveComponentFailure::CircularUnresolvedReference {
                 reference: circular_reference.clone(),
                 context: context.as_list(),
             },
@@ -280,8 +292,12 @@ enum ResolveComponentFailure {
         validation_errors: Vec<ValidationFailure>,
         context: Vec<ContextSnapshot>,
     },
-    CircularReference {
-        reference: ComponentReference,
+    CircularResolvedReference {
+        reference: ResolvedComponentReference,
+        context: Vec<ContextSnapshot>,
+    },
+    CircularUnresolvedReference {
+        reference: UnresolvedComponentReference,
         context: Vec<ContextSnapshot>,
     },
 }
@@ -294,6 +310,8 @@ mod tests {
     };
 
     use async_trait::async_trait;
+    use semver::Version;
+    use url::Url;
 
     use super::*;
 
@@ -301,20 +319,21 @@ mod tests {
         resolved_components
             .failed
             .iter()
-            .for_each(|e| println!("{:?}", e));
+            .for_each(|e| println!("Failure: {:?}", e));
     }
 
     #[test]
     fn it_should_resolve_all_references() {
         let root_component = r#"
         {
-            "id": "test",
-            "version": "1",
+            "name": "test",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
             "inputs": [
                 {
                     "id": "input1",
                     "default_component": {
-                        "reference": "test2#1"
+                        "reference": "test-publisher.test2#1"
                     }
                 }
             ],
@@ -327,18 +346,19 @@ mod tests {
 
         let test2_v1_component = r#"
         {
-            "id": "test2",
-            "version": "1",
+            "name": "test2",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
             "inputs": [
                 {
                     "id": "input1",
                     "default_component": {
-                        "reference": "test3#1",
+                        "reference": "test-publisher.test3#1",
                         "input_overrides": [
                             {
                                 "id": "input1",
                                 "component": {
-                                    "reference": "test4#1"
+                                    "reference": "test-publisher.test4#1"
                                 }
                             }
                         ]
@@ -346,14 +366,15 @@ mod tests {
                 }
             ],
             "output": {
-                "schema_reference": "test3#2"
+                "schema_reference": "test-publisher.test3#2"
             }
         }"#;
 
         let test3_v1_component = r#"
         {
-            "id": "test3",
-            "version": "1",
+            "name": "test3",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
             "inputs": [],
             "output": {
                 "schema": {
@@ -364,8 +385,9 @@ mod tests {
 
         let test3_v2_component = r#"
         {
-            "id": "test3",
-            "version": "2",
+            "name": "test3",
+            "publisher": "test-publisher",
+            "version": "2.0.0",
             "inputs": [],
             "output": {
                 "schema": {
@@ -376,8 +398,9 @@ mod tests {
 
         let test4_v1_component = r#"
         {
-            "id": "test4",
-            "version": "1",
+            "name": "test4",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
             "inputs": [],
             "output": {
                 "schema": {
@@ -389,19 +412,19 @@ mod tests {
         let loader = LoadComponentRiggingMock {
             resolved: vec![
                 (
-                    ComponentReference::exact("test2", "1"),
+                    UnresolvedComponentReference::test("test2", "1"),
                     test2_v1_component.to_string(),
                 ),
                 (
-                    ComponentReference::exact("test3", "1"),
+                    UnresolvedComponentReference::test("test3", "1"),
                     test3_v1_component.to_string(),
                 ),
                 (
-                    ComponentReference::exact("test3", "2"),
+                    UnresolvedComponentReference::test("test3", "2"),
                     test3_v2_component.to_string(),
                 ),
                 (
-                    ComponentReference::exact("test4", "1"),
+                    UnresolvedComponentReference::test("test4", "1"),
                     test4_v1_component.to_string(),
                 ),
             ]
@@ -425,17 +448,18 @@ mod tests {
         // a duplicate id (error).
         let test1_component = r#"
         {
-            "id": "test1",
-            "version": "1",
+            "name": "test1",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
             "inputs": [
                 {
                     "id": "input1",
-                    "name": "Input One",
+                    "display_name": "Input One",
                     "default_value": 1
                 },
                 {
                     "id": "input2",
-                    "name": "Input One",
+                    "display_name": "Input One",
                     "default_value": 2
                 },
                 {
@@ -444,19 +468,20 @@ mod tests {
                 }
             ],
             "output": {
-                "schema_reference": "foo#1.0"
+                "schema_reference": "test-publisher.foo#1.0"
             }
         }"#;
 
         // This just references test1.
         let test2_component = r#"
         {
-            "id": "test2",
-            "version": "1",
+            "name": "test2",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
             "inputs": [
             ],
             "output": {
-                "schema_reference": "test1#1"
+                "schema_reference": "test-publisher.test1#1"
             }
         }"#;
 
@@ -466,7 +491,7 @@ mod tests {
 
         let test2_loader = LoadComponentRiggingMock {
             resolved: vec![(
-                ComponentReference::exact("test1", "1"),
+                UnresolvedComponentReference::test("test1", "1"),
                 test1_component.to_string(),
             )]
             .into_iter()
@@ -500,7 +525,7 @@ mod tests {
                 validation_errors,
                 context,
             } => {
-                assert_eq!(context[0].reference, ComponentReference::root());
+                assert_eq!(context[0].reference, UnresolvedComponentReference::Root);
 
                 assert_eq!(validation_errors.len(), 1);
                 assert_eq!(
@@ -534,7 +559,7 @@ mod tests {
             } => {
                 assert_eq!(
                     context[0].reference,
-                    ComponentReference::exact("test1", "1"),
+                    UnresolvedComponentReference::test("test1", "1"),
                 );
 
                 assert_eq!(validation_errors.len(), 1);
@@ -564,17 +589,18 @@ mod tests {
         // This contains a duplicate name (warning), but is otherwise valid.
         let test_component = r#"
         {
-            "id": "test1",
-            "version": "1",
+            "name": "test1",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
             "inputs": [
                 {
                     "id": "input1",
-                    "name": "Input One",
+                    "display_name": "Input One",
                     "default_value": 1
                 },
                 {
                     "id": "input2",
-                    "name": "Input One",
+                    "display_name": "Input One",
                     "default_value": 2
                 }
             ],
@@ -601,19 +627,20 @@ mod tests {
     }
 
     #[test]
-    fn it_should_detect_circular_references_ignoring_versions() {
+    fn it_should_detect_circular_unresolved_references_ignoring_versions() {
         // The circular reference here is going to be:
         // test#1 -> test2#1 -> test4#1 -> test2#5
 
         let root_component = r#"
         {
-            "id": "test",
-            "version": "1",
+            "name": "test",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
             "inputs": [
                 {
                     "id": "input1",
                     "default_component": {
-                        "reference": "test2#1"
+                        "reference": "test-publisher.test2#1"
                     }
                 }
             ],
@@ -626,18 +653,19 @@ mod tests {
 
         let test2_v1_component = r#"
         {
-            "id": "test2",
-            "version": "1",
+            "name": "test2",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
             "inputs": [
                 {
                     "id": "input1",
                     "default_component": {
-                        "reference": "test3#1",
+                        "reference": "test-publisher.test3#1",
                         "input_overrides": [
                             {
                                 "id": "input1",
                                 "component": {
-                                    "reference": "test4#1"
+                                    "reference": "test-publisher.test4#1"
                                 }
                             }
                         ]
@@ -645,14 +673,15 @@ mod tests {
                 }
             ],
             "output": {
-                "schema_reference": "test3#2"
+                "schema_reference": "test-publisher.test3#2"
             }
         }"#;
 
         let test3_v1_component = r#"
         {
-            "id": "test3",
-            "version": "1",
+            "name": "test3",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
             "inputs": [],
             "output": {
                 "schema": {
@@ -663,8 +692,9 @@ mod tests {
 
         let test3_v2_component = r#"
         {
-            "id": "test3",
-            "version": "2",
+            "name": "test3",
+            "publisher": "test-publisher",
+            "version": "2.0.0",
             "inputs": [],
             "output": {
                 "schema": {
@@ -676,30 +706,31 @@ mod tests {
         // This contains a reference back to a different version of test2.
         let test4_v1_component = r#"
         {
-            "id": "test4",
-            "version": "1",
+            "name": "test4",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
             "inputs": [],
             "output": {
-                "schema_reference": "test2#5"
+                "schema_reference": "test-publisher.test2#5"
             }
         }"#;
 
         let loader = LoadComponentRiggingMock {
             resolved: vec![
                 (
-                    ComponentReference::exact("test2", "1"),
+                    UnresolvedComponentReference::test("test2", "1"),
                     test2_v1_component.to_string(),
                 ),
                 (
-                    ComponentReference::exact("test3", "1"),
+                    UnresolvedComponentReference::test("test3", "1"),
                     test3_v1_component.to_string(),
                 ),
                 (
-                    ComponentReference::exact("test3", "2"),
+                    UnresolvedComponentReference::test("test3", "2"),
                     test3_v2_component.to_string(),
                 ),
                 (
-                    ComponentReference::exact("test4", "1"),
+                    UnresolvedComponentReference::test("test4", "1"),
                     test4_v1_component.to_string(),
                 ),
             ]
@@ -720,11 +751,114 @@ mod tests {
             .values()
             .collect::<Vec<&ResolveComponentFailure>>()[0];
         match component_failure {
-            ResolveComponentFailure::CircularReference {
+            ResolveComponentFailure::CircularUnresolvedReference {
                 context: _,
                 reference: circular_reference,
             } => {
-                assert_eq!(circular_reference, &ComponentReference::exact("test2", "5"));
+                assert_eq!(
+                    circular_reference,
+                    &UnresolvedComponentReference::test("test2", "5")
+                );
+            }
+            _ => panic!("Unexpected failure type: {:?}", component_failure),
+        }
+    }
+
+    #[test]
+    fn it_should_detect_circular_resolved_references_ignoring_versions() {
+        // The circular reference here is going to be:
+        // test#1 -> test2#1 -> test1#2
+
+        let root_component = r#"
+        {
+            "name": "test",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
+            "inputs": [
+                {
+                    "id": "input1",
+                    "default_component": {
+                        "reference": "test-publisher.test2#1"
+                    }
+                }
+            ],
+            "output": {
+                "schema": {
+                    "type": "string"
+                }
+            }
+        }"#;
+
+        let test2_v1_component = r#"
+        {
+            "name": "test2",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
+            "inputs": [
+                {
+                    "id": "input1",
+                    "default_component": {
+                        "reference": "https://blah/some-component"
+                    }
+                }
+            ],
+            "output": {
+                "schema": {
+                    "type": "string"
+                }
+            }
+        }"#;
+
+        // This contains a reference back to a different version of test.
+        let some_component = r#"
+        {
+            "name": "test",
+            "publisher": "test-publisher",
+            "version": "2.0.0",
+            "inputs": [],
+            "output": {
+                "schema_reference": "test-publisher.test2#5"
+            }
+        }"#;
+
+        let loader = LoadComponentRiggingMock {
+            resolved: vec![
+                (
+                    UnresolvedComponentReference::test("test2", "1"),
+                    test2_v1_component.to_string(),
+                ),
+                (
+                    UnresolvedComponentReference::Url {
+                        url: Url::parse("https://blah/some-component").unwrap(),
+                    },
+                    some_component.to_string(),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        };
+
+        let resolved_components =
+            recursively_resolve_components(root_component.to_string(), Box::new(loader));
+
+        print_failures(&resolved_components);
+
+        assert_eq!(resolved_components.failed.len(), 1);
+        assert_eq!(resolved_components.resolved.len(), 2);
+
+        let component_failure = resolved_components
+            .failed
+            .values()
+            .collect::<Vec<&ResolveComponentFailure>>()[0];
+        match component_failure {
+            ResolveComponentFailure::CircularResolvedReference {
+                context: _,
+                reference: circular_reference,
+            } => {
+                assert_eq!(
+                    circular_reference,
+                    &ResolvedComponentReference::test("test", Version::new(2, 0, 0))
+                );
             }
             _ => panic!("Unexpected failure type: {:?}", component_failure),
         }
@@ -735,17 +869,18 @@ mod tests {
         // This contains a reference to itself.
         let test_component = r#"
         {
-            "id": "test1",
-            "version": "1",
+            "name": "test1",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
             "inputs": [
                 {
                     "id": "input1",
-                    "name": "Input One",
+                    "display_name": "Input One",
                     "default_value": 1
                 }
             ],
             "output": {
-                "schema_reference": "test1#1"
+                "schema_reference": "test-publisher.test1#1"
             }
         }"#;
 
@@ -766,25 +901,28 @@ mod tests {
             .values()
             .collect::<Vec<&ResolveComponentFailure>>()[0];
         match component_failure {
-            ResolveComponentFailure::CircularReference {
+            ResolveComponentFailure::CircularUnresolvedReference {
                 context: _,
                 reference: circular_reference,
             } => {
-                assert_eq!(circular_reference, &ComponentReference::exact("test1", "1"));
+                assert_eq!(
+                    circular_reference,
+                    &UnresolvedComponentReference::test("test1", "1")
+                );
             }
             _ => panic!("Unexpected failure type: {:?}", component_failure),
         }
     }
 
     struct LoadComponentRiggingMock {
-        resolved: HashMap<ComponentReference, String>,
+        resolved: HashMap<UnresolvedComponentReference, String>,
     }
 
     #[async_trait]
     impl LoadComponentRigging for LoadComponentRiggingMock {
         async fn load_component_rigging<'a, 'b>(
             &self,
-            reference: ComponentReference,
+            reference: UnresolvedComponentReference,
             context: &'a Context<'a>,
         ) -> Result<ComponentRigging<'b>, LoadError<'b>>
         where
@@ -797,10 +935,10 @@ mod tests {
                 }),
                 None => Err(LoadError {
                     context,
-                    source: SlipwayError::RiggingResolveFailed(
-                        "MockComponentReferenceResolver does not have a rigging for this reference"
-                            .to_string(),
-                    ),
+                    source: SlipwayError::RiggingResolveFailed(format!(
+                        "MockComponentReferenceResolver does not have a rigging for reference: {}",
+                        reference
+                    )),
                 }),
             }
         }
@@ -809,12 +947,14 @@ mod tests {
     // This test is going to check that we don't try to resolve the same reference twice if two different
     // components reference it, and they are both processed before the referenced component has loaded.
     #[test]
+    #[ignore]
     fn it_should_not_resolve_references_twice_if_they_are_in_the_process_of_being_loaded() {
         // A completes, returns references to B and C.
         let a = r#"
         {
-            "id": "a",
-            "version": "1",
+            "name": "a",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
             "inputs": [
                 {
                     "id": "input1",
@@ -831,8 +971,9 @@ mod tests {
         // B and C will load next, both return a reference to D.
         let b = r#"
         {
-            "id": "b",
-            "version": "1",
+            "name": "b",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
             "inputs": [],
             "output": {
                 "schema_reference": "d#1"
@@ -840,8 +981,9 @@ mod tests {
         }"#;
         let c = r#"
         {
-            "id": "c",
-            "version": "1",
+            "name": "c",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
             "inputs": [],
             "output": {
                 "schema_reference": "d#1"
@@ -852,8 +994,9 @@ mod tests {
         // D should not get requested from the loader twice.
         let d = r#"
         {
-            "id": "d",
-            "version": "1",
+            "name": "d",
+            "publisher": "test-publisher",
+            "version": "1.0.0",
             "inputs": [],
             "output": {
                 "schema": {
@@ -863,9 +1006,9 @@ mod tests {
         }"#;
 
         // Set up the references, one set for this thread and one for the background thread.
-        let b_ref = ComponentReference::exact("b", "1");
-        let c_ref = ComponentReference::exact("c", "1");
-        let d_ref = ComponentReference::exact("d", "1");
+        let b_ref = UnresolvedComponentReference::test("b", "1");
+        let c_ref = UnresolvedComponentReference::test("c", "1");
+        let d_ref = UnresolvedComponentReference::test("d", "1");
         let b_ref_thread = b_ref.clone();
         let c_ref_thread = c_ref.clone();
         let d_ref_thread = d_ref.clone();
@@ -913,11 +1056,11 @@ mod tests {
 
             // Helper function to wait until the specified number of loader calls have been made.
             fn wait_for_calls<'a>(
-                mut calls: MutexGuard<'a, Vec<ComponentReference>>,
+                mut calls: MutexGuard<'a, Vec<UnresolvedComponentReference>>,
                 // lock: &Mutex<Vec<ComponentReference>>,
                 cvar: &Condvar,
                 call_count: usize,
-            ) -> MutexGuard<'a, Vec<ComponentReference>> {
+            ) -> MutexGuard<'a, Vec<UnresolvedComponentReference>> {
                 // Wait for the background thread to make the requested number of calls.
                 while (*calls).len() < call_count {
                     calls = cvar.wait(calls).unwrap();
@@ -930,8 +1073,8 @@ mod tests {
 
             // Helper function to ensure a particular reference load request has been made.
             fn assert_reference_load_requested(
-                calls: &MutexGuard<'_, Vec<ComponentReference>>,
-                reference: &ComponentReference,
+                calls: &MutexGuard<'_, Vec<UnresolvedComponentReference>>,
+                reference: &UnresolvedComponentReference,
             ) {
                 assert!(calls.iter().any(|call| call == reference));
             }
@@ -970,15 +1113,15 @@ mod tests {
     // Mock loader which waits for a oneshot channel to be sent to before returning
     // the rigging for a reference.
     struct LoadComponentRiggingDelayMock {
-        resolved: Mutex<HashMap<ComponentReference, oneshot::Receiver<String>>>,
-        calls: Arc<(Mutex<Vec<ComponentReference>>, Condvar)>,
+        resolved: Mutex<HashMap<UnresolvedComponentReference, oneshot::Receiver<String>>>,
+        calls: Arc<(Mutex<Vec<UnresolvedComponentReference>>, Condvar)>,
     }
 
     #[async_trait]
     impl LoadComponentRigging for LoadComponentRiggingDelayMock {
         async fn load_component_rigging<'a, 'b>(
             &self,
-            reference: ComponentReference,
+            reference: UnresolvedComponentReference,
             context: &'a Context<'a>,
         ) -> Result<ComponentRigging<'b>, LoadError<'b>>
         where

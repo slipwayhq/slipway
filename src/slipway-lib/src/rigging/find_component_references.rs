@@ -1,6 +1,10 @@
-use crate::rigging::parse::types::{Component, ComponentInputSpecification, ComponentReference};
+use crate::rigging::parse::types::{
+    Component, ComponentInputSpecification, UnresolvedComponentReference,
+};
 
-pub(crate) fn find_component_references(component: &Component) -> Vec<ComponentReference> {
+pub(crate) fn find_component_references(
+    component: &Component,
+) -> Vec<UnresolvedComponentReference> {
     let mut references = Vec::new();
 
     for input in &component.inputs {
@@ -17,7 +21,7 @@ pub(crate) fn find_component_references(component: &Component) -> Vec<ComponentR
 }
 
 fn find_in_input_specification(
-    references: &mut Vec<ComponentReference>,
+    references: &mut Vec<UnresolvedComponentReference>,
     default_component: &ComponentInputSpecification,
 ) {
     add_if_not_exists(references, &default_component.reference);
@@ -31,7 +35,10 @@ fn find_in_input_specification(
     }
 }
 
-fn add_if_not_exists(references: &mut Vec<ComponentReference>, reference: &ComponentReference) {
+fn add_if_not_exists(
+    references: &mut Vec<UnresolvedComponentReference>,
+    reference: &UnresolvedComponentReference,
+) {
     if !references.contains(reference) {
         references.push(reference.clone());
     }
@@ -39,46 +46,52 @@ fn add_if_not_exists(references: &mut Vec<ComponentReference>, reference: &Compo
 
 #[cfg(test)]
 mod tests {
-    use std::cmp::Ordering;
+    use semver::Version;
 
-    use crate::rigging::parse::types::{ComponentInput, ComponentInputOverride, ComponentOutput};
+    use crate::rigging::parse::types::{
+        ComponentInput, ComponentInputOverride, ComponentOutput, TEST_PUBLISHER,
+    };
 
     use super::*;
 
     #[test]
     fn it_should_find_all_component_references() {
         let component = Component {
-            id: "component".to_string(),
+            publisher: TEST_PUBLISHER.to_string(),
+            name: "component".to_string(),
             description: None,
-            version: "1".to_string(),
+            version: Version::new(1, 0, 0),
             inputs: vec![
                 ComponentInput {
                     id: "input1".to_string(),
-                    name: None,
+                    display_name: None,
                     description: None,
                     schema: None,
                     default_component: Some(ComponentInputSpecification {
-                        reference: ComponentReference::exact("component1", "1.0"),
+                        reference: UnresolvedComponentReference::test("component1", "1.0"),
                         input_overrides: None,
                     }),
                     default_value: None,
                 },
                 ComponentInput {
                     id: "input2".to_string(),
-                    name: None,
+                    display_name: None,
                     description: None,
                     schema: None,
                     default_component: Some(ComponentInputSpecification {
-                        reference: ComponentReference::exact("component2", "1.0"),
+                        reference: UnresolvedComponentReference::test("component2", "1.0"),
                         input_overrides: Some(vec![
                             ComponentInputOverride {
                                 id: "input3".to_string(),
                                 component: Some(ComponentInputSpecification {
-                                    reference: ComponentReference::exact("component3", "1.0"),
+                                    reference: UnresolvedComponentReference::test(
+                                        "component3",
+                                        "1.0",
+                                    ),
                                     input_overrides: Some(vec![ComponentInputOverride {
                                         id: "input4".to_string(),
                                         component: Some(ComponentInputSpecification {
-                                            reference: ComponentReference::exact(
+                                            reference: UnresolvedComponentReference::test(
                                                 "component2",
                                                 "1.0",
                                             ),
@@ -92,7 +105,10 @@ mod tests {
                             ComponentInputOverride {
                                 id: "input5".to_string(),
                                 component: Some(ComponentInputSpecification {
-                                    reference: ComponentReference::exact("component2", "1.1"),
+                                    reference: UnresolvedComponentReference::test(
+                                        "component2",
+                                        "1.1",
+                                    ),
                                     input_overrides: None,
                                 }),
                                 value: None,
@@ -104,29 +120,22 @@ mod tests {
             ],
             output: ComponentOutput {
                 schema: None,
-                schema_reference: Some(ComponentReference::exact("component4", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::test("component4", "1.0")),
             },
         };
 
         let mut references = find_component_references(&component);
 
-        references.sort_by(|a, b| {
-            let id_cmp = a.id.cmp(&b.id);
-            if id_cmp == Ordering::Equal {
-                a.version.cmp(&b.version)
-            } else {
-                id_cmp
-            }
-        });
+        references.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
 
         assert_eq!(
             references,
             vec![
-                ComponentReference::exact("component1", "1.0"),
-                ComponentReference::exact("component2", "1.0"),
-                ComponentReference::exact("component2", "1.1"),
-                ComponentReference::exact("component3", "1.0"),
-                ComponentReference::exact("component4", "1.0"),
+                UnresolvedComponentReference::test("component1", "1.0"),
+                UnresolvedComponentReference::test("component2", "1.0"),
+                UnresolvedComponentReference::test("component2", "1.1"),
+                UnresolvedComponentReference::test("component3", "1.0"),
+                UnresolvedComponentReference::test("component4", "1.0"),
             ]
         );
     }
