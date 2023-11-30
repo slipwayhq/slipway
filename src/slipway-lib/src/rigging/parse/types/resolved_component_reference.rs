@@ -102,16 +102,17 @@ impl Serialize for ResolvedComponentReference {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::quote;
 
     #[test]
-    fn it_should_deserialize_component_reference_from_string() {
-        let json = r#""test-publisher.test-name#1.2.3""#;
+    fn it_should_serialize_and_deserialize_component_reference() {
+        let s = r"test-publisher.test-name#1.2.3";
+        let json = quote(s);
 
-        let reference: ResolvedComponentReference = serde_json::from_str(json).unwrap();
+        let reference: ResolvedComponentReference = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(reference.publisher, "test-publisher");
-        assert_eq!(reference.name, "test-name");
-        assert_eq!(reference.version, Version::new(1, 2, 3));
+        let json_out = serde_json::to_string(&reference).unwrap();
+        assert_eq!(json, json_out);
     }
 
     #[test]

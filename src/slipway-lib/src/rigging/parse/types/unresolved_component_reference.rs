@@ -212,212 +212,279 @@ impl Serialize for UnresolvedComponentReference {
 }
 
 #[cfg(test)]
-mod root_tests {
+mod tests {
     use super::*;
+    use crate::test_utils::quote;
 
-    #[test]
-    fn it_should_parse_root() {
-        let s = r".root";
+    mod root_tests {
 
-        let reference = UnresolvedComponentReference::from_str(s).unwrap();
+        use super::*;
 
-        let UnresolvedComponentReference::Root = reference else {
-            panic!("Unexpected unresolved reference: {reference:?}");
-        };
-    }
-}
+        #[test]
+        fn it_should_serialize_and_deserialize_root() {
+            let s = r".root";
+            let json = quote(s);
 
-#[cfg(test)]
-mod registry_tests {
-    use super::*;
+            let reference: UnresolvedComponentReference = serde_json::from_str(&json).unwrap();
 
-    #[test]
-    fn it_should_deserialize_unresolved_component_reference_from_string() {
-        let json = r#""test-publisher.test-name#1.2.3""#;
+            let json_out = serde_json::to_string(&reference).unwrap();
+            assert_eq!(json, json_out);
+        }
 
-        let reference: UnresolvedComponentReference = serde_json::from_str(json).unwrap();
+        #[test]
+        fn it_should_parse_root() {
+            let s = r".root";
 
-        let UnresolvedComponentReference::Registry { publisher, name, version } = reference else {
-            panic!("Unexpected unresolved reference: {reference:?}");
-        };
+            let reference = UnresolvedComponentReference::from_str(s).unwrap();
 
-        assert_eq!(publisher, "test-publisher");
-        assert_eq!(name, "test-name");
-        assert_eq!(version, VersionReq::parse("1.2.3").unwrap());
+            let UnresolvedComponentReference::Root = reference else {
+                panic!("Unexpected unresolved reference: {reference:?}");
+            };
+        }
     }
 
-    #[test]
-    fn it_should_parse_unresolved_component_reference_from_string() {
-        let s = r"test-publisher.test-name#1.2.3";
+    mod registry_tests {
+        use super::*;
 
-        let reference = UnresolvedComponentReference::from_str(s).unwrap();
+        #[test]
+        fn it_should_serialize_and_deserialize_registry() {
+            let s = r"test-publisher.test-name#^1.2.3";
+            let json = quote(s);
 
-        let UnresolvedComponentReference::Registry { publisher, name, version } = reference else {
-            panic!("Unexpected unresolved reference: {reference:?}");
-        };
+            let reference: UnresolvedComponentReference = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(publisher, "test-publisher");
-        assert_eq!(name, "test-name");
-        assert_eq!(version, VersionReq::parse("1.2.3").unwrap());
+            let json_out = serde_json::to_string(&reference).unwrap();
+            assert_eq!(json, json_out);
+        }
+
+        #[test]
+        fn it_should_parse_registry_from_string() {
+            let s = r"test-publisher.test-name#~1.2";
+
+            let reference = UnresolvedComponentReference::from_str(s).unwrap();
+
+            let UnresolvedComponentReference::Registry {
+                publisher,
+                name,
+                version,
+            } = reference
+            else {
+                panic!("Unexpected unresolved reference: {reference:?}");
+            };
+
+            assert_eq!(publisher, "test-publisher");
+            assert_eq!(name, "test-name");
+            assert_eq!(version, VersionReq::parse("~1.2").unwrap());
+        }
+
+        #[test]
+        fn it_should_parse_registry_from_string_with_short_version() {
+            let s = r"test-publisher.test-name#1";
+
+            let reference = UnresolvedComponentReference::from_str(s).unwrap();
+
+            let UnresolvedComponentReference::Registry {
+                publisher,
+                name,
+                version,
+            } = reference
+            else {
+                panic!("Unexpected unresolved reference: {reference:?}");
+            };
+
+            assert_eq!(publisher, "test-publisher");
+            assert_eq!(name, "test-name");
+            assert_eq!(version, VersionReq::parse("1").unwrap());
+        }
+
+        #[test]
+        fn it_should_fail_to_parse_registry_from_string_if_no_version() {
+            let s = "test-publisher.test-name";
+
+            let reference_result = UnresolvedComponentReference::from_str(s);
+
+            assert!(reference_result.is_err());
+        }
+
+        #[test]
+        fn it_should_fail_to_parse_registry_from_string_if_empty_version() {
+            let s = "test-publisher.test-name#";
+
+            let reference_result = UnresolvedComponentReference::from_str(s);
+
+            assert!(reference_result.is_err());
+        }
+
+        #[test]
+        fn it_should_fail_to_parse_registry_from_string_if_no_publisher() {
+            let s = "test-name#1.2.3";
+
+            let reference_result = UnresolvedComponentReference::from_str(s);
+
+            assert!(reference_result.is_err());
+        }
+
+        #[test]
+        fn it_should_fail_to_parse_registry_from_string_if_empty_publisher() {
+            let s = ".test-name#1.2.3";
+
+            let reference_result = UnresolvedComponentReference::from_str(s);
+
+            assert!(reference_result.is_err());
+        }
     }
 
-    #[test]
-    fn it_should_parse_unresolved_component_reference_from_string_with_short_version() {
-        let s = r"test-publisher.test-name#1";
+    mod github_tests {
+        use super::*;
 
-        let reference = UnresolvedComponentReference::from_str(s).unwrap();
+        #[test]
+        fn it_should_serialize_and_deserialize_github() {
+            let s = r"test-user/test-repository#semver:^1.2.3";
+            let json = quote(s);
 
-        let UnresolvedComponentReference::Registry { publisher, name, version } = reference else {
-            panic!("Unexpected unresolved reference: {reference:?}");
-        };
+            let reference: UnresolvedComponentReference = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(publisher, "test-publisher");
-        assert_eq!(name, "test-name");
-        assert_eq!(version, VersionReq::parse("1").unwrap());
+            let json_out = serde_json::to_string(&reference).unwrap();
+            assert_eq!(json, json_out);
+        }
+
+        #[test]
+        fn it_should_parse_github_from_string() {
+            let s = r"test-user/test-repository#semver:~1.2";
+
+            let reference = UnresolvedComponentReference::from_str(s).unwrap();
+
+            let UnresolvedComponentReference::GitHub {
+                user,
+                repository,
+                version,
+            } = reference
+            else {
+                panic!("Unexpected unresolved reference: {reference:?}");
+            };
+
+            assert_eq!(user, "test-user");
+            assert_eq!(repository, "test-repository");
+            assert_eq!(
+                version,
+                GitHubVersion::Version(VersionReq::parse("~1.2").unwrap())
+            );
+        }
+
+        #[test]
+        fn it_should_parse_github_from_string_with_short_version() {
+            let s = r"test-user/test-repository#semver:1";
+
+            let reference = UnresolvedComponentReference::from_str(s).unwrap();
+
+            let UnresolvedComponentReference::GitHub {
+                user,
+                repository,
+                version,
+            } = reference
+            else {
+                panic!("Unexpected unresolved reference: {reference:?}");
+            };
+
+            assert_eq!(user, "test-user");
+            assert_eq!(repository, "test-repository");
+            assert_eq!(
+                version,
+                GitHubVersion::Version(VersionReq::parse("1").unwrap())
+            );
+        }
+        #[test]
+        fn it_should_parse_github_with_commitish_from_string() {
+            let s = r"test-user/test-repository#blah";
+
+            let reference = UnresolvedComponentReference::from_str(s).unwrap();
+
+            let UnresolvedComponentReference::GitHub {
+                user,
+                repository,
+                version,
+            } = reference
+            else {
+                panic!("Unexpected unresolved reference: {reference:?}");
+            };
+
+            assert_eq!(user, "test-user");
+            assert_eq!(repository, "test-repository");
+            assert_eq!(version, GitHubVersion::Commitish("blah".to_string()));
+        }
+
+        #[test]
+        fn it_should_fail_to_parse_github_from_string_if_no_version() {
+            let s = "test-user/test-repository";
+
+            let reference_result = UnresolvedComponentReference::from_str(s);
+
+            assert!(reference_result.is_err());
+        }
+
+        #[test]
+        fn it_should_fail_to_parse_github_from_string_if_empty_version() {
+            let s = "test-user/test-repository#";
+
+            let reference_result = UnresolvedComponentReference::from_str(s);
+
+            assert!(reference_result.is_err());
+        }
     }
 
-    #[test]
-    fn it_should_fail_to_parse_unresolved_component_reference_from_string_if_no_version() {
-        let s = "test-publisher.test-name";
+    mod local_tests {
+        use super::*;
 
-        let reference_result = UnresolvedComponentReference::from_str(s);
+        #[test]
+        fn it_should_serialize_and_deserialize_local_files() {
+            let uri = r"file:///usr/local/rigging.json";
+            let json = quote(uri);
 
-        assert!(reference_result.is_err());
+            let reference: UnresolvedComponentReference = serde_json::from_str(&json).unwrap();
+
+            let json_out = serde_json::to_string(&reference).unwrap();
+            assert_eq!(json, json_out);
+        }
+
+        #[test]
+        fn it_should_parse_local_files() {
+            let uri = r"file:///usr/local/rigging.json";
+
+            let reference = UnresolvedComponentReference::from_str(uri).unwrap();
+
+            let UnresolvedComponentReference::Local { path } = reference else {
+                panic!("Unexpected unresolved reference: {reference:?}");
+            };
+
+            assert_eq!(path, PathBuf::from_str("/usr/local/rigging.json").unwrap());
+        }
     }
 
-    #[test]
-    fn it_should_fail_to_parse_unresolved_component_reference_from_string_if_empty_version() {
-        let s = "test-publisher.test-name#";
+    mod url_tests {
+        use super::*;
 
-        let reference_result = UnresolvedComponentReference::from_str(s);
+        #[test]
+        fn it_should_serialize_and_deserialize_urls() {
+            let uri = r"https://asdf.com/asdf.tar.gz";
+            let json = quote(uri);
 
-        assert!(reference_result.is_err());
-    }
+            let reference: UnresolvedComponentReference = serde_json::from_str(&json).unwrap();
 
-    #[test]
-    fn it_should_fail_to_parse_unresolved_component_reference_from_string_if_no_publisher() {
-        let s = "test-name#1.2.3";
+            let json_out = serde_json::to_string(&reference).unwrap();
+            assert_eq!(json, json_out);
+        }
 
-        let reference_result = UnresolvedComponentReference::from_str(s);
+        #[test]
+        fn it_should_parse_urls() {
+            let uri = r"https://asdf.com/asdf.tar.gz";
 
-        assert!(reference_result.is_err());
-    }
+            let reference = UnresolvedComponentReference::from_str(uri).unwrap();
 
-    #[test]
-    fn it_should_fail_to_parse_unresolved_component_reference_from_string_if_empty_publisher() {
-        let s = ".test-name#1.2.3";
+            let UnresolvedComponentReference::Url { url } = reference else {
+                panic!("Unexpected unresolved reference: {reference:?}");
+            };
 
-        let reference_result = UnresolvedComponentReference::from_str(s);
-
-        assert!(reference_result.is_err());
-    }
-}
-
-#[cfg(test)]
-mod github_tests {
-    use super::*;
-
-    #[test]
-    fn it_should_parse_unresolved_component_reference_from_string() {
-        let s = r"test-user/test-repository#semver:1.2.3";
-
-        let reference = UnresolvedComponentReference::from_str(s).unwrap();
-
-        let UnresolvedComponentReference::GitHub { user, repository, version } = reference else {
-            panic!("Unexpected unresolved reference: {reference:?}");
-        };
-
-        assert_eq!(user, "test-user");
-        assert_eq!(repository, "test-repository");
-        assert_eq!(
-            version,
-            GitHubVersion::Version(VersionReq::parse("1.2.3").unwrap())
-        );
-    }
-
-    #[test]
-    fn it_should_parse_unresolved_component_reference_from_string_with_short_version() {
-        let s = r"test-user/test-repository#semver:1";
-
-        let reference = UnresolvedComponentReference::from_str(s).unwrap();
-
-        let UnresolvedComponentReference::GitHub { user, repository, version } = reference else {
-            panic!("Unexpected unresolved reference: {reference:?}");
-        };
-
-        assert_eq!(user, "test-user");
-        assert_eq!(repository, "test-repository");
-        assert_eq!(
-            version,
-            GitHubVersion::Version(VersionReq::parse("1").unwrap())
-        );
-    }
-    #[test]
-    fn it_should_parse_unresolved_component_reference_with_commitish_from_string() {
-        let s = r"test-user/test-repository#blah";
-
-        let reference = UnresolvedComponentReference::from_str(s).unwrap();
-
-        let UnresolvedComponentReference::GitHub { user, repository, version } = reference else {
-            panic!("Unexpected unresolved reference: {reference:?}");
-        };
-
-        assert_eq!(user, "test-user");
-        assert_eq!(repository, "test-repository");
-        assert_eq!(version, GitHubVersion::Commitish("blah".to_string()));
-    }
-
-    #[test]
-    fn it_should_fail_to_parse_unresolved_component_reference_from_string_if_no_version() {
-        let s = "test-user/test-repository";
-
-        let reference_result = UnresolvedComponentReference::from_str(s);
-
-        assert!(reference_result.is_err());
-    }
-
-    #[test]
-    fn it_should_fail_to_parse_unresolved_component_reference_from_string_if_empty_version() {
-        let s = "test-user/test-repository#";
-
-        let reference_result = UnresolvedComponentReference::from_str(s);
-
-        assert!(reference_result.is_err());
-    }
-}
-
-#[cfg(test)]
-mod local_tests {
-    use super::*;
-
-    #[test]
-    fn it_should_parse_local_files() {
-        let uri = r"file:///usr/local/rigging.json";
-
-        let reference = UnresolvedComponentReference::from_str(uri).unwrap();
-
-        let UnresolvedComponentReference::Local { path } = reference else {
-            panic!("Unexpected unresolved reference: {reference:?}");
-        };
-
-        assert_eq!(path, PathBuf::from_str("/usr/local/rigging.json").unwrap());
-    }
-}
-
-#[cfg(test)]
-mod url_tests {
-    use super::*;
-
-    #[test]
-    fn it_should_parse_urls() {
-        let uri = r"https://asdf.com/asdf.tar.gz";
-
-        let reference = UnresolvedComponentReference::from_str(uri).unwrap();
-
-        let UnresolvedComponentReference::Url { url } = reference else {
-            panic!("Unexpected unresolved reference: {reference:?}");
-        };
-
-        assert_eq!(url, Url::parse(uri).unwrap());
+            assert_eq!(url, Url::parse(uri).unwrap());
+        }
     }
 }

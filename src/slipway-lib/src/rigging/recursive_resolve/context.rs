@@ -6,8 +6,8 @@ use crate::rigging::parse::types::{ResolvedComponentReference, UnresolvedCompone
 pub(crate) struct Context<'a> {
     pub reference: UnresolvedComponentReference,
 
-    // We're using OnceLock rather than OnceCell so that the BuildContext is Send
-    // so we can use it in a future.
+    // We're using OnceLock rather than OnceCell so that the context is Send
+    // and we can use it in a future.
     pub resolved_reference: OnceLock<ResolvedComponentReference>,
 
     pub previous_context: Option<&'a Context<'a>>,
