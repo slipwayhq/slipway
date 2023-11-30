@@ -18,5 +18,8 @@
         "titleBar.inactiveBackground": "#1e2d3299",
         "titleBar.inactiveForeground": "#e7e7e799"
     },
-    "peacock.remoteColor": "#1e2d32"
+    "peacock.remoteColor": "#1e2d32",
+    "search.exclude": {
+        "**/.git": true
+    },
 }
