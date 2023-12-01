@@ -286,13 +286,16 @@ mod tests {
             version: Version::new(1, 0, 0),
             inputs: vec![],
             output: ComponentOutput {
-                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::for_test(
+                    "output_schema",
+                    "1.0",
+                )),
                 schema: None,
             },
         };
 
         let validate_result = validate_component(
-            &UnresolvedComponentReference::test("test", "1.1"),
+            &UnresolvedComponentReference::for_test("test", "1.1"),
             &component,
         );
         let failures = validate_result.failures;
@@ -309,13 +312,16 @@ mod tests {
             version: Version::new(1, 0, 0),
             inputs: vec![],
             output: ComponentOutput {
-                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::for_test(
+                    "output_schema",
+                    "1.0",
+                )),
                 schema: None,
             },
         };
 
         let validate_result = validate_component(
-            &UnresolvedComponentReference::test("test2", "1.1"),
+            &UnresolvedComponentReference::for_test("test2", "1.1"),
             &component,
         );
         let failures = validate_result.failures;
@@ -337,13 +343,16 @@ mod tests {
             version: Version::new(1, 0, 0),
             inputs: vec![],
             output: ComponentOutput {
-                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::for_test(
+                    "output_schema",
+                    "1.0",
+                )),
                 schema: None,
             },
         };
 
         let validate_result = validate_component(
-            &UnresolvedComponentReference::test("test", "1.1"),
+            &UnresolvedComponentReference::for_test("test", "1.1"),
             &component,
         );
         let failures = validate_result.failures;
@@ -365,7 +374,10 @@ mod tests {
             version: Version::new(1, 0, 0),
             inputs: vec![],
             output: ComponentOutput {
-                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::for_test(
+                    "output_schema",
+                    "1.0",
+                )),
                 schema: None,
             },
         };
@@ -402,7 +414,10 @@ mod tests {
                 },
             ],
             output: ComponentOutput {
-                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::for_test(
+                    "output_schema",
+                    "1.0",
+                )),
                 schema: None,
             },
         };
@@ -444,7 +459,10 @@ mod tests {
                 },
             ],
             output: ComponentOutput {
-                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::for_test(
+                    "output_schema",
+                    "1.0",
+                )),
                 schema: None,
             },
         };
@@ -473,13 +491,16 @@ mod tests {
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: UnresolvedComponentReference::test("default_component", "1.0"),
+                    reference: UnresolvedComponentReference::for_test("default_component", "1.0"),
                     input_overrides: None,
                 }),
                 default_value: Some(json!(3)),
             }],
             output: ComponentOutput {
-                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::for_test(
+                    "output_schema",
+                    "1.0",
+                )),
                 schema: None,
             },
         };
@@ -546,7 +567,10 @@ mod tests {
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::for_test(
+                    "output_schema",
+                    "1.0",
+                )),
                 schema: None,
             },
         };
@@ -578,7 +602,7 @@ mod tests {
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: UnresolvedComponentReference::test("default_component", "1.0"),
+                    reference: UnresolvedComponentReference::for_test("default_component", "1.0"),
                     input_overrides: Some(vec![ComponentInputOverride {
                         id: "sub-input-one".to_string(),
                         component: Some(ComponentInputSpecification {
@@ -591,7 +615,10 @@ mod tests {
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::for_test(
+                    "output_schema",
+                    "1.0",
+                )),
                 schema: None,
             },
         };
@@ -623,7 +650,7 @@ mod tests {
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: UnresolvedComponentReference::test("default_component", "1.0"),
+                    reference: UnresolvedComponentReference::for_test("default_component", "1.0"),
                     input_overrides: Some(vec![
                         ComponentInputOverride {
                             id: "sub-input-one".to_string(),
@@ -640,7 +667,10 @@ mod tests {
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::for_test(
+                    "output_schema",
+                    "1.0",
+                )),
                 schema: None,
             },
         };
@@ -669,11 +699,11 @@ mod tests {
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: UnresolvedComponentReference::test("default_component", "1.0"),
+                    reference: UnresolvedComponentReference::for_test("default_component", "1.0"),
                     input_overrides: Some(vec![ComponentInputOverride {
                         id: "sub-input-one".to_string(),
                         component: Some(ComponentInputSpecification {
-                            reference: UnresolvedComponentReference::test(
+                            reference: UnresolvedComponentReference::for_test(
                                 "default_component_2",
                                 "1.0",
                             ),
@@ -696,7 +726,10 @@ mod tests {
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::for_test(
+                    "output_schema",
+                    "1.0",
+                )),
                 schema: None,
             },
         };
@@ -725,11 +758,11 @@ mod tests {
                 description: Some("Input 1 description".to_string()),
                 schema: None,
                 default_component: Some(ComponentInputSpecification {
-                    reference: UnresolvedComponentReference::test("default_component", "1.0"),
+                    reference: UnresolvedComponentReference::for_test("default_component", "1.0"),
                     input_overrides: Some(vec![ComponentInputOverride {
                         id: "sub-input-one".to_string(),
                         component: Some(ComponentInputSpecification {
-                            reference: UnresolvedComponentReference::test(
+                            reference: UnresolvedComponentReference::for_test(
                                 "default_component_2",
                                 "1.0",
                             ),
@@ -741,7 +774,10 @@ mod tests {
                 default_value: None,
             }],
             output: ComponentOutput {
-                schema_reference: Some(UnresolvedComponentReference::test("output_schema", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::for_test(
+                    "output_schema",
+                    "1.0",
+                )),
                 schema: None,
             },
         };

@@ -89,9 +89,10 @@ impl FromStr for UnresolvedComponentReference {
             };
         }
 
-        Err(SlipwayError::InvalidComponentReference(
-            "component reference was not in a valid format".to_string(),
-        ))
+        Err(SlipwayError::InvalidComponentReference(format!(
+            "component reference '{}' was not in a valid format",
+            s
+        )))
     }
 }
 
@@ -130,7 +131,7 @@ impl UnresolvedComponentReference {
     }
 
     #[cfg(test)]
-    pub fn test(id: &str, version: &str) -> Self {
+    pub fn for_test(id: &str, version: &str) -> Self {
         use super::TEST_PUBLISHER;
 
         UnresolvedComponentReference::Registry {

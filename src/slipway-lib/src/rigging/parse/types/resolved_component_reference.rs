@@ -30,7 +30,7 @@ impl ResolvedComponentReference {
     }
 
     #[cfg(test)]
-    pub fn test(name: &str, version: Version) -> Self {
+    pub fn for_test(name: &str, version: Version) -> Self {
         use super::TEST_PUBLISHER;
 
         ResolvedComponentReference {
@@ -55,9 +55,10 @@ impl FromStr for ResolvedComponentReference {
             });
         }
 
-        Err(SlipwayError::InvalidComponentReference(
-            "resolved component reference was not in a valid format".to_string(),
-        ))
+        Err(SlipwayError::InvalidComponentReference(format!(
+            "resolved component reference '{}' was not in a valid format",
+            s
+        )))
     }
 }
 

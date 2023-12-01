@@ -1,10 +1,9 @@
-mod component_reference;
 mod resolved_component_reference;
 mod unresolved_component_reference;
 
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 
 #[cfg(test)]
 pub(crate) const TEST_PUBLISHER: &str = "test-publisher";
@@ -68,4 +67,99 @@ pub struct ComponentInputOverride {
     pub id: String,
     pub component: Option<ComponentInputSpecification>, // Override the component defaults.
     pub value: Option<Value>,                           // Set an explicit value for this input.
+}
+
+#[cfg(test)]
+impl Component {
+    pub fn for_test(
+        name: &str,
+        version: Version,
+        inputs: Vec<ComponentInput>,
+        output: ComponentOutput,
+    ) -> Self {
+        Self {
+            name: name.to_string(),
+            publisher: TEST_PUBLISHER.to_string(),
+            description: None,
+            version,
+            inputs,
+            output,
+        }
+    }
+}
+
+#[cfg(test)]
+impl ComponentInput {
+    pub fn for_test(
+        id: &str,
+        default_component: Option<ComponentInputSpecification>,
+        default_value: Option<Value>,
+    ) -> Self {
+        Self {
+            id: id.to_string(),
+            display_name: None,
+            description: None,
+            schema: None,
+            default_component,
+            default_value,
+        }
+    }
+    pub fn for_test_with_display_name(id: &str, display_name: &str) -> Self {
+        Self {
+            id: id.to_string(),
+            display_name: Some(display_name.to_string()),
+            description: None,
+            schema: None,
+            default_component: None,
+            default_value: Some(json!(1)),
+        }
+    }
+}
+
+#[cfg(test)]
+impl ComponentOutput {
+    pub fn for_test(
+        schema: Option<Value>,
+        schema_reference: Option<UnresolvedComponentReference>,
+    ) -> Self {
+        Self {
+            schema,
+            schema_reference,
+        }
+    }
+
+    pub fn for_test_with_schema() -> Self {
+        Self {
+            schema: Some(json!({
+                "schema": {
+                    "type": "string"
+                }
+            })),
+            schema_reference: None,
+        }
+    }
+}
+
+#[cfg(test)]
+impl ComponentInputSpecification {
+    pub fn for_test(
+        reference: UnresolvedComponentReference,
+        input_overrides: Option<Vec<ComponentInputOverride>>,
+    ) -> Self {
+        Self {
+            reference,
+            input_overrides,
+        }
+    }
+}
+
+#[cfg(test)]
+impl ComponentInputOverride {
+    pub fn for_test_with_component(id: &str, component: ComponentInputSpecification) -> Self {
+        Self {
+            id: id.to_string(),
+            component: Some(component),
+            value: None,
+        }
+    }
 }

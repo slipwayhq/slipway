@@ -305,13 +305,22 @@ enum ResolveComponentFailure {
 #[cfg(test)]
 mod tests {
     use std::{
-        sync::{Arc, Condvar, Mutex, MutexGuard},
+        sync::{
+            atomic::{AtomicBool, Ordering},
+            Arc, Condvar, Mutex, MutexGuard,
+        },
         thread::spawn,
+        time::Duration,
     };
 
     use async_trait::async_trait;
     use semver::Version;
+    use serde_json::json;
     use url::Url;
+
+    use crate::rigging::parse::types::{
+        ComponentInput, ComponentInputOverride, ComponentInputSpecification, ComponentOutput,
+    };
 
     use super::*;
 
@@ -324,107 +333,86 @@ mod tests {
 
     #[test]
     fn it_should_resolve_all_references() {
-        let root_component = r#"
-        {
-            "name": "test",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [
-                {
-                    "id": "input1",
-                    "default_component": {
-                        "reference": "test-publisher.test2#1"
-                    }
-                }
-            ],
-            "output": {
-                "schema": {
-                    "type": "string"
-                }
-            }
-        }"#;
+        let root_component = serde_json::to_string(&Component::for_test(
+            "test",
+            Version::new(1, 0, 0),
+            vec![ComponentInput::for_test(
+                "input1",
+                Some(ComponentInputSpecification::for_test(
+                    UnresolvedComponentReference::for_test("test2", "1"),
+                    None,
+                )),
+                None,
+            )],
+            ComponentOutput::for_test_with_schema(),
+        ))
+        .unwrap();
 
-        let test2_v1_component = r#"
-        {
-            "name": "test2",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [
-                {
-                    "id": "input1",
-                    "default_component": {
-                        "reference": "test-publisher.test3#1",
-                        "input_overrides": [
-                            {
-                                "id": "input1",
-                                "component": {
-                                    "reference": "test-publisher.test4#1"
-                                }
-                            }
-                        ]
-                    }
-                }
-            ],
-            "output": {
-                "schema_reference": "test-publisher.test3#2"
-            }
-        }"#;
+        let test2_v1_component = serde_json::to_string(&Component::for_test(
+            "test2",
+            Version::new(1, 0, 0),
+            vec![ComponentInput::for_test(
+                "input1",
+                Some(ComponentInputSpecification::for_test(
+                    UnresolvedComponentReference::for_test("test3", "1"),
+                    Some(vec![ComponentInputOverride::for_test_with_component(
+                        "input1",
+                        ComponentInputSpecification::for_test(
+                            UnresolvedComponentReference::for_test("test4", "1"),
+                            None,
+                        ),
+                    )]),
+                )),
+                None,
+            )],
+            ComponentOutput::for_test(
+                None,
+                Some(UnresolvedComponentReference::for_test("test3", "2")),
+            ),
+        ))
+        .unwrap();
 
-        let test3_v1_component = r#"
-        {
-            "name": "test3",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [],
-            "output": {
-                "schema": {
-                    "type": "string"
-                }
-            }
-        }"#;
+        let test3_v1_component = serde_json::to_string(&Component::for_test(
+            "test3",
+            Version::new(1, 0, 0),
+            vec![],
+            ComponentOutput::for_test_with_schema(),
+        ))
+        .unwrap();
 
-        let test3_v2_component = r#"
-        {
-            "name": "test3",
-            "publisher": "test-publisher",
-            "version": "2.0.0",
-            "inputs": [],
-            "output": {
-                "schema": {
-                    "type": "string"
-                }
-            }
-        }"#;
+        let test3_v2_component = serde_json::to_string(&Component::for_test(
+            "test3",
+            Version::new(2, 0, 0),
+            vec![],
+            ComponentOutput::for_test_with_schema(),
+        ))
+        .unwrap();
 
-        let test4_v1_component = r#"
-        {
-            "name": "test4",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [],
-            "output": {
-                "schema": {
-                    "type": "string"
-                }
-            }
-        }"#;
+        // This contains a reference back to a different version of test2.
+        let test4_v1_component = serde_json::to_string(&Component::for_test(
+            "test4",
+            Version::new(1, 0, 0),
+            vec![],
+            ComponentOutput::for_test_with_schema(),
+        ))
+        .unwrap();
 
         let loader = LoadComponentRiggingMock {
             resolved: vec![
                 (
-                    UnresolvedComponentReference::test("test2", "1"),
+                    UnresolvedComponentReference::for_test("test2", "1"),
                     test2_v1_component.to_string(),
                 ),
                 (
-                    UnresolvedComponentReference::test("test3", "1"),
+                    UnresolvedComponentReference::for_test("test3", "1"),
                     test3_v1_component.to_string(),
                 ),
                 (
-                    UnresolvedComponentReference::test("test3", "2"),
+                    UnresolvedComponentReference::for_test("test3", "2"),
                     test3_v2_component.to_string(),
                 ),
                 (
-                    UnresolvedComponentReference::test("test4", "1"),
+                    UnresolvedComponentReference::for_test("test4", "1"),
                     test4_v1_component.to_string(),
                 ),
             ]
@@ -446,44 +434,32 @@ mod tests {
     ) {
         // This contains a duplicate name (warning) and
         // a duplicate id (error).
-        let test1_component = r#"
-        {
-            "name": "test1",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [
-                {
-                    "id": "input1",
-                    "display_name": "Input One",
-                    "default_value": 1
-                },
-                {
-                    "id": "input2",
-                    "display_name": "Input One",
-                    "default_value": 2
-                },
-                {
-                    "id": "input2",
-                    "default_value": 3
-                }
+        let test1_component = serde_json::to_string(&Component::for_test(
+            "test1",
+            Version::new(1, 0, 0),
+            vec![
+                ComponentInput::for_test_with_display_name("input1", "Input One"),
+                ComponentInput::for_test_with_display_name("input2", "Input One"),
+                ComponentInput::for_test_with_display_name("input2", "Input Two"),
             ],
-            "output": {
-                "schema_reference": "test-publisher.foo#1.0"
-            }
-        }"#;
+            ComponentOutput::for_test(
+                None,
+                Some(UnresolvedComponentReference::for_test("foo", "1")),
+            ),
+        ))
+        .unwrap();
 
         // This just references test1.
-        let test2_component = r#"
-        {
-            "name": "test2",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [
-            ],
-            "output": {
-                "schema_reference": "test-publisher.test1#1"
-            }
-        }"#;
+        let test2_component = serde_json::to_string(&Component::for_test(
+            "test2",
+            Version::new(1, 0, 0),
+            vec![],
+            ComponentOutput::for_test(
+                None,
+                Some(UnresolvedComponentReference::for_test("test1", "1")),
+            ),
+        ))
+        .unwrap();
 
         let test1_loader = LoadComponentRiggingMock {
             resolved: HashMap::new(),
@@ -491,7 +467,7 @@ mod tests {
 
         let test2_loader = LoadComponentRiggingMock {
             resolved: vec![(
-                UnresolvedComponentReference::test("test1", "1"),
+                UnresolvedComponentReference::for_test("test1", "1"),
                 test1_component.to_string(),
             )]
             .into_iter()
@@ -559,7 +535,7 @@ mod tests {
             } => {
                 assert_eq!(
                     context[0].reference,
-                    UnresolvedComponentReference::test("test1", "1"),
+                    UnresolvedComponentReference::for_test("test1", "1"),
                 );
 
                 assert_eq!(validation_errors.len(), 1);
@@ -587,29 +563,16 @@ mod tests {
     #[test]
     fn it_should_return_warnings_for_root_component_on_success() {
         // This contains a duplicate name (warning), but is otherwise valid.
-        let test_component = r#"
-        {
-            "name": "test1",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [
-                {
-                    "id": "input1",
-                    "display_name": "Input One",
-                    "default_value": 1
-                },
-                {
-                    "id": "input2",
-                    "display_name": "Input One",
-                    "default_value": 2
-                }
+        let test_component = serde_json::to_string(&Component::for_test(
+            "test1",
+            Version::new(1, 0, 0),
+            vec![
+                ComponentInput::for_test_with_display_name("input1", "Input One"),
+                ComponentInput::for_test_with_display_name("input2", "Input One"),
             ],
-            "output": {
-                "schema": {
-                    "type": "string"
-                }
-            }
-        }"#;
+            ComponentOutput::for_test_with_schema(),
+        ))
+        .unwrap();
 
         let loader = LoadComponentRiggingMock {
             resolved: HashMap::new(),
@@ -631,106 +594,89 @@ mod tests {
         // The circular reference here is going to be:
         // test#1 -> test2#1 -> test4#1 -> test2#5
 
-        let root_component = r#"
-        {
-            "name": "test",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [
-                {
-                    "id": "input1",
-                    "default_component": {
-                        "reference": "test-publisher.test2#1"
-                    }
-                }
-            ],
-            "output": {
-                "schema": {
-                    "type": "string"
-                }
-            }
-        }"#;
+        let root_component = serde_json::to_string(&Component::for_test(
+            "test",
+            Version::new(1, 0, 0),
+            vec![ComponentInput::for_test(
+                "input1",
+                Some(ComponentInputSpecification::for_test(
+                    UnresolvedComponentReference::for_test("test2", "1"),
+                    None,
+                )),
+                None,
+            )],
+            ComponentOutput::for_test_with_schema(),
+        ))
+        .unwrap();
 
-        let test2_v1_component = r#"
-        {
-            "name": "test2",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [
-                {
-                    "id": "input1",
-                    "default_component": {
-                        "reference": "test-publisher.test3#1",
-                        "input_overrides": [
-                            {
-                                "id": "input1",
-                                "component": {
-                                    "reference": "test-publisher.test4#1"
-                                }
-                            }
-                        ]
-                    }
-                }
-            ],
-            "output": {
-                "schema_reference": "test-publisher.test3#2"
-            }
-        }"#;
+        let test2_v1_component = serde_json::to_string(&Component::for_test(
+            "test2",
+            Version::new(1, 0, 0),
+            vec![ComponentInput::for_test(
+                "input1",
+                Some(ComponentInputSpecification::for_test(
+                    UnresolvedComponentReference::for_test("test3", "1"),
+                    Some(vec![ComponentInputOverride::for_test_with_component(
+                        "input1",
+                        ComponentInputSpecification::for_test(
+                            UnresolvedComponentReference::for_test("test4", "1"),
+                            None,
+                        ),
+                    )]),
+                )),
+                None,
+            )],
+            ComponentOutput::for_test(
+                None,
+                Some(UnresolvedComponentReference::for_test("test3", "2")),
+            ),
+        ))
+        .unwrap();
 
-        let test3_v1_component = r#"
-        {
-            "name": "test3",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [],
-            "output": {
-                "schema": {
-                    "type": "string"
-                }
-            }
-        }"#;
+        let test3_v1_component = serde_json::to_string(&Component::for_test(
+            "test3",
+            Version::new(1, 0, 0),
+            vec![],
+            ComponentOutput::for_test_with_schema(),
+        ))
+        .unwrap();
 
-        let test3_v2_component = r#"
-        {
-            "name": "test3",
-            "publisher": "test-publisher",
-            "version": "2.0.0",
-            "inputs": [],
-            "output": {
-                "schema": {
-                    "type": "string"
-                }
-            }
-        }"#;
+        let test3_v2_component = serde_json::to_string(&Component::for_test(
+            "test3",
+            Version::new(2, 0, 0),
+            vec![],
+            ComponentOutput::for_test_with_schema(),
+        ))
+        .unwrap();
 
         // This contains a reference back to a different version of test2.
-        let test4_v1_component = r#"
-        {
-            "name": "test4",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [],
-            "output": {
-                "schema_reference": "test-publisher.test2#5"
-            }
-        }"#;
+        let test4_v1_component = serde_json::to_string(&Component::for_test(
+            "test4",
+            Version::new(1, 0, 0),
+            vec![],
+            ComponentOutput::for_test(
+                None,
+                Some(UnresolvedComponentReference::for_test("test2", "5")),
+            ),
+        ))
+        .unwrap();
 
         let loader = LoadComponentRiggingMock {
             resolved: vec![
                 (
-                    UnresolvedComponentReference::test("test2", "1"),
+                    UnresolvedComponentReference::for_test("test2", "1"),
                     test2_v1_component.to_string(),
                 ),
                 (
-                    UnresolvedComponentReference::test("test3", "1"),
+                    UnresolvedComponentReference::for_test("test3", "1"),
                     test3_v1_component.to_string(),
                 ),
                 (
-                    UnresolvedComponentReference::test("test3", "2"),
+                    UnresolvedComponentReference::for_test("test3", "2"),
                     test3_v2_component.to_string(),
                 ),
                 (
-                    UnresolvedComponentReference::test("test4", "1"),
+                    UnresolvedComponentReference::for_test("test4", "1"),
                     test4_v1_component.to_string(),
                 ),
             ]
@@ -757,7 +703,7 @@ mod tests {
             } => {
                 assert_eq!(
                     circular_reference,
-                    &UnresolvedComponentReference::test("test2", "5")
+                    &UnresolvedComponentReference::for_test("test2", "5")
                 );
             }
             _ => panic!("Unexpected failure type: {:?}", component_failure),
@@ -769,62 +715,54 @@ mod tests {
         // The circular reference here is going to be:
         // test#1 -> test2#1 -> test1#2
 
-        let root_component = r#"
-        {
-            "name": "test",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [
-                {
-                    "id": "input1",
-                    "default_component": {
-                        "reference": "test-publisher.test2#1"
-                    }
-                }
-            ],
-            "output": {
-                "schema": {
-                    "type": "string"
-                }
-            }
-        }"#;
+        let root_component = serde_json::to_string(&Component::for_test(
+            "test",
+            Version::new(1, 0, 0),
+            vec![ComponentInput::for_test(
+                "input1",
+                Some(ComponentInputSpecification::for_test(
+                    UnresolvedComponentReference::for_test("test2", "1"),
+                    None,
+                )),
+                None,
+            )],
+            ComponentOutput::for_test_with_schema(),
+        ))
+        .unwrap();
 
-        let test2_v1_component = r#"
-        {
-            "name": "test2",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [
-                {
-                    "id": "input1",
-                    "default_component": {
-                        "reference": "https://blah/some-component"
-                    }
-                }
-            ],
-            "output": {
-                "schema": {
-                    "type": "string"
-                }
-            }
-        }"#;
+        let test2_v1_component = serde_json::to_string(&Component::for_test(
+            "test2",
+            Version::new(1, 0, 0),
+            vec![ComponentInput::for_test(
+                "input1",
+                Some(ComponentInputSpecification::for_test(
+                    UnresolvedComponentReference::Url {
+                        url: Url::parse("https://blah/some-component").unwrap(),
+                    },
+                    None,
+                )),
+                None,
+            )],
+            ComponentOutput::for_test_with_schema(),
+        ))
+        .unwrap();
 
         // This contains a reference back to a different version of test.
-        let some_component = r#"
-        {
-            "name": "test",
-            "publisher": "test-publisher",
-            "version": "2.0.0",
-            "inputs": [],
-            "output": {
-                "schema_reference": "test-publisher.test2#5"
-            }
-        }"#;
+        let some_component = serde_json::to_string(&Component::for_test(
+            "test",
+            Version::new(2, 0, 0),
+            vec![],
+            ComponentOutput::for_test(
+                None,
+                Some(UnresolvedComponentReference::for_test("test2", "5")),
+            ),
+        ))
+        .unwrap();
 
         let loader = LoadComponentRiggingMock {
             resolved: vec![
                 (
-                    UnresolvedComponentReference::test("test2", "1"),
+                    UnresolvedComponentReference::for_test("test2", "1"),
                     test2_v1_component.to_string(),
                 ),
                 (
@@ -857,7 +795,7 @@ mod tests {
             } => {
                 assert_eq!(
                     circular_reference,
-                    &ResolvedComponentReference::test("test", Version::new(2, 0, 0))
+                    &ResolvedComponentReference::for_test("test", Version::new(2, 0, 0))
                 );
             }
             _ => panic!("Unexpected failure type: {:?}", component_failure),
@@ -867,22 +805,16 @@ mod tests {
     #[test]
     fn it_should_detect_circular_reference_to_root() {
         // This contains a reference to itself.
-        let test_component = r#"
-        {
-            "name": "test1",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [
-                {
-                    "id": "input1",
-                    "display_name": "Input One",
-                    "default_value": 1
-                }
-            ],
-            "output": {
-                "schema_reference": "test-publisher.test1#1"
-            }
-        }"#;
+        let test_component = serde_json::to_string(&Component::for_test(
+            "test1",
+            Version::new(1, 0, 0),
+            vec![ComponentInput::for_test("input1", None, Some(json!(1)))],
+            ComponentOutput::for_test(
+                None,
+                Some(UnresolvedComponentReference::for_test("test1", "1")),
+            ),
+        ))
+        .unwrap();
 
         let loader = LoadComponentRiggingMock {
             resolved: HashMap::new(),
@@ -907,7 +839,7 @@ mod tests {
             } => {
                 assert_eq!(
                     circular_reference,
-                    &UnresolvedComponentReference::test("test1", "1")
+                    &UnresolvedComponentReference::for_test("test1", "1")
                 );
             }
             _ => panic!("Unexpected failure type: {:?}", component_failure),
@@ -944,71 +876,56 @@ mod tests {
         }
     }
 
-    // This test is going to check that we don't try to resolve the same reference twice if two different
-    // components reference it, and they are both processed before the referenced component has loaded.
+    // This test checks that we don't try to resolve the same reference twice if two different
+    // components reference it, and that they are both processed before the referenced component has loaded.
     #[test]
-    #[ignore]
     fn it_should_not_resolve_references_twice_if_they_are_in_the_process_of_being_loaded() {
         // A completes, returns references to B and C.
-        let a = r#"
-        {
-            "name": "a",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [
-                {
-                    "id": "input1",
-                    "default_component": {
-                        "reference": "b#1"
-                    }
-                }
-            ],
-            "output": {
-                "schema_reference": "c#1"
-            }
-        }"#;
+        let a = serde_json::to_string(&Component::for_test(
+            "a",
+            Version::new(1, 0, 0),
+            vec![ComponentInput::for_test(
+                "input1",
+                Some(ComponentInputSpecification::for_test(
+                    UnresolvedComponentReference::for_test("b", "1"),
+                    None,
+                )),
+                None,
+            )],
+            ComponentOutput::for_test(None, Some(UnresolvedComponentReference::for_test("c", "1"))),
+        ))
+        .unwrap();
 
-        // B and C will load next, both return a reference to D.
-        let b = r#"
-        {
-            "name": "b",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [],
-            "output": {
-                "schema_reference": "d#1"
-            }
-        }"#;
-        let c = r#"
-        {
-            "name": "c",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [],
-            "output": {
-                "schema_reference": "d#1"
-            }
-        }"#;
+        let b = serde_json::to_string(&Component::for_test(
+            "b",
+            Version::new(1, 0, 0),
+            vec![],
+            ComponentOutput::for_test(None, Some(UnresolvedComponentReference::for_test("d", "1"))),
+        ))
+        .unwrap();
 
-        // Once both B adn C have loaded, D will load.
+        let c = serde_json::to_string(&Component::for_test(
+            "c",
+            Version::new(1, 0, 0),
+            vec![],
+            ComponentOutput::for_test(None, Some(UnresolvedComponentReference::for_test("d", "1"))),
+        ))
+        .unwrap();
+
+        // Once both B and C have loaded, D will load.
         // D should not get requested from the loader twice.
-        let d = r#"
-        {
-            "name": "d",
-            "publisher": "test-publisher",
-            "version": "1.0.0",
-            "inputs": [],
-            "output": {
-                "schema": {
-                    "type": "string"
-                }
-            }
-        }"#;
+        let d = serde_json::to_string(&Component::for_test(
+            "d",
+            Version::new(1, 0, 0),
+            vec![],
+            ComponentOutput::for_test_with_schema(),
+        ))
+        .unwrap();
 
         // Set up the references, one set for this thread and one for the background thread.
-        let b_ref = UnresolvedComponentReference::test("b", "1");
-        let c_ref = UnresolvedComponentReference::test("c", "1");
-        let d_ref = UnresolvedComponentReference::test("d", "1");
+        let b_ref = UnresolvedComponentReference::for_test("b", "1");
+        let c_ref = UnresolvedComponentReference::for_test("c", "1");
+        let d_ref = UnresolvedComponentReference::for_test("d", "1");
         let b_ref_thread = b_ref.clone();
         let c_ref_thread = c_ref.clone();
         let d_ref_thread = d_ref.clone();
@@ -1022,6 +939,9 @@ mod tests {
         // wait for the background thread to make the calls.
         let calls = Arc::new((Mutex::new(Vec::new()), Condvar::new()));
         let calls_on_thread = calls.clone();
+
+        let recursive_resolve_complete = Arc::new(AtomicBool::new(false));
+        let recursive_resolve_complete_thread = recursive_resolve_complete.clone();
 
         // Set up the background thread which will run the loader, and make sure they all load successfully.
         let runner_thread = spawn(move || {
@@ -1042,6 +962,7 @@ mod tests {
 
             // Resolve all the components.
             let resolved_components = recursively_resolve_components(a.to_string(), loader);
+            recursive_resolve_complete_thread.store(true, Ordering::SeqCst);
 
             print_failures(&resolved_components);
 
@@ -1060,10 +981,19 @@ mod tests {
                 // lock: &Mutex<Vec<ComponentReference>>,
                 cvar: &Condvar,
                 call_count: usize,
+                recursive_resolve_complete: &AtomicBool,
             ) -> MutexGuard<'a, Vec<UnresolvedComponentReference>> {
                 // Wait for the background thread to make the requested number of calls.
+                let timeout_duration = Duration::from_millis(100);
                 while (*calls).len() < call_count {
-                    calls = cvar.wait(calls).unwrap();
+                    let (new_calls, _) = cvar.wait_timeout(calls, timeout_duration).unwrap();
+                    calls = new_calls;
+
+                    // If recursive_resolve_complete is true, the runner thread
+                    // exited prematurely.
+                    if recursive_resolve_complete.load(Ordering::SeqCst) {
+                        panic!("Recursive resolve completed before all calls were made");
+                    }
                 }
 
                 // CHeck the number of load calls is expected.
@@ -1080,7 +1010,7 @@ mod tests {
             }
 
             // Once A has been processed, B and C will have load requests.
-            calls = wait_for_calls(calls, cvar, 2);
+            calls = wait_for_calls(calls, cvar, 2, &recursive_resolve_complete);
             assert_reference_load_requested(&calls, &b_ref);
             assert_reference_load_requested(&calls, &c_ref);
 
@@ -1088,7 +1018,7 @@ mod tests {
             b_sender.send(b.to_string()).unwrap();
 
             // Wait D to have a load request.
-            calls = wait_for_calls(calls, cvar, 3);
+            calls = wait_for_calls(calls, cvar, 3, &recursive_resolve_complete);
             assert_reference_load_requested(&calls, &d_ref);
 
             // Next we load C, which will also return a reference to D, before

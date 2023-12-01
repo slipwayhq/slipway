@@ -68,7 +68,7 @@ mod tests {
                     description: None,
                     schema: None,
                     default_component: Some(ComponentInputSpecification {
-                        reference: UnresolvedComponentReference::test("component1", "1.0"),
+                        reference: UnresolvedComponentReference::for_test("component1", "1.0"),
                         input_overrides: None,
                     }),
                     default_value: None,
@@ -79,19 +79,19 @@ mod tests {
                     description: None,
                     schema: None,
                     default_component: Some(ComponentInputSpecification {
-                        reference: UnresolvedComponentReference::test("component2", "1.0"),
+                        reference: UnresolvedComponentReference::for_test("component2", "1.0"),
                         input_overrides: Some(vec![
                             ComponentInputOverride {
                                 id: "input3".to_string(),
                                 component: Some(ComponentInputSpecification {
-                                    reference: UnresolvedComponentReference::test(
+                                    reference: UnresolvedComponentReference::for_test(
                                         "component3",
                                         "1.0",
                                     ),
                                     input_overrides: Some(vec![ComponentInputOverride {
                                         id: "input4".to_string(),
                                         component: Some(ComponentInputSpecification {
-                                            reference: UnresolvedComponentReference::test(
+                                            reference: UnresolvedComponentReference::for_test(
                                                 "component2",
                                                 "1.0",
                                             ),
@@ -105,7 +105,7 @@ mod tests {
                             ComponentInputOverride {
                                 id: "input5".to_string(),
                                 component: Some(ComponentInputSpecification {
-                                    reference: UnresolvedComponentReference::test(
+                                    reference: UnresolvedComponentReference::for_test(
                                         "component2",
                                         "1.1",
                                     ),
@@ -120,7 +120,7 @@ mod tests {
             ],
             output: ComponentOutput {
                 schema: None,
-                schema_reference: Some(UnresolvedComponentReference::test("component4", "1.0")),
+                schema_reference: Some(UnresolvedComponentReference::for_test("component4", "1.0")),
             },
         };
 
@@ -131,11 +131,11 @@ mod tests {
         assert_eq!(
             references,
             vec![
-                UnresolvedComponentReference::test("component1", "1.0"),
-                UnresolvedComponentReference::test("component2", "1.0"),
-                UnresolvedComponentReference::test("component2", "1.1"),
-                UnresolvedComponentReference::test("component3", "1.0"),
-                UnresolvedComponentReference::test("component4", "1.0"),
+                UnresolvedComponentReference::for_test("component1", "1.0"),
+                UnresolvedComponentReference::for_test("component2", "1.0"),
+                UnresolvedComponentReference::for_test("component2", "1.1"),
+                UnresolvedComponentReference::for_test("component3", "1.0"),
+                UnresolvedComponentReference::for_test("component4", "1.0"),
             ]
         );
     }

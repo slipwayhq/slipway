@@ -139,15 +139,15 @@ mod tests {
     #[test]
     fn get_list_should_return_list_of_references_in_current_context() {
         let context_0 = Context {
-            reference: UnresolvedComponentReference::test("context-0", "1"),
-            resolved_reference: OnceLock::from(ResolvedComponentReference::test(
+            reference: UnresolvedComponentReference::for_test("context-0", "1"),
+            resolved_reference: OnceLock::from(ResolvedComponentReference::for_test(
                 "context-0-resolved",
                 Version::new(1, 0, 0),
             )),
             previous_context: None,
         };
         let context_1 = Context {
-            reference: UnresolvedComponentReference::test("context-1", "1"),
+            reference: UnresolvedComponentReference::for_test("context-1", "1"),
             resolved_reference: OnceLock::new(),
             previous_context: Some(&context_0),
         };
@@ -161,7 +161,7 @@ mod tests {
     fn contains_reference_it_should_return_true_if_context_contains_specified_reference() {
         let context_0 = Context {
             reference: UnresolvedComponentReference::Root,
-            resolved_reference: OnceLock::from(ResolvedComponentReference::test(
+            resolved_reference: OnceLock::from(ResolvedComponentReference::for_test(
                 "context-0-resolved",
                 Version::new(1, 0, 0),
             )),
@@ -169,14 +169,14 @@ mod tests {
         };
 
         let context_1 = Context {
-            reference: UnresolvedComponentReference::test("context-1", "1"),
+            reference: UnresolvedComponentReference::for_test("context-1", "1"),
             resolved_reference: OnceLock::new(),
             previous_context: Some(&context_0),
         };
 
         let context_2 = Context {
-            reference: UnresolvedComponentReference::test("context-2", "1"),
-            resolved_reference: OnceLock::from(ResolvedComponentReference::test(
+            reference: UnresolvedComponentReference::for_test("context-2", "1"),
+            resolved_reference: OnceLock::from(ResolvedComponentReference::for_test(
                 "context-2-resolved",
                 Version::new(1, 0, 0),
             )),
@@ -184,13 +184,13 @@ mod tests {
         };
 
         assert!(
-            context_2.contains_any_resolved_version(&ResolvedComponentReference::test(
+            context_2.contains_any_resolved_version(&ResolvedComponentReference::for_test(
                 "context-0-resolved",
                 Version::new(1, 0, 0)
             ))
         );
         assert!(
-            context_2.contains_any_resolved_version(&ResolvedComponentReference::test(
+            context_2.contains_any_resolved_version(&ResolvedComponentReference::for_test(
                 "context-2-resolved",
                 Version::new(2, 0, 0)
             ))
@@ -204,24 +204,18 @@ mod tests {
             ))
         );
         assert!(
-            !context_2.contains_any_resolved_version(&ResolvedComponentReference::test(
+            !context_2.contains_any_resolved_version(&ResolvedComponentReference::for_test(
                 "context-1",
                 Version::new(2, 0, 0)
             ))
         );
 
         assert!(context_2.contains_any_unresolved_version(&UnresolvedComponentReference::Root));
-        assert!(
-            context_2.contains_any_unresolved_version(&UnresolvedComponentReference::test(
-                "context-1",
-                "1"
-            ))
-        );
-        assert!(
-            context_2.contains_any_unresolved_version(&UnresolvedComponentReference::test(
-                "context-1",
-                "2"
-            ))
-        );
+        assert!(context_2.contains_any_unresolved_version(
+            &UnresolvedComponentReference::for_test("context-1", "1")
+        ));
+        assert!(context_2.contains_any_unresolved_version(
+            &UnresolvedComponentReference::for_test("context-1", "2")
+        ));
     }
 }
