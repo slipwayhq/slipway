@@ -1,31 +1,26 @@
-use crate::errors::SlipwayError;
+use crate::{errors::SlipwayError, rigging::parse::types::parse_component_version};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use semver::VersionReq;
+use semver::Version;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::{fmt::Display, path::PathBuf, str::FromStr};
 use url::Url;
 
-pub(crate) const COMPONENT_REFERENCE_REGISTRY_PUBLISHER_SEPARATOR: char = '.';
-pub(crate) const COMPONENT_REFERENCE_VERSION_SEPARATOR: char = '#';
-const COMPONENT_REFERENCE_GIT_USER_SEPARATOR: char = '/';
+use super::{REGISTRY_PUBLISHER_SEPARATOR, VERSION_SEPARATOR};
 
-const ROOT_REFERENCE: &str = ".root";
+const SLIPWAY_REFERENCE_GIT_USER_SEPARATOR: char = '/';
 
 pub(crate) static REGISTRY_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(?<publisher>[\w-]+)\.(?<name>[\w-]+)#(?<version>.+)$").unwrap());
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum UnresolvedComponentReference {
-    // .root
-    Root,
-
+pub enum SlipwayReference {
     // publisher.name#version
     Registry {
         publisher: String,
         name: String,
-        version: VersionReq,
+        version: Version,
     },
 
     // user/string#1.0
@@ -46,18 +41,14 @@ pub enum UnresolvedComponentReference {
     },
 }
 
-impl FromStr for UnresolvedComponentReference {
+impl FromStr for SlipwayReference {
     type Err = SlipwayError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s == ROOT_REFERENCE {
-            return Ok(UnresolvedComponentReference::Root);
-        }
-
         if let Some(caps) = REGISTRY_REGEX.captures(s) {
-            let version = parse_version_requirement(&caps["version"])?;
+            let version = parse_component_version(&caps["version"])?;
 
-            return Ok(UnresolvedComponentReference::Registry {
+            return Ok(SlipwayReference::Registry {
                 publisher: caps["publisher"].to_string(),
                 name: caps["name"].to_string(),
                 version,
@@ -70,7 +61,7 @@ impl FromStr for UnresolvedComponentReference {
         if let Some(caps) = GIT_REGEX.captures(s) {
             let version = GitHubVersion::from_str(&caps["version"])?;
 
-            return Ok(UnresolvedComponentReference::GitHub {
+            return Ok(SlipwayReference::GitHub {
                 user: caps["user"].to_string(),
                 repository: caps["repository"].to_string(),
                 version,
@@ -79,36 +70,27 @@ impl FromStr for UnresolvedComponentReference {
 
         if let Ok(uri) = Url::parse(s) {
             return match uri.scheme() {
-                "file" => Ok(UnresolvedComponentReference::Local {
+                "file" => Ok(SlipwayReference::Local {
                     path: uri.to_file_path().expect("URI was not a valid file path"),
                 }),
-                "https" => Ok(UnresolvedComponentReference::Url { url: uri }),
-                other => Err(SlipwayError::InvalidComponentReference(format!(
+                "https" => Ok(SlipwayReference::Url { url: uri }),
+                other => Err(SlipwayError::InvalidSlipwayReference(format!(
                     "unsupported URI scheme: {other}"
                 ))),
             };
         }
 
-        Err(SlipwayError::InvalidComponentReference(format!(
+        Err(SlipwayError::InvalidSlipwayReference(format!(
             "component reference '{}' was not in a valid format",
             s
         )))
     }
 }
 
-fn parse_version_requirement(version_string: &str) -> Result<VersionReq, SlipwayError> {
-    let Ok(version) = VersionReq::parse(version_string) else {
-        return Err(SlipwayError::InvalidComponentReference(
-            "version requirement was not in a valid format".to_string(),
-        ));
-    };
-    Ok(version)
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum GitHubVersion {
     Commitish(String),
-    Version(VersionReq),
+    Version(Version),
 }
 
 impl FromStr for GitHubVersion {
@@ -117,7 +99,7 @@ impl FromStr for GitHubVersion {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         const SEMVER_PREFIX: &str = "semver:";
         if let Some(semver) = s.strip_prefix(SEMVER_PREFIX) {
-            let version = parse_version_requirement(semver)?;
+            let version = parse_component_version(semver)?;
             return Ok(GitHubVersion::Version(version));
         }
 
@@ -125,19 +107,15 @@ impl FromStr for GitHubVersion {
     }
 }
 
-impl UnresolvedComponentReference {
-    pub fn is_root(&self) -> bool {
-        matches!(self, UnresolvedComponentReference::Root)
-    }
-
+impl SlipwayReference {
     #[cfg(test)]
     pub fn for_test(id: &str, version: &str) -> Self {
         use super::TEST_PUBLISHER;
 
-        UnresolvedComponentReference::Registry {
+        SlipwayReference::Registry {
             publisher: TEST_PUBLISHER.to_string(),
             name: id.to_string(),
-            version: VersionReq::parse(version).expect("Invalid version"),
+            version: Version::parse(version).expect("Invalid version"),
         }
     }
 }
@@ -153,50 +131,40 @@ impl Display for GitHubVersion {
     }
 }
 
-impl Display for UnresolvedComponentReference {
+impl Display for SlipwayReference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            UnresolvedComponentReference::Root => f.write_str(".root"),
-            UnresolvedComponentReference::Registry {
+            SlipwayReference::Registry {
                 publisher,
                 name,
                 version,
             } => f.write_fmt(format_args!(
                 "{}{}{}{}{}",
-                publisher,
-                COMPONENT_REFERENCE_REGISTRY_PUBLISHER_SEPARATOR,
-                name,
-                COMPONENT_REFERENCE_VERSION_SEPARATOR,
-                version
+                publisher, REGISTRY_PUBLISHER_SEPARATOR, name, VERSION_SEPARATOR, version
             )),
-            UnresolvedComponentReference::GitHub {
+            SlipwayReference::GitHub {
                 user,
                 repository,
                 version,
             } => f.write_fmt(format_args!(
                 "{}{}{}{}{}",
-                user,
-                COMPONENT_REFERENCE_GIT_USER_SEPARATOR,
-                repository,
-                COMPONENT_REFERENCE_VERSION_SEPARATOR,
-                version
+                user, SLIPWAY_REFERENCE_GIT_USER_SEPARATOR, repository, VERSION_SEPARATOR, version
             )),
-            UnresolvedComponentReference::Local { path } => {
+            SlipwayReference::Local { path } => {
                 let url = Url::from_file_path(path).map_err(|_| std::fmt::Error {})?;
                 f.write_fmt(format_args!("{}", url))
             }
-            UnresolvedComponentReference::Url { url } => f.write_fmt(format_args!("{}", url)),
+            SlipwayReference::Url { url } => f.write_fmt(format_args!("{}", url)),
         }
     }
 }
 
-impl<'de> Deserialize<'de> for UnresolvedComponentReference {
+impl<'de> Deserialize<'de> for SlipwayReference {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let value = Value::deserialize(deserializer)?;
         match value.as_str() {
             Some(reference_as_string) => {
-                UnresolvedComponentReference::from_str(reference_as_string)
-                    .map_err(serde::de::Error::custom)
+                SlipwayReference::from_str(reference_as_string).map_err(serde::de::Error::custom)
             }
 
             None => Err(serde::de::Error::custom(
@@ -206,7 +174,7 @@ impl<'de> Deserialize<'de> for UnresolvedComponentReference {
     }
 }
 
-impl Serialize for UnresolvedComponentReference {
+impl Serialize for SlipwayReference {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.collect_str(self)
     }
@@ -217,33 +185,6 @@ mod tests {
     use super::*;
     use crate::test_utils::quote;
 
-    mod root_tests {
-
-        use super::*;
-
-        #[test]
-        fn it_should_serialize_and_deserialize_root() {
-            let s = r".root";
-            let json = quote(s);
-
-            let reference: UnresolvedComponentReference = serde_json::from_str(&json).unwrap();
-
-            let json_out = serde_json::to_string(&reference).unwrap();
-            assert_eq!(json, json_out);
-        }
-
-        #[test]
-        fn it_should_parse_root() {
-            let s = r".root";
-
-            let reference = UnresolvedComponentReference::from_str(s).unwrap();
-
-            let UnresolvedComponentReference::Root = reference else {
-                panic!("Unexpected unresolved reference: {reference:?}");
-            };
-        }
-    }
-
     mod registry_tests {
         use super::*;
 
@@ -252,7 +193,7 @@ mod tests {
             let s = r"test-publisher.test-name#^1.2.3";
             let json = quote(s);
 
-            let reference: UnresolvedComponentReference = serde_json::from_str(&json).unwrap();
+            let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
 
             let json_out = serde_json::to_string(&reference).unwrap();
             assert_eq!(json, json_out);
@@ -260,49 +201,49 @@ mod tests {
 
         #[test]
         fn it_should_parse_registry_from_string() {
-            let s = r"test-publisher.test-name#~1.2";
+            let s = r"test-publisher.test-name#1.2";
 
-            let reference = UnresolvedComponentReference::from_str(s).unwrap();
+            let reference = SlipwayReference::from_str(s).unwrap();
 
-            let UnresolvedComponentReference::Registry {
+            let SlipwayReference::Registry {
                 publisher,
                 name,
                 version,
             } = reference
             else {
-                panic!("Unexpected unresolved reference: {reference:?}");
+                panic!("Unexpected reference: {reference:?}");
             };
 
             assert_eq!(publisher, "test-publisher");
             assert_eq!(name, "test-name");
-            assert_eq!(version, VersionReq::parse("~1.2").unwrap());
+            assert_eq!(version, Version::parse("1.2").unwrap());
         }
 
         #[test]
         fn it_should_parse_registry_from_string_with_short_version() {
             let s = r"test-publisher.test-name#1";
 
-            let reference = UnresolvedComponentReference::from_str(s).unwrap();
+            let reference = SlipwayReference::from_str(s).unwrap();
 
-            let UnresolvedComponentReference::Registry {
+            let SlipwayReference::Registry {
                 publisher,
                 name,
                 version,
             } = reference
             else {
-                panic!("Unexpected unresolved reference: {reference:?}");
+                panic!("Unexpected reference: {reference:?}");
             };
 
             assert_eq!(publisher, "test-publisher");
             assert_eq!(name, "test-name");
-            assert_eq!(version, VersionReq::parse("1").unwrap());
+            assert_eq!(version, Version::parse("1").unwrap());
         }
 
         #[test]
         fn it_should_fail_to_parse_registry_from_string_if_no_version() {
             let s = "test-publisher.test-name";
 
-            let reference_result = UnresolvedComponentReference::from_str(s);
+            let reference_result = SlipwayReference::from_str(s);
 
             assert!(reference_result.is_err());
         }
@@ -311,7 +252,7 @@ mod tests {
         fn it_should_fail_to_parse_registry_from_string_if_empty_version() {
             let s = "test-publisher.test-name#";
 
-            let reference_result = UnresolvedComponentReference::from_str(s);
+            let reference_result = SlipwayReference::from_str(s);
 
             assert!(reference_result.is_err());
         }
@@ -320,7 +261,7 @@ mod tests {
         fn it_should_fail_to_parse_registry_from_string_if_no_publisher() {
             let s = "test-name#1.2.3";
 
-            let reference_result = UnresolvedComponentReference::from_str(s);
+            let reference_result = SlipwayReference::from_str(s);
 
             assert!(reference_result.is_err());
         }
@@ -329,7 +270,7 @@ mod tests {
         fn it_should_fail_to_parse_registry_from_string_if_empty_publisher() {
             let s = ".test-name#1.2.3";
 
-            let reference_result = UnresolvedComponentReference::from_str(s);
+            let reference_result = SlipwayReference::from_str(s);
 
             assert!(reference_result.is_err());
         }
@@ -343,7 +284,7 @@ mod tests {
             let s = r"test-user/test-repository#semver:^1.2.3";
             let json = quote(s);
 
-            let reference: UnresolvedComponentReference = serde_json::from_str(&json).unwrap();
+            let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
 
             let json_out = serde_json::to_string(&reference).unwrap();
             assert_eq!(json, json_out);
@@ -351,24 +292,24 @@ mod tests {
 
         #[test]
         fn it_should_parse_github_from_string() {
-            let s = r"test-user/test-repository#semver:~1.2";
+            let s = r"test-user/test-repository#semver:1.2";
 
-            let reference = UnresolvedComponentReference::from_str(s).unwrap();
+            let reference = SlipwayReference::from_str(s).unwrap();
 
-            let UnresolvedComponentReference::GitHub {
+            let SlipwayReference::GitHub {
                 user,
                 repository,
                 version,
             } = reference
             else {
-                panic!("Unexpected unresolved reference: {reference:?}");
+                panic!("Unexpected reference: {reference:?}");
             };
 
             assert_eq!(user, "test-user");
             assert_eq!(repository, "test-repository");
             assert_eq!(
                 version,
-                GitHubVersion::Version(VersionReq::parse("~1.2").unwrap())
+                GitHubVersion::Version(Version::parse("1.2").unwrap())
             );
         }
 
@@ -376,37 +317,37 @@ mod tests {
         fn it_should_parse_github_from_string_with_short_version() {
             let s = r"test-user/test-repository#semver:1";
 
-            let reference = UnresolvedComponentReference::from_str(s).unwrap();
+            let reference = SlipwayReference::from_str(s).unwrap();
 
-            let UnresolvedComponentReference::GitHub {
+            let SlipwayReference::GitHub {
                 user,
                 repository,
                 version,
             } = reference
             else {
-                panic!("Unexpected unresolved reference: {reference:?}");
+                panic!("Unexpected reference: {reference:?}");
             };
 
             assert_eq!(user, "test-user");
             assert_eq!(repository, "test-repository");
             assert_eq!(
                 version,
-                GitHubVersion::Version(VersionReq::parse("1").unwrap())
+                GitHubVersion::Version(Version::parse("1").unwrap())
             );
         }
         #[test]
         fn it_should_parse_github_with_commitish_from_string() {
             let s = r"test-user/test-repository#blah";
 
-            let reference = UnresolvedComponentReference::from_str(s).unwrap();
+            let reference = SlipwayReference::from_str(s).unwrap();
 
-            let UnresolvedComponentReference::GitHub {
+            let SlipwayReference::GitHub {
                 user,
                 repository,
                 version,
             } = reference
             else {
-                panic!("Unexpected unresolved reference: {reference:?}");
+                panic!("Unexpected reference: {reference:?}");
             };
 
             assert_eq!(user, "test-user");
@@ -418,7 +359,7 @@ mod tests {
         fn it_should_fail_to_parse_github_from_string_if_no_version() {
             let s = "test-user/test-repository";
 
-            let reference_result = UnresolvedComponentReference::from_str(s);
+            let reference_result = SlipwayReference::from_str(s);
 
             assert!(reference_result.is_err());
         }
@@ -427,7 +368,7 @@ mod tests {
         fn it_should_fail_to_parse_github_from_string_if_empty_version() {
             let s = "test-user/test-repository#";
 
-            let reference_result = UnresolvedComponentReference::from_str(s);
+            let reference_result = SlipwayReference::from_str(s);
 
             assert!(reference_result.is_err());
         }
@@ -441,7 +382,7 @@ mod tests {
             let uri = r"file:///usr/local/rigging.json";
             let json = quote(uri);
 
-            let reference: UnresolvedComponentReference = serde_json::from_str(&json).unwrap();
+            let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
 
             let json_out = serde_json::to_string(&reference).unwrap();
             assert_eq!(json, json_out);
@@ -451,10 +392,10 @@ mod tests {
         fn it_should_parse_local_files() {
             let uri = r"file:///usr/local/rigging.json";
 
-            let reference = UnresolvedComponentReference::from_str(uri).unwrap();
+            let reference = SlipwayReference::from_str(uri).unwrap();
 
-            let UnresolvedComponentReference::Local { path } = reference else {
-                panic!("Unexpected unresolved reference: {reference:?}");
+            let SlipwayReference::Local { path } = reference else {
+                panic!("Unexpected reference: {reference:?}");
             };
 
             assert_eq!(path, PathBuf::from_str("/usr/local/rigging.json").unwrap());
@@ -469,7 +410,7 @@ mod tests {
             let uri = r"https://asdf.com/asdf.tar.gz";
             let json = quote(uri);
 
-            let reference: UnresolvedComponentReference = serde_json::from_str(&json).unwrap();
+            let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
 
             let json_out = serde_json::to_string(&reference).unwrap();
             assert_eq!(json, json_out);
@@ -479,10 +420,10 @@ mod tests {
         fn it_should_parse_urls() {
             let uri = r"https://asdf.com/asdf.tar.gz";
 
-            let reference = UnresolvedComponentReference::from_str(uri).unwrap();
+            let reference = SlipwayReference::from_str(uri).unwrap();
 
-            let UnresolvedComponentReference::Url { url } = reference else {
-                panic!("Unexpected unresolved reference: {reference:?}");
+            let SlipwayReference::Url { url } = reference else {
+                panic!("Unexpected reference: {reference:?}");
             };
 
             assert_eq!(url, Url::parse(uri).unwrap());

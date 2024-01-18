@@ -1,0 +1,17 @@
+{
+  "publisher": "slipway",
+  "name": "url_loader",
+  "description": "Reads data from a URL.",
+  "version": "0.1",
+  "input": {
+    "properties": {
+      "url": {
+        "metadata": "The URL to read from.",
+        "type": "string"
+      }
+    }
+  },
+  "output": {
+    "values": {}
+  }
+}

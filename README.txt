@@ -1,20 +1,22 @@
-# What is Slipway?
+# Registry
 
-Slipway is a framework for displaying dynamic data based on simple configuration and WASM sandboxed modules.
+slipway.app/jamesthurley/weather/1.0
 
-# Vessels, Components and Rigging
+slipway.app/components/jamesthurley/weather/1.0
 
-In Slipway a Vessel is the name given to a user-facing component which can render something
-useful to the user's screen.
-
-A Vessel is made up of Components and Rigging.
-
-Components can be combined in arbitrary ways using Rigging.
-
-# Example: A Weather Vessel
+slipway.app/jamesthurley/components/weather/1.0
 
 
+slipway.co/apps/jamesthurley/weather/1.0
+slipway.co/components/jamesthurley/weather/1.0
 
+slipway.co/jamesthurley/app/weather/1.0
+slipway.co/jamesthurley/component/weather/1.0
 
+# App File Format
 
+# Component File Format
 
+- constants are not parsed for JSONPath, data which may conflict with JSONPath can be put here and referenced. 
+- $$ means the output of the referenced component. Outputs are also not parsed for JSONPath.
+- Any component whose output is not used as an input is assumed to be outputting something to be displayed.

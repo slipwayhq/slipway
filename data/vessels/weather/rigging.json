@@ -1,7 +1,0 @@
-{
-  "name": "Weather",
-  "version": "0.1",
-  "transformer": {
-    "component": "weather-renderer@0.1"
-  }
-}

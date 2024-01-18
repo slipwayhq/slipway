@@ -1,0 +1,28 @@
+{
+  "publisher": "slipway",
+  "name": "weather_transformer",
+  "description": "Transforms weather data from various providers into a standard format.",
+  "version": "0.1",
+  "input": {
+    "properties": {
+      "provider": {
+        "enum": ["yahoo", "met"]
+      },
+      "data": {
+        "values": {}
+      }
+    }
+  },
+  "output": {
+    "properties": {
+      "temperature": {
+        "metadata": "The temperature in degrees Celsius.",
+        "type": "number"
+      },
+      "humidity": {
+        "metadata": "The relative humidity as a percentage.",
+        "type": "number"
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "publisher": "slipway",
+  "name": "weather_renderer",
+  "version": "0.1",
+  "description": "Renders weather data into an image.",
+  "input": {
+    "properties": {
+      "temperature": {
+        "metadata": "The temperature in degrees Celsius.",
+        "type": "number"
+      },
+      "humidity": {
+        "metadata": "The relative humidity as a percentage.",
+        "type": "number"
+      }
+    }
+  },
+  "output": {
+    "properties": {
+      "image": {
+        "description": "The image data.",
+        "type": "string",
+        "format": "base64"
+      }
+    }
+  }
+}
