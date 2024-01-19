@@ -190,7 +190,7 @@ mod tests {
 
         #[test]
         fn it_should_serialize_and_deserialize_registry() {
-            let s = r"test-publisher.test-name#^1.2.3";
+            let s = r"test-publisher.test-name#1.2.3";
             let json = quote(s);
 
             let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
@@ -201,7 +201,7 @@ mod tests {
 
         #[test]
         fn it_should_parse_registry_from_string() {
-            let s = r"test-publisher.test-name#1.2";
+            let s = r"test-publisher.test-name#1.2.3";
 
             let reference = SlipwayReference::from_str(s).unwrap();
 
@@ -216,27 +216,7 @@ mod tests {
 
             assert_eq!(publisher, "test-publisher");
             assert_eq!(name, "test-name");
-            assert_eq!(version, Version::parse("1.2").unwrap());
-        }
-
-        #[test]
-        fn it_should_parse_registry_from_string_with_short_version() {
-            let s = r"test-publisher.test-name#1";
-
-            let reference = SlipwayReference::from_str(s).unwrap();
-
-            let SlipwayReference::Registry {
-                publisher,
-                name,
-                version,
-            } = reference
-            else {
-                panic!("Unexpected reference: {reference:?}");
-            };
-
-            assert_eq!(publisher, "test-publisher");
-            assert_eq!(name, "test-name");
-            assert_eq!(version, Version::parse("1").unwrap());
+            assert_eq!(version, Version::parse("1.2.3").unwrap());
         }
 
         #[test]
@@ -281,7 +261,7 @@ mod tests {
 
         #[test]
         fn it_should_serialize_and_deserialize_github() {
-            let s = r"test-user/test-repository#semver:^1.2.3";
+            let s = r"test-user/test-repository#semver:1.2.3";
             let json = quote(s);
 
             let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
@@ -292,7 +272,7 @@ mod tests {
 
         #[test]
         fn it_should_parse_github_from_string() {
-            let s = r"test-user/test-repository#semver:1.2";
+            let s = r"test-user/test-repository#semver:1.2.3";
 
             let reference = SlipwayReference::from_str(s).unwrap();
 
@@ -309,32 +289,10 @@ mod tests {
             assert_eq!(repository, "test-repository");
             assert_eq!(
                 version,
-                GitHubVersion::Version(Version::parse("1.2").unwrap())
+                GitHubVersion::Version(Version::parse("1.2.3").unwrap())
             );
         }
 
-        #[test]
-        fn it_should_parse_github_from_string_with_short_version() {
-            let s = r"test-user/test-repository#semver:1";
-
-            let reference = SlipwayReference::from_str(s).unwrap();
-
-            let SlipwayReference::GitHub {
-                user,
-                repository,
-                version,
-            } = reference
-            else {
-                panic!("Unexpected reference: {reference:?}");
-            };
-
-            assert_eq!(user, "test-user");
-            assert_eq!(repository, "test-repository");
-            assert_eq!(
-                version,
-                GitHubVersion::Version(Version::parse("1").unwrap())
-            );
-        }
         #[test]
         fn it_should_parse_github_with_commitish_from_string() {
             let s = r"test-user/test-repository#blah";

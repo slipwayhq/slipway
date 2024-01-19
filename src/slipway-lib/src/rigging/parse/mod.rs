@@ -1,1 +1,88 @@
+use crate::errors::SlipwayError;
+
+use self::types::{App, Component};
+
 mod types;
+
+pub fn parse_app(input: &str) -> Result<App, SlipwayError> {
+    serde_json::from_str(input).map_err(SlipwayError::ParseFailed)
+}
+
+pub fn parse_component(input: &str) -> Result<Component, SlipwayError> {
+    serde_json::from_str(input).map_err(SlipwayError::ParseFailed)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::errors::INVALID_SLIPWAY_REFERENCE;
+
+    use super::*;
+
+    fn it_should_parse_examples_folder<T, TParse>(examples_dir: &str, parse_method: TParse)
+    where
+        TParse: Fn(&str) -> Result<T, SlipwayError>,
+    {
+        let mut parsed_files = 0;
+        for entry in std::fs::read_dir(examples_dir).unwrap() {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            if path.is_file() {
+                let file_contents = std::fs::read_to_string(path.clone()).unwrap();
+                let _app = parse_method(file_contents.as_str()).unwrap_or_else(|error| {
+                    panic!("Failed to parse {}: {:?}", path.display(), error)
+                });
+                parsed_files += 1;
+            }
+        }
+        assert!(parsed_files > 0);
+    }
+
+    /// This test loads each JSON file from from the examples/apps directory
+    /// and parses it using `parse_app`.
+    /// There should be no errors. There should be at least one file parsed.
+    #[test]
+    fn it_should_parse_example_apps() {
+        let examples_root_dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples");
+
+        it_should_parse_examples_folder(
+            examples_root_dir.join("apps").to_str().unwrap(),
+            parse_app,
+        );
+
+        it_should_parse_examples_folder(
+            examples_root_dir.join("components").to_str().unwrap(),
+            parse_component,
+        );
+    }
+
+    #[test]
+    fn it_should_provide_a_sensible_message_when_component_reference_cannot_be_parsed() {
+        let json = r#"
+        {
+            "publisher": "slipway",
+            "name": "weather",
+            "version": "0.0.1",
+            "rigging": {
+              "weather_url_resolver": {
+                "component": "invalid-component-reference"
+              }
+            }
+          }"#;
+
+        match parse_app(json) {
+            Ok(_) => panic!("Expected an error"),
+            Err(e) => match e {
+                SlipwayError::ParseFailed(e) => {
+                    assert!(
+                        e.to_string().starts_with(INVALID_SLIPWAY_REFERENCE),
+                        "Expected error to start with {} but it was {}",
+                        INVALID_SLIPWAY_REFERENCE,
+                        e
+                    );
+                }
+                _ => panic!("Expected a InvalidComponentReference error"),
+            },
+        }
+    }
+}

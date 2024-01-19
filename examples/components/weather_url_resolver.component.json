@@ -1,22 +1,31 @@
 {
   "publisher": "slipway",
   "name": "weather_url_resolver",
-  "version": "0.1",
+  "version": "0.0.1",
   "description": "Converts a weather provider and location into a URL.",
   "input": {
     "properties": {
       "provider": {
-        "metadata": "The weather data provider to use. Either Yahoo Weather (yahoo) or the UK Met Office (met).",
-        "enum": ["yahoo", "met"]
+        "metadata": {
+          "description": "The weather data provider to use. Either Yahoo Weather (yahoo) or the UK Met Office (met)."
+        },
+        "enum": [
+          "yahoo",
+          "met"
+        ]
       },
       "location": {
-        "metadata": "Location for which to fetch the weather. For example `london, uk`.",
+        "metadata": {
+          "description": "Location for which to fetch the weather. For example `london, uk`."
+        },
         "type": "string"
       }
     }
   },
   "output": {
-    "metadata": "The URL of the weather data for the given location.",
+    "metadata": {
+      "description": "The URL of the weather data for the given location."
+    },
     "type": "string"
   }
 }

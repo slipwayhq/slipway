@@ -1,7 +1,7 @@
 {
   "publisher": "slipway",
   "name": "weather",
-  "version": "0.1",
+  "version": "0.0.1",
   "description": "A slipway app which displays the weather",
   "constants": {
     "weather_provider": "yahoo",
@@ -9,32 +9,41 @@
   },
   "rigging": {
     "weather_url_resolver": {
-      "component": "slipway.weather_url_resolver#0.1",
+      "component": "slipway.weather_url_resolver#0.0.1",
       "input": {
         "provider": "$.constants.weather_provider",
         "location": "$.constants.weather_location"
       }
     },
     "url_loader": {
-      "component": "slipway.url_loader#0.1",
+      "component": "slipway.url_loader#0.0.1",
       "input": {
-        "url": "$$weather_url_resolver" 
+        "url": "$$weather_url_resolver"
       },
-      "wasm_permissions": {
-        "allow_network": true
+      "permissions": {
+        "network": "network_permissions"
       }
     },
     "weather_transformer": {
-      "component": "slipway.weather_transformer#0.1",
+      "component": "slipway.weather_transformer#0.0.1",
       "input": {
         "provider": "$.constants.weather_provider",
         "data": "$$url_loader"
       }
     },
     "weather_renderer": {
-      "component": "slipway.weather_renderer#0.1",
+      "component": "slipway.weather_renderer#0.0.1",
       "input": {
         "data": "$$weather_transformer"
+      }
+    },
+    "network_permissions": {
+      "component": "slipway.network_permissions#0.0.1",
+      "input": {
+        "allow_domains": [
+          "weather.yahoo.com",
+          "met.com"
+        ]
       }
     }
   }

@@ -10,6 +10,8 @@
 //! and is what the users will expect based on other toolchains
 //! such as Node's package.json.
 
+use std::collections::HashMap;
+
 use jtd::SerdeSchema;
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -30,22 +32,6 @@ pub(crate) const TEST_PUBLISHER: &str = "test-publisher";
 fn parse_component_version(version_string: &str) -> Result<Version, SlipwayError> {
     Version::parse(version_string).map_err(|e| SlipwayError::InvalidSlipwayReference(e.to_string()))
 }
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Component {
-    pub publisher: String,
-    pub name: String,
-    pub version: Version,
-    pub description: Option<String>,
-    pub input: SerdeSchema,
-    pub output: SerdeSchema,
-}
-
-impl Component {
-    pub fn get_id(&self) -> SlipwayId {
-        SlipwayId::new(&self.publisher, &self.name, &self.version)
-    }
-}
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -65,23 +51,40 @@ impl App {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct Rigging {
-    pub components: Vec<ComponentRigging>,
+    #[serde(flatten)]
+    pub components: HashMap<String, ComponentRigging>,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ComponentRigging {
     pub component: SlipwayReference,
-    pub input: serde_json::Value,
-    pub permissions: ComponentPermissions,
+    pub input: Option<serde_json::Value>,
+    pub permissions: Option<ComponentPermissions>,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ComponentPermissions {
-    // Which URLs can it read from.
-    // File system access.
-    // Etc.
+    pub network: Option<String>,
+    pub file_system: Option<String>,
+    pub environment: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Component {
+    pub publisher: String,
+    pub name: String,
+    pub version: Version,
+    pub description: Option<String>,
+    pub input: SerdeSchema,
+    pub output: SerdeSchema,
+}
+
+impl Component {
+    pub fn get_id(&self) -> SlipwayId {
+        SlipwayId::new(&self.publisher, &self.name, &self.version)
+    }
 }
