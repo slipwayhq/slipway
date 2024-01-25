@@ -64,9 +64,9 @@ mod tests {
             "name": "weather",
             "version": "0.0.1",
             "rigging": {
-              "weather_url_resolver": {
-                "component": "invalid-component-reference"
-              }
+                "weather_url_resolver": {
+                    "component": "invalid-component-reference"
+                }
             }
           }"#;
 
@@ -76,12 +76,46 @@ mod tests {
                 SlipwayError::ParseFailed(e) => {
                     assert!(
                         e.to_string().starts_with(INVALID_SLIPWAY_REFERENCE),
-                        "Expected error to start with {} but it was {}",
+                        "Expected error to start with \"{}\" but it was \"{}\"",
                         INVALID_SLIPWAY_REFERENCE,
                         e
                     );
                 }
                 _ => panic!("Expected a InvalidComponentReference error"),
+            },
+        }
+    }
+
+    #[test]
+    fn it_should_provide_a_sensible_message_when_duplicate_rigging_keys() {
+        let json = r#"
+        {
+            "publisher": "slipway",
+            "name": "weather",
+            "version": "0.0.1",
+            "rigging": {
+                "weather_url_resolver": {
+                    "component": "a.b.1.0.0"
+                },
+                "weather_url_resolver": {
+                    "component": "a.b.2.0.0"
+                }
+            }
+          }"#;
+
+        const DUPLICATE_RIGGING_KEY: &str = "invalid entry: found duplicate key";
+        match parse_app(json) {
+            Ok(_) => panic!("Expected an error"),
+            Err(e) => match e {
+                SlipwayError::ParseFailed(e) => {
+                    assert!(
+                        e.to_string().starts_with(DUPLICATE_RIGGING_KEY),
+                        "Expected error to start with \"{}\" but it was \"{}\"",
+                        DUPLICATE_RIGGING_KEY,
+                        e
+                    );
+                }
+                _ => panic!("Expected a duplicate key error"),
             },
         }
     }

@@ -1,17 +1,5 @@
 # Registry
 
-slipway.app/jamesthurley/weather/1.0
-
-slipway.app/components/jamesthurley/weather/1.0
-
-slipway.app/jamesthurley/components/weather/1.0
-
-
-slipway.co/apps/jamesthurley/weather/1.0
-slipway.co/components/jamesthurley/weather/1.0
-
-slipway.co/jamesthurley/app/weather/1.0
-slipway.co/jamesthurley/component/weather/1.0
 
 # App File Format
 

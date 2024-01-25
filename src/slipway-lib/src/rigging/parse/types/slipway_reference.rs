@@ -10,9 +10,14 @@ use url::Url;
 use super::{REGISTRY_PUBLISHER_SEPARATOR, VERSION_SEPARATOR};
 
 const SLIPWAY_REFERENCE_GIT_USER_SEPARATOR: char = '/';
+const SLIPWAY_REFERENCE_GITHUB_VERSION_SEPARATOR: char = '#';
 
 pub(crate) static REGISTRY_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(?<publisher>[\w-]+)\.(?<name>[\w-]+)#(?<version>.+)$").unwrap());
+    Lazy::new(|| Regex::new(r"^(?<publisher>[\w]+)\.(?<name>[\w]+)\.(?<version>.+)$").unwrap());
+
+static GITHUB_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^github:(?<user>[\w-]+)/(?<repository>[\w-]+)#(?<version>.+)$").unwrap()
+});
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SlipwayReference {
@@ -55,10 +60,7 @@ impl FromStr for SlipwayReference {
             });
         }
 
-        static GIT_REGEX: Lazy<Regex> = Lazy::new(|| {
-            Regex::new(r"^(?<user>[\w-]+)/(?<repository>[\w-]+)#(?<version>.+)$").unwrap()
-        });
-        if let Some(caps) = GIT_REGEX.captures(s) {
+        if let Some(caps) = GITHUB_REGEX.captures(s) {
             let version = GitHubVersion::from_str(&caps["version"])?;
 
             return Ok(SlipwayReference::GitHub {
@@ -147,8 +149,12 @@ impl Display for SlipwayReference {
                 repository,
                 version,
             } => f.write_fmt(format_args!(
-                "{}{}{}{}{}",
-                user, SLIPWAY_REFERENCE_GIT_USER_SEPARATOR, repository, VERSION_SEPARATOR, version
+                "github:{}{}{}{}{}",
+                user,
+                SLIPWAY_REFERENCE_GIT_USER_SEPARATOR,
+                repository,
+                SLIPWAY_REFERENCE_GITHUB_VERSION_SEPARATOR,
+                version
             )),
             SlipwayReference::Local { path } => {
                 let url = Url::from_file_path(path).map_err(|_| std::fmt::Error {})?;
@@ -190,7 +196,7 @@ mod tests {
 
         #[test]
         fn it_should_serialize_and_deserialize_registry() {
-            let s = r"test-publisher.test-name#1.2.3";
+            let s = r"test_publisher.test_name.1.2.3";
             let json = quote(s);
 
             let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
@@ -201,7 +207,7 @@ mod tests {
 
         #[test]
         fn it_should_parse_registry_from_string() {
-            let s = r"test-publisher.test-name#1.2.3";
+            let s = r"test_publisher.test_name.1.2.3";
 
             let reference = SlipwayReference::from_str(s).unwrap();
 
@@ -214,14 +220,14 @@ mod tests {
                 panic!("Unexpected reference: {reference:?}");
             };
 
-            assert_eq!(publisher, "test-publisher");
-            assert_eq!(name, "test-name");
+            assert_eq!(publisher, "test_publisher");
+            assert_eq!(name, "test_name");
             assert_eq!(version, Version::parse("1.2.3").unwrap());
         }
 
         #[test]
         fn it_should_fail_to_parse_registry_from_string_if_no_version() {
-            let s = "test-publisher.test-name";
+            let s = "test_publisher.test_name";
 
             let reference_result = SlipwayReference::from_str(s);
 
@@ -230,7 +236,7 @@ mod tests {
 
         #[test]
         fn it_should_fail_to_parse_registry_from_string_if_empty_version() {
-            let s = "test-publisher.test-name#";
+            let s = "test_publisher.test_name.";
 
             let reference_result = SlipwayReference::from_str(s);
 
@@ -239,7 +245,7 @@ mod tests {
 
         #[test]
         fn it_should_fail_to_parse_registry_from_string_if_no_publisher() {
-            let s = "test-name#1.2.3";
+            let s = "test_name.1.2.3";
 
             let reference_result = SlipwayReference::from_str(s);
 
@@ -248,7 +254,7 @@ mod tests {
 
         #[test]
         fn it_should_fail_to_parse_registry_from_string_if_empty_publisher() {
-            let s = ".test-name#1.2.3";
+            let s = ".test_name.1.2.3";
 
             let reference_result = SlipwayReference::from_str(s);
 
@@ -261,7 +267,7 @@ mod tests {
 
         #[test]
         fn it_should_serialize_and_deserialize_github() {
-            let s = r"test-user/test-repository#semver:1.2.3";
+            let s = r"github:test-user/test-repository#semver:1.2.3";
             let json = quote(s);
 
             let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
@@ -272,7 +278,7 @@ mod tests {
 
         #[test]
         fn it_should_parse_github_from_string() {
-            let s = r"test-user/test-repository#semver:1.2.3";
+            let s = r"github:test-user/test-repository#semver:1.2.3";
 
             let reference = SlipwayReference::from_str(s).unwrap();
 
@@ -295,7 +301,7 @@ mod tests {
 
         #[test]
         fn it_should_parse_github_with_commitish_from_string() {
-            let s = r"test-user/test-repository#blah";
+            let s = r"github:test-user/test-repository#blah";
 
             let reference = SlipwayReference::from_str(s).unwrap();
 
@@ -315,7 +321,7 @@ mod tests {
 
         #[test]
         fn it_should_fail_to_parse_github_from_string_if_no_version() {
-            let s = "test-user/test-repository";
+            let s = "github:test-user/test-repository";
 
             let reference_result = SlipwayReference::from_str(s);
 
@@ -324,7 +330,7 @@ mod tests {
 
         #[test]
         fn it_should_fail_to_parse_github_from_string_if_empty_version() {
-            let s = "test-user/test-repository#";
+            let s = "github:test-user/test-repository#";
 
             let reference_result = SlipwayReference::from_str(s);
 

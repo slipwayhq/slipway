@@ -99,7 +99,7 @@ mod tests {
 
     #[test]
     fn it_should_serialize_and_deserialize_slipway_id() {
-        let s = r"test-publisher.test-name#1.2.3";
+        let s = r"test_publisher.test_name.1.2.3";
         let json = quote(s);
 
         let id: SlipwayId = serde_json::from_str(&json).unwrap();
@@ -110,18 +110,18 @@ mod tests {
 
     #[test]
     fn it_should_parse_slipway_id_from_string() {
-        let s = r"test-publisher.test-name#1.2.3";
+        let s = r"test_publisher.test_name.1.2.3";
 
         let id = SlipwayId::from_str(s).unwrap();
 
-        assert_eq!(id.publisher, "test-publisher");
-        assert_eq!(id.name, "test-name");
+        assert_eq!(id.publisher, "test_publisher");
+        assert_eq!(id.name, "test_name");
         assert_eq!(id.version, Version::new(1, 2, 3));
     }
 
     #[test]
     fn it_should_fail_to_parse_slipway_id_from_string_if_no_version() {
-        let s = "test-publisher.test-name";
+        let s = "test_publisher.test_name";
 
         let id = SlipwayId::from_str(s);
 
@@ -130,7 +130,7 @@ mod tests {
 
     #[test]
     fn it_should_fail_to_parse_slipway_id_from_string_if_empty_version() {
-        let s = "test-publisher.test-name#";
+        let s = "test_publisher.test_name.";
 
         let id_result = SlipwayId::from_str(s);
 
@@ -139,7 +139,7 @@ mod tests {
 
     #[test]
     fn it_should_fail_to_parse_slipway_id_from_string_if_no_publisher() {
-        let s = "test-name#1.2.3";
+        let s = "test_name.1.2.3";
 
         let id_result = SlipwayId::from_str(s);
 
@@ -148,7 +148,25 @@ mod tests {
 
     #[test]
     fn it_should_fail_to_parse_slipway_id_from_string_if_empty_publisher() {
-        let s = ".test-name#1.2.3";
+        let s = ".test_name.1.2.3";
+
+        let id_result = SlipwayId::from_str(s);
+
+        assert!(id_result.is_err());
+    }
+
+    #[test]
+    fn it_should_fail_to_parse_slipway_id_using_hyphens_in_publisher() {
+        let s = r"test-publisher.test_name.1.2.3";
+
+        let id_result = SlipwayId::from_str(s);
+
+        assert!(id_result.is_err());
+    }
+
+    #[test]
+    fn it_should_fail_to_parse_slipway_id_using_hyphens_in_name() {
+        let s = r"test_publisher.test-name.1.2.3";
 
         let id_result = SlipwayId::from_str(s);
 

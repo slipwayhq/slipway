@@ -9,14 +9,14 @@
   },
   "rigging": {
     "weather_url_resolver": {
-      "component": "slipway.weather_url_resolver#0.0.1",
+      "component": "slipway.weather_url_resolver.0.0.1",
       "input": {
         "provider": "$.constants.weather_provider",
         "location": "$.constants.weather_location"
       }
     },
     "url_loader": {
-      "component": "slipway.url_loader#0.0.1",
+      "component": "slipway.url_loader.0.0.1",
       "input": {
         "url": "$$weather_url_resolver"
       },
@@ -25,20 +25,20 @@
       }
     },
     "weather_transformer": {
-      "component": "slipway.weather_transformer#0.0.1",
+      "component": "slipway.weather_transformer.0.0.1",
       "input": {
         "provider": "$.constants.weather_provider",
         "data": "$$url_loader"
       }
     },
     "weather_renderer": {
-      "component": "slipway.weather_renderer#0.0.1",
+      "component": "slipway.weather_renderer.0.0.1",
       "input": {
         "data": "$$weather_transformer"
       }
     },
     "network_permissions": {
-      "component": "slipway.network_permissions#0.0.1",
+      "component": "slipway.network_permissions.0.0.1",
       "input": {
         "allow_domains": [
           "weather.yahoo.com",

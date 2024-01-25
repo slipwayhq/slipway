@@ -24,10 +24,10 @@ mod slipway_id;
 mod slipway_reference;
 
 pub(crate) const REGISTRY_PUBLISHER_SEPARATOR: char = '.';
-pub(crate) const VERSION_SEPARATOR: char = '#';
+pub(crate) const VERSION_SEPARATOR: char = '.';
 
 #[cfg(test)]
-pub(crate) const TEST_PUBLISHER: &str = "test-publisher";
+pub(crate) const TEST_PUBLISHER: &str = "test_publisher";
 
 fn parse_component_version(version_string: &str) -> Result<Version, SlipwayError> {
     Version::parse(version_string).map_err(|e| SlipwayError::InvalidSlipwayReference(e.to_string()))
@@ -53,6 +53,7 @@ impl App {
 #[derive(Serialize, Deserialize)]
 pub struct Rigging {
     #[serde(flatten)]
+    #[serde(with = "::serde_with::rust::maps_duplicate_key_is_error")]
     pub components: HashMap<String, ComponentRigging>,
 }
 
