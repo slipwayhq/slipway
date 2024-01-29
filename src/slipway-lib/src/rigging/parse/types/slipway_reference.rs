@@ -3,7 +3,6 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use semver::Version;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::Value;
 use std::{fmt::Display, path::PathBuf, str::FromStr};
 use url::Url;
 
@@ -13,7 +12,7 @@ const SLIPWAY_REFERENCE_GIT_USER_SEPARATOR: char = '/';
 const SLIPWAY_REFERENCE_GITHUB_VERSION_SEPARATOR: char = '#';
 
 pub(crate) static REGISTRY_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(?<publisher>[\w]+)\.(?<name>[\w]+)\.(?<version>.+)$").unwrap());
+    Lazy::new(|| Regex::new(r"^(?<publisher>\w+)\.(?<name>\w+)\.(?<version>.+)$").unwrap());
 
 static GITHUB_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"^github:(?<user>[\w-]+)/(?<repository>[\w-]+)#(?<version>.+)$").unwrap()
@@ -76,16 +75,17 @@ impl FromStr for SlipwayReference {
                     path: uri.to_file_path().expect("URI was not a valid file path"),
                 }),
                 "https" => Ok(SlipwayReference::Url { url: uri }),
-                other => Err(SlipwayError::InvalidSlipwayReference(format!(
-                    "unsupported URI scheme: {other}"
-                ))),
+                other => Err(SlipwayError::InvalidSlipwayPrimitive(
+                    stringify!(SlipwayReference).to_string(),
+                    format!("unsupported URI scheme: {other}"),
+                )),
             };
         }
 
-        Err(SlipwayError::InvalidSlipwayReference(format!(
-            "component reference '{}' was not in a valid format",
-            s
-        )))
+        Err(SlipwayError::InvalidSlipwayPrimitive(
+            stringify!(SlipwayReference).to_string(),
+            format!("component reference '{}' was not in a valid format", s),
+        ))
     }
 }
 
@@ -167,16 +167,8 @@ impl Display for SlipwayReference {
 
 impl<'de> Deserialize<'de> for SlipwayReference {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let value = Value::deserialize(deserializer)?;
-        match value.as_str() {
-            Some(reference_as_string) => {
-                SlipwayReference::from_str(reference_as_string).map_err(serde::de::Error::custom)
-            }
-
-            None => Err(serde::de::Error::custom(
-                "reference should be in string format",
-            )),
-        }
+        let s = String::deserialize(deserializer)?;
+        SlipwayReference::from_str(&s).map_err(serde::de::Error::custom)
     }
 }
 

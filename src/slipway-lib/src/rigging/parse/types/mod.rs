@@ -18,8 +18,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::errors::SlipwayError;
 
-use self::{slipway_id::SlipwayId, slipway_reference::SlipwayReference};
+use self::{
+    primitives::Name,
+    primitives::{Description, Publisher},
+    slipway_id::SlipwayId,
+    slipway_reference::SlipwayReference,
+};
 
+mod primitives;
 mod slipway_id;
 mod slipway_reference;
 
@@ -30,16 +36,18 @@ pub(crate) const VERSION_SEPARATOR: char = '.';
 pub(crate) const TEST_PUBLISHER: &str = "test_publisher";
 
 fn parse_component_version(version_string: &str) -> Result<Version, SlipwayError> {
-    Version::parse(version_string).map_err(|e| SlipwayError::InvalidSlipwayReference(e.to_string()))
+    Version::parse(version_string).map_err(|e| {
+        SlipwayError::InvalidSlipwayPrimitive(stringify!(Version).to_string(), e.to_string())
+    })
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct App {
-    pub publisher: String,
-    pub name: String,
+    pub publisher: Publisher,
+    pub name: Name,
     pub version: Version,
-    pub description: Option<String>,
+    pub description: Option<Description>,
     pub constants: Option<serde_json::Value>,
     pub rigging: Rigging,
 }
@@ -76,10 +84,10 @@ pub struct ComponentPermissions {
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Component {
-    pub publisher: String,
-    pub name: String,
+    pub publisher: Publisher,
+    pub name: Name,
     pub version: Version,
-    pub description: Option<String>,
+    pub description: Option<Description>,
     pub input: SerdeSchema,
     pub output: SerdeSchema,
 }

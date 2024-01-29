@@ -1,8 +1,5 @@
 use thiserror::Error;
 
-pub(crate) const INVALID_SLIPWAY_ID: &str = "invalid slipway id";
-pub(crate) const INVALID_SLIPWAY_REFERENCE: &str = "invalid slipway reference";
-
 #[derive(Error, Debug)]
 pub enum SlipwayError {
     #[error("resolve failed")]
@@ -15,12 +12,7 @@ pub enum SlipwayError {
     ValidationFailed(String),
 
     // If this error is generated during Serde deserialization it will be converted
-    // into a `serde_json::Error` and wrapped in a ParseFailed exception.
-    #[error("{INVALID_SLIPWAY_REFERENCE}: {0}")]
-    InvalidSlipwayReference(String),
-
-    // If this error is generated during Serde deserialization it will be converted
-    // into a `serde_json::Error` and wrapped in a ParseFailed exception.
-    #[error("{INVALID_SLIPWAY_ID}: {0}")]
-    InvalidSlipwayId(String),
+    // into a `serde_json::Error` and wrapped in a ParseFailed error.
+    #[error("invalid type \"{0}\": {1}")]
+    InvalidSlipwayPrimitive(String, String),
 }

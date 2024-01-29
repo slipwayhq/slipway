@@ -14,8 +14,6 @@ pub fn parse_component(input: &str) -> Result<Component, SlipwayError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::errors::INVALID_SLIPWAY_REFERENCE;
-
     use super::*;
 
     fn it_should_parse_examples_folder<T, TParse>(examples_dir: &str, parse_method: TParse)
@@ -28,7 +26,7 @@ mod tests {
             let path = entry.path();
             if path.is_file() {
                 let file_contents = std::fs::read_to_string(path.clone()).unwrap();
-                let _app = parse_method(file_contents.as_str()).unwrap_or_else(|error| {
+                let _app = parse_method(&file_contents).unwrap_or_else(|error| {
                     panic!("Failed to parse {}: {:?}", path.display(), error)
                 });
                 parsed_files += 1;
@@ -70,14 +68,15 @@ mod tests {
             }
           }"#;
 
+        let expected = "invalid type \"SlipwayReference\"";
         match parse_app(json) {
             Ok(_) => panic!("Expected an error"),
             Err(e) => match e {
                 SlipwayError::ParseFailed(e) => {
                     assert!(
-                        e.to_string().starts_with(INVALID_SLIPWAY_REFERENCE),
+                        e.to_string().starts_with(expected),
                         "Expected error to start with \"{}\" but it was \"{}\"",
-                        INVALID_SLIPWAY_REFERENCE,
+                        expected,
                         e
                     );
                 }

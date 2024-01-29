@@ -2,27 +2,28 @@ use std::{fmt::Display, str::FromStr};
 
 use semver::Version;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::Value;
 
 use crate::errors::SlipwayError;
 
 use super::{
-    parse_component_version, slipway_reference::REGISTRY_REGEX, REGISTRY_PUBLISHER_SEPARATOR,
-    VERSION_SEPARATOR,
+    parse_component_version,
+    primitives::{Name, Publisher},
+    slipway_reference::REGISTRY_REGEX,
+    REGISTRY_PUBLISHER_SEPARATOR, VERSION_SEPARATOR,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SlipwayId {
-    pub publisher: String,
-    pub name: String,
+    pub publisher: Publisher,
+    pub name: Name,
     pub version: Version,
 }
 
 impl SlipwayId {
-    pub fn new(publisher: &str, name: &str, version: &Version) -> Self {
+    pub fn new(publisher: &Publisher, name: &Name, version: &Version) -> Self {
         SlipwayId {
-            publisher: publisher.to_string(),
-            name: name.to_string(),
+            publisher: publisher.clone(),
+            name: name.clone(),
             version: version.clone(),
         }
     }
@@ -32,8 +33,8 @@ impl SlipwayId {
         use super::TEST_PUBLISHER;
 
         SlipwayId {
-            publisher: TEST_PUBLISHER.to_string(),
-            name: name.to_string(),
+            publisher: Publisher::from_str(TEST_PUBLISHER).unwrap(),
+            name: Name::from_str(name).unwrap(),
             version,
         }
     }
@@ -43,20 +44,20 @@ impl FromStr for SlipwayId {
     type Err = SlipwayError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some(caps) = REGISTRY_REGEX.captures(s) {
-            let version = parse_component_version(&caps["version"])?;
+        if let Some(captures) = REGISTRY_REGEX.captures(s) {
+            let version = parse_component_version(&captures["version"])?;
 
             return Ok(SlipwayId {
-                publisher: caps["publisher"].to_string(),
-                name: caps["name"].to_string(),
+                publisher: Publisher::from_str(&captures["publisher"])?,
+                name: Name::from_str(&captures["name"])?,
                 version,
             });
         }
 
-        Err(SlipwayError::InvalidSlipwayId(format!(
-            "id '{}' was not in a valid format",
-            s
-        )))
+        Err(SlipwayError::InvalidSlipwayPrimitive(
+            stringify!(SlipwayId).to_string(),
+            format!("id '{}' was not in a valid format", s),
+        ))
     }
 }
 
@@ -75,14 +76,8 @@ impl Display for SlipwayId {
 
 impl<'de> Deserialize<'de> for SlipwayId {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let value = Value::deserialize(deserializer)?;
-        match value.as_str() {
-            Some(id_as_string) => {
-                SlipwayId::from_str(id_as_string).map_err(serde::de::Error::custom)
-            }
-
-            None => Err(serde::de::Error::custom("id should be in string format")),
-        }
+        let s = String::deserialize(deserializer)?;
+        SlipwayId::from_str(&s).map_err(serde::de::Error::custom)
     }
 }
 
@@ -114,8 +109,8 @@ mod tests {
 
         let id = SlipwayId::from_str(s).unwrap();
 
-        assert_eq!(id.publisher, "test_publisher");
-        assert_eq!(id.name, "test_name");
+        assert_eq!(id.publisher.0, "test_publisher");
+        assert_eq!(id.name.0, "test_name");
         assert_eq!(id.version, Version::new(1, 2, 3));
     }
 
