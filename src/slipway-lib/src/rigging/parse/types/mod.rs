@@ -19,15 +19,14 @@ use serde::{Deserialize, Serialize};
 use crate::errors::SlipwayError;
 
 use self::{
-    primitives::Name,
-    primitives::{Description, Publisher},
+    primitives::{ComponentHandle, Description, Name, Publisher},
     slipway_id::SlipwayId,
     slipway_reference::SlipwayReference,
 };
 
-mod primitives;
-mod slipway_id;
-mod slipway_reference;
+pub mod primitives;
+pub mod slipway_id;
+pub mod slipway_reference;
 
 pub(crate) const REGISTRY_PUBLISHER_SEPARATOR: char = '.';
 pub(crate) const VERSION_SEPARATOR: char = '.';
@@ -62,7 +61,7 @@ impl App {
 pub struct Rigging {
     #[serde(flatten)]
     #[serde(with = "::serde_with::rust::maps_duplicate_key_is_error")]
-    pub components: HashMap<String, ComponentRigging>,
+    pub components: HashMap<ComponentHandle, ComponentRigging>,
 }
 
 #[derive(Serialize, Deserialize)]

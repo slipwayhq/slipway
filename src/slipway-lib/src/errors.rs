@@ -8,6 +8,9 @@ pub enum SlipwayError {
     #[error("parse failed")]
     ParseFailed(#[from] serde_json::Error),
 
+    #[error("invalid json path ({0}): {1}")]
+    InvalidJsonPathExpression(String, String),
+
     #[error("validation failed: {0}")]
     ValidationFailed(String),
 

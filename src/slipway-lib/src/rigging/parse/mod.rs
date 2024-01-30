@@ -1,6 +1,9 @@
 use crate::errors::SlipwayError;
 
-use self::types::{App, Component};
+pub use self::types::primitives::*;
+pub use self::types::slipway_id::*;
+pub use self::types::slipway_reference::*;
+pub use self::types::*;
 
 mod types;
 
