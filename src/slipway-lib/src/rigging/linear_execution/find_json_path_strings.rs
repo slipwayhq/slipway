@@ -13,7 +13,7 @@ pub(crate) struct FoundJsonPathString<'a> {
     pub path: Cow<'a, str>,
 }
 
-pub(crate) fn find_json_path_strings<'a>(value: &'a Value) -> Vec<FoundJsonPathString<'a>> {
+pub(crate) fn find_json_path_strings(value: &Value) -> Vec<FoundJsonPathString> {
     let mut results = Vec::new();
     let mut current_path = vec![Cow::Borrowed("$")];
     find_json_path_strings_inner(value, &mut current_path, &mut results);

@@ -1,7 +1,8 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use crate::{errors::SlipwayError, rigging::parse::App};
 
+mod dependency_graph;
 mod extract_dependencies_from_json_path_strings;
 mod find_json_path_strings;
 mod get_rigging_component_names_from_json_path_strings;
@@ -9,10 +10,7 @@ mod parse_json_path_strings;
 
 use find_json_path_strings::find_json_path_strings;
 
-use self::{
-    extract_dependencies_from_json_path_strings::ExtractDependencies,
-    parse_json_path_strings::{FoundJsonPath, Parse},
-};
+use self::extract_dependencies_from_json_path_strings::ExtractDependencies;
 
 use super::parse::ComponentHandle;
 
@@ -31,8 +29,8 @@ pub fn initialize(app: &App) -> Result<(), SlipwayError> {
         let dependencies = json_path_strings.extract_dependencies()?;
 
         components_with_dependencies.push(ComponentAndDependencies {
-            component: key.clone(),
-            inputs: dependencies,
+            component_handle: key.clone(),
+            input_handles: dependencies,
         });
     }
 
@@ -40,6 +38,6 @@ pub fn initialize(app: &App) -> Result<(), SlipwayError> {
 }
 
 struct ComponentAndDependencies {
-    component: ComponentHandle,
-    inputs: HashSet<ComponentHandle>,
+    component_handle: ComponentHandle,
+    input_handles: HashSet<ComponentHandle>,
 }
