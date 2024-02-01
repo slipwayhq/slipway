@@ -40,7 +40,7 @@ fn parse_component_version(version_string: &str) -> Result<Version, SlipwayError
     })
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct App {
     pub publisher: Publisher,
@@ -57,14 +57,14 @@ impl App {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Rigging {
     #[serde(flatten)]
     #[serde(with = "::serde_with::rust::maps_duplicate_key_is_error")]
     pub components: HashMap<ComponentHandle, ComponentRigging>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct ComponentRigging {
     pub component: SlipwayReference,
@@ -72,7 +72,7 @@ pub(crate) struct ComponentRigging {
     pub permissions: Option<ComponentPermissions>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct ComponentPermissions {
     pub network: Option<String>,
@@ -80,7 +80,7 @@ pub(crate) struct ComponentPermissions {
     pub environment: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Component {
     pub publisher: Publisher,
