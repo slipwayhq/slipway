@@ -13,7 +13,7 @@ use super::{
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct SlipwayId {
+pub(crate) struct SlipwayId {
     pub publisher: Publisher,
     pub name: Name,
     pub version: Version,

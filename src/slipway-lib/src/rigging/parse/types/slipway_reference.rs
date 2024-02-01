@@ -19,7 +19,7 @@ static GITHUB_REGEX: Lazy<Regex> = Lazy::new(|| {
 });
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum SlipwayReference {
+pub(crate) enum SlipwayReference {
     // publisher.name#version
     Registry {
         publisher: String,
@@ -90,7 +90,7 @@ impl FromStr for SlipwayReference {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum GitHubVersion {
+pub(crate) enum GitHubVersion {
     Commitish(String),
     Version(Version),
 }

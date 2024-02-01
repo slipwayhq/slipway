@@ -1,10 +1,32 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
+use itertools::Itertools;
+
 use crate::{errors::SlipwayError, rigging::parse::ComponentHandle};
 
 use super::ComponentAndDependencies;
 
 const CYCLE_DETECTED_ERROR: &str = "Cycle detected in the graph";
+
+pub(crate) fn topological_sort(
+    components_and_dependencies: &[ComponentAndDependencies],
+) -> Result<Vec<&ComponentHandle>, SlipwayError> {
+    let graph = build_graph(components_and_dependencies);
+    graph.topological_sort()
+}
+
+fn build_graph(components: &[ComponentAndDependencies]) -> Graph {
+    let mut graph = Graph::new();
+
+    for component in components {
+        graph.add_node(&component.component_handle);
+        for input in &component.input_handles {
+            graph.add_edge(input, &component.component_handle);
+        }
+    }
+
+    graph
+}
 
 struct Graph<'a> {
     edges: HashMap<&'a ComponentHandle, HashSet<&'a ComponentHandle>>,
@@ -30,11 +52,86 @@ impl<'a> Graph<'a> {
         self.in_degree.entry(node).or_insert(0);
     }
 
+    fn find_cycle(&self) -> Option<Vec<&'a ComponentHandle>> {
+        let mut visited = HashSet::new();
+        let mut stack = Vec::new();
+
+        // We sort before iterating to create a predictable sorted order.
+        for &node in self.edges.keys().sorted() {
+            if !stack.is_empty() {
+                panic!("Stack should be empty at the start of each find_cycle_inner call");
+            }
+
+            if let Some(path) = self.find_cycle_inner(node, &mut visited, &mut stack) {
+                return Some(path);
+            }
+        }
+
+        None
+    }
+
+    fn find_cycle_inner(
+        &self,
+        node: &'a ComponentHandle,
+        visited: &mut HashSet<&'a ComponentHandle>,
+        stack: &mut Vec<&'a ComponentHandle>,
+    ) -> Option<Vec<&'a ComponentHandle>> {
+        if stack.contains(&node) {
+            let mut path = vec![node];
+            while let Some(&n) = stack.last() {
+                stack.pop();
+                path.push(n);
+                if n == node {
+                    path.reverse();
+                    return Some(path);
+                }
+            }
+        }
+
+        if visited.insert(node) {
+            stack.push(node);
+
+            if let Some(neighbors) = self.edges.get(&node) {
+                for &neighbor in neighbors.iter().sorted() {
+                    if let Some(path) = self.find_cycle_inner(neighbor, visited, stack) {
+                        return Some(path);
+                    }
+                }
+            }
+
+            stack.pop();
+        }
+
+        None
+    }
+
+    fn detect_cycle(&self) -> Result<(), SlipwayError> {
+        if let Some(path) = self.find_cycle() {
+            let cycle = path
+                .iter()
+                .map(|&x| x.to_string())
+                .collect::<Vec<String>>()
+                .join(" -> ");
+            return Err(SlipwayError::ValidationFailed(format!(
+                "{}: {}",
+                CYCLE_DETECTED_ERROR, cycle
+            )));
+        }
+
+        Ok(())
+    }
+
     fn topological_sort(&self) -> Result<Vec<&'a ComponentHandle>, SlipwayError> {
+        self.detect_cycle()?;
+
         let mut in_degree = self.in_degree.clone();
         let mut queue = VecDeque::new();
 
-        for (&node, &degree) in in_degree.iter() {
+        // We sort before iterating to create a predictable sorted order.
+        for &node in in_degree.keys().sorted() {
+            let &degree = in_degree
+                .get(node)
+                .expect("Node should have an in_degree entry");
             if degree == 0 {
                 queue.push_back(node);
             }
@@ -45,7 +142,8 @@ impl<'a> Graph<'a> {
             order.push(node);
 
             if let Some(neighbors) = self.edges.get(&node) {
-                for neighbor in neighbors {
+                // We sort before iterating to create a predictable sorted order.
+                for &neighbor in neighbors.iter().sorted() {
                     if let Some(degree) = in_degree.get_mut(neighbor) {
                         *degree -= 1;
                         if *degree == 0 {
@@ -57,26 +155,11 @@ impl<'a> Graph<'a> {
         }
 
         if order.len() != self.in_degree.len() {
-            return Err(SlipwayError::ValidationFailed(
-                CYCLE_DETECTED_ERROR.to_string(),
-            ));
+            panic!("Graph appears to have a cycle which was not detected by detect_cycle()");
         }
 
         Ok(order)
     }
-}
-
-fn build_graph(components: &[ComponentAndDependencies]) -> Graph {
-    let mut graph = Graph::new();
-
-    for component in components {
-        graph.add_node(&component.component_handle);
-        for input in &component.input_handles {
-            graph.add_edge(input, &component.component_handle);
-        }
-    }
-
-    graph
 }
 
 #[cfg(test)]
@@ -135,9 +218,7 @@ mod tests {
     #[test]
     fn test_topological_sort_no_cycle() {
         let components = create_test_components();
-        let graph = build_graph(&components);
-
-        let order = graph.topological_sort().unwrap();
+        let order = topological_sort(&components).unwrap();
         assert_eq!(
             order,
             vec![
@@ -150,20 +231,29 @@ mod tests {
 
     #[test]
     fn test_topological_sort_with_cycle() {
+        // Dependency graph:
+        // C--\
+        // |\  |
+        // B | ^
+        // \ / |
+        //  A-/
+
         let mut components = create_test_components();
+        components.pop();
         components.push(ComponentAndDependencies {
             component_handle: ComponentHandle::for_test("C"),
             input_handles: vec![ComponentHandle::for_test("A")].into_iter().collect(),
         });
 
-        let graph = build_graph(&components);
-        let result = graph.topological_sort();
+        let result = topological_sort(&components);
 
         assert!(result.is_err());
 
         match result {
             Err(SlipwayError::ValidationFailed(msg)) => {
-                assert_eq!(msg, CYCLE_DETECTED_ERROR.to_string())
+                // There are a few cycles it could report, e.g. C -> B -> A -> C, but
+                // sorting during cycle detection ensures it always reports the same one.
+                assert_eq!(msg, format!("{}: {}", CYCLE_DETECTED_ERROR, "A -> C -> A"));
             }
             _ => panic!("Expected a ValidationFailed error"),
         }
@@ -196,7 +286,7 @@ mod tests {
         // | \  /
         //  \  G  I J
         //   \ | / /
-        //     H -/
+        //     H -/  K
 
         let mut components = create_test_components();
 
@@ -227,7 +317,8 @@ mod tests {
             input_handles: vec![
                 ComponentHandle::for_test("F"),
                 ComponentHandle::for_test("G"),
-                ComponentHandle::for_test("I"), // Note: This is the only mention of I.
+                // Note: This is the only mention of I in the graph. It implicitly has no input components.
+                ComponentHandle::for_test("I"),
                 ComponentHandle::for_test("J"),
             ]
             .into_iter()
@@ -242,8 +333,7 @@ mod tests {
             input_handles: HashSet::new(),
         });
 
-        let graph = build_graph(&components);
-        let order = graph.topological_sort().unwrap();
+        let order = topological_sort(&components).unwrap();
 
         fn assert_order(order: &[&ComponentHandle], a: &str, b: &str) {
             assert!(
@@ -275,5 +365,11 @@ mod tests {
                 );
             }
         }
+
+        // Our topological sort should have a consistent order due to sorting.
+        assert_eq!(
+            order.iter().join(" -> "),
+            "C -> I -> J -> K -> B -> F -> A -> E -> D -> G -> H"
+        );
     }
 }

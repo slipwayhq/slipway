@@ -24,9 +24,9 @@ use self::{
     slipway_reference::SlipwayReference,
 };
 
-pub mod primitives;
-pub mod slipway_id;
-pub mod slipway_reference;
+pub(crate) mod primitives;
+pub(crate) mod slipway_id;
+pub(crate) mod slipway_reference;
 
 pub(crate) const REGISTRY_PUBLISHER_SEPARATOR: char = '.';
 pub(crate) const VERSION_SEPARATOR: char = '.';
@@ -42,7 +42,7 @@ fn parse_component_version(version_string: &str) -> Result<Version, SlipwayError
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct App {
+pub(crate) struct App {
     pub publisher: Publisher,
     pub name: Name,
     pub version: Version,
@@ -58,7 +58,7 @@ impl App {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Rigging {
+pub(crate) struct Rigging {
     #[serde(flatten)]
     #[serde(with = "::serde_with::rust::maps_duplicate_key_is_error")]
     pub components: HashMap<ComponentHandle, ComponentRigging>,
@@ -66,7 +66,7 @@ pub struct Rigging {
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ComponentRigging {
+pub(crate) struct ComponentRigging {
     pub component: SlipwayReference,
     pub input: Option<serde_json::Value>,
     pub permissions: Option<ComponentPermissions>,
@@ -74,7 +74,7 @@ pub struct ComponentRigging {
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ComponentPermissions {
+pub(crate) struct ComponentPermissions {
     pub network: Option<String>,
     pub file_system: Option<String>,
     pub environment: Option<String>,
@@ -82,7 +82,7 @@ pub struct ComponentPermissions {
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Component {
+pub(crate) struct Component {
     pub publisher: Publisher,
     pub name: Name,
     pub version: Version,

@@ -2,19 +2,20 @@ use std::collections::HashSet;
 
 use crate::{errors::SlipwayError, rigging::parse::App};
 
-mod dependency_graph;
 mod extract_dependencies_from_json_path_strings;
 mod find_json_path_strings;
 mod get_rigging_component_names_from_json_path_strings;
 mod parse_json_path_strings;
+mod topological_sort;
 
 use find_json_path_strings::find_json_path_strings;
+use topological_sort::topological_sort;
 
-use self::extract_dependencies_from_json_path_strings::ExtractDependencies;
+use extract_dependencies_from_json_path_strings::ExtractDependencies;
 
 use super::parse::ComponentHandle;
 
-pub fn initialize(app: &App) -> Result<(), SlipwayError> {
+pub(crate) fn initialize(app: &App) -> Result<(), SlipwayError> {
     let mut components_with_dependencies = Vec::new();
     for (key, rigging) in app.rigging.components.iter() {
         let input = &rigging.input;
@@ -33,6 +34,9 @@ pub fn initialize(app: &App) -> Result<(), SlipwayError> {
             input_handles: dependencies,
         });
     }
+
+    // Get the execution order.
+    let order = topological_sort(&components_with_dependencies)?;
 
     Ok(())
 }

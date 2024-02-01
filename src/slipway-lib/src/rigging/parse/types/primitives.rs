@@ -6,8 +6,8 @@ use std::str::FromStr;
 
 macro_rules! create_validated_string_struct {
     ($name:ident, $pattern:expr, $min_length:expr, $max_length:expr) => {
-        #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-        pub struct $name(pub String);
+        #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        pub(crate) struct $name(pub String);
 
         impl fmt::Display for $name {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
