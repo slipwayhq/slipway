@@ -1,4 +1,4 @@
-use crate::{errors::SlipwayError, rigging::parse::types::parse_component_version};
+use crate::{errors::SlipwayError, types::parse_component_version};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use semver::Version;

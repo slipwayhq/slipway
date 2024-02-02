@@ -1,11 +1,7 @@
-use crate::errors::SlipwayError;
-
-pub(crate) use self::types::primitives::*;
-pub(crate) use self::types::slipway_id::*;
-pub(crate) use self::types::slipway_reference::*;
-pub(crate) use self::types::*;
-
-mod types;
+use crate::{
+    errors::SlipwayError,
+    types::{App, Component},
+};
 
 pub(crate) fn parse_app(input: &str) -> Result<App, SlipwayError> {
     serde_json::from_str(input).map_err(SlipwayError::ParseFailed)

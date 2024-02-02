@@ -69,15 +69,23 @@ pub(crate) struct Rigging {
 pub(crate) struct ComponentRigging {
     pub component: SlipwayReference,
     pub input: Option<serde_json::Value>,
-    pub permissions: Option<ComponentPermissions>,
+    pub permissions: Option<Vec<ComponentPermission>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct ComponentPermissions {
-    pub network: Option<String>,
-    pub file_system: Option<String>,
-    pub environment: Option<String>,
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum ComponentPermission {
+    Url { url: String },
+    Domain { domain: String },
+    UrlRegex { regex: String },
+
+    File { path: String },
+    Folder { path: String },
+    FileRegex { regex: String },
+
+    Env { value: String },
+    EnvRegex { regex: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

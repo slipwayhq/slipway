@@ -2,26 +2,24 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use itertools::Itertools;
 
-use crate::{errors::SlipwayError, rigging::parse::ComponentHandle};
-
-use super::ComponentAndDependencies;
+use crate::{errors::SlipwayError, types::primitives::ComponentHandle};
 
 const CYCLE_DETECTED_ERROR: &str = "Cycle detected in the graph";
 
 pub(crate) fn topological_sort(
-    components_and_dependencies: &[ComponentAndDependencies],
+    components_and_dependencies: &HashMap<ComponentHandle, HashSet<ComponentHandle>>,
 ) -> Result<Vec<&ComponentHandle>, SlipwayError> {
     let graph = build_graph(components_and_dependencies);
     graph.topological_sort()
 }
 
-fn build_graph(components: &[ComponentAndDependencies]) -> Graph {
+fn build_graph(components: &HashMap<ComponentHandle, HashSet<ComponentHandle>>) -> Graph {
     let mut graph = Graph::new();
 
-    for component in components {
-        graph.add_node(&component.component_handle);
-        for input in &component.input_handles {
-            graph.add_edge(input, &component.component_handle);
+    for (component_handle, input_handles) in components {
+        graph.add_node(component_handle);
+        for input in input_handles {
+            graph.add_edge(input, component_handle);
         }
     }
 
@@ -166,7 +164,7 @@ impl<'a> Graph<'a> {
 mod tests {
     use super::*;
 
-    fn create_test_components() -> Vec<ComponentAndDependencies> {
+    fn create_test_components() -> HashMap<ComponentHandle, HashSet<ComponentHandle>> {
         // Dependency graph:
         // C
         // |\
@@ -174,24 +172,22 @@ mod tests {
         // \ /
         //  A
         vec![
-            ComponentAndDependencies {
-                component_handle: ComponentHandle::for_test("A"),
-                input_handles: vec![
+            (
+                ComponentHandle::for_test("A"),
+                vec![
                     ComponentHandle::for_test("B"),
                     ComponentHandle::for_test("C"),
-                ]
-                .into_iter()
-                .collect(),
-            },
-            ComponentAndDependencies {
-                component_handle: ComponentHandle::for_test("B"),
-                input_handles: vec![ComponentHandle::for_test("C")].into_iter().collect(),
-            },
-            ComponentAndDependencies {
-                component_handle: ComponentHandle::for_test("C"),
-                input_handles: HashSet::new(),
-            },
+                ],
+            ),
+            (
+                ComponentHandle::for_test("B"),
+                vec![ComponentHandle::for_test("C")],
+            ),
+            (ComponentHandle::for_test("C"), Vec::new()),
         ]
+        .into_iter()
+        .map(|(k, v)| (k, v.into_iter().collect()))
+        .collect()
     }
 
     #[test]
@@ -239,11 +235,11 @@ mod tests {
         //  A-/
 
         let mut components = create_test_components();
-        components.pop();
-        components.push(ComponentAndDependencies {
-            component_handle: ComponentHandle::for_test("C"),
-            input_handles: vec![ComponentHandle::for_test("A")].into_iter().collect(),
-        });
+        components.remove(&ComponentHandle::for_test("C"));
+        components.insert(
+            ComponentHandle::for_test("C"),
+            vec![ComponentHandle::for_test("A")].into_iter().collect(),
+        );
 
         let result = topological_sort(&components);
 
@@ -262,10 +258,7 @@ mod tests {
     #[test]
     fn test_graph_with_isolated_node() {
         let mut components = create_test_components();
-        components.push(ComponentAndDependencies {
-            component_handle: ComponentHandle::for_test("D"),
-            input_handles: HashSet::new(),
-        });
+        components.insert(ComponentHandle::for_test("D"), HashSet::new());
 
         let graph = build_graph(&components);
         let order = graph.topological_sort().unwrap();
@@ -291,30 +284,30 @@ mod tests {
         let mut components = create_test_components();
 
         // Add more components with dependencies
-        components.push(ComponentAndDependencies {
-            component_handle: ComponentHandle::for_test("D"),
-            input_handles: vec![ComponentHandle::for_test("A")].into_iter().collect(),
-        });
-        components.push(ComponentAndDependencies {
-            component_handle: ComponentHandle::for_test("E"),
-            input_handles: vec![ComponentHandle::for_test("B")].into_iter().collect(),
-        });
-        components.push(ComponentAndDependencies {
-            component_handle: ComponentHandle::for_test("F"),
-            input_handles: vec![ComponentHandle::for_test("C")].into_iter().collect(),
-        });
-        components.push(ComponentAndDependencies {
-            component_handle: ComponentHandle::for_test("G"),
-            input_handles: vec![
+        components.insert(
+            ComponentHandle::for_test("D"),
+            vec![ComponentHandle::for_test("A")].into_iter().collect(),
+        );
+        components.insert(
+            ComponentHandle::for_test("E"),
+            vec![ComponentHandle::for_test("B")].into_iter().collect(),
+        );
+        components.insert(
+            ComponentHandle::for_test("F"),
+            vec![ComponentHandle::for_test("C")].into_iter().collect(),
+        );
+        components.insert(
+            ComponentHandle::for_test("G"),
+            vec![
                 ComponentHandle::for_test("D"),
                 ComponentHandle::for_test("E"),
             ]
             .into_iter()
             .collect(),
-        });
-        components.push(ComponentAndDependencies {
-            component_handle: ComponentHandle::for_test("H"),
-            input_handles: vec![
+        );
+        components.insert(
+            ComponentHandle::for_test("H"),
+            vec![
                 ComponentHandle::for_test("F"),
                 ComponentHandle::for_test("G"),
                 // Note: This is the only mention of I in the graph. It implicitly has no input components.
@@ -323,15 +316,9 @@ mod tests {
             ]
             .into_iter()
             .collect(),
-        });
-        components.push(ComponentAndDependencies {
-            component_handle: ComponentHandle::for_test("J"),
-            input_handles: HashSet::new(),
-        });
-        components.push(ComponentAndDependencies {
-            component_handle: ComponentHandle::for_test("K"),
-            input_handles: HashSet::new(),
-        });
+        );
+        components.insert(ComponentHandle::for_test("J"), HashSet::new());
+        components.insert(ComponentHandle::for_test("K"), HashSet::new());
 
         let order = topological_sort(&components).unwrap();
 
@@ -352,17 +339,13 @@ mod tests {
         }
 
         // Check that all the inputs are before their components in the order.
-        for component in &components {
-            assert!(order.contains(&&component.component_handle));
+        for (component, inputs) in components.iter() {
+            assert!(order.contains(&component));
 
-            for input in &component.input_handles {
+            for input in inputs {
                 assert!(order.contains(&input));
 
-                assert_order(
-                    &order,
-                    &input.to_string(),
-                    &component.component_handle.to_string(),
-                );
+                assert_order(&order, &input.to_string(), &component.0.to_string());
             }
         }
 

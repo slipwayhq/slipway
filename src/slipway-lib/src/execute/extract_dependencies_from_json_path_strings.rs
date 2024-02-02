@@ -3,12 +3,12 @@ use std::{collections::HashSet, str::FromStr};
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-use crate::{errors::SlipwayError, rigging::parse::ComponentHandle};
+use crate::{errors::SlipwayError, types::primitives::ComponentHandle};
 
 use super::find_json_path_strings::FoundJsonPathString;
 
 static COMPONENT_DEPENDENCY_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^\$\.rigging\.(?<component_handle>\w+)\.output[\.\[]").unwrap());
+    Lazy::new(|| Regex::new(r"^\$\.rigging\.(?<component_handle>\w+)\.output([\.\[]|$)").unwrap());
 
 pub(crate) trait ExtractDependencies {
     fn extract_dependencies(&self) -> Result<HashSet<ComponentHandle>, SlipwayError>;
@@ -62,6 +62,10 @@ mod tests {
                 path_to: "$.rigging.component5.input".to_string(),
                 path: Cow::Borrowed("$.rigging_component0.output"),
             },
+            FoundJsonPathString {
+                path_to: "$.rigging.component6.input".to_string(),
+                path: Cow::Borrowed("$.rigging.component5.output"),
+            },
         ];
 
         let dependencies = json_path_strings.extract_dependencies().unwrap();
@@ -70,7 +74,8 @@ mod tests {
             dependencies,
             vec![
                 ComponentHandle::from_str("component1").unwrap(),
-                ComponentHandle::from_str("component4").unwrap()
+                ComponentHandle::from_str("component4").unwrap(),
+                ComponentHandle::from_str("component5").unwrap(),
             ]
             .into_iter()
             .collect()

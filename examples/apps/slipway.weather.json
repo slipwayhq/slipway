@@ -20,9 +20,10 @@
       "input": {
         "url": "$$weather_url_resolver"
       },
-      "permissions": {
-        "network": "network_permissions"
-      }
+      "permissions": [
+        { "type": "domain", "domain": "weather.yahoo.com" },
+        { "type": "domain", "domain": "met.com" }
+      ]
     },
     "weather_transformer": {
       "component": "slipway.weather_transformer.0.0.1",

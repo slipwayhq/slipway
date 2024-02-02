@@ -5,9 +5,9 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::str::FromStr;
 
 macro_rules! create_validated_string_struct {
-    ($name:ident, $pattern:expr, $min_length:expr, $max_length:expr) => {
+    ($vis:vis $name:ident, $pattern:expr, $min_length:expr, $max_length:expr) => {
         #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-        pub(crate) struct $name(pub String);
+        $vis struct $name(pub String);
 
         impl fmt::Display for $name {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -86,12 +86,13 @@ const MAXIMUM_PUBLISHER_LENGTH: usize = 64;
 const MAXIMUM_NAME_LENGTH: usize = 64;
 const MAXIMUM_DESCRIPTION_LENGTH: usize = 256;
 const MAXIMUM_COMPONENT_HANDLE_LENGTH: usize = 256;
+const MAXIMUM_SESSION_HANDLE_LENGTH: usize = 65536;
 
-create_validated_string_struct!(Publisher, Some(r"^\w+$"), Some(1), MAXIMUM_PUBLISHER_LENGTH);
-create_validated_string_struct!(Name, Some(r"^\w+$"), Some(1), MAXIMUM_NAME_LENGTH);
-create_validated_string_struct!(Description, None, None, MAXIMUM_DESCRIPTION_LENGTH);
+create_validated_string_struct!(pub(crate) Publisher, Some(r"^\w+$"), Some(1), MAXIMUM_PUBLISHER_LENGTH);
+create_validated_string_struct!(pub(crate) Name, Some(r"^\w+$"), Some(1), MAXIMUM_NAME_LENGTH);
+create_validated_string_struct!(pub(crate) Description, None, None, MAXIMUM_DESCRIPTION_LENGTH);
 create_validated_string_struct!(
-    ComponentHandle,
+    pub ComponentHandle,
     Some(r"^\w+$"),
     Some(1),
     MAXIMUM_COMPONENT_HANDLE_LENGTH
