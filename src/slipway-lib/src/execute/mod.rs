@@ -1,15 +1,17 @@
-use std::{
-    collections::{HashMap, HashSet},
-    hash::Hash,
-};
+use std::collections::{HashMap, HashSet};
 
-use crate::{errors::SlipwayError, types::App};
+use crate::{
+    errors::SlipwayError,
+    parse::types::{primitives::ComponentHandle, App},
+};
 
 mod extract_dependencies_from_json_path_strings;
 mod find_json_path_strings;
 mod get_rigging_component_names_from_json_path_strings;
 mod get_valid_instructions;
+mod hash_json_value;
 mod parse_json_path_strings;
+mod primitives;
 mod topological_sort;
 
 use find_json_path_strings::find_json_path_strings;
@@ -18,8 +20,7 @@ use serde::{Deserialize, Serialize};
 use topological_sort::topological_sort;
 
 use extract_dependencies_from_json_path_strings::ExtractDependencies;
-
-use super::types::primitives::ComponentHandle;
+use primitives::Hash;
 
 pub(crate) fn initialize(app: App) -> Result<AppExecutionState, SlipwayError> {
     let mut dependencies = HashMap::new();
@@ -72,7 +73,7 @@ pub(crate) fn initialize(app: App) -> Result<AppExecutionState, SlipwayError> {
 
 pub(crate) fn step(
     state: &AppExecutionState,
-    instruction: &ValidInstruction,
+    instruction: &Instruction,
 ) -> Result<AppExecutionState, SlipwayError> {
     // Note: When we expose an API outside of the crate we should not accept an App back from the
     // caller, as modifying the entire app (including permissions) could be a security risk depending
@@ -86,64 +87,76 @@ trait ExecuteWasm {
     fn execute(&self, input: &serde_json::Value) -> Result<serde_json::Value, SlipwayError>;
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct ComponentInput {
-    value: serde_json::Value,
-    source: ComponentInputSource,
+pub trait AppExecutionState {
+    pub fn get_valid_instructions(&self) -> &Vec<Instruction>;
+
+    pub fn get_execution_order(&self) -> &Vec<ComponentHandle>;
+
+    pub fn get_dependencies(&self) -> &HashMap<ComponentHandle, HashSet<ComponentHandle>>;
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct ComponentOutput {
-    value: serde_json::Value,
-    source: ComponentInputSource,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum ComponentInputSource {
-    Evaluated,
-    Set,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum ComponentOutputSource {
-    Component,
-    Set,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AppExecutionState {
-    pub(crate) app: App,
-    pub(crate) inputs: HashMap<ComponentHandle, ComponentInput>,
-    pub(crate) outputs: HashMap<ComponentHandle, ComponentOutput>,
-    pub(crate) dependencies: HashMap<ComponentHandle, HashSet<ComponentHandle>>,
-    pub(crate) execution_order: Vec<ComponentHandle>,
-    pub(crate) valid_instructions: Vec<ValidInstruction>,
-    pub(crate) last_instruction: Option<ValidInstruction>,
+struct InternalAppExecutionState {
+    app: App,
+    component_state: Vec<ComponentState>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[serde(tag = "operation")]
 #[serde(rename_all = "snake_case")]
-pub enum ValidInstruction {
-    GetInput { handle: ComponentHandle },
-    SetInput { handle: ComponentHandle },
-    EvaluateInput { handle: ComponentHandle },
-    GetOutput { handle: ComponentHandle },
-    SetOutput { handle: ComponentHandle },
-    ExecuteComponent { handle: ComponentHandle },
-    GetAppOutputs,
+enum Instruction {
+    SetInput {
+        handle: ComponentHandle,
+        value: serde_json::Value,
+    },
+    EvaluateInput {
+        handle: ComponentHandle,
+    },
+    SetOutput {
+        handle: ComponentHandle,
+        value: serde_json::Value,
+    },
+    ExecuteComponent {
+        handle: ComponentHandle,
+    },
 }
 
-impl AppExecutionState {
-    pub fn get_valid_instructions(&self) -> &Vec<ValidInstruction> {
+struct ComponentState {
+    handle: ComponentHandle,
+    input_override: Option<ComponentInput>,
+    input_evaluated: Option<ComponentInput>,
+    output_component: Option<ComponentOutput>,
+    output_override: Option<ComponentOutput>,
+    dependencies: Vec<ComponentHandle>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ComponentInput {
+    value: serde_json::Value,
+    hash: Hash,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ComponentOutput {
+    value: serde_json::Value,
+    input_hash_used: Hash,
+}
+
+struct ComponentDependency {
+    handle: ComponentHandle,
+    output_hash: Option<Hash>,
+}
+
+impl AppExecutionState for InternalAppExecutionState {
+    fn get_valid_instructions(&self) -> &Vec<Instruction> {
         &self.valid_instructions
     }
 
-    pub fn get_execution_order(&self) -> &Vec<ComponentHandle> {
+    fn get_execution_order(&self) -> &Vec<ComponentHandle> {
         &self.execution_order
     }
 
-    pub fn get_dependencies(&self) -> &HashMap<ComponentHandle, HashSet<ComponentHandle>> {
+    fn get_dependencies(&self) -> &HashMap<ComponentHandle, HashSet<ComponentHandle>> {
         &self.dependencies
     }
 }

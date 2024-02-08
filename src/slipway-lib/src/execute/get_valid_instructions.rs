@@ -1,29 +1,29 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::types::primitives::ComponentHandle;
+use crate::parse::types::primitives::ComponentHandle;
 
-use super::{ComponentInput, ComponentOutput, ValidInstruction};
+use super::{ComponentInput, ComponentOutput, Instruction};
 
 pub(crate) fn get_valid_instructions(
     inputs: &HashMap<ComponentHandle, ComponentInput>,
     outputs: &HashMap<ComponentHandle, ComponentOutput>,
     dependencies: &HashMap<ComponentHandle, HashSet<ComponentHandle>>,
-) -> Vec<ValidInstruction> {
+) -> Vec<Instruction> {
     let mut valid_instructions = HashSet::new();
 
     for (handle, dependencies) in dependencies.iter() {
         // We can always manually set the input for a component.
-        valid_instructions.insert(ValidInstruction::SetInput {
+        valid_instructions.insert(Instruction::SetInput {
             handle: handle.clone(),
         });
 
         // If there is any kind of input set for this component then we can get it, and also execute the component.
         if inputs.contains_key(handle) {
-            valid_instructions.insert(ValidInstruction::GetInput {
+            valid_instructions.insert(Instruction::GetInput {
                 handle: handle.clone(),
             });
 
-            valid_instructions.insert(ValidInstruction::ExecuteComponent {
+            valid_instructions.insert(Instruction::ExecuteComponent {
                 handle: handle.clone(),
             });
         }
@@ -31,33 +31,33 @@ pub(crate) fn get_valid_instructions(
         // If all dependencies of this component have their outputs then we evaluate the input for this component
         // and also execute the component.
         if dependencies.iter().all(|d| outputs.contains_key(d)) {
-            valid_instructions.insert(ValidInstruction::EvaluateInput {
+            valid_instructions.insert(Instruction::EvaluateInput {
                 handle: handle.clone(),
             });
 
-            valid_instructions.insert(ValidInstruction::ExecuteComponent {
+            valid_instructions.insert(Instruction::ExecuteComponent {
                 handle: handle.clone(),
             });
         }
 
         // We can always manually set the output for a component.
-        valid_instructions.insert(ValidInstruction::SetOutput {
+        valid_instructions.insert(Instruction::SetOutput {
             handle: handle.clone(),
         });
 
         // If this component has an output then we can get the output for this component.
         if outputs.contains_key(handle) {
-            valid_instructions.insert(ValidInstruction::GetOutput {
+            valid_instructions.insert(Instruction::GetOutput {
                 handle: handle.clone(),
             });
         }
     }
 
     if dependencies.keys().all(|h| outputs.contains_key(h)) {
-        valid_instructions.insert(ValidInstruction::GetAppOutputs);
+        valid_instructions.insert(Instruction::GetAppOutputs);
     }
 
-    let mut result: Vec<ValidInstruction> = valid_instructions.into_iter().collect();
+    let mut result: Vec<Instruction> = valid_instructions.into_iter().collect();
     result.sort();
     result
 }
@@ -106,35 +106,35 @@ mod tests {
         assert_eq!(
             valid_instructions,
             vec![
-                ValidInstruction::SetInput {
+                Instruction::SetInput {
                     handle: ComponentHandle::for_test("A")
                 },
-                ValidInstruction::SetInput {
+                Instruction::SetInput {
                     handle: ComponentHandle::for_test("B")
                 },
-                ValidInstruction::SetInput {
+                Instruction::SetInput {
                     handle: ComponentHandle::for_test("C")
                 },
-                ValidInstruction::EvaluateInput {
+                Instruction::EvaluateInput {
                     handle: ComponentHandle::for_test("C")
                 },
-                ValidInstruction::ExecuteComponent {
+                Instruction::ExecuteComponent {
                     handle: ComponentHandle::for_test("C")
                 },
-                ValidInstruction::SetOutput {
+                Instruction::SetOutput {
                     handle: ComponentHandle::for_test("A")
                 },
-                ValidInstruction::SetOutput {
+                Instruction::SetOutput {
                     handle: ComponentHandle::for_test("B")
                 },
-                ValidInstruction::SetOutput {
+                Instruction::SetOutput {
                     handle: ComponentHandle::for_test("C")
                 },
             ]
             .iter()
             .sorted()
             .cloned()
-            .collect::<Vec<ValidInstruction>>()
+            .collect::<Vec<Instruction>>()
         );
     }
 

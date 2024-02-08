@@ -3,7 +3,7 @@ use std::{collections::HashSet, str::FromStr};
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-use crate::{errors::SlipwayError, types::primitives::ComponentHandle};
+use crate::{errors::SlipwayError, parse::types::primitives::ComponentHandle};
 
 use super::find_json_path_strings::FoundJsonPathString;
 

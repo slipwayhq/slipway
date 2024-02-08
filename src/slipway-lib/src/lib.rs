@@ -5,12 +5,12 @@ use errors::SlipwayError;
 use execute::{initialize, AppExecutionState};
 use parse::parse_app;
 
-pub use types::primitives::ComponentHandle;
+pub use parse::types::primitives::ComponentHandle;
 
 pub mod errors;
 mod execute;
 mod parse;
-mod types;
+mod utils;
 
 #[cfg(test)]
 pub mod test_utils;
