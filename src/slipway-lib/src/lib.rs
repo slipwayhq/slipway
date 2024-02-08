@@ -5,6 +5,7 @@ use errors::SlipwayError;
 use execute::{initialize, AppExecutionState};
 use parse::parse_app;
 
+pub use execute::ComponentState;
 pub use parse::types::primitives::ComponentHandle;
 
 pub mod errors;

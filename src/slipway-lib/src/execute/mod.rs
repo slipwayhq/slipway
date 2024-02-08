@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::{
     errors::SlipwayError,
@@ -8,14 +8,12 @@ use crate::{
 mod extract_dependencies_from_json_path_strings;
 mod find_json_path_strings;
 mod get_rigging_component_names_from_json_path_strings;
-mod get_valid_instructions;
 mod hash_json_value;
 mod parse_json_path_strings;
 mod primitives;
 mod topological_sort;
 
 use find_json_path_strings::find_json_path_strings;
-use get_valid_instructions::get_valid_instructions;
 use serde::{Deserialize, Serialize};
 use topological_sort::topological_sort;
 
@@ -50,24 +48,36 @@ pub(crate) fn initialize(app: App) -> Result<AppExecutionState, SlipwayError> {
     }
 
     // Get the execution order.
-    let execution_order = topological_sort(&dependencies)?
+    let execution_order = topological_sort(&dependencies)?;
+
+    let component_states = execution_order
         .into_iter()
-        .cloned()
+        .map(|handle| {
+            let dependencies: Vec<ComponentHandle> = dependencies
+                .get(handle)
+                .expect("component handle should exist in dependencies")
+                .iter()
+                .cloned()
+                .collect();
+
+            let can_execute = dependencies.is_empty();
+
+            ComponentState {
+                handle: handle.clone(),
+                input_override: None,
+                input_evaluated: None,
+                output_component: None,
+                output_override: None,
+                dependencies,
+                can_execute,
+            }
+        })
         .collect();
 
-    let inputs = HashMap::new();
-    let outputs = HashMap::new();
-
     // Evaluate valid instructions.
-    let valid_instructions = get_valid_instructions(&inputs, &outputs, &dependencies);
     Ok(AppExecutionState {
         app,
-        inputs,
-        outputs,
-        dependencies,
-        execution_order,
-        valid_instructions,
-        last_instruction: None,
+        component_states,
     })
 }
 
@@ -75,11 +85,6 @@ pub(crate) fn step(
     state: &AppExecutionState,
     instruction: &Instruction,
 ) -> Result<AppExecutionState, SlipwayError> {
-    // Note: When we expose an API outside of the crate we should not accept an App back from the
-    // caller, as modifying the entire app (including permissions) could be a security risk depending
-    // on whether we detect this and inform the user.
-    // Instead we should return a reference to the execution session, which the caller can use to
-    // step through the execution.
     todo!();
 }
 
@@ -87,21 +92,42 @@ trait ExecuteWasm {
     fn execute(&self, input: &serde_json::Value) -> Result<serde_json::Value, SlipwayError>;
 }
 
-pub trait AppExecutionState {
-    pub fn get_valid_instructions(&self) -> &Vec<Instruction>;
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AppExecutionState {
+    app: App,
+    component_states: Vec<ComponentState>,
+}
 
-    pub fn get_execution_order(&self) -> &Vec<ComponentHandle>;
-
-    pub fn get_dependencies(&self) -> &HashMap<ComponentHandle, HashSet<ComponentHandle>>;
+impl AppExecutionState {
+    pub fn component_states(&self) -> &[ComponentState] {
+        &self.component_states
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-struct InternalAppExecutionState {
-    app: App,
-    component_state: Vec<ComponentState>,
+pub struct ComponentState {
+    pub handle: ComponentHandle,
+    pub input_override: Option<ComponentInput>,
+    pub input_evaluated: Option<ComponentInput>,
+    pub output_component: Option<ComponentOutput>,
+    pub output_override: Option<ComponentOutput>,
+    pub dependencies: Vec<ComponentHandle>,
+    pub can_execute: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ComponentInput {
+    value: serde_json::Value,
+    hash: Hash,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ComponentOutput {
+    value: serde_json::Value,
+    input_hash_used: Hash,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(tag = "operation")]
 #[serde(rename_all = "snake_case")]
 enum Instruction {
@@ -119,44 +145,4 @@ enum Instruction {
     ExecuteComponent {
         handle: ComponentHandle,
     },
-}
-
-struct ComponentState {
-    handle: ComponentHandle,
-    input_override: Option<ComponentInput>,
-    input_evaluated: Option<ComponentInput>,
-    output_component: Option<ComponentOutput>,
-    output_override: Option<ComponentOutput>,
-    dependencies: Vec<ComponentHandle>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct ComponentInput {
-    value: serde_json::Value,
-    hash: Hash,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct ComponentOutput {
-    value: serde_json::Value,
-    input_hash_used: Hash,
-}
-
-struct ComponentDependency {
-    handle: ComponentHandle,
-    output_hash: Option<Hash>,
-}
-
-impl AppExecutionState for InternalAppExecutionState {
-    fn get_valid_instructions(&self) -> &Vec<Instruction> {
-        &self.valid_instructions
-    }
-
-    fn get_execution_order(&self) -> &Vec<ComponentHandle> {
-        &self.execution_order
-    }
-
-    fn get_dependencies(&self) -> &HashMap<ComponentHandle, HashSet<ComponentHandle>> {
-        &self.dependencies
-    }
 }
