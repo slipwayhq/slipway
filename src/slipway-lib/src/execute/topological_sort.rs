@@ -6,19 +6,21 @@ use crate::{errors::SlipwayError, parse::types::primitives::ComponentHandle};
 
 const CYCLE_DETECTED_ERROR: &str = "Cycle detected in the graph";
 
-pub(crate) fn topological_sort(
-    components_and_dependencies: &HashMap<ComponentHandle, HashSet<ComponentHandle>>,
-) -> Result<Vec<&ComponentHandle>, SlipwayError> {
+pub(crate) fn topological_sort<'app>(
+    components_and_dependencies: &HashMap<&'app ComponentHandle, HashSet<&'app ComponentHandle>>,
+) -> Result<Vec<&'app ComponentHandle>, SlipwayError> {
     let graph = build_graph(components_and_dependencies);
     graph.topological_sort()
 }
 
-fn build_graph(components: &HashMap<ComponentHandle, HashSet<ComponentHandle>>) -> Graph {
+fn build_graph<'app>(
+    components: &HashMap<&'app ComponentHandle, HashSet<&'app ComponentHandle>>,
+) -> Graph<'app> {
     let mut graph = Graph::new();
 
-    for (component_handle, input_handles) in components {
+    for (&component_handle, input_handles) in components {
         graph.add_node(component_handle);
-        for input in input_handles {
+        for &input in input_handles {
             graph.add_edge(input, component_handle);
         }
     }
@@ -193,6 +195,8 @@ mod tests {
     #[test]
     fn test_graph_construction() {
         let components = create_test_components();
+        let components = get_component_references(&components);
+
         let graph = build_graph(&components);
 
         assert_eq!(graph.edges.len(), 3);
@@ -211,9 +215,20 @@ mod tests {
         );
     }
 
+    fn get_component_references(
+        components: &HashMap<ComponentHandle, HashSet<ComponentHandle>>,
+    ) -> HashMap<&ComponentHandle, HashSet<&ComponentHandle>> {
+        let component_references: HashMap<&ComponentHandle, HashSet<&ComponentHandle>> = components
+            .iter()
+            .map(|(k, v)| (k, v.iter().collect()))
+            .collect();
+        component_references
+    }
+
     #[test]
     fn test_topological_sort_no_cycle() {
         let components = create_test_components();
+        let components = get_component_references(&components);
         let order = topological_sort(&components).unwrap();
         assert_eq!(
             order,
@@ -240,6 +255,7 @@ mod tests {
             ComponentHandle::for_test("C"),
             vec![ComponentHandle::for_test("A")].into_iter().collect(),
         );
+        let components = get_component_references(&components);
 
         let result = topological_sort(&components);
 
@@ -260,6 +276,7 @@ mod tests {
         let mut components = create_test_components();
         components.insert(ComponentHandle::for_test("D"), HashSet::new());
 
+        let components = get_component_references(&components);
         let graph = build_graph(&components);
         let order = graph.topological_sort().unwrap();
 
@@ -320,6 +337,7 @@ mod tests {
         components.insert(ComponentHandle::for_test("J"), HashSet::new());
         components.insert(ComponentHandle::for_test("K"), HashSet::new());
 
+        let components = get_component_references(&components);
         let order = topological_sort(&components).unwrap();
 
         fn assert_order(order: &[&ComponentHandle], a: &str, b: &str) {
@@ -340,10 +358,10 @@ mod tests {
 
         // Check that all the inputs are before their components in the order.
         for (component, inputs) in components.iter() {
-            assert!(order.contains(&component));
+            assert!(order.contains(component));
 
             for input in inputs {
-                assert!(order.contains(&input));
+                assert!(order.contains(input));
 
                 assert_order(&order, &input.to_string(), &component.0.to_string());
             }

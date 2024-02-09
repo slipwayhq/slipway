@@ -1,14 +1,10 @@
 mod cli;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use clap::Parser;
 use cli::{Cli, Commands};
-use slipway_lib::{create_app_from_json_string, ComponentHandle};
-// use slipway_lib::rigging_v1::{
-//     parse::{parse_component, types::UnresolvedComponentReference},
-//     validate::validate_component,
-// };
+use slipway_lib::{create_app_session_from_string, initialize, ComponentHandle};
 
 fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
@@ -25,13 +21,13 @@ fn main() -> anyhow::Result<()> {
 fn debug_app_command(input: std::path::PathBuf) -> anyhow::Result<()> {
     println!("Debugging {}", input.display());
     let file_contents = std::fs::read_to_string(input)?;
-    let state = create_app_from_json_string(&file_contents)?;
-
+    let session = create_app_session_from_string(&file_contents)?;
+    let state = initialize(&session)?;
     let components = state.component_states();
 
     let graph = components
         .iter()
-        .map(|c| (c.handle.clone(), c.dependencies.clone()))
+        .map(|c| (c.handle, c.dependencies.clone()))
         .collect();
 
     for component in components.iter() {
@@ -42,8 +38,8 @@ fn debug_app_command(input: std::path::PathBuf) -> anyhow::Result<()> {
 }
 
 fn print_dependencies(
-    dependencies: &[ComponentHandle],
-    graph: &HashMap<ComponentHandle, Vec<ComponentHandle>>,
+    dependencies: &HashSet<&ComponentHandle>,
+    graph: &HashMap<&ComponentHandle, HashSet<&ComponentHandle>>,
     level: usize,
 ) {
     for dependency in dependencies {
