@@ -8,3 +8,5 @@ authors.workspace = true
 anyhow = "1.0.75"
 clap = { version = "4.3.22", features = ["derive"] }
 slipway-lib = { path = "../slipway-lib" }
+serde = { workspace = true }
+serde_json = { workspace = true }

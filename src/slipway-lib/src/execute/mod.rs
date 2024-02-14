@@ -5,19 +5,15 @@ use crate::{
     parse::types::{primitives::ComponentHandle, App},
 };
 
+pub(crate) mod evaluate_inputs;
 mod extract_dependencies_from_json_path_strings;
 mod find_json_path_strings;
 mod get_rigging_component_names_from_json_path_strings;
-mod hash_json_value;
-mod parse_json_path_strings;
+pub(crate) mod initialize;
 mod primitives;
+pub(crate) mod step;
 mod topological_sort;
 
-use find_json_path_strings::find_json_path_strings;
-use serde::{Deserialize, Serialize};
-use topological_sort::topological_sort;
-
-use extract_dependencies_from_json_path_strings::ExtractDependencies;
 use primitives::Hash;
 
 pub(crate) fn create_session(app: App) -> AppSession {
@@ -51,69 +47,35 @@ fn map_dependencies_to_app_handles(
     Ok(result)
 }
 
-pub fn initialize<'app>(
-    session: &'app AppSession,
-) -> Result<AppExecutionState<'app>, SlipwayError> {
-    let mut dependency_map: HashMap<&'app ComponentHandle, HashSet<ComponentHandle>> =
-        HashMap::new();
-    for (key, rigging) in session.app.rigging.components.iter() {
-        let input = &rigging.input;
+fn get_component_state_mut<'app, 'local>(
+    state: &'local mut AppExecutionState<'app>,
+    handle: &'local ComponentHandle,
+) -> Result<&'local mut crate::ComponentState<'app>, SlipwayError> {
+    let component_state =
+        state
+            .component_states
+            .get_mut(handle)
+            .ok_or(SlipwayError::StepFailed(format!(
+                "component {:?} does not exist in component states",
+                handle
+            )))?;
 
-        // Find all the JSON path strings in the input of the component.
-        let json_path_strings = match input {
-            Some(input) => find_json_path_strings(input),
-            None => Vec::new(),
-        };
-
-        // Extract the component's dependencies from the JSON path strings.
-        let component_dependencies = json_path_strings.extract_dependencies()?;
-
-        dependency_map.insert(key, component_dependencies);
-    }
-
-    let mut dependency_map_refs = map_dependencies_to_app_handles(dependency_map)?;
-
-    // Get the execution order.
-    let execution_order = topological_sort(&dependency_map_refs)?;
-
-    let dependency_map_refs = &mut dependency_map_refs;
-    let component_states = execution_order
-        .into_iter()
-        .map(|handle| {
-            let dependencies: HashSet<&ComponentHandle> = dependency_map_refs
-                .remove(handle)
-                .expect("component handle should exist in dependencies");
-
-            let can_execute = dependencies.is_empty();
-
-            ComponentState {
-                handle,
-                input_override: None,
-                input_evaluated: None,
-                output_component: None,
-                output_override: None,
-                dependencies,
-                can_execute,
-            }
-        })
-        .collect();
-
-    // Evaluate valid instructions.
-    Ok(AppExecutionState {
-        session,
-        component_states,
-    })
+    Ok(component_state)
 }
 
-pub fn step<'app>(
-    state: &'app AppExecutionState,
-    instruction: Instruction,
-) -> Result<AppExecutionState<'app>, SlipwayError> {
-    todo!();
-}
+fn get_component_state<'app, 'local>(
+    state: &'local AppExecutionState<'app>,
+    handle: &'local ComponentHandle,
+) -> Result<&'local crate::ComponentState<'app>, SlipwayError> {
+    let component_state = state
+        .component_states
+        .get(handle)
+        .ok_or(SlipwayError::StepFailed(format!(
+            "component {:?} does not exist in component states",
+            handle
+        )))?;
 
-trait ExecuteWasm {
-    fn execute(&self, input: &serde_json::Value) -> Result<serde_json::Value, SlipwayError>;
+    Ok(component_state)
 }
 
 pub struct AppSession {
@@ -122,23 +84,24 @@ pub struct AppSession {
 
 pub struct AppExecutionState<'app> {
     session: &'app AppSession,
-    component_states: Vec<ComponentState<'app>>,
+    component_states: HashMap<&'app ComponentHandle, ComponentState<'app>>,
+    execution_order: Vec<&'app ComponentHandle>,
+    wasm_cache: HashMap<&'app ComponentHandle, Vec<u8>>,
 }
 
 impl<'app> AppExecutionState<'app> {
-    pub fn component_states(&self) -> &[ComponentState] {
+    pub fn component_states(&self) -> &HashMap<&'app ComponentHandle, ComponentState> {
         &self.component_states
     }
 }
 
 pub struct ComponentState<'app> {
     pub handle: &'app ComponentHandle,
-    pub input_override: Option<ComponentInput>,
-    pub input_evaluated: Option<ComponentInput>,
-    pub output_component: Option<ComponentOutput>,
-    pub output_override: Option<ComponentOutput>,
     pub dependencies: HashSet<&'app ComponentHandle>,
-    pub can_execute: bool,
+    pub input_override: Option<ComponentInputOverride>,
+    pub output_override: Option<ComponentOutputOverride>,
+    pub execution_input: Option<ComponentInput>,
+    pub execution_output: Option<ComponentOutput>,
 }
 
 pub struct ComponentInput {
@@ -146,27 +109,15 @@ pub struct ComponentInput {
     hash: Hash,
 }
 
+pub struct ComponentInputOverride {
+    value: serde_json::Value,
+}
+
 pub struct ComponentOutput {
     value: serde_json::Value,
     input_hash_used: Hash,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(tag = "operation")]
-#[serde(rename_all = "snake_case")]
-enum Instruction {
-    SetInput {
-        handle: ComponentHandle,
-        value: serde_json::Value,
-    },
-    EvaluateInput {
-        handle: ComponentHandle,
-    },
-    SetOutput {
-        handle: ComponentHandle,
-        value: serde_json::Value,
-    },
-    ExecuteComponent {
-        handle: ComponentHandle,
-    },
+pub struct ComponentOutputOverride {
+    value: serde_json::Value,
 }

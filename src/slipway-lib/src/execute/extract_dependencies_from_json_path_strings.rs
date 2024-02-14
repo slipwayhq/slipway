@@ -33,38 +33,77 @@ impl ExtractDependencies for Vec<FoundJsonPathString<'_>> {
 mod tests {
     use std::borrow::Cow;
 
+    use crate::execute::find_json_path_strings::{PathType, SimpleJsonPath};
+
     use super::*;
 
     #[test]
     fn test_extract_dependencies() {
         let json_path_strings = vec![
             FoundJsonPathString {
-                path_to: "$.rigging.component1.input".to_string(),
+                path_to: vec![
+                    SimpleJsonPath::Field("rigging"),
+                    SimpleJsonPath::Field("component1"),
+                    SimpleJsonPath::Field("input"),
+                ],
                 path: Cow::Borrowed("$.constants.a"),
+                path_type: PathType::Array,
             },
             FoundJsonPathString {
-                path_to: "$.rigging.component2.input.a".to_string(),
+                path_to: vec![
+                    SimpleJsonPath::Field("rigging"),
+                    SimpleJsonPath::Field("component2"),
+                    SimpleJsonPath::Field("input"),
+                    SimpleJsonPath::Field("a"),
+                ],
                 path: Cow::Borrowed("$.rigging.component1.output.a"),
+                path_type: PathType::Value,
             },
             FoundJsonPathString {
-                path_to: "$.rigging.component2.input.b".to_string(),
+                path_to: vec![
+                    SimpleJsonPath::Field("rigging"),
+                    SimpleJsonPath::Field("component2"),
+                    SimpleJsonPath::Field("input"),
+                    SimpleJsonPath::Field("b"),
+                ],
                 path: Cow::Borrowed("$.rigging.component1.output.b"),
+                path_type: PathType::Array,
             },
             FoundJsonPathString {
-                path_to: "$.rigging.component3.input".to_string(),
+                path_to: vec![
+                    SimpleJsonPath::Field("rigging"),
+                    SimpleJsonPath::Field("component3"),
+                    SimpleJsonPath::Field("input"),
+                ],
                 path: Cow::Borrowed("$.rigging.component4.output[53].c"),
+                path_type: PathType::Value,
             },
             FoundJsonPathString {
-                path_to: "$.rigging.component4.input".to_string(),
+                path_to: vec![
+                    SimpleJsonPath::Field("rigging"),
+                    SimpleJsonPath::Field("component4"),
+                    SimpleJsonPath::Field("input"),
+                ],
                 path: Cow::Borrowed("$.rigging.component0.output_not"),
+                path_type: PathType::Array,
             },
             FoundJsonPathString {
-                path_to: "$.rigging.component5.input".to_string(),
+                path_to: vec![
+                    SimpleJsonPath::Field("rigging"),
+                    SimpleJsonPath::Field("component5"),
+                    SimpleJsonPath::Field("input"),
+                ],
                 path: Cow::Borrowed("$.rigging_component0.output"),
+                path_type: PathType::Value,
             },
             FoundJsonPathString {
-                path_to: "$.rigging.component6.input".to_string(),
+                path_to: vec![
+                    SimpleJsonPath::Field("rigging"),
+                    SimpleJsonPath::Field("component6"),
+                    SimpleJsonPath::Field("input"),
+                ],
                 path: Cow::Borrowed("$.rigging.component5.output"),
+                path_type: PathType::Array,
             },
         ];
 

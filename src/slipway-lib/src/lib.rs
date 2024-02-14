@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use execute::create_session;
-pub use execute::{initialize, AppSession, ComponentState};
+pub use execute::{initialize::initialize, AppSession, ComponentState};
 use parse::parse_app;
 pub use parse::types::primitives::ComponentHandle;
 pub mod errors;

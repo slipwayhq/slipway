@@ -71,9 +71,16 @@ impl FromStr for SlipwayReference {
 
         if let Ok(uri) = Url::parse(s) {
             return match uri.scheme() {
-                "file" => Ok(SlipwayReference::Local {
-                    path: uri.to_file_path().expect("URI was not a valid file path"),
-                }),
+                "file" => {
+                    let file_path = uri.to_file_path().map_err(|_| {
+                        SlipwayError::InvalidSlipwayPrimitive(
+                            stringify!(SlipwayReference).to_string(),
+                            format!("unable to convert file URI to local path: {uri}"),
+                        )
+                    })?;
+
+                    Ok(SlipwayReference::Local { path: file_path })
+                }
                 "https" => Ok(SlipwayReference::Url { url: uri }),
                 other => Err(SlipwayError::InvalidSlipwayPrimitive(
                     stringify!(SlipwayReference).to_string(),

@@ -4,66 +4,156 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use serde_json::Value;
 
-static COMPONENT_OUTPUT_SHORTCUT_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^\$\$(?<component_handle>\w+)(?<rest>.*)$").unwrap());
+use crate::errors::SlipwayError;
+
+static COMPONENT_OUTPUT_SHORTCUT_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^\$\$(?<value_specifier>\??)(?<component_handle>\w+)(?<rest>.*)$").unwrap()
+});
 
 #[derive(Eq, PartialEq, Debug)]
 pub(crate) struct FoundJsonPathString<'a> {
-    pub path_to: String,
+    pub path_to: Vec<SimpleJsonPath<'a>>,
     pub path: Cow<'a, str>,
+    pub path_type: PathType,
+}
+
+#[derive(Eq, PartialEq, Debug)]
+pub(crate) enum PathType {
+    Array,
+    Value,
+}
+
+#[derive(Eq, PartialEq, Debug, Clone, PartialOrd, Ord)]
+pub(crate) enum SimpleJsonPath<'a> {
+    // Field of an object
+    Field(&'a str),
+    // Index of an array
+    Index(usize),
+}
+
+pub(crate) trait JsonPathOperations {
+    fn to_json_path_string(&self) -> String;
+
+    fn replace(&self, target: &mut Value, new_value: Value) -> Result<(), SlipwayError>;
+}
+
+impl<'a> JsonPathOperations for Vec<SimpleJsonPath<'a>> {
+    fn to_json_path_string(&self) -> String {
+        let mut result = String::new();
+        for path in self {
+            match path {
+                SimpleJsonPath::Field(field) => {
+                    result.push_str(&format!(".{}", field));
+                }
+                SimpleJsonPath::Index(index) => {
+                    result.push_str(&format!("[{}]", index));
+                }
+            }
+        }
+        result
+    }
+
+    fn replace(&self, target: &mut Value, new_value: Value) -> Result<(), SlipwayError> {
+        let mut current = target;
+        let path_so_far = vec![SimpleJsonPath::Field("$")];
+        for path in self {
+            match path {
+                SimpleJsonPath::Field(field) => {
+                    current = current
+                        .as_object_mut()
+                        .ok_or(SlipwayError::StepFailed(format!(
+                            "Expected {} to be an object",
+                            path_so_far.to_json_path_string()
+                        )))?
+                        .get_mut(*field)
+                        .ok_or(SlipwayError::StepFailed(format!(
+                            "Expected field {} at {} to exist",
+                            field,
+                            path_so_far.to_json_path_string()
+                        )))?;
+                }
+                SimpleJsonPath::Index(index) => {
+                    current = current
+                        .as_array_mut()
+                        .ok_or(SlipwayError::StepFailed(format!(
+                            "Expected {} to be an array",
+                            path_so_far.to_json_path_string()
+                        )))?
+                        .get_mut(*index)
+                        .ok_or(SlipwayError::StepFailed(format!(
+                            "Expected index {} at {} to exist",
+                            index,
+                            path_so_far.to_json_path_string()
+                        )))?;
+                }
+            }
+        }
+        *current = new_value;
+        Ok(())
+    }
 }
 
 pub(crate) fn find_json_path_strings(value: &Value) -> Vec<FoundJsonPathString> {
     let mut results = Vec::new();
-    let mut current_path = vec![Cow::Borrowed("$")];
+    let mut current_path = Vec::new();
     find_json_path_strings_inner(value, &mut current_path, &mut results);
     results
 }
 
 fn find_json_path_strings_inner<'a>(
     value: &'a Value,
-    current_path: &mut Vec<Cow<'a, str>>,
+    current_path: &mut Vec<SimpleJsonPath<'a>>,
     results: &mut Vec<FoundJsonPathString<'a>>,
 ) {
     match value {
         Value::Object(map) => {
             for (key, val) in map {
-                current_path.push(Cow::Borrowed("."));
-                current_path.push(Cow::Borrowed(key));
+                current_path.push(SimpleJsonPath::Field(key));
                 find_json_path_strings_inner(val, current_path, results);
-                current_path.pop();
                 current_path.pop();
             }
         }
         Value::Array(arr) => {
             for (index, val) in arr.iter().enumerate() {
-                current_path.push(Cow::Borrowed("["));
-                current_path.push(Cow::Owned(index.to_string()));
-                current_path.push(Cow::Borrowed("]"));
+                current_path.push(SimpleJsonPath::Index(index));
                 find_json_path_strings_inner(val, current_path, results);
-                current_path.pop();
-                current_path.pop();
                 current_path.pop();
             }
         }
         Value::String(s) => {
-            let maybe_path: Option<Cow<'_, str>> =
+            let maybe_path: Option<(Cow<'_, str>, PathType)> =
                 if let Some(captures) = COMPONENT_OUTPUT_SHORTCUT_REGEX.captures(s) {
+                    // The string uses the $$ shortcut, so we need to transform it into a proper
+                    // JSON path.
                     let component_handle = &captures["component_handle"];
                     let rest = &captures["rest"];
-                    Some(Cow::Owned(
-                        "$.rigging.".to_string() + component_handle + ".output" + rest,
-                    ))
+
+                    let new_path =
+                        Cow::Owned("$.rigging.".to_string() + component_handle + ".output" + rest);
+
+                    let path_type = if captures.name("value_specifier").is_some() {
+                        PathType::Value
+                    } else {
+                        PathType::Array
+                    };
+
+                    Some((new_path, path_type))
                 } else if s.starts_with("$.") {
-                    Some(Cow::Borrowed(s))
+                    // The string is already a valid JSON path.
+                    Some((Cow::Borrowed(s), PathType::Array))
+                } else if let Some(rest) = s.strip_prefix("$?") {
+                    // The string uses the $? custom prefix to indicate they want a single value result.
+                    let new_path = Cow::Owned("$.".to_string() + rest);
+                    Some((new_path, PathType::Value))
                 } else {
                     None
                 };
 
             if let Some(path) = maybe_path {
                 let result = FoundJsonPathString {
-                    path_to: current_path.join(""),
-                    path,
+                    path_to: current_path.clone(),
+                    path: path.0,
+                    path_type: path.1,
                 };
                 results.push(result);
             }
@@ -88,20 +178,34 @@ mod tests {
     fn test_simple_json_with_matching_strings() {
         let value = json!({
             "key1": "$.value1",
-            "key2": "$$value2"
+            "key2": "$$value2",
+            "key3": "$?value1",
+            "key4": "$$?value2",
         });
         let results = find_json_path_strings(&value);
         assert_eq!(
             results,
             vec![
                 FoundJsonPathString {
-                    path_to: "$.key1".to_string(),
-                    path: Cow::Borrowed("$.value1")
+                    path_to: vec![SimpleJsonPath::Field("key1")],
+                    path: Cow::Borrowed("$.value1"),
+                    path_type: PathType::Array,
                 },
                 FoundJsonPathString {
-                    path_to: "$.key2".to_string(),
-                    path: Cow::Borrowed("$.rigging.value2.output")
-                }
+                    path_to: vec![SimpleJsonPath::Field("key2")],
+                    path: Cow::Borrowed("$.rigging.value2.output"),
+                    path_type: PathType::Array,
+                },
+                FoundJsonPathString {
+                    path_to: vec![SimpleJsonPath::Field("key3")],
+                    path: Cow::Borrowed("$.value1"),
+                    path_type: PathType::Value,
+                },
+                FoundJsonPathString {
+                    path_to: vec![SimpleJsonPath::Field("key4")],
+                    path: Cow::Borrowed("$.rigging.value2.output"),
+                    path_type: PathType::Value,
+                },
             ]
         );
     }
@@ -119,12 +223,14 @@ mod tests {
             results,
             vec![
                 FoundJsonPathString {
-                    path_to: "$[0].key1".to_string(),
-                    path: Cow::Borrowed("$.value1")
+                    path_to: vec![SimpleJsonPath::Index(0), SimpleJsonPath::Field("key1")],
+                    path: Cow::Borrowed("$.value1"),
+                    path_type: PathType::Array,
                 },
                 FoundJsonPathString {
-                    path_to: "$[0].key2".to_string(),
-                    path: Cow::Borrowed("$.rigging.value2.output")
+                    path_to: vec![SimpleJsonPath::Index(0), SimpleJsonPath::Field("key2")],
+                    path: Cow::Borrowed("$.rigging.value2.output"),
+                    path_type: PathType::Array,
                 }
             ]
         );
@@ -143,12 +249,21 @@ mod tests {
             results,
             vec![
                 FoundJsonPathString {
-                    path_to: "$.nested.array[1]".to_string(),
-                    path: Cow::Borrowed("$.value3")
+                    path_to: vec![
+                        SimpleJsonPath::Field("nested"),
+                        SimpleJsonPath::Field("array"),
+                        SimpleJsonPath::Index(1)
+                    ],
+                    path: Cow::Borrowed("$.value3"),
+                    path_type: PathType::Array,
                 },
                 FoundJsonPathString {
-                    path_to: "$.nested.key".to_string(),
-                    path: Cow::Borrowed("$.rigging.nestedValue.output")
+                    path_to: vec![
+                        SimpleJsonPath::Field("nested"),
+                        SimpleJsonPath::Field("key"),
+                    ],
+                    path: Cow::Borrowed("$.rigging.nestedValue.output"),
+                    path_type: PathType::Array,
                 }
             ]
         );
@@ -176,8 +291,9 @@ mod tests {
         assert_eq!(
             results,
             vec![FoundJsonPathString {
-                path_to: "$.specialString".to_string(),
-                path: Cow::Borrowed("$.value4")
+                path_to: vec![SimpleJsonPath::Field("specialString")],
+                path: Cow::Borrowed("$.value4"),
+                path_type: PathType::Array,
             }]
         );
     }
@@ -205,7 +321,7 @@ mod tests {
                 }
             },
             "level2": {
-                "array": ["normal", "$.arrayValue1", 123, "$$arrayValue2"],
+                "array": ["normal", "$?arrayValue1", 123, "$$?arrayValue2"],
                 "key6": "value"
             },
             "key7": "$.simpleValue"
@@ -219,32 +335,66 @@ mod tests {
             results,
             vec![
                 FoundJsonPathString {
-                    path_to: "$.key7".to_string(),
-                    path: Cow::Borrowed("$.simpleValue")
+                    path_to: vec![SimpleJsonPath::Field("key7")],
+                    path: Cow::Borrowed("$.simpleValue"),
+                    path_type: PathType::Array,
                 },
                 FoundJsonPathString {
-                    path_to: "$.level1.key2".to_string(),
-                    path: Cow::Borrowed("$.level1Value")
+                    path_to: vec![
+                        SimpleJsonPath::Field("level1"),
+                        SimpleJsonPath::Field("key2")
+                    ],
+                    path: Cow::Borrowed("$.level1Value"),
+                    path_type: PathType::Array,
                 },
                 FoundJsonPathString {
-                    path_to: "$.level1.nested.deeplyNested.array[2].arrayNested".to_string(),
-                    path: Cow::Borrowed("$.rigging.arrayValue.output")
+                    path_to: vec![
+                        SimpleJsonPath::Field("level1"),
+                        SimpleJsonPath::Field("nested"),
+                        SimpleJsonPath::Field("deeplyNested"),
+                        SimpleJsonPath::Field("array"),
+                        SimpleJsonPath::Index(2),
+                        SimpleJsonPath::Field("arrayNested")
+                    ],
+                    path: Cow::Borrowed("$.rigging.arrayValue.output"),
+                    path_type: PathType::Array,
                 },
                 FoundJsonPathString {
-                    path_to: "$.level1.nested.deeplyNested.key5".to_string(),
-                    path: Cow::Borrowed("$.deepValue")
+                    path_to: vec![
+                        SimpleJsonPath::Field("level1"),
+                        SimpleJsonPath::Field("nested"),
+                        SimpleJsonPath::Field("deeplyNested"),
+                        SimpleJsonPath::Field("key5")
+                    ],
+                    path: Cow::Borrowed("$.deepValue"),
+                    path_type: PathType::Array,
                 },
                 FoundJsonPathString {
-                    path_to: "$.level1.nested.key4".to_string(),
-                    path: Cow::Borrowed("$.rigging.level2Value.output")
+                    path_to: vec![
+                        SimpleJsonPath::Field("level1"),
+                        SimpleJsonPath::Field("nested"),
+                        SimpleJsonPath::Field("key4")
+                    ],
+                    path: Cow::Borrowed("$.rigging.level2Value.output"),
+                    path_type: PathType::Array,
                 },
                 FoundJsonPathString {
-                    path_to: "$.level2.array[1]".to_string(),
-                    path: Cow::Borrowed("$.arrayValue1")
+                    path_to: vec![
+                        SimpleJsonPath::Field("level2"),
+                        SimpleJsonPath::Field("array"),
+                        SimpleJsonPath::Index(1)
+                    ],
+                    path: Cow::Borrowed("$.arrayValue1"),
+                    path_type: PathType::Value,
                 },
                 FoundJsonPathString {
-                    path_to: "$.level2.array[3]".to_string(),
-                    path: Cow::Borrowed("$.rigging.arrayValue2.output")
+                    path_to: vec![
+                        SimpleJsonPath::Field("level2"),
+                        SimpleJsonPath::Field("array"),
+                        SimpleJsonPath::Index(3)
+                    ],
+                    path: Cow::Borrowed("$.rigging.arrayValue2.output"),
+                    path_type: PathType::Value,
                 },
             ]
         );
