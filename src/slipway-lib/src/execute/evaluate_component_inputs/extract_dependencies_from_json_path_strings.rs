@@ -33,7 +33,9 @@ impl ExtractDependencies for Vec<FoundJsonPathString<'_>> {
 mod tests {
     use std::borrow::Cow;
 
-    use crate::execute::find_json_path_strings::{PathType, SimpleJsonPath};
+    use crate::execute::evaluate_component_inputs::simple_json_path::SimpleJsonPath;
+
+    use super::super::find_json_path_strings::PathType;
 
     use super::*;
 

@@ -5,10 +5,7 @@ use crate::{
     parse::types::{primitives::ComponentHandle, App},
 };
 
-pub(crate) mod evaluate_inputs;
-mod extract_dependencies_from_json_path_strings;
-mod find_json_path_strings;
-mod get_rigging_component_names_from_json_path_strings;
+pub(crate) mod evaluate_component_inputs;
 pub(crate) mod initialize;
 mod primitives;
 pub(crate) mod step;
@@ -18,33 +15,6 @@ use primitives::Hash;
 
 pub(crate) fn create_session(app: App) -> AppSession {
     AppSession { app }
-}
-
-// Convert the dependency map to use references to the component handles in the AppSession.
-fn map_dependencies_to_app_handles(
-    dependency_map: HashMap<&ComponentHandle, HashSet<ComponentHandle>>,
-) -> Result<HashMap<&ComponentHandle, HashSet<&ComponentHandle>>, SlipwayError> {
-    let mut result: HashMap<&ComponentHandle, HashSet<&ComponentHandle>> = HashMap::new();
-    for (&k, v) in dependency_map.iter() {
-        let mut refs = HashSet::with_capacity(v.len());
-        for d in v {
-            let lookup_result = dependency_map.get_key_value(d);
-            let kr = match lookup_result {
-                Some((kr, _)) => kr,
-                None => {
-                    return Err(SlipwayError::ValidationFailed(format!(
-                        "dependency {:?} not found in rigging component keys",
-                        d
-                    )))
-                }
-            };
-            refs.insert(*kr);
-        }
-
-        result.insert(k, refs);
-    }
-
-    Ok(result)
 }
 
 fn get_component_state_mut<'app, 'local>(

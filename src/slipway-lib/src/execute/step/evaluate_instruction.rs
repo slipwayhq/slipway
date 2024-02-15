@@ -1,42 +1,12 @@
-use serde::{Deserialize, Serialize};
-
-use crate::{errors::SlipwayError, ComponentHandle};
-
-use super::{
-    evaluate_inputs::evaluate_inputs, get_component_state_mut, AppExecutionState,
-    ComponentInputOverride, ComponentOutput, ComponentOutputOverride,
+use crate::{
+    errors::SlipwayError,
+    execute::{
+        get_component_state_mut, AppExecutionState, ComponentInputOverride, ComponentOutput,
+        ComponentOutputOverride,
+    },
 };
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(tag = "operation")]
-#[serde(rename_all = "snake_case")]
-pub enum Instruction {
-    SetInputOverride {
-        handle: ComponentHandle,
-        value: serde_json::Value,
-    },
-    ClearInputOverride {
-        handle: ComponentHandle,
-    },
-    SetOutputOverride {
-        handle: ComponentHandle,
-        value: serde_json::Value,
-    },
-    ClearOutputOverride {
-        handle: ComponentHandle,
-    },
-    SetOutput {
-        handle: ComponentHandle,
-        value: serde_json::Value,
-    },
-}
-
-pub fn step(
-    state: AppExecutionState,
-    instruction: Instruction,
-) -> Result<AppExecutionState, SlipwayError> {
-    evaluate_inputs(evaluate_instruction(state, instruction)?)
-}
+use super::Instruction;
 
 pub fn evaluate_instruction(
     state: AppExecutionState,
@@ -86,5 +56,15 @@ pub fn evaluate_instruction(
             });
             Ok(state)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_should_have_tests() {
+        todo!();
     }
 }

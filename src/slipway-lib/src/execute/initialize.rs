@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{errors::SlipwayError, AppSession, ComponentState};
 
-use super::{evaluate_inputs::evaluate_inputs, AppExecutionState};
+use super::{evaluate_component_inputs::evaluate_component_inputs, AppExecutionState};
 
 pub fn initialize(session: &AppSession) -> Result<AppExecutionState, SlipwayError> {
     let component_states = session
@@ -32,7 +32,17 @@ pub fn initialize(session: &AppSession) -> Result<AppExecutionState, SlipwayErro
         wasm_cache: HashMap::new(),
     };
 
-    let state = evaluate_inputs(state)?;
+    let state = evaluate_component_inputs(state)?;
 
     Ok(state)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_should_have_tests() {
+        todo!();
+    }
 }

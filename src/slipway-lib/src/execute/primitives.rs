@@ -36,3 +36,36 @@ impl Hash {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn it_should_hash_json_value() {
+        let json = json!({
+            "a": 1,
+            "b": 2,
+            "c": 3,
+        });
+
+        let json_clone = json.clone();
+
+        let json_other = json!({
+            "a": 2,
+            "b": 2,
+            "c": 3,
+        });
+
+        let hash = Hash::from_value(&json);
+        let hash_of_clone = Hash::from_value(&json_clone);
+        let hash_of_other = Hash::from_value(&json_other);
+
+        assert_eq!(hash.to_string(), hash_of_clone.to_string());
+        assert_ne!(hash.to_string(), hash_of_other.to_string());
+
+        assert_eq!(hash.value.len(), 32);
+    }
+}

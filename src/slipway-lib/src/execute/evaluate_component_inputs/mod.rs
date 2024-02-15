@@ -1,17 +1,25 @@
 use crate::{errors::SlipwayError, ComponentHandle};
 use std::collections::{HashMap, HashSet};
 
-use super::{
+use self::{
     extract_dependencies_from_json_path_strings::ExtractDependencies,
-    find_json_path_strings::{find_json_path_strings, FoundJsonPathString},
-    get_component_state, get_component_state_mut, map_dependencies_to_app_handles,
-    topological_sort::topological_sort,
+    find_json_path_strings::FoundJsonPathString,
+};
+
+use super::{
+    get_component_state, get_component_state_mut, topological_sort::topological_sort,
     AppExecutionState, ComponentInput,
 };
 
 mod evaluate_input;
+mod extract_dependencies_from_json_path_strings;
+mod find_json_path_strings;
+mod map_dependencies_to_app_handles;
+mod simple_json_path;
 
-pub(crate) fn evaluate_inputs(state: AppExecutionState) -> Result<AppExecutionState, SlipwayError> {
+pub(crate) fn evaluate_component_inputs(
+    state: AppExecutionState,
+) -> Result<AppExecutionState, SlipwayError> {
     let mut dependency_map: HashMap<&ComponentHandle, HashSet<ComponentHandle>> = HashMap::new();
     let mut component_evaluate_input_params: HashMap<&ComponentHandle, EvaluateInputParams> =
         HashMap::new();
@@ -26,7 +34,7 @@ pub(crate) fn evaluate_inputs(state: AppExecutionState) -> Result<AppExecutionSt
 
         // Find all the JSON path strings in the input of the component.
         let json_path_strings = match input {
-            Some(input) => find_json_path_strings(input),
+            Some(input) => find_json_path_strings::find_json_path_strings(input),
             None => Vec::new(),
         };
 
@@ -53,7 +61,8 @@ pub(crate) fn evaluate_inputs(state: AppExecutionState) -> Result<AppExecutionSt
         dependency_map.insert(key, component_dependencies);
     }
 
-    let dependency_map_refs = map_dependencies_to_app_handles(dependency_map)?;
+    let dependency_map_refs =
+        map_dependencies_to_app_handles::map_dependencies_to_app_handles(dependency_map)?;
 
     let execution_order = topological_sort(&dependency_map_refs)?;
     let mut execution_inputs: HashMap<&ComponentHandle, ComponentInput> = HashMap::new();
@@ -110,4 +119,14 @@ pub(crate) fn evaluate_inputs(state: AppExecutionState) -> Result<AppExecutionSt
 struct EvaluateInputParams<'app> {
     input: Option<&'app serde_json::Value>,
     json_path_strings: Vec<FoundJsonPathString<'app>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_should_have_tests() {
+        todo!();
+    }
 }

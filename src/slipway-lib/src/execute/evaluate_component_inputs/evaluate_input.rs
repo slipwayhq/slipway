@@ -6,11 +6,12 @@ use jsonpath_rust::{JsonPathInst, JsonPtr};
 
 use crate::{
     errors::SlipwayError,
-    execute::{
-        find_json_path_strings::{FoundJsonPathString, JsonPathOperations, PathType},
-        primitives::Hash,
-        ComponentInput,
-    },
+    execute::{primitives::Hash, ComponentInput},
+};
+
+use super::{
+    find_json_path_strings::{FoundJsonPathString, PathType},
+    simple_json_path::JsonPathOperations,
 };
 
 const JSON_PATH_SOURCE_EXTERNAL_PREFIX: &str = "at location \"";
@@ -80,4 +81,14 @@ pub(super) fn evaluate_input(
     };
 
     Ok(evaluated_input)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_should_have_tests() {
+        todo!();
+    }
 }
