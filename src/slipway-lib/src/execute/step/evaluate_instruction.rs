@@ -46,7 +46,7 @@ pub fn evaluate_instruction(
                     .execution_input
                     .as_ref()
                     .ok_or(SlipwayError::StepFailed(format!(
-                        "component {:?} cannot be executed, did you intend to override the output?",
+                        "component {} cannot be executed, did you intend to override the output?",
                         handle
                     )))?;
 
@@ -56,15 +56,5 @@ pub fn evaluate_instruction(
             });
             Ok(state)
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_should_have_tests() {
-        todo!();
     }
 }

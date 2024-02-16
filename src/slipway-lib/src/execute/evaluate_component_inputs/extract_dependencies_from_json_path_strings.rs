@@ -59,7 +59,7 @@ mod tests {
                     SimpleJsonPath::Field("a"),
                 ],
                 path: Cow::Borrowed("$.rigging.component1.output.a"),
-                path_type: PathType::Value,
+                path_type: PathType::OptionalValue,
             },
             FoundJsonPathString {
                 path_to: vec![
@@ -78,7 +78,7 @@ mod tests {
                     SimpleJsonPath::Field("input"),
                 ],
                 path: Cow::Borrowed("$.rigging.component4.output[53].c"),
-                path_type: PathType::Value,
+                path_type: PathType::RequiredValue,
             },
             FoundJsonPathString {
                 path_to: vec![
@@ -96,7 +96,7 @@ mod tests {
                     SimpleJsonPath::Field("input"),
                 ],
                 path: Cow::Borrowed("$.rigging_component0.output"),
-                path_type: PathType::Value,
+                path_type: PathType::OptionalValue,
             },
             FoundJsonPathString {
                 path_to: vec![

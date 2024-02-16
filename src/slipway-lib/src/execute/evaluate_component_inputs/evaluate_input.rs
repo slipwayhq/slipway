@@ -40,22 +40,22 @@ pub(super) fn evaluate_input(
 
                 let extracted_result = match found.path_type {
                     PathType::Array => serde_json::Value::Array(
-                        result
-                            .into_iter()
-                            .map(|v| match v {
-                                JsonPtr::NewValue(v) => v,
-                                JsonPtr::Slice(s) => s.clone(),
-                            })
-                            .collect(),
+                        result.into_iter().map(map_json_ptr_to_value).collect(),
                     ),
-                    PathType::Value => result
+                    PathType::OptionalValue => result
                         .into_iter()
                         .next()
-                        .map(|v| match v {
-                            JsonPtr::NewValue(v) => v,
-                            JsonPtr::Slice(s) => s.clone(),
-                        })
+                        .map(map_json_ptr_to_value)
                         .unwrap_or_default(),
+                    PathType::RequiredValue => {
+                        result.into_iter().next().map(map_json_ptr_to_value).ok_or(
+                            SlipwayError::StepFailed(format!(
+                                r#"The input path "{}" required "{}" to be a value"#,
+                                found.path_to.to_json_path_string(),
+                                found.path
+                            )),
+                        )?
+                    }
                 };
 
                 found
@@ -83,12 +83,9 @@ pub(super) fn evaluate_input(
     Ok(evaluated_input)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_should_have_tests() {
-        todo!();
+fn map_json_ptr_to_value(v: JsonPtr<'_, serde_json::Value>) -> serde_json::Value {
+    match v {
+        JsonPtr::NewValue(v) => v,
+        JsonPtr::Slice(s) => s.clone(),
     }
 }

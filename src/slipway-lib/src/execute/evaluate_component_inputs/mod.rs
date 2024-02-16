@@ -27,10 +27,8 @@ pub(crate) fn evaluate_component_inputs(
     for (key, component) in state.session.app.rigging.components.iter() {
         let component_state = get_component_state(&state, key)?;
 
-        let input = match component_state.input_override.as_ref() {
-            Some(input_override) => Some(&input_override.value),
-            None => component.input.as_ref(),
-        };
+        // Get the input of the component, which is either the input_override or the input or None.
+        let input = component_state.input(component);
 
         // Find all the JSON path strings in the input of the component.
         let json_path_strings = match input {
@@ -41,14 +39,16 @@ pub(crate) fn evaluate_component_inputs(
         // Extract the component's dependencies from the JSON path strings.
         let component_dependencies = json_path_strings.extract_dependencies()?;
 
+        // The component can execute if all of it's dependencies have an execution_output.
         let can_execute = component_dependencies.iter().all(|d| {
             get_component_state(&state, d)
                 .expect("component should exist in component states")
-                .execution_output
+                .output()
                 .is_some()
         });
 
         if can_execute {
+            // The component can execute, so add it to the list of inputs we need to evaluate.
             component_evaluate_input_params.insert(
                 key,
                 EvaluateInputParams {
@@ -73,38 +73,44 @@ pub(crate) fn evaluate_component_inputs(
         // Serialize the app state to a JSON value.
         let mut serialized_app_state = serde_json::to_value(&state.session.app)?;
 
-        for &component_handle in state.execution_order.iter() {
+        // For each component handle, in execution order.
+        for &component_handle in execution_order.iter() {
+            // Get the current component state.
             let component_state = get_component_state(&state, component_handle)?;
 
-            let output = match component_state.output_override.as_ref() {
-                Some(output_override) => Some(&output_override.value),
-                None => component_state
-                    .execution_output
-                    .as_ref()
-                    .map(|output| &output.value),
-            };
+            // Get the component output, which is either the output_override or the
+            // execution_output or None.
+            let output = component_state.output();
 
+            // If the component has output, then set it in the serialized app state.
             if let Some(output) = output {
                 serialized_app_state["rigging"][&component_handle.0]["output"] = output.clone();
             }
 
+            // If the component can execute...
             if let Some(evaluate_input_params) =
                 component_evaluate_input_params.get(component_handle)
             {
+                // Evaluate the execution input on the latest serialized app state.
                 let execution_input = evaluate_input::evaluate_input(
                     &serialized_app_state,
                     evaluate_input_params.input,
                     &evaluate_input_params.json_path_strings,
                 )?;
 
+                // Set the execution input in the serialized app state (in case
+                // later components reference this component's input).
                 serialized_app_state["rigging"][&component_handle.0]["input"] =
                     execution_input.value.clone();
 
+                // Insert the execution input into the execution inputs map.
+                // We can't set it on the component state immediately because it is immutable.
                 execution_inputs.insert(component_handle, execution_input);
             }
         }
     }
 
+    // Make the state mutable and update it.
     let mut state = state;
     state.execution_order = execution_order;
     for (component_handle, input) in execution_inputs {
@@ -119,14 +125,4 @@ pub(crate) fn evaluate_component_inputs(
 struct EvaluateInputParams<'app> {
     input: Option<&'app serde_json::Value>,
     json_path_strings: Vec<FoundJsonPathString<'app>>,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_should_have_tests() {
-        todo!();
-    }
 }

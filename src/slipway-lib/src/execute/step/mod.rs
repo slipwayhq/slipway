@@ -38,13 +38,3 @@ pub fn step(
 ) -> Result<AppExecutionState, SlipwayError> {
     evaluate_component_inputs(evaluate_instruction(state, instruction)?)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_should_have_tests() {
-        todo!();
-    }
-}

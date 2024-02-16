@@ -18,7 +18,7 @@ pub(crate) trait JsonPathOperations {
 
 impl<'a> JsonPathOperations for Vec<SimpleJsonPath<'a>> {
     fn to_json_path_string(&self) -> String {
-        let mut result = String::new();
+        let mut result = "$".to_string();
         for path in self {
             match path {
                 SimpleJsonPath::Field(field) => {
@@ -76,8 +76,116 @@ impl<'a> JsonPathOperations for Vec<SimpleJsonPath<'a>> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn it_should_have_tests() {
-        todo!();
+    mod to_json_path_string {
+        use super::{JsonPathOperations, SimpleJsonPath};
+
+        #[test]
+        fn it_should_create_json_path_string() {
+            let path = vec![
+                SimpleJsonPath::Field("a"),
+                SimpleJsonPath::Field("b"),
+                SimpleJsonPath::Index(0),
+                SimpleJsonPath::Field("c"),
+                SimpleJsonPath::Field("e"),
+            ];
+
+            let result = path.to_json_path_string();
+
+            assert_eq!(result, "$.a.b[0].c.e");
+        }
+    }
+
+    mod replace {
+        use serde_json::json;
+
+        use super::{JsonPathOperations, SimpleJsonPath};
+
+        #[test]
+        fn it_should_replace_values_in_json() {
+            let target = json!({
+                "a": {
+                    "b": [
+                        {
+                            "c": {
+                                "d": 1,
+                                "e": 2,
+                            }
+                        }
+                    ]
+                }
+            });
+
+            let mut target_mut = target.clone();
+
+            let new_value = json!({ "f": 3 });
+
+            let path = vec![
+                SimpleJsonPath::Field("a"),
+                SimpleJsonPath::Field("b"),
+                SimpleJsonPath::Index(0),
+                SimpleJsonPath::Field("c"),
+                SimpleJsonPath::Field("e"),
+            ];
+
+            path.replace(&mut target_mut, new_value).unwrap();
+
+            assert_eq!(
+                target_mut,
+                json!({
+                    "a": {
+                        "b": [
+                            {
+                                "c": {
+                                    "d": 1,
+                                    "e": {
+                                        "f": 3
+                                    },
+                                }
+                            }
+                        ]
+                    }
+                })
+            );
+        }
+
+        #[test]
+        fn it_should_replace_values_in_json_array() {
+            let target = json!({
+                "a": {
+                    "b": [
+                        {
+                            "c": [1, 2, 3]
+                        }
+                    ]
+                }
+            });
+
+            let mut target_mut = target.clone();
+
+            let new_value = json!(4);
+
+            let path = vec![
+                SimpleJsonPath::Field("a"),
+                SimpleJsonPath::Field("b"),
+                SimpleJsonPath::Index(0),
+                SimpleJsonPath::Field("c"),
+                SimpleJsonPath::Index(1),
+            ];
+
+            path.replace(&mut target_mut, new_value).unwrap();
+
+            assert_eq!(
+                target_mut,
+                json!({
+                    "a": {
+                        "b": [
+                            {
+                                "c": [1, 4, 3]
+                            }
+                        ]
+                    }
+                })
+            );
+        }
     }
 }

@@ -36,13 +36,3 @@ pub fn initialize(session: &AppSession) -> Result<AppExecutionState, SlipwayErro
 
     Ok(state)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_should_have_tests() {
-        todo!();
-    }
-}
