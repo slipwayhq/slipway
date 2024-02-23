@@ -17,6 +17,10 @@ mod find_json_path_strings;
 mod map_dependencies_to_app_handles;
 mod simple_json_path;
 
+const RIGGING_KEY: &str = "rigging";
+const INPUT_KEY: &str = "input";
+const OUTPUT_KEY: &str = "output";
+
 pub(crate) fn evaluate_component_inputs(
     state: AppExecutionState,
 ) -> Result<AppExecutionState, SlipwayError> {
@@ -84,7 +88,7 @@ pub(crate) fn evaluate_component_inputs(
 
             // If the component has output, then set it in the serialized app state.
             if let Some(output) = output {
-                serialized_app_state["rigging"][&component_handle.0]["output"] = output.clone();
+                serialized_app_state[RIGGING_KEY][&component_handle.0][OUTPUT_KEY] = output.clone();
             }
 
             // If the component can execute...
@@ -101,7 +105,7 @@ pub(crate) fn evaluate_component_inputs(
 
                 // Set the execution input in the serialized app state (in case
                 // later components reference this component's input).
-                serialized_app_state["rigging"][&component_handle.0]["input"] =
+                serialized_app_state[RIGGING_KEY][&component_handle.0][INPUT_KEY] =
                     execution_input.value.clone();
 
                 // Insert the execution input into the execution inputs map.
@@ -113,11 +117,14 @@ pub(crate) fn evaluate_component_inputs(
 
     // Make the state mutable and update it.
     let mut state = state;
-    state.execution_order = execution_order;
-    for (component_handle, input) in execution_inputs {
-        let component_state = get_component_state_mut(&mut state, component_handle)?;
 
-        component_state.execution_input = Some(input);
+    // Update the execution order, which may have changed if inputs were overridden.
+    state.valid_execution_order = execution_order;
+
+    // Update the execution input of every component.
+    for key in state.session.app.rigging.components.keys() {
+        let component_state = get_component_state_mut(&mut state, key)?;
+        component_state.execution_input = execution_inputs.remove(key);
     }
 
     Ok(state)

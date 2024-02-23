@@ -28,7 +28,7 @@ pub fn initialize(session: &AppSession) -> Result<AppExecutionState, SlipwayErro
     let state = AppExecutionState {
         session,
         component_states,
-        execution_order: Vec::new(),
+        valid_execution_order: Vec::new(),
         wasm_cache: HashMap::new(),
     };
 

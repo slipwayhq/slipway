@@ -58,7 +58,7 @@ pub struct AppSession {
 pub struct AppExecutionState<'app> {
     session: &'app AppSession,
     component_states: HashMap<&'app ComponentHandle, ComponentState<'app>>,
-    execution_order: Vec<&'app ComponentHandle>,
+    valid_execution_order: Vec<&'app ComponentHandle>,
     wasm_cache: HashMap<&'app ComponentHandle, Vec<u8>>,
 }
 
@@ -132,85 +132,31 @@ mod tests {
         ComponentHandle,
     };
 
-    use self::step::Instruction;
+    use super::{step::Instruction, *};
 
-    use super::*;
+    fn ch(handle: &str) -> ComponentHandle {
+        ComponentHandle::from_str(handle).unwrap()
+    }
 
-    fn create_app() -> App {
-        fn create_component(
-            name: &str,
-            input: Option<Value>,
-        ) -> (ComponentHandle, ComponentRigging) {
-            (
-                ComponentHandle::from_str(name).unwrap(),
-                ComponentRigging {
-                    component: SlipwayReference::from_str(&format!("p{name}.{name}.0.1.0"))
-                        .unwrap(),
-                    input,
-                    permissions: None,
-                },
-            )
-        }
+    fn create_component(name: &str, input: Option<Value>) -> (ComponentHandle, ComponentRigging) {
+        (
+            ch(name),
+            ComponentRigging {
+                component: SlipwayReference::from_str(&format!("p{name}.{name}.0.1.0")).unwrap(),
+                input,
+                permissions: None,
+            },
+        )
+    }
 
-        // Create a fully populated app instance.
-        // Dependency graph:
-        //     C
-        //    /|\
-        //   F B \
-        //  / / \|
-        // | E   A
-        // | |   |
-        // | |   D
-        // | \  /
-        //  \  G  I J
-        //   \ | / /
-        //     H -/  K
+    fn create_app_with_rigging(rigging: Rigging) -> App {
         App {
             publisher: Publisher::from_str("test_publisher").unwrap(),
             name: Name::from_str("test_name").unwrap(),
             version: Version::from_str("0.1.0").unwrap(),
             description: None,
             constants: Some(json!({"test_constant": "test_constant_value"})),
-            rigging: Rigging {
-                components: [
-                    create_component("a", Some(json!({"b": "$$.b", "c": "$$.c"}))),
-                    // "b" is used to test the chain e.input -> b.input -> c.output
-                    create_component("b", Some(json!({"c": "$.rigging.c.output"}))),
-                    // "c" is used to test reference to other parts of the app JSON.
-                    create_component(
-                        "c",
-                        Some(json!({
-                            "constant": "$.constants.test_constant",
-                            "constant2": "$?constants.test_constant2",
-                            "version": "$.version",
-                        })),
-                    ),
-                    create_component(
-                        "d",
-                        Some(json!({ "foo": [ { "bar": { "a_x": "$$?a.x" } } ] })),
-                    ),
-                    // "e" is used to test the chain e.input -> b.input -> c.output
-                    create_component(
-                        "e",
-                        Some(json!({
-                            "b_input_y": "$?rigging.b.input.c.y",
-                            "b_input_z": "$.rigging.b.input.c.z",
-                        })),
-                    ),
-                    // "f" is used to test optional and required values.
-                    create_component(
-                        "f",
-                        Some(json!({"c_x": "$$*c.x", "c_y": "$$?c.y", "c_z": "$$.c.z"})),
-                    ),
-                    create_component("g", Some(json!({"d": "$$.d", "e": "$$?e" }))),
-                    create_component("h", Some(json!({"g": "$$.g", "f": "$$.f" }))),
-                    create_component("i", None),
-                    create_component("j", Some(json!({"version": "$.version"}))),
-                    create_component("k", None),
-                ]
-                .into_iter()
-                .collect(),
-            },
+            rigging,
         }
     }
 
@@ -238,9 +184,9 @@ mod tests {
                 && component_state.output().is_none()
             {
                 panic!(
-                    "expected component {:?} not to be ready, but it has execution input and no output",
-                    handle.0.as_str()
-                );
+                "expected component {:?} not to be ready, but it has execution input and no output",
+                handle.0.as_str()
+            );
             }
         }
     }
@@ -249,185 +195,401 @@ mod tests {
         execution_state: &'local AppExecutionState<'app>,
         handle_str: &str,
     ) -> &'local ComponentState<'app> {
-        let handle = ComponentHandle::from_str(handle_str).unwrap();
+        let handle = ch(handle_str);
         execution_state.component_states.get(&handle).unwrap()
     }
 
-    #[test]
-    fn initialize_should_populate_execution_inputs_of_components_that_can_run_immediately() {
-        let app = create_app();
-
-        let app_session = create_session(app);
-
-        let execution_state = initialize(&app_session).unwrap();
-
-        assert_expected_components_ready(&execution_state, &["c", "i", "j", "k"]);
-    }
-
-    #[test]
-    fn it_should_populate_references_to_other_parts_of_app() {
-        let app = create_app();
-
-        let app_session = create_session(app);
-
-        let execution_state = initialize(&app_session).unwrap();
-
-        let c = get(&execution_state, "c");
-
-        assert_eq!(
-            c.execution_input.as_ref().unwrap().value,
-            json!({
-                "constant": "test_constant_value",
-                "constant2": null,
-                "version": "0.1.0"
-            })
-        );
-    }
-
-    #[test]
-    fn it_should_allow_setting_the_output_on_a_component_which_can_execute() {
-        let app = create_app();
-
-        let app_session = create_session(app);
-
-        let mut execution_state = initialize(&app_session).unwrap();
-
-        execution_state = step(
+    fn set_output_to<'a>(
+        execution_state: AppExecutionState<'a>,
+        next: &str,
+        value: serde_json::Value,
+    ) -> AppExecutionState<'a> {
+        step(
             execution_state,
             Instruction::SetOutput {
-                handle: ComponentHandle::from_str("c").unwrap(),
-                value: json!({ "x": 1, "y": 2, "z": 3 }),
-            },
-        )
-        .unwrap();
-
-        assert_expected_components_ready(&execution_state, &["f", "b", "i", "j", "k"]);
-
-        let f = get(&execution_state, "f");
-
-        assert_eq!(
-            f.execution_input.as_ref().unwrap().value,
-            json!({ "c_x": [1], "c_y": 2, "c_z": 3 })
-        );
-    }
-
-    #[test]
-    fn it_should_not_allow_setting_the_output_on_a_component_which_cannot_execute() {
-        let app = create_app();
-
-        let app_session = create_session(app);
-
-        let execution_state = initialize(&app_session).unwrap();
-
-        let execution_state_result = step(
-            execution_state,
-            Instruction::SetOutput {
-                handle: ComponentHandle::from_str("g").unwrap(),
-                value: json!({ "foo": "bar" }),
-            },
-        );
-
-        match execution_state_result {
-            Ok(_) => panic!("expected an error"),
-            Err(SlipwayError::StepFailed(s)) => {
-                assert_eq!(
-                    s,
-                    "component g cannot currently be executed, did you intend to override the output?"
-                );
-            }
-            Err(err) => panic!("expected StepFailed error, got {:?}", err),
-        }
-    }
-
-    #[test]
-    fn it_should_allow_optional_json_path_references_missing_resolved_values() {
-        let app = create_app();
-
-        let app_session = create_session(app);
-
-        let mut execution_state = initialize(&app_session).unwrap();
-
-        execution_state = step(
-            execution_state,
-            Instruction::SetOutput {
-                handle: ComponentHandle::from_str("c").unwrap(),
-                value: json!({ "z": 3 }),
-            },
-        )
-        .unwrap();
-
-        assert_expected_components_ready(&execution_state, &["f", "b", "i", "j", "k"]);
-
-        let f = get(&execution_state, "f");
-
-        assert_eq!(
-            f.execution_input.as_ref().unwrap().value,
-            json!({ "c_x": [], "c_y": null, "c_z": 3 })
-        );
-    }
-
-    #[test]
-    fn it_should_not_allow_required_json_path_references_missing_resolved_values() {
-        let app = create_app();
-
-        let app_session = create_session(app);
-
-        let execution_state = initialize(&app_session).unwrap();
-
-        let execution_state_result = step(
-            execution_state,
-            Instruction::SetOutput {
-                handle: ComponentHandle::from_str("c").unwrap(),
-                value: json!({ "x": 1, "y": 2 }),
-            },
-        );
-
-        match execution_state_result {
-            Ok(_) => panic!("expected an error"),
-            Err(SlipwayError::ResolveJsonPathFailed { message, state: _ }) => {
-                assert_eq!(
-                    message,
-                    r#"The input path "f.input.c_z" required "$.rigging.c.output.z" to be a value"#
-                );
-            }
-            Err(err) => panic!("expected StepFailed error, got {:?}", err),
-        }
-    }
-
-    #[test]
-    fn it_should_resolve_references_to_other_inputs_using_the_resolved_referenced_input() {
-        let app = create_app();
-
-        let app_session = create_session(app);
-
-        let mut execution_state = initialize(&app_session).unwrap();
-
-        execution_state = step(
-            execution_state,
-            Instruction::SetOutput {
-                handle: ComponentHandle::from_str("c").unwrap(),
-                value: json!({ "z": 3 }),
-            },
-        )
-        .unwrap();
-
-        execution_state = step(
-            execution_state,
-            Instruction::SetOutput {
-                handle: ComponentHandle::from_str("b").unwrap(),
-                value: json!(null),
+                handle: ch(next),
+                value,
             },
         )
         .inspect_err(|e| println!("error: {:#}", e))
-        .unwrap();
+        .unwrap()
+    }
 
-        assert_expected_components_ready(&execution_state, &["f", "e", "a", "i", "j", "k"]);
+    // Set the output of a component with a string of the same value as the component name.
+    fn set_output<'a>(execution_state: AppExecutionState<'a>, next: &str) -> AppExecutionState<'a> {
+        set_output_to(execution_state, next, json!(next))
+    }
 
-        let e = get(&execution_state, "e");
+    mod step {
+        use super::*;
 
-        assert_eq!(
-            e.execution_input.as_ref().unwrap().value,
-            json!({ "b_input_y": null, "b_input_z": 3 })
-        );
+        fn create_app() -> App {
+            // Create a fully populated app instance.
+            // Dependency graph:
+            //     C
+            //    /|\
+            //   F B \
+            //  / / \|
+            // | E   A
+            // | |   |
+            // | |   D
+            // | \  /
+            //  \  G  I J
+            //   \ | / /
+            //     H -/  K
+            create_app_with_rigging(Rigging {
+                components: [
+                    create_component("a", Some(json!({"b": "$$.b", "c": "$$.c"}))),
+                    // "b" is used to test the chain e.input -> b.input -> c.output
+                    create_component("b", Some(json!({"c": "$.rigging.c.output"}))),
+                    // "c" is used to test reference to other parts of the app JSON.
+                    create_component(
+                        "c",
+                        Some(json!({
+                            "constant": "$.constants.test_constant",
+                            "constant2": "$?constants.test_constant2",
+                            "version": "$.version",
+                        })),
+                    ),
+                    create_component(
+                        "d",
+                        Some(json!({ "foo": [ { "bar": { "a_x": "$$.a.x" } } ] })),
+                    ),
+                    // "e" is used to test the chain e.input -> b.input -> c.output
+                    create_component(
+                        "e",
+                        Some(json!({
+                            "b_input_y": "$?rigging.b.input.c.y",
+                            "b_input_z": "$.rigging.b.input.c.z",
+                        })),
+                    ),
+                    // "f" is used to test optional and required values.
+                    create_component(
+                        "f",
+                        Some(json!({"c_x": "$$*c.x", "c_y": "$$?c.y", "c_z": "$$.c.z"})),
+                    ),
+                    create_component("g", Some(json!({"d": "$$.d", "e": "$$?e" }))),
+                    create_component(
+                        "h",
+                        Some(json!({"g": "$$.g", "f": "$$.f", "i": "$$.i", "j": "$$.j" })),
+                    ),
+                    create_component("i", None),
+                    create_component("j", Some(json!({"version": "$.version"}))),
+                    create_component("k", None),
+                ]
+                .into_iter()
+                .collect(),
+            })
+        }
+
+        #[test]
+        fn initialize_should_populate_execution_inputs_of_components_that_can_run_immediately() {
+            let app = create_app();
+
+            let app_session = create_session(app);
+
+            let execution_state = initialize(&app_session).unwrap();
+
+            assert_expected_components_ready(&execution_state, &["c", "i", "j", "k"]);
+        }
+
+        #[test]
+        fn it_should_populate_references_to_other_parts_of_app() {
+            let app = create_app();
+
+            let app_session = create_session(app);
+
+            let s = initialize(&app_session).unwrap();
+
+            let c = get(&s, "c");
+
+            assert_eq!(
+                c.execution_input.as_ref().unwrap().value,
+                json!({
+                    "constant": "test_constant_value",
+                    "constant2": null,
+                    "version": "0.1.0"
+                })
+            );
+        }
+
+        #[test]
+        fn it_should_allow_setting_the_output_on_a_component_which_can_execute() {
+            let app = create_app();
+
+            let app_session = create_session(app);
+
+            let mut s = initialize(&app_session).unwrap();
+
+            s = set_output_to(s, "c", json!({ "x": 1, "y": 2, "z": 3 }));
+            assert_expected_components_ready(&s, &["f", "b", "i", "j", "k"]);
+
+            let f = get(&s, "f");
+
+            assert_eq!(
+                f.execution_input.as_ref().unwrap().value,
+                json!({ "c_x": [1], "c_y": 2, "c_z": 3 })
+            );
+        }
+
+        #[test]
+        fn it_should_not_allow_setting_the_output_on_a_component_which_cannot_execute() {
+            let app = create_app();
+
+            let app_session = create_session(app);
+
+            let s = initialize(&app_session).unwrap();
+
+            let execution_state_result = step(
+                s,
+                Instruction::SetOutput {
+                    handle: ch("g"),
+                    value: json!({ "foo": "bar" }),
+                },
+            );
+
+            match execution_state_result {
+                Ok(_) => panic!("expected an error"),
+                Err(SlipwayError::StepFailed(s)) => {
+                    assert_eq!(
+                    s,
+                    "component g cannot currently be executed, did you intend to override the output?"
+                );
+                }
+                Err(err) => panic!("expected StepFailed error, got {:?}", err),
+            }
+        }
+
+        #[test]
+        fn it_should_allow_optional_json_path_references_missing_resolved_values() {
+            let app = create_app();
+
+            let app_session = create_session(app);
+
+            let mut s = initialize(&app_session).unwrap();
+
+            s = set_output_to(s, "c", json!({ "z": 3 }));
+
+            assert_expected_components_ready(&s, &["f", "b", "i", "j", "k"]);
+
+            let f = get(&s, "f");
+
+            assert_eq!(
+                f.execution_input.as_ref().unwrap().value,
+                json!({ "c_x": [], "c_y": null, "c_z": 3 })
+            );
+        }
+
+        #[test]
+        fn it_should_not_allow_required_json_path_references_missing_resolved_values() {
+            let app = create_app();
+
+            let app_session = create_session(app);
+
+            let s = initialize(&app_session).unwrap();
+
+            let execution_state_result = step(
+                s,
+                Instruction::SetOutput {
+                    handle: ch("c"),
+                    value: json!({ "x": 1, "y": 2 }),
+                },
+            );
+
+            match execution_state_result {
+                Ok(_) => panic!("expected an error"),
+                Err(SlipwayError::ResolveJsonPathFailed { message, state: _ }) => {
+                    assert_eq!(
+                        message,
+                        r#"The input path "f.input.c_z" required "$.rigging.c.output.z" to be a value"#
+                    );
+                }
+                Err(err) => panic!("expected StepFailed error, got {:?}", err),
+            }
+        }
+
+        #[test]
+        fn it_should_resolve_references_to_other_inputs_using_the_resolved_referenced_input() {
+            let app = create_app();
+
+            let app_session = create_session(app);
+
+            let mut s = initialize(&app_session).unwrap();
+
+            s = set_output_to(s, "c", json!({ "z": 3 }));
+            s = set_output_to(s, "b", json!(null));
+
+            assert_expected_components_ready(&s, &["f", "e", "a", "i", "j", "k"]);
+
+            let e = get(&s, "e");
+
+            assert_eq!(
+                e.execution_input.as_ref().unwrap().value,
+                json!({ "b_input_y": null, "b_input_z": 3 })
+            );
+        }
+
+        #[test]
+        fn it_should_step_though_entire_graph() {
+            let app = create_app();
+
+            let app_session = create_session(app);
+
+            let mut s = initialize(&app_session).unwrap();
+
+            assert_expected_components_ready(&s, &["c", "i", "j", "k"]);
+
+            s = set_output_to(s, "c", json!({ "z": 3 }));
+
+            assert_expected_components_ready(&s, &["f", "b", "i", "j", "k"]);
+
+            s = set_output(s, "b");
+            assert_expected_components_ready(&s, &["f", "e", "a", "i", "j", "k"]);
+
+            s = set_output(s, "f");
+            assert_expected_components_ready(&s, &["e", "a", "i", "j", "k"]);
+
+            s = set_output(s, "k");
+            assert_expected_components_ready(&s, &["e", "a", "i", "j"]);
+
+            s = set_output(s, "j");
+            assert_expected_components_ready(&s, &["e", "a", "i"]);
+
+            s = set_output(s, "e");
+            assert_expected_components_ready(&s, &["a", "i"]);
+
+            s = set_output_to(s, "a", json!({ "x": 5 }));
+            assert_expected_components_ready(&s, &["d", "i"]);
+
+            s = set_output(s, "d");
+            assert_expected_components_ready(&s, &["g", "i"]);
+
+            s = set_output(s, "g");
+            assert_expected_components_ready(&s, &["i"]);
+
+            s = set_output(s, "i");
+            assert_expected_components_ready(&s, &["h"]);
+
+            s = set_output(s, "h");
+            assert_expected_components_ready(&s, &[]);
+        }
+    }
+
+    mod input_override {
+        use super::*;
+
+        fn create_app() -> App {
+            // Create a fully populated app instance.
+            // Dependency graph:
+            //  C   D
+            //  |
+            //  B
+            //  |
+            //  A
+            create_app_with_rigging(Rigging {
+                components: [
+                    create_component("a", Some(json!({ "b": "$$.b" }))),
+                    create_component("b", Some(json!({ "c": "$$.c" }))),
+                    create_component("c", None),
+                    create_component("d", None),
+                ]
+                .into_iter()
+                .collect(),
+            })
+        }
+
+        #[test]
+        fn setting_input_override_should_affect_dependencies() {
+            let app = create_app();
+
+            let app_session = create_session(app);
+
+            let mut s = initialize(&app_session).unwrap();
+
+            assert_expected_components_ready(&s, &["c", "d"]);
+            assert_eq!(
+                s.valid_execution_order,
+                vec![&ch("c"), &ch("d"), &ch("b"), &ch("a")]
+            );
+
+            // Change "c" to depend on the output of "d".
+            s = step(
+                s,
+                Instruction::SetInputOverride {
+                    handle: ch("c"),
+                    value: json!({ "d": "$$.d" }),
+                },
+            )
+            .unwrap();
+
+            assert_expected_components_ready(&s, &["d"]);
+            assert_eq!(
+                s.valid_execution_order,
+                vec![&ch("d"), &ch("c"), &ch("b"), &ch("a")]
+            );
+
+            // Reset to the original state.
+            s = step(s, Instruction::ClearInputOverride { handle: ch("c") }).unwrap();
+
+            assert_expected_components_ready(&s, &["c", "d"]);
+            assert_eq!(
+                s.valid_execution_order,
+                vec![&ch("c"), &ch("d"), &ch("b"), &ch("a")]
+            );
+        }
+    }
+
+    mod output_override {
+        use super::*;
+
+        fn create_app() -> App {
+            // Create a fully populated app instance.
+            // Dependency graph:
+            //  C
+            //  |
+            //  B
+            //  |
+            //  A
+            create_app_with_rigging(Rigging {
+                components: [
+                    create_component("a", Some(json!({ "b": "$$.b" }))),
+                    create_component("b", Some(json!({ "c": "$$.c" }))),
+                    create_component("c", None),
+                ]
+                .into_iter()
+                .collect(),
+            })
+        }
+
+        #[test]
+        fn setting_output_override_should_affect_execution_states() {
+            let app = create_app();
+
+            let app_session = create_session(app);
+
+            let mut s = initialize(&app_session).unwrap();
+
+            assert_expected_components_ready(&s, &["c"]);
+            assert_eq!(s.valid_execution_order, vec![&ch("c"), &ch("b"), &ch("a")]);
+
+            // Override "b" output to allow "a" to execute immediately.
+            s = step(
+                s,
+                Instruction::SetOutputOverride {
+                    handle: ch("b"),
+                    value: json!({ "foo": "bar" }),
+                },
+            )
+            .unwrap();
+
+            assert_expected_components_ready(&s, &["c", "a"]);
+            assert_eq!(s.valid_execution_order, vec![&ch("c"), &ch("b"), &ch("a")]);
+
+            // Reset to the original state.
+            s = step(s, Instruction::ClearOutputOverride { handle: ch("b") }).unwrap();
+
+            assert_expected_components_ready(&s, &["c"]);
+            assert_eq!(s.valid_execution_order, vec![&ch("c"), &ch("b"), &ch("a")]);
+        }
     }
 }
