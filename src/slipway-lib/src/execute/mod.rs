@@ -6,9 +6,9 @@ use crate::{
 };
 
 pub(crate) mod evaluate_component_inputs;
-pub(crate) mod initialize;
+mod initialize;
 mod primitives;
-pub(crate) mod step;
+mod step;
 mod topological_sort;
 
 use primitives::Hash;
@@ -17,42 +17,14 @@ pub(crate) fn create_session(app: App) -> AppSession {
     AppSession { app }
 }
 
-pub use initialize::initialize;
-pub use step::step;
-
-fn get_component_state_mut<'app, 'local>(
-    state: &'local mut AppExecutionState<'app>,
-    handle: &'local ComponentHandle,
-) -> Result<&'local mut crate::ComponentState<'app>, SlipwayError> {
-    let component_state =
-        state
-            .component_states
-            .get_mut(handle)
-            .ok_or(SlipwayError::StepFailed(format!(
-                "component {:?} does not exist in component states",
-                handle
-            )))?;
-
-    Ok(component_state)
-}
-
-fn get_component_state<'app, 'local>(
-    state: &'local AppExecutionState<'app>,
-    handle: &'local ComponentHandle,
-) -> Result<&'local crate::ComponentState<'app>, SlipwayError> {
-    let component_state = state
-        .component_states
-        .get(handle)
-        .ok_or(SlipwayError::StepFailed(format!(
-            "component {:?} does not exist in component states",
-            handle
-        )))?;
-
-    Ok(component_state)
-}
-
 pub struct AppSession {
     app: App,
+}
+
+impl AppSession {
+    pub fn initialize(&self) -> Result<AppExecutionState, SlipwayError> {
+        initialize::initialize(self)
+    }
 }
 
 pub struct AppExecutionState<'app> {
@@ -63,8 +35,45 @@ pub struct AppExecutionState<'app> {
 }
 
 impl<'app> AppExecutionState<'app> {
+    pub fn step(
+        self,
+        instruction: step::Instruction,
+    ) -> Result<AppExecutionState<'app>, SlipwayError> {
+        step::step(self, instruction)
+    }
+
     pub fn component_states(&self) -> &HashMap<&'app ComponentHandle, ComponentState> {
         &self.component_states
+    }
+
+    pub(crate) fn get_component_state_mut(
+        &mut self,
+        handle: &ComponentHandle,
+    ) -> Result<&mut ComponentState<'app>, SlipwayError> {
+        let component_state =
+            self.component_states
+                .get_mut(handle)
+                .ok_or(SlipwayError::StepFailed(format!(
+                    "component {:?} does not exist in component states",
+                    handle
+                )))?;
+
+        Ok(component_state)
+    }
+
+    pub fn get_component_state(
+        &self,
+        handle: &ComponentHandle,
+    ) -> Result<&ComponentState<'app>, SlipwayError> {
+        let component_state = self
+            .component_states
+            .get(handle)
+            .ok_or(SlipwayError::StepFailed(format!(
+                "component {:?} does not exist in component states",
+                handle
+            )))?;
+
+        Ok(component_state)
     }
 }
 
@@ -204,15 +213,13 @@ mod tests {
         next: &str,
         value: serde_json::Value,
     ) -> AppExecutionState<'a> {
-        step(
-            execution_state,
-            Instruction::SetOutput {
+        execution_state
+            .step(Instruction::SetOutput {
                 handle: ch(next),
                 value,
-            },
-        )
-        .inspect_err(|e| println!("error: {:#}", e))
-        .unwrap()
+            })
+            .inspect_err(|e| println!("error: {:#}", e))
+            .unwrap()
     }
 
     // Set the output of a component with a string of the same value as the component name.
@@ -288,7 +295,7 @@ mod tests {
 
             let app_session = create_session(app);
 
-            let execution_state = initialize(&app_session).unwrap();
+            let execution_state = app_session.initialize().unwrap();
 
             assert_expected_components_ready(&execution_state, &["c", "i", "j", "k"]);
         }
@@ -299,7 +306,7 @@ mod tests {
 
             let app_session = create_session(app);
 
-            let s = initialize(&app_session).unwrap();
+            let s = app_session.initialize().unwrap();
 
             let c = get(&s, "c");
 
@@ -319,7 +326,7 @@ mod tests {
 
             let app_session = create_session(app);
 
-            let mut s = initialize(&app_session).unwrap();
+            let mut s = app_session.initialize().unwrap();
 
             s = set_output_to(s, "c", json!({ "x": 1, "y": 2, "z": 3 }));
             assert_expected_components_ready(&s, &["f", "b", "i", "j", "k"]);
@@ -338,15 +345,12 @@ mod tests {
 
             let app_session = create_session(app);
 
-            let s = initialize(&app_session).unwrap();
+            let s = app_session.initialize().unwrap();
 
-            let execution_state_result = step(
-                s,
-                Instruction::SetOutput {
-                    handle: ch("g"),
-                    value: json!({ "foo": "bar" }),
-                },
-            );
+            let execution_state_result = s.step(Instruction::SetOutput {
+                handle: ch("g"),
+                value: json!({ "foo": "bar" }),
+            });
 
             match execution_state_result {
                 Ok(_) => panic!("expected an error"),
@@ -366,7 +370,7 @@ mod tests {
 
             let app_session = create_session(app);
 
-            let mut s = initialize(&app_session).unwrap();
+            let mut s = app_session.initialize().unwrap();
 
             s = set_output_to(s, "c", json!({ "z": 3 }));
 
@@ -386,15 +390,12 @@ mod tests {
 
             let app_session = create_session(app);
 
-            let s = initialize(&app_session).unwrap();
+            let s = app_session.initialize().unwrap();
 
-            let execution_state_result = step(
-                s,
-                Instruction::SetOutput {
-                    handle: ch("c"),
-                    value: json!({ "x": 1, "y": 2 }),
-                },
-            );
+            let execution_state_result = s.step(Instruction::SetOutput {
+                handle: ch("c"),
+                value: json!({ "x": 1, "y": 2 }),
+            });
 
             match execution_state_result {
                 Ok(_) => panic!("expected an error"),
@@ -414,7 +415,7 @@ mod tests {
 
             let app_session = create_session(app);
 
-            let mut s = initialize(&app_session).unwrap();
+            let mut s = app_session.initialize().unwrap();
 
             s = set_output_to(s, "c", json!({ "z": 3 }));
             s = set_output_to(s, "b", json!(null));
@@ -435,7 +436,7 @@ mod tests {
 
             let app_session = create_session(app);
 
-            let mut s = initialize(&app_session).unwrap();
+            let mut s = app_session.initialize().unwrap();
 
             assert_expected_components_ready(&s, &["c", "i", "j", "k"]);
 
@@ -504,7 +505,7 @@ mod tests {
 
             let app_session = create_session(app);
 
-            let mut s = initialize(&app_session).unwrap();
+            let mut s = app_session.initialize().unwrap();
 
             assert_expected_components_ready(&s, &["c", "d"]);
             assert_eq!(
@@ -513,14 +514,12 @@ mod tests {
             );
 
             // Change "c" to depend on the output of "d".
-            s = step(
-                s,
-                Instruction::SetInputOverride {
+            s = s
+                .step(Instruction::SetInputOverride {
                     handle: ch("c"),
                     value: json!({ "d": "$$.d" }),
-                },
-            )
-            .unwrap();
+                })
+                .unwrap();
 
             assert_expected_components_ready(&s, &["d"]);
             assert_eq!(
@@ -529,7 +528,9 @@ mod tests {
             );
 
             // Reset to the original state.
-            s = step(s, Instruction::ClearInputOverride { handle: ch("c") }).unwrap();
+            s = s
+                .step(Instruction::ClearInputOverride { handle: ch("c") })
+                .unwrap();
 
             assert_expected_components_ready(&s, &["c", "d"]);
             assert_eq!(
@@ -567,26 +568,26 @@ mod tests {
 
             let app_session = create_session(app);
 
-            let mut s = initialize(&app_session).unwrap();
+            let mut s = app_session.initialize().unwrap();
 
             assert_expected_components_ready(&s, &["c"]);
             assert_eq!(s.valid_execution_order, vec![&ch("c"), &ch("b"), &ch("a")]);
 
             // Override "b" output to allow "a" to execute immediately.
-            s = step(
-                s,
-                Instruction::SetOutputOverride {
+            s = s
+                .step(Instruction::SetOutputOverride {
                     handle: ch("b"),
                     value: json!({ "foo": "bar" }),
-                },
-            )
-            .unwrap();
+                })
+                .unwrap();
 
             assert_expected_components_ready(&s, &["c", "a"]);
             assert_eq!(s.valid_execution_order, vec![&ch("c"), &ch("b"), &ch("a")]);
 
             // Reset to the original state.
-            s = step(s, Instruction::ClearOutputOverride { handle: ch("b") }).unwrap();
+            s = s
+                .step(Instruction::ClearOutputOverride { handle: ch("b") })
+                .unwrap();
 
             assert_expected_components_ready(&s, &["c"]);
             assert_eq!(s.valid_execution_order, vec![&ch("c"), &ch("b"), &ch("a")]);

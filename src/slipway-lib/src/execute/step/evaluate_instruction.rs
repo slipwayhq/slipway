@@ -1,8 +1,7 @@
 use crate::{
     errors::SlipwayError,
     execute::{
-        get_component_state_mut, AppExecutionState, ComponentInputOverride, ComponentOutput,
-        ComponentOutputOverride,
+        AppExecutionState, ComponentInputOverride, ComponentOutput, ComponentOutputOverride,
     },
 };
 
@@ -15,36 +14,37 @@ pub fn evaluate_instruction(
     match instruction {
         Instruction::SetInputOverride { handle, value } => {
             let mut state = state;
-            let component_state = get_component_state_mut(&mut state, &handle)?;
+            let component_state = state.get_component_state_mut(&handle)?;
             component_state.input_override = Some(ComponentInputOverride { value });
             Ok(state)
         }
         Instruction::ClearInputOverride { handle } => {
             let mut state = state;
-            let component_state = get_component_state_mut(&mut state, &handle)?;
+            let component_state = state.get_component_state_mut(&handle)?;
             component_state.input_override = None;
             Ok(state)
         }
         Instruction::SetOutputOverride { handle, value } => {
             let mut state = state;
-            let component_state = get_component_state_mut(&mut state, &handle)?;
+            let component_state = state.get_component_state_mut(&handle)?;
             component_state.output_override = Some(ComponentOutputOverride { value });
             Ok(state)
         }
         Instruction::ClearOutputOverride { handle } => {
             let mut state = state;
-            let component_state = get_component_state_mut(&mut state, &handle)?;
+            let component_state = state.get_component_state_mut(&handle)?;
             component_state.output_override = None;
             Ok(state)
         }
         Instruction::SetOutput { handle, value } => {
             let mut state = state;
-            let component_state = get_component_state_mut(&mut state, &handle)?;
+            let component_state = state.get_component_state_mut(&handle)?;
 
-            let input = component_state
-                .execution_input
-                .as_ref()
-                .ok_or(SlipwayError::StepFailed(format!(
+            let input =
+                component_state
+                    .execution_input
+                    .as_ref()
+                    .ok_or(SlipwayError::StepFailed(format!(
                 "component {} cannot currently be executed, did you intend to override the output?",
                 handle
             )))?;

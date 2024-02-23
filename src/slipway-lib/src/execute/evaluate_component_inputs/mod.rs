@@ -6,10 +6,7 @@ use self::{
     find_json_path_strings::FoundJsonPathString,
 };
 
-use super::{
-    get_component_state, get_component_state_mut, topological_sort::topological_sort,
-    AppExecutionState, ComponentInput,
-};
+use super::{topological_sort::topological_sort, AppExecutionState, ComponentInput};
 
 mod evaluate_input;
 mod extract_dependencies_from_json_path_strings;
@@ -29,7 +26,7 @@ pub(crate) fn evaluate_component_inputs(
         HashMap::new();
 
     for (key, component) in state.session.app.rigging.components.iter() {
-        let component_state = get_component_state(&state, key)?;
+        let component_state = state.get_component_state(key)?;
 
         // Get the input of the component, which is either the input_override or the input or None.
         let input = component_state.input(component);
@@ -45,7 +42,8 @@ pub(crate) fn evaluate_component_inputs(
 
         // The component can execute if all of it's dependencies have an execution_output.
         let can_execute = component_dependencies.iter().all(|d| {
-            get_component_state(&state, d)
+            state
+                .get_component_state(d)
                 .expect("component should exist in component states")
                 .output()
                 .is_some()
@@ -80,7 +78,7 @@ pub(crate) fn evaluate_component_inputs(
         // For each component handle, in execution order.
         for &component_handle in execution_order.iter() {
             // Get the current component state.
-            let component_state = get_component_state(&state, component_handle)?;
+            let component_state = state.get_component_state(component_handle)?;
 
             // Get the component output, which is either the output_override or the
             // execution_output or None.
@@ -123,7 +121,7 @@ pub(crate) fn evaluate_component_inputs(
 
     // Update the execution input of every component.
     for key in state.session.app.rigging.components.keys() {
-        let component_state = get_component_state_mut(&mut state, key)?;
+        let component_state = state.get_component_state_mut(key)?;
         component_state.execution_input = execution_inputs.remove(key);
     }
 

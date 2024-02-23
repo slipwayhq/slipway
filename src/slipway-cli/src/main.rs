@@ -4,9 +4,7 @@ use std::collections::{HashMap, HashSet};
 
 use clap::Parser;
 use cli::{Cli, Commands};
-use slipway_lib::{
-    create_app_session_from_string, errors::SlipwayError, initialize, ComponentHandle,
-};
+use slipway_lib::{create_app_session_from_string, errors::SlipwayError, ComponentHandle};
 
 fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
@@ -24,7 +22,7 @@ fn debug_app_command(input: std::path::PathBuf) -> anyhow::Result<()> {
     println!("Debugging {}", input.display());
     let file_contents = std::fs::read_to_string(input)?;
     let session = create_app_session_from_string(&file_contents)?;
-    let state = initialize(&session)?;
+    let state = session.initialize()?;
     let components = state.component_states();
 
     // let graph = components
