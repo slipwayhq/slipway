@@ -173,22 +173,39 @@ mod tests {
             constants: Some(json!({"test_constant": "test_constant_value"})),
             rigging: Rigging {
                 components: [
-                    create_component("a", Some(json!({"b_x": "$$.b.x", "c": "$$.c"}))),
+                    create_component("a", Some(json!({"b": "$$.b", "c": "$$.c"}))),
+                    // "b" is used to test the chain e.input -> b.input -> c.output
                     create_component("b", Some(json!({"c": "$.rigging.c.output"}))),
-                    create_component("c", Some(json!({"constant": "$.constants.test_constant"}))),
+                    // "c" is used to test reference to other parts of the app JSON.
+                    create_component(
+                        "c",
+                        Some(json!({
+                            "constant": "$.constants.test_constant",
+                            "constant2": "$?constants.test_constant2",
+                            "version": "$.version",
+                        })),
+                    ),
                     create_component(
                         "d",
                         Some(json!({ "foo": [ { "bar": { "a_x": "$$?a.x" } } ] })),
                     ),
-                    create_component("e", Some(json!({"b_bat": "$?rigging.b.output.baz[2].bat"}))),
+                    // "e" is used to test the chain e.input -> b.input -> c.output
+                    create_component(
+                        "e",
+                        Some(json!({
+                            "b_input_y": "$?rigging.b.input.c.y",
+                            "b_input_z": "$.rigging.b.input.c.z",
+                        })),
+                    ),
+                    // "f" is used to test optional and required values.
                     create_component(
                         "f",
-                        Some(json!({"c_x": "$$.c.x", "c_y": "$$?c.y", "c_z": "$$!c.z"})),
+                        Some(json!({"c_x": "$$*c.x", "c_y": "$$?c.y", "c_z": "$$.c.z"})),
                     ),
                     create_component("g", Some(json!({"d": "$$.d", "e": "$$?e" }))),
                     create_component("h", Some(json!({"g": "$$.g", "f": "$$.f" }))),
                     create_component("i", None),
-                    create_component("j", Some(json!({"version": "$!version"}))),
+                    create_component("j", Some(json!({"version": "$.version"}))),
                     create_component("k", None),
                 ]
                 .into_iter()
@@ -199,10 +216,10 @@ mod tests {
 
     fn assert_expected_components_ready(
         execution_state: &AppExecutionState,
-        runable_handles: &[&str],
+        runnable_handles: &[&str],
     ) {
         for (handle, component_state) in execution_state.component_states() {
-            let assert_ready = runable_handles.contains(&handle.0.as_str());
+            let assert_ready = runnable_handles.contains(&handle.0.as_str());
             if assert_ready {
                 if component_state.execution_input.is_none() {
                     panic!(
@@ -248,7 +265,27 @@ mod tests {
     }
 
     #[test]
-    fn it_should_handle_setting_the_output_on_a_component_which_can_execute() {
+    fn it_should_populate_references_to_other_parts_of_app() {
+        let app = create_app();
+
+        let app_session = create_session(app);
+
+        let execution_state = initialize(&app_session).unwrap();
+
+        let c = get(&execution_state, "c");
+
+        assert_eq!(
+            c.execution_input.as_ref().unwrap().value,
+            json!({
+                "constant": "test_constant_value",
+                "constant2": null,
+                "version": "0.1.0"
+            })
+        );
+    }
+
+    #[test]
+    fn it_should_allow_setting_the_output_on_a_component_which_can_execute() {
         let app = create_app();
 
         let app_session = create_session(app);
@@ -275,7 +312,7 @@ mod tests {
     }
 
     #[test]
-    fn it_should_error_when_setting_the_output_on_a_component_which_cannot_execute() {
+    fn it_should_not_allow_setting_the_output_on_a_component_which_cannot_execute() {
         let app = create_app();
 
         let app_session = create_session(app);
@@ -295,7 +332,7 @@ mod tests {
             Err(SlipwayError::StepFailed(s)) => {
                 assert_eq!(
                     s,
-                    "component g cannot be executed, did you intend to override the output?"
+                    "component g cannot currently be executed, did you intend to override the output?"
                 );
             }
             Err(err) => panic!("expected StepFailed error, got {:?}", err),
@@ -303,7 +340,7 @@ mod tests {
     }
 
     #[test]
-    fn it_should_handle_optional_values() {
+    fn it_should_allow_optional_json_path_references_missing_resolved_values() {
         let app = create_app();
 
         let app_session = create_session(app);
@@ -330,7 +367,7 @@ mod tests {
     }
 
     #[test]
-    fn it_should_error_when_missing_required_values() {
+    fn it_should_not_allow_required_json_path_references_missing_resolved_values() {
         let app = create_app();
 
         let app_session = create_session(app);
@@ -347,19 +384,50 @@ mod tests {
 
         match execution_state_result {
             Ok(_) => panic!("expected an error"),
-            Err(SlipwayError::StepFailed(s)) => {
+            Err(SlipwayError::ResolveJsonPathFailed { message, state: _ }) => {
                 assert_eq!(
-                    s,
-                    r#"The input path "$.c_z" required "$.rigging.c.output.z" to be a value"#
+                    message,
+                    r#"The input path "f.input.c_z" required "$.rigging.c.output.z" to be a value"#
                 );
             }
             Err(err) => panic!("expected StepFailed error, got {:?}", err),
         }
-
-        todo!("the error message should include which component input failed")
     }
-    // Test the case where a component references another component's input, and the
-    // refrenced input contains a reference to another component's output.
 
-    // If an input references somethign that does not exist, it should fail.
+    #[test]
+    fn it_should_resolve_references_to_other_inputs_using_the_resolved_referenced_input() {
+        let app = create_app();
+
+        let app_session = create_session(app);
+
+        let mut execution_state = initialize(&app_session).unwrap();
+
+        execution_state = step(
+            execution_state,
+            Instruction::SetOutput {
+                handle: ComponentHandle::from_str("c").unwrap(),
+                value: json!({ "z": 3 }),
+            },
+        )
+        .unwrap();
+
+        execution_state = step(
+            execution_state,
+            Instruction::SetOutput {
+                handle: ComponentHandle::from_str("b").unwrap(),
+                value: json!(null),
+            },
+        )
+        .inspect_err(|e| println!("error: {:#}", e))
+        .unwrap();
+
+        assert_expected_components_ready(&execution_state, &["f", "e", "a", "i", "j", "k"]);
+
+        let e = get(&execution_state, "e");
+
+        assert_eq!(
+            e.execution_input.as_ref().unwrap().value,
+            json!({ "b_input_y": null, "b_input_z": 3 })
+        );
+    }
 }

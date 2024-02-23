@@ -6,10 +6,23 @@ use serde_json::Value;
 
 use super::simple_json_path::SimpleJsonPath;
 
-const STANDARD_JSON_QUERY_PREFIX: &str = "$.";
+const JSON_QUERY_PREFIX: &str = "$.";
+
+const REQUIRED_VALUE_CHAR: &str = ".";
+const REQUIRED_VALUE_PREFIX: &str = "$.";
+
+const OPTIONAL_VALUE_CHAR: &str = "?";
+const OPTIONAL_VALUE_PREFIX: &str = "$?";
+
+const ARRAY_VALUE_CHAR: &str = "*";
+const ARRAY_VALUE_PREFIX: &str = "$*";
 
 static COMPONENT_OUTPUT_SHORTCUT_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^\$\$(?<value_specifier>[\!\?\.])(?<component_handle>\w+)(?<rest>.*)$").unwrap()
+    Regex::new(&format!(
+        r"^\$\$(?<value_specifier>[\{}\{}\{}])(?<component_handle>\w+)(?<rest>.*)$",
+        REQUIRED_VALUE_CHAR, OPTIONAL_VALUE_CHAR, ARRAY_VALUE_CHAR,
+    ))
+    .unwrap()
 });
 
 #[derive(Eq, PartialEq, Debug)]
@@ -67,24 +80,24 @@ fn find_json_path_strings_inner<'a>(
                     let value_specifier = &captures["value_specifier"];
 
                     let path_type = match value_specifier {
-                        "." => PathType::Array,
-                        "?" => PathType::OptionalValue,
-                        "!" => PathType::RequiredValue,
+                        REQUIRED_VALUE_CHAR => PathType::RequiredValue,
+                        OPTIONAL_VALUE_CHAR => PathType::OptionalValue,
+                        ARRAY_VALUE_CHAR => PathType::Array,
                         _ => unreachable!(),
                     };
 
                     Some((new_path, path_type))
-                } else if s.starts_with(STANDARD_JSON_QUERY_PREFIX) {
+                } else if s.starts_with(REQUIRED_VALUE_PREFIX) {
                     // The string is already a valid JSON path.
-                    Some((Cow::Borrowed(s), PathType::Array))
-                } else if let Some(rest) = s.strip_prefix("$?") {
+                    Some((Cow::Borrowed(s), PathType::RequiredValue))
+                } else if let Some(rest) = s.strip_prefix(OPTIONAL_VALUE_PREFIX) {
                     // The string uses the $? custom prefix to indicate they want an optional single value result.
-                    let new_path = Cow::Owned(STANDARD_JSON_QUERY_PREFIX.to_string() + rest);
+                    let new_path = Cow::Owned(JSON_QUERY_PREFIX.to_string() + rest);
                     Some((new_path, PathType::OptionalValue))
-                } else if let Some(rest) = s.strip_prefix("$!") {
+                } else if let Some(rest) = s.strip_prefix(ARRAY_VALUE_PREFIX) {
                     // The string uses the $! custom prefix to indicate they require a single value result.
-                    let new_path = Cow::Owned(STANDARD_JSON_QUERY_PREFIX.to_string() + rest);
-                    Some((new_path, PathType::RequiredValue))
+                    let new_path = Cow::Owned(JSON_QUERY_PREFIX.to_string() + rest);
+                    Some((new_path, PathType::Array))
                 } else {
                     None
                 };
@@ -120,7 +133,7 @@ mod tests {
             "key1": "$.value1",
             "key2": "$$.value2",
             "key3": "$?value1",
-            "key4": "$$!value2",
+            "key4": "$$*value2",
         });
         let results = find_json_path_strings(&value);
         assert_eq!(
@@ -129,12 +142,12 @@ mod tests {
                 FoundJsonPathString {
                     path_to: vec![SimpleJsonPath::Field("key1")],
                     path: Cow::Borrowed("$.value1"),
-                    path_type: PathType::Array,
+                    path_type: PathType::RequiredValue,
                 },
                 FoundJsonPathString {
                     path_to: vec![SimpleJsonPath::Field("key2")],
                     path: Cow::Borrowed("$.rigging.value2.output"),
-                    path_type: PathType::Array,
+                    path_type: PathType::RequiredValue,
                 },
                 FoundJsonPathString {
                     path_to: vec![SimpleJsonPath::Field("key3")],
@@ -144,7 +157,7 @@ mod tests {
                 FoundJsonPathString {
                     path_to: vec![SimpleJsonPath::Field("key4")],
                     path: Cow::Borrowed("$.rigging.value2.output"),
-                    path_type: PathType::RequiredValue,
+                    path_type: PathType::Array,
                 },
             ]
         );
@@ -165,12 +178,12 @@ mod tests {
                 FoundJsonPathString {
                     path_to: vec![SimpleJsonPath::Index(0), SimpleJsonPath::Field("key1")],
                     path: Cow::Borrowed("$.value1"),
-                    path_type: PathType::Array,
+                    path_type: PathType::RequiredValue,
                 },
                 FoundJsonPathString {
                     path_to: vec![SimpleJsonPath::Index(0), SimpleJsonPath::Field("key2")],
                     path: Cow::Borrowed("$.rigging.value2.output"),
-                    path_type: PathType::Array,
+                    path_type: PathType::RequiredValue,
                 }
             ]
         );
@@ -195,7 +208,7 @@ mod tests {
                         SimpleJsonPath::Index(1)
                     ],
                     path: Cow::Borrowed("$.value3"),
-                    path_type: PathType::Array,
+                    path_type: PathType::RequiredValue,
                 },
                 FoundJsonPathString {
                     path_to: vec![
@@ -203,7 +216,7 @@ mod tests {
                         SimpleJsonPath::Field("key"),
                     ],
                     path: Cow::Borrowed("$.rigging.nestedValue.output"),
-                    path_type: PathType::Array,
+                    path_type: PathType::RequiredValue,
                 }
             ]
         );
@@ -233,7 +246,7 @@ mod tests {
             vec![FoundJsonPathString {
                 path_to: vec![SimpleJsonPath::Field("specialString")],
                 path: Cow::Borrowed("$.value4"),
-                path_type: PathType::Array,
+                path_type: PathType::RequiredValue,
             }]
         );
     }
@@ -261,7 +274,7 @@ mod tests {
                 }
             },
             "level2": {
-                "array": ["normal", "$?arrayValue1", 123, "$$!arrayValue2"],
+                "array": ["normal", "$?arrayValue1", 123, "$$*arrayValue2"],
                 "key6": "value"
             },
             "key7": "$.simpleValue"
@@ -277,7 +290,7 @@ mod tests {
                 FoundJsonPathString {
                     path_to: vec![SimpleJsonPath::Field("key7")],
                     path: Cow::Borrowed("$.simpleValue"),
-                    path_type: PathType::Array,
+                    path_type: PathType::RequiredValue,
                 },
                 FoundJsonPathString {
                     path_to: vec![
@@ -285,7 +298,7 @@ mod tests {
                         SimpleJsonPath::Field("key2")
                     ],
                     path: Cow::Borrowed("$.level1Value"),
-                    path_type: PathType::Array,
+                    path_type: PathType::RequiredValue,
                 },
                 FoundJsonPathString {
                     path_to: vec![
@@ -297,7 +310,7 @@ mod tests {
                         SimpleJsonPath::Field("arrayNested")
                     ],
                     path: Cow::Borrowed("$.rigging.arrayValue.output"),
-                    path_type: PathType::Array,
+                    path_type: PathType::RequiredValue,
                 },
                 FoundJsonPathString {
                     path_to: vec![
@@ -307,7 +320,7 @@ mod tests {
                         SimpleJsonPath::Field("key5")
                     ],
                     path: Cow::Borrowed("$.deepValue"),
-                    path_type: PathType::Array,
+                    path_type: PathType::RequiredValue,
                 },
                 FoundJsonPathString {
                     path_to: vec![
@@ -316,7 +329,7 @@ mod tests {
                         SimpleJsonPath::Field("key4")
                     ],
                     path: Cow::Borrowed("$.rigging.level2Value.output"),
-                    path_type: PathType::Array,
+                    path_type: PathType::RequiredValue,
                 },
                 FoundJsonPathString {
                     path_to: vec![
@@ -334,7 +347,7 @@ mod tests {
                         SimpleJsonPath::Index(3)
                     ],
                     path: Cow::Borrowed("$.rigging.arrayValue2.output"),
-                    path_type: PathType::RequiredValue,
+                    path_type: PathType::Array,
                 },
             ]
         );

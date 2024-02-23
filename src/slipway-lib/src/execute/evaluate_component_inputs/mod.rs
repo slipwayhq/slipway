@@ -67,7 +67,7 @@ pub(crate) fn evaluate_component_inputs(
     let execution_order = topological_sort(&dependency_map_refs)?;
     let mut execution_inputs: HashMap<&ComponentHandle, ComponentInput> = HashMap::new();
 
-    // We have to evalute the inputs in topological order because they may refer to the
+    // We have to evaluate the inputs in topological order because they may refer to the
     // evaluated inputs of their dependencies.
     if !component_evaluate_input_params.is_empty() {
         // Serialize the app state to a JSON value.
@@ -93,6 +93,7 @@ pub(crate) fn evaluate_component_inputs(
             {
                 // Evaluate the execution input on the latest serialized app state.
                 let execution_input = evaluate_input::evaluate_input(
+                    component_handle,
                     &serialized_app_state,
                     evaluate_input_params.input,
                     &evaluate_input_params.json_path_strings,

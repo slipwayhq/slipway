@@ -7,8 +7,16 @@ use crate::{errors::SlipwayError, parse::types::primitives::ComponentHandle};
 
 use super::find_json_path_strings::FoundJsonPathString;
 
-static COMPONENT_DEPENDENCY_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^\$\.rigging\.(?<component_handle>\w+)\.output([\.\[]|$)").unwrap());
+/// This regex matches any JSON path string that references either the output
+/// or input of a component.
+/// We match the input because the references components inputs could contain references
+/// that need to be resolved. We could follow the transitive references until we find
+/// an output reference, and add a dependency to that component, but that would add
+/// complexity to a niche scenario. This solution is simpler and only results in reduced
+/// parallelism in these unusual cases.
+static COMPONENT_DEPENDENCY_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^\$\.rigging\.(?<component_handle>\w+)\.(output|input)([\.\[]|$)").unwrap()
+});
 
 pub(crate) trait ExtractDependencies {
     fn extract_dependencies(&self) -> Result<HashSet<ComponentHandle>, SlipwayError>;

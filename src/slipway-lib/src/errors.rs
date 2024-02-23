@@ -2,9 +2,6 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum SlipwayError {
-    #[error("resolve failed")]
-    ResolveFailed(String),
-
     #[error("parse failed")]
     ParseFailed(#[from] serde_json::Error),
 
@@ -16,6 +13,12 @@ pub enum SlipwayError {
 
     #[error("step failed: {0}")]
     StepFailed(String),
+
+    #[error("resolve json path failed: {message}, state: {state:#}")]
+    ResolveJsonPathFailed {
+        message: String,
+        state: serde_json::Value,
+    },
 
     // If this error is generated during Serde deserialization it will be converted
     // into a `serde_json::Error` and wrapped in a ParseFailed error.

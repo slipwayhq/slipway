@@ -41,14 +41,13 @@ pub fn evaluate_instruction(
             let mut state = state;
             let component_state = get_component_state_mut(&mut state, &handle)?;
 
-            let input =
-                component_state
-                    .execution_input
-                    .as_ref()
-                    .ok_or(SlipwayError::StepFailed(format!(
-                        "component {} cannot be executed, did you intend to override the output?",
-                        handle
-                    )))?;
+            let input = component_state
+                .execution_input
+                .as_ref()
+                .ok_or(SlipwayError::StepFailed(format!(
+                "component {} cannot currently be executed, did you intend to override the output?",
+                handle
+            )))?;
 
             component_state.execution_output = Some(ComponentOutput {
                 value,

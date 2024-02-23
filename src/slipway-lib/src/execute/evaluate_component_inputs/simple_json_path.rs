@@ -13,12 +13,18 @@ pub(crate) enum SimpleJsonPath<'a> {
 pub(crate) trait JsonPathOperations {
     fn to_json_path_string(&self) -> String;
 
+    fn to_prefixed_path_string(&self, prefix: &str) -> String;
+
     fn replace(&self, target: &mut Value, new_value: Value) -> Result<(), SlipwayError>;
 }
 
 impl<'a> JsonPathOperations for Vec<SimpleJsonPath<'a>> {
     fn to_json_path_string(&self) -> String {
-        let mut result = "$".to_string();
+        self.to_prefixed_path_string("$")
+    }
+
+    fn to_prefixed_path_string(&self, prefix: &str) -> String {
+        let mut result = prefix.to_string();
         for path in self {
             match path {
                 SimpleJsonPath::Field(field) => {

@@ -7,6 +7,7 @@ use jsonpath_rust::{JsonPathInst, JsonPtr};
 use crate::{
     errors::SlipwayError,
     execute::{primitives::Hash, ComponentInput},
+    ComponentHandle,
 };
 
 use super::{
@@ -18,6 +19,7 @@ const JSON_PATH_SOURCE_EXTERNAL_PREFIX: &str = "at location \"";
 const JSON_PATH_SOURCE_EXTERNAL_SUFFIX: &str = "\"";
 
 pub(super) fn evaluate_input(
+    component_handle: &ComponentHandle,
     serialized_app_state: &serde_json::Value,
     input: Option<&serde_json::Value>,
     json_path_strings: &Vec<FoundJsonPathString>,
@@ -49,11 +51,16 @@ pub(super) fn evaluate_input(
                         .unwrap_or_default(),
                     PathType::RequiredValue => {
                         result.into_iter().next().map(map_json_ptr_to_value).ok_or(
-                            SlipwayError::StepFailed(format!(
-                                r#"The input path "{}" required "{}" to be a value"#,
-                                found.path_to.to_json_path_string(),
-                                found.path
-                            )),
+                            SlipwayError::ResolveJsonPathFailed {
+                                message: format!(
+                                    r#"The input path "{}" required "{}" to be a value"#,
+                                    found.path_to.to_prefixed_path_string(
+                                        &(component_handle.to_string() + ".input")
+                                    ),
+                                    found.path
+                                ),
+                                state: serialized_app_state.clone(),
+                            },
                         )?
                     }
                 };
