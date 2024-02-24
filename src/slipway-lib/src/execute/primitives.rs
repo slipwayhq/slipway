@@ -3,7 +3,7 @@ use sha2::{Digest, Sha256};
 use std::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct Hash {
+pub struct Hash {
     value: [u8; 32],
 }
 

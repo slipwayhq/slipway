@@ -108,21 +108,21 @@ impl<'app> ComponentState<'app> {
 }
 
 pub struct ComponentInput {
-    value: serde_json::Value,
-    hash: Hash,
+    pub value: serde_json::Value,
+    pub hash: Hash,
 }
 
 pub struct ComponentInputOverride {
-    value: serde_json::Value,
+    pub value: serde_json::Value,
 }
 
 pub struct ComponentOutput {
-    value: serde_json::Value,
-    input_hash_used: Hash,
+    pub value: serde_json::Value,
+    pub input_hash_used: Hash,
 }
 
 pub struct ComponentOutputOverride {
-    value: serde_json::Value,
+    pub value: serde_json::Value,
 }
 
 #[cfg(test)]
@@ -538,6 +538,90 @@ mod tests {
                 vec![&ch("c"), &ch("d"), &ch("b"), &ch("a")]
             );
         }
+
+        #[test]
+        fn setting_input_override_should_update_input_hash() {
+            let app = create_app();
+
+            let app_session = create_session(app);
+
+            let mut s = app_session.initialize().unwrap();
+
+            // Set the output on "c".
+            s = s
+                .step(Instruction::SetOutput {
+                    handle: ch("c"),
+                    value: json!({ "foo": "bar" }),
+                })
+                .unwrap();
+
+            // Save "b" input hash to compare against later.
+            let b_input_hash = {
+                let b = s.get_component_state(&ch("b")).unwrap();
+                assert!(b.execution_output.is_none());
+                b.execution_input.as_ref().unwrap().hash.clone()
+            };
+
+            // Set "b" output.
+            s = s
+                .step(Instruction::SetOutput {
+                    handle: ch("b"),
+                    value: json!({ "baz": "bat" }),
+                })
+                .unwrap();
+
+            {
+                // Check input and output hashes match.
+                let b = s.get_component_state(&ch("b")).unwrap();
+                assert_eq!(b.execution_input.as_ref().unwrap().hash, b_input_hash);
+                assert_eq!(
+                    b.execution_input.as_ref().unwrap().hash,
+                    b.execution_output.as_ref().unwrap().input_hash_used
+                );
+            }
+
+            // Override "b" input.
+            s = s
+                .step(Instruction::SetInputOverride {
+                    handle: ch("b"),
+                    value: json!({ "a": "b" }),
+                })
+                .unwrap();
+
+            let b_input_hash_2 = {
+                let b = s.get_component_state(&ch("b")).unwrap();
+
+                // Input and output hash should no longer match.
+                assert_ne!(
+                    b.execution_input.as_ref().unwrap().hash,
+                    b.execution_output.as_ref().unwrap().input_hash_used
+                );
+
+                b.execution_input.as_ref().unwrap().hash.clone()
+            };
+
+            // Input hash should have changed.
+            assert_ne!(b_input_hash, b_input_hash_2);
+
+            // Set "b" output.
+            s = s
+                .step(Instruction::SetOutput {
+                    handle: ch("b"),
+                    value: json!({ "baz": "cat" }),
+                })
+                .unwrap();
+
+            {
+                // Check input and output hashes match again.
+                let b = s.get_component_state(&ch("b")).unwrap();
+                assert!(b.execution_output.is_some());
+                assert_eq!(b.execution_input.as_ref().unwrap().hash, b_input_hash_2);
+                assert_eq!(
+                    b.execution_input.as_ref().unwrap().hash,
+                    b.execution_output.as_ref().unwrap().input_hash_used
+                );
+            }
+        }
     }
 
     mod output_override {
@@ -591,6 +675,132 @@ mod tests {
 
             assert_expected_components_ready(&s, &["c"]);
             assert_eq!(s.valid_execution_order, vec![&ch("c"), &ch("b"), &ch("a")]);
+        }
+
+        #[test]
+        fn setting_output_should_use_input_hash() {
+            let app = create_app();
+
+            let app_session = create_session(app);
+
+            let mut s = app_session.initialize().unwrap();
+
+            // Set the output on "c"
+            s = s
+                .step(Instruction::SetOutput {
+                    handle: ch("c"),
+                    value: json!({ "foo": "bar" }),
+                })
+                .unwrap();
+
+            // Verify the input and output hashes match for "c".
+            let c = s.get_component_state(&ch("c")).unwrap();
+            assert_eq!(
+                c.execution_input.as_ref().unwrap().hash,
+                c.execution_output.as_ref().unwrap().input_hash_used
+            );
+
+            // Save "b" input hash to compare against later.
+            let b_input_hash = {
+                let b = s.get_component_state(&ch("b")).unwrap();
+                b.execution_input.as_ref().unwrap().hash.clone()
+            };
+
+            // Set "b" output.
+            s = s
+                .step(Instruction::SetOutput {
+                    handle: ch("b"),
+                    value: json!({ "baz": "bat" }),
+                })
+                .unwrap();
+
+            {
+                // Check input and output hashes match.
+                let b = s.get_component_state(&ch("b")).unwrap();
+                assert_eq!(b.execution_input.as_ref().unwrap().hash, b_input_hash);
+                assert_eq!(
+                    b.execution_input.as_ref().unwrap().hash,
+                    b.execution_output.as_ref().unwrap().input_hash_used
+                );
+            }
+        }
+
+        #[test]
+        fn setting_output_should_update_dependent_input_hashes() {
+            let app = create_app();
+
+            let app_session = create_session(app);
+
+            let mut s = app_session.initialize().unwrap();
+
+            assert_expected_components_ready(&s, &["c"]);
+            assert_eq!(s.valid_execution_order, vec![&ch("c"), &ch("b"), &ch("a")]);
+
+            // Set the output on "c".
+            s = s
+                .step(Instruction::SetOutput {
+                    handle: ch("c"),
+                    value: json!({ "foo": "bar" }),
+                })
+                .unwrap();
+
+            assert_expected_components_ready(&s, &["b"]);
+
+            // Save "b" input hash to compare against later.
+            let b_input_hash = {
+                let b = s.get_component_state(&ch("b")).unwrap();
+                b.execution_input.as_ref().unwrap().hash.clone()
+            };
+
+            // Set "b" output.
+            s = s
+                .step(Instruction::SetOutput {
+                    handle: ch("b"),
+                    value: json!({ "baz": "bat" }),
+                })
+                .unwrap();
+
+            {
+                // Check input and output hashes match.
+                let b = s.get_component_state(&ch("b")).unwrap();
+                assert_eq!(b.execution_input.as_ref().unwrap().hash, b_input_hash);
+                assert_eq!(
+                    b.execution_input.as_ref().unwrap().hash,
+                    b.execution_output.as_ref().unwrap().input_hash_used
+                );
+            }
+
+            // Change "c" output.
+            s = s
+                .step(Instruction::SetOutput {
+                    handle: ch("c"),
+                    value: json!({ "foo": "baz" }),
+                })
+                .unwrap();
+
+            let b_input_hash_2 = {
+                let b = s.get_component_state(&ch("b")).unwrap();
+                b.execution_input.as_ref().unwrap().hash.clone()
+            };
+
+            // Hashes should be different.
+            assert_ne!(b_input_hash, b_input_hash_2);
+
+            // Revert "c" output using output override.
+            s = s
+                .step(Instruction::SetOutputOverride {
+                    handle: ch("c"),
+                    value: json!({ "foo": "bar" }),
+                })
+                .unwrap();
+
+            let b_input_hash_3 = {
+                let b = s.get_component_state(&ch("b")).unwrap();
+                b.execution_input.as_ref().unwrap().hash.clone()
+            };
+
+            assert_ne!(b_input_hash_3, b_input_hash_2);
+            assert_eq!(b_input_hash_3, b_input_hash);
         }
     }
 }
