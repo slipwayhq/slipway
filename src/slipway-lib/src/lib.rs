@@ -2,7 +2,10 @@
 #![allow(dead_code)]
 
 use execute::create_session;
-pub use execute::{AppSession, ComponentState};
+pub use execute::{
+    AppExecutionState, AppSession, ComponentInput, ComponentInputOverride, ComponentOutput,
+    ComponentOutputOverride, ComponentState,
+};
 use parse::parse_app;
 pub use parse::types::primitives::ComponentHandle;
 pub mod errors;

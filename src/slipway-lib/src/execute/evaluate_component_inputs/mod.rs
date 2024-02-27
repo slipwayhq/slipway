@@ -6,7 +6,7 @@ use self::{
     find_json_path_strings::FoundJsonPathString,
 };
 
-use super::{topological_sort::topological_sort, AppExecutionState, ComponentInput};
+use super::{topological_sort::sort_and_group, AppExecutionState, ComponentInput};
 
 mod evaluate_input;
 mod extract_dependencies_from_json_path_strings;
@@ -66,7 +66,10 @@ pub(crate) fn evaluate_component_inputs(
     let dependency_map_refs =
         map_dependencies_to_app_handles::map_dependencies_to_app_handles(dependency_map)?;
 
-    let execution_order = topological_sort(&dependency_map_refs)?;
+    let sorted_and_grouped = sort_and_group(&dependency_map_refs)?;
+    let execution_order = sorted_and_grouped.sorted;
+    let component_groups = sorted_and_grouped.grouped;
+
     let mut execution_inputs: HashMap<&ComponentHandle, ComponentInput> = HashMap::new();
 
     // We have to evaluate the inputs in topological order because they may refer to the
@@ -118,6 +121,7 @@ pub(crate) fn evaluate_component_inputs(
 
     // Update the execution order, which may have changed if inputs were overridden.
     state.valid_execution_order = execution_order;
+    state.component_groups = component_groups;
 
     // Update the execution input of every component.
     for key in state.session.app.rigging.components.keys() {

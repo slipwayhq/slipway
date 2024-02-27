@@ -66,13 +66,6 @@ macro_rules! create_validated_string_struct {
                 $name::from_str(&s).map_err(serde::de::Error::custom)
             }
         }
-
-        #[cfg(test)]
-        impl $name {
-            pub fn for_test(s: &str) -> Self {
-                $name::from_str(s).unwrap()
-            }
-        }
     };
 }
 

@@ -29,6 +29,7 @@ pub fn initialize(session: &AppSession) -> Result<AppExecutionState, SlipwayErro
         session,
         component_states,
         valid_execution_order: Vec::new(),
+        component_groups: Vec::new(),
         wasm_cache: HashMap::new(),
     };
 

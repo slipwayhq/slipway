@@ -31,6 +31,7 @@ pub struct AppExecutionState<'app> {
     session: &'app AppSession,
     component_states: HashMap<&'app ComponentHandle, ComponentState<'app>>,
     valid_execution_order: Vec<&'app ComponentHandle>,
+    component_groups: Vec<HashSet<&'app ComponentHandle>>,
     wasm_cache: HashMap<&'app ComponentHandle, Vec<u8>>,
 }
 
@@ -138,14 +139,11 @@ mod tests {
             slipway_reference::SlipwayReference,
             App, ComponentRigging, Rigging,
         },
+        test_utils::ch,
         ComponentHandle,
     };
 
     use super::{step::Instruction, *};
-
-    fn ch(handle: &str) -> ComponentHandle {
-        ComponentHandle::from_str(handle).unwrap()
-    }
 
     fn create_component(name: &str, input: Option<Value>) -> (ComponentHandle, ComponentRigging) {
         (
