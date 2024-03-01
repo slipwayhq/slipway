@@ -69,4 +69,18 @@ macro_rules! create_validated_string_struct {
     };
 }
 
+use std::{collections::HashSet, str::FromStr};
+
 pub(crate) use create_validated_string_struct;
+
+use crate::ComponentHandle;
+
+#[cfg(feature = "internal")]
+pub fn ch(handle: &str) -> ComponentHandle {
+    ComponentHandle::from_str(handle).unwrap()
+}
+
+#[cfg(feature = "internal")]
+pub fn ch_vec(handles: Vec<&str>) -> HashSet<ComponentHandle> {
+    handles.into_iter().map(ch).collect()
+}

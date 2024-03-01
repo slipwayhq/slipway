@@ -10,9 +10,9 @@ const MAXIMUM_DESCRIPTION_LENGTH: usize = 256;
 const MAXIMUM_COMPONENT_HANDLE_LENGTH: usize = 256;
 const MAXIMUM_SESSION_HANDLE_LENGTH: usize = 65536;
 
-crate::utils::create_validated_string_struct!(pub(crate) Publisher, Some(r"^\w+$"), Some(1), MAXIMUM_PUBLISHER_LENGTH);
-crate::utils::create_validated_string_struct!(pub(crate) Name, Some(r"^\w+$"), Some(1), MAXIMUM_NAME_LENGTH);
-crate::utils::create_validated_string_struct!(pub(crate) Description, None, None, MAXIMUM_DESCRIPTION_LENGTH);
+crate::utils::create_validated_string_struct!(pub Publisher, Some(r"^\w+$"), Some(1), MAXIMUM_PUBLISHER_LENGTH);
+crate::utils::create_validated_string_struct!(pub Name, Some(r"^\w+$"), Some(1), MAXIMUM_NAME_LENGTH);
+crate::utils::create_validated_string_struct!(pub Description, None, None, MAXIMUM_DESCRIPTION_LENGTH);
 crate::utils::create_validated_string_struct!(
     pub ComponentHandle,
     Some(r"^\w+$"),

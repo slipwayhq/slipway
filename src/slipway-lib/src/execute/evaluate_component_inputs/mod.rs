@@ -127,6 +127,10 @@ pub(crate) fn evaluate_component_inputs(
     for key in state.session.app.rigging.components.keys() {
         let component_state = state.get_component_state_mut(key)?;
         component_state.execution_input = execution_inputs.remove(key);
+        component_state.dependencies = dependency_map_refs
+            .get(key)
+            .expect("component should exist in dependency map")
+            .clone();
     }
 
     Ok(state)

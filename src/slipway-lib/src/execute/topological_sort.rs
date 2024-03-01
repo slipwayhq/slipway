@@ -134,7 +134,7 @@ impl<'a> Graph<'a> {
         let mut in_degree = self.in_degree.clone();
         let mut queue = VecDeque::new();
 
-        // We sort before iterating to create a predictable sorted order.
+        // We sort before iterating to create a repeatable order.
         for &node in in_degree.keys().sorted() {
             let &degree = in_degree
                 .get(node)
@@ -149,7 +149,7 @@ impl<'a> Graph<'a> {
             order.push(node);
 
             if let Some(neighbors) = self.edges.get(&node) {
-                // We sort before iterating to create a predictable sorted order.
+                // We sort before iterating to create a repeatable order.
                 for &neighbor in neighbors.iter().sorted() {
                     if let Some(degree) = in_degree.get_mut(neighbor) {
                         *degree -= 1;
@@ -176,7 +176,8 @@ impl<'a> Graph<'a> {
 
         let bidirectional_edges = self.get_bidirectional_edges();
 
-        for &node in bidirectional_edges.keys() {
+        // We sort before iterating to create a repeatable order.
+        for &node in bidirectional_edges.keys().sorted() {
             if visited.contains(node) {
                 continue;
             }
@@ -236,7 +237,7 @@ mod tests {
     }
 
     mod topological_sort {
-        use crate::test_utils::{ch, ch_set};
+        use crate::utils::{ch, ch_vec};
 
         use super::*;
 
@@ -258,9 +259,9 @@ mod tests {
             // \ /
             //  A
             vec![
-                (ch("A"), ch_set(vec!["B", "C"])),
-                (ch("B"), ch_set(vec!["C"])),
-                (ch("C"), ch_set(vec![])),
+                (ch("A"), ch_vec(vec!["B", "C"])),
+                (ch("B"), ch_vec(vec!["C"])),
+                (ch("C"), ch_vec(vec![])),
             ]
             .into_iter()
             .collect()
@@ -346,13 +347,13 @@ mod tests {
             let mut components = create_test_components();
 
             // Add more components with dependencies
-            components.insert(ch("D"), ch_set(vec!["A"]));
-            components.insert(ch("E"), ch_set(vec!["B"]));
-            components.insert(ch("F"), ch_set(vec!["C"]));
-            components.insert(ch("G"), ch_set(vec!["D", "E"]));
+            components.insert(ch("D"), ch_vec(vec!["A"]));
+            components.insert(ch("E"), ch_vec(vec!["B"]));
+            components.insert(ch("F"), ch_vec(vec!["C"]));
+            components.insert(ch("G"), ch_vec(vec!["D", "E"]));
             components.insert(
                 ch("H"),
-                ch_set(vec![
+                ch_vec(vec![
                     "F", "G",
                     // Note: This is the only mention of I in the graph. It implicitly has no input components.
                     "I", "J",
@@ -394,7 +395,7 @@ mod tests {
     }
 
     mod get_isolated_groups {
-        use crate::test_utils::{ch, ch_set};
+        use crate::utils::{ch, ch_vec};
 
         use super::*;
 
@@ -446,9 +447,9 @@ mod tests {
             // |
             // C
             let components = vec![
-                (ch("A"), ch_set(vec![])),
-                (ch("B"), ch_set(vec!["A"])),
-                (ch("C"), ch_set(vec!["B"])),
+                (ch("A"), ch_vec(vec![])),
+                (ch("B"), ch_vec(vec!["A"])),
+                (ch("C"), ch_vec(vec!["B"])),
             ]
             .into_iter()
             .collect();
@@ -479,13 +480,13 @@ mod tests {
             // |\
             // F G
             let components = vec![
-                (ch("A"), ch_set(vec![])),
-                (ch("B"), ch_set(vec!["A"])),
-                (ch("C"), ch_set(vec!["B"])),
-                (ch("D"), ch_set(vec![])),
-                (ch("E"), ch_set(vec![])),
-                (ch("F"), ch_set(vec!["E"])),
-                (ch("G"), ch_set(vec!["E"])),
+                (ch("A"), ch_vec(vec![])),
+                (ch("B"), ch_vec(vec!["A"])),
+                (ch("C"), ch_vec(vec!["B"])),
+                (ch("D"), ch_vec(vec![])),
+                (ch("E"), ch_vec(vec![])),
+                (ch("F"), ch_vec(vec!["E"])),
+                (ch("G"), ch_vec(vec!["E"])),
             ]
             .into_iter()
             .collect();
@@ -512,10 +513,10 @@ mod tests {
             //
             // D
             let components = vec![
-                (ch("A"), ch_set(vec!["C"])),
-                (ch("B"), ch_set(vec!["A"])),
-                (ch("C"), ch_set(vec!["B"])),
-                (ch("D"), ch_set(vec![])),
+                (ch("A"), ch_vec(vec!["C"])),
+                (ch("B"), ch_vec(vec!["A"])),
+                (ch("C"), ch_vec(vec!["B"])),
+                (ch("D"), ch_vec(vec![])),
             ]
             .into_iter()
             .collect();

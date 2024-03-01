@@ -31,7 +31,6 @@ pub(crate) mod slipway_reference;
 pub(crate) const REGISTRY_PUBLISHER_SEPARATOR: char = '.';
 pub(crate) const VERSION_SEPARATOR: char = '.';
 
-#[cfg(test)]
 pub(crate) const TEST_PUBLISHER: &str = "test_publisher";
 
 fn parse_component_version(version_string: &str) -> Result<Version, SlipwayError> {
@@ -42,7 +41,7 @@ fn parse_component_version(version_string: &str) -> Result<Version, SlipwayError
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct App {
+pub struct App {
     pub publisher: Publisher,
     pub name: Name,
     pub version: Version,
@@ -58,7 +57,7 @@ impl App {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Rigging {
+pub struct Rigging {
     #[serde(flatten)]
     #[serde(with = "::serde_with::rust::maps_duplicate_key_is_error")]
     pub components: HashMap<ComponentHandle, ComponentRigging>,
@@ -66,7 +65,7 @@ pub(crate) struct Rigging {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct ComponentRigging {
+pub struct ComponentRigging {
     pub component: SlipwayReference,
     pub input: Option<serde_json::Value>,
     pub permissions: Option<Vec<ComponentPermission>>,
@@ -75,7 +74,7 @@ pub(crate) struct ComponentRigging {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum ComponentPermission {
+pub enum ComponentPermission {
     Url { url: String },
     Domain { domain: String },
     UrlRegex { regex: String },
@@ -90,7 +89,7 @@ pub(crate) enum ComponentPermission {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct Component {
+pub struct Component {
     pub publisher: Publisher,
     pub name: Name,
     pub version: Version,
@@ -102,5 +101,41 @@ pub(crate) struct Component {
 impl Component {
     pub fn get_id(&self) -> SlipwayId {
         SlipwayId::new(&self.publisher, &self.name, &self.version)
+    }
+}
+
+#[cfg(feature = "internal")]
+mod tests {
+    use super::*;
+    use crate::utils::ch;
+    use serde_json::json;
+    use serde_json::Value;
+    use std::str::FromStr;
+
+    impl App {
+        pub fn for_test(rigging: Rigging) -> App {
+            App {
+                publisher: Publisher::from_str(TEST_PUBLISHER).unwrap(),
+                name: Name::from_str("test_name").unwrap(),
+                version: Version::from_str("0.1.0").unwrap(),
+                description: None,
+                constants: Some(json!({"test_constant": "test_constant_value"})),
+                rigging,
+            }
+        }
+    }
+
+    impl ComponentRigging {
+        pub fn for_test(name: &str, input: Option<Value>) -> (ComponentHandle, ComponentRigging) {
+            (
+                ch(name),
+                ComponentRigging {
+                    component: SlipwayReference::from_str(&format!("p{name}.{name}.0.1.0"))
+                        .unwrap(),
+                    input,
+                    permissions: None,
+                },
+            )
+        }
     }
 }

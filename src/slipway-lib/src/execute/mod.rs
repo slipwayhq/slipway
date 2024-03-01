@@ -13,12 +13,14 @@ mod topological_sort;
 
 use primitives::Hash;
 
-pub(crate) fn create_session(app: App) -> AppSession {
-    AppSession { app }
-}
-
 pub struct AppSession {
     app: App,
+}
+
+impl From<App> for AppSession {
+    fn from(app: App) -> Self {
+        AppSession { app }
+    }
 }
 
 impl AppSession {
@@ -47,7 +49,16 @@ impl<'app> AppExecutionState<'app> {
         &self.component_states
     }
 
-    pub(crate) fn get_component_state_mut(
+    pub fn valid_execution_order(&self) -> &Vec<&'app ComponentHandle> {
+        &self.valid_execution_order
+    }
+
+    pub fn component_groups(&self) -> &Vec<HashSet<&'app ComponentHandle>> {
+        &self.component_groups
+    }
+
+    /// Internal because it returns a StepFailed error if the component does not exist.
+    fn get_component_state_mut(
         &mut self,
         handle: &ComponentHandle,
     ) -> Result<&mut ComponentState<'app>, SlipwayError> {
@@ -62,7 +73,8 @@ impl<'app> AppExecutionState<'app> {
         Ok(component_state)
     }
 
-    pub fn get_component_state(
+    /// Internal because it returns a StepFailed error if the component does not exist.
+    fn get_component_state(
         &self,
         handle: &ComponentHandle,
     ) -> Result<&ComponentState<'app>, SlipwayError> {
@@ -128,44 +140,14 @@ pub struct ComponentOutputOverride {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
-    use semver::Version;
-    use serde_json::{json, Value};
+    use serde_json::json;
 
     use crate::{
-        parse::types::{
-            primitives::{Name, Publisher},
-            slipway_reference::SlipwayReference,
-            App, ComponentRigging, Rigging,
-        },
-        test_utils::ch,
-        ComponentHandle,
+        parse::types::{App, ComponentRigging, Rigging},
+        utils::ch,
     };
 
     use super::{step::Instruction, *};
-
-    fn create_component(name: &str, input: Option<Value>) -> (ComponentHandle, ComponentRigging) {
-        (
-            ch(name),
-            ComponentRigging {
-                component: SlipwayReference::from_str(&format!("p{name}.{name}.0.1.0")).unwrap(),
-                input,
-                permissions: None,
-            },
-        )
-    }
-
-    fn create_app_with_rigging(rigging: Rigging) -> App {
-        App {
-            publisher: Publisher::from_str("test_publisher").unwrap(),
-            name: Name::from_str("test_name").unwrap(),
-            version: Version::from_str("0.1.0").unwrap(),
-            description: None,
-            constants: Some(json!({"test_constant": "test_constant_value"})),
-            rigging,
-        }
-    }
 
     fn assert_expected_components_ready(
         execution_state: &AppExecutionState,
@@ -198,7 +180,7 @@ mod tests {
         }
     }
 
-    fn get<'app, 'local>(
+    fn get_component_state<'app, 'local>(
         execution_state: &'local AppExecutionState<'app>,
         handle_str: &str,
     ) -> &'local ComponentState<'app> {
@@ -242,13 +224,13 @@ mod tests {
             //  \  G  I J
             //   \ | / /
             //     H -/  K
-            create_app_with_rigging(Rigging {
+            App::for_test(Rigging {
                 components: [
-                    create_component("a", Some(json!({"b": "$$.b", "c": "$$.c"}))),
+                    ComponentRigging::for_test("a", Some(json!({"b": "$$.b", "c": "$$.c"}))),
                     // "b" is used to test the chain e.input -> b.input -> c.output
-                    create_component("b", Some(json!({"c": "$.rigging.c.output"}))),
+                    ComponentRigging::for_test("b", Some(json!({"c": "$.rigging.c.output"}))),
                     // "c" is used to test reference to other parts of the app JSON.
-                    create_component(
+                    ComponentRigging::for_test(
                         "c",
                         Some(json!({
                             "constant": "$.constants.test_constant",
@@ -256,12 +238,12 @@ mod tests {
                             "version": "$.version",
                         })),
                     ),
-                    create_component(
+                    ComponentRigging::for_test(
                         "d",
                         Some(json!({ "foo": [ { "bar": { "a_x": "$$.a.x" } } ] })),
                     ),
                     // "e" is used to test the chain e.input -> b.input -> c.output
-                    create_component(
+                    ComponentRigging::for_test(
                         "e",
                         Some(json!({
                             "b_input_y": "$?rigging.b.input.c.y",
@@ -269,18 +251,18 @@ mod tests {
                         })),
                     ),
                     // "f" is used to test optional and required values.
-                    create_component(
+                    ComponentRigging::for_test(
                         "f",
                         Some(json!({"c_x": "$$*c.x", "c_y": "$$?c.y", "c_z": "$$.c.z"})),
                     ),
-                    create_component("g", Some(json!({"d": "$$.d", "e": "$$?e" }))),
-                    create_component(
+                    ComponentRigging::for_test("g", Some(json!({"d": "$$.d", "e": "$$?e" }))),
+                    ComponentRigging::for_test(
                         "h",
                         Some(json!({"g": "$$.g", "f": "$$.f", "i": "$$.i", "j": "$$.j" })),
                     ),
-                    create_component("i", None),
-                    create_component("j", Some(json!({"version": "$.version"}))),
-                    create_component("k", None),
+                    ComponentRigging::for_test("i", None),
+                    ComponentRigging::for_test("j", Some(json!({"version": "$.version"}))),
+                    ComponentRigging::for_test("k", None),
                 ]
                 .into_iter()
                 .collect(),
@@ -291,7 +273,7 @@ mod tests {
         fn initialize_should_populate_execution_inputs_of_components_that_can_run_immediately() {
             let app = create_app();
 
-            let app_session = create_session(app);
+            let app_session = AppSession::from(app);
 
             let execution_state = app_session.initialize().unwrap();
 
@@ -302,11 +284,11 @@ mod tests {
         fn it_should_populate_references_to_other_parts_of_app() {
             let app = create_app();
 
-            let app_session = create_session(app);
+            let app_session = AppSession::from(app);
 
             let s = app_session.initialize().unwrap();
 
-            let c = get(&s, "c");
+            let c = get_component_state(&s, "c");
 
             assert_eq!(
                 c.execution_input.as_ref().unwrap().value,
@@ -322,14 +304,14 @@ mod tests {
         fn it_should_allow_setting_the_output_on_a_component_which_can_execute() {
             let app = create_app();
 
-            let app_session = create_session(app);
+            let app_session = AppSession::from(app);
 
             let mut s = app_session.initialize().unwrap();
 
             s = set_output_to(s, "c", json!({ "x": 1, "y": 2, "z": 3 }));
             assert_expected_components_ready(&s, &["f", "b", "i", "j", "k"]);
 
-            let f = get(&s, "f");
+            let f = get_component_state(&s, "f");
 
             assert_eq!(
                 f.execution_input.as_ref().unwrap().value,
@@ -341,7 +323,7 @@ mod tests {
         fn it_should_not_allow_setting_the_output_on_a_component_which_cannot_execute() {
             let app = create_app();
 
-            let app_session = create_session(app);
+            let app_session = AppSession::from(app);
 
             let s = app_session.initialize().unwrap();
 
@@ -366,7 +348,7 @@ mod tests {
         fn it_should_allow_optional_json_path_references_missing_resolved_values() {
             let app = create_app();
 
-            let app_session = create_session(app);
+            let app_session = AppSession::from(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -374,7 +356,7 @@ mod tests {
 
             assert_expected_components_ready(&s, &["f", "b", "i", "j", "k"]);
 
-            let f = get(&s, "f");
+            let f = get_component_state(&s, "f");
 
             assert_eq!(
                 f.execution_input.as_ref().unwrap().value,
@@ -386,7 +368,7 @@ mod tests {
         fn it_should_not_allow_required_json_path_references_missing_resolved_values() {
             let app = create_app();
 
-            let app_session = create_session(app);
+            let app_session = AppSession::from(app);
 
             let s = app_session.initialize().unwrap();
 
@@ -411,7 +393,7 @@ mod tests {
         fn it_should_resolve_references_to_other_inputs_using_the_resolved_referenced_input() {
             let app = create_app();
 
-            let app_session = create_session(app);
+            let app_session = AppSession::from(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -420,7 +402,7 @@ mod tests {
 
             assert_expected_components_ready(&s, &["f", "e", "a", "i", "j", "k"]);
 
-            let e = get(&s, "e");
+            let e = get_component_state(&s, "e");
 
             assert_eq!(
                 e.execution_input.as_ref().unwrap().value,
@@ -432,7 +414,7 @@ mod tests {
         fn it_should_step_though_entire_graph() {
             let app = create_app();
 
-            let app_session = create_session(app);
+            let app_session = AppSession::from(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -475,6 +457,8 @@ mod tests {
     }
 
     mod input_override {
+        use itertools::Itertools;
+
         use super::*;
 
         fn create_app() -> App {
@@ -485,25 +469,70 @@ mod tests {
             //  B
             //  |
             //  A
-            create_app_with_rigging(Rigging {
+            App::for_test(Rigging {
                 components: [
-                    create_component("a", Some(json!({ "b": "$$.b" }))),
-                    create_component("b", Some(json!({ "c": "$$.c" }))),
-                    create_component("c", None),
-                    create_component("d", None),
+                    ComponentRigging::for_test("a", Some(json!({ "b": "$$.b" }))),
+                    ComponentRigging::for_test("b", Some(json!({ "c": "$$.c" }))),
+                    ComponentRigging::for_test("c", None),
+                    ComponentRigging::for_test("d", None),
                 ]
                 .into_iter()
                 .collect(),
             })
         }
 
+        fn assert_dependencies(
+            execution_state: &AppExecutionState,
+            component_handle: &str,
+            expected_dependencies: &[&str],
+        ) {
+            let component_state = get_component_state(execution_state, component_handle);
+
+            let actual_dependencies: Vec<_> = component_state
+                .dependencies
+                .iter()
+                .map(|h| h.0.clone())
+                .sorted()
+                .collect();
+            let expected_dependencies: Vec<_> =
+                expected_dependencies.iter().cloned().sorted().collect();
+
+            assert_eq!(actual_dependencies, expected_dependencies);
+        }
+
+        fn assert_group(
+            execution_state: &AppExecutionState,
+            group_index: usize,
+            expected_handles: &[&str],
+        ) {
+            let actual_handles: Vec<_> = execution_state
+                .component_groups()
+                .get(group_index)
+                .unwrap()
+                .iter()
+                .map(|h| h.0.clone())
+                .sorted()
+                .collect();
+            let expected_handles: Vec<_> = expected_handles.iter().cloned().sorted().collect();
+
+            assert_eq!(actual_handles, expected_handles);
+        }
+
         #[test]
         fn setting_input_override_should_affect_dependencies() {
             let app = create_app();
 
-            let app_session = create_session(app);
+            let app_session = AppSession::from(app);
 
             let mut s = app_session.initialize().unwrap();
+
+            assert_dependencies(&s, "a", &["b"]);
+            assert_dependencies(&s, "b", &["c"]);
+            assert_dependencies(&s, "c", &[]);
+            assert_dependencies(&s, "d", &[]);
+
+            assert_group(&s, 0, &["a", "b", "c"]);
+            assert_group(&s, 1, &["d"]);
 
             assert_expected_components_ready(&s, &["c", "d"]);
             assert_eq!(
@@ -518,6 +547,13 @@ mod tests {
                     value: json!({ "d": "$$.d" }),
                 })
                 .unwrap();
+
+            assert_dependencies(&s, "a", &["b"]);
+            assert_dependencies(&s, "b", &["c"]);
+            assert_dependencies(&s, "c", &["d"]);
+            assert_dependencies(&s, "d", &[]);
+
+            assert_group(&s, 0, &["a", "b", "c", "d"]);
 
             assert_expected_components_ready(&s, &["d"]);
             assert_eq!(
@@ -541,7 +577,7 @@ mod tests {
         fn setting_input_override_should_update_input_hash() {
             let app = create_app();
 
-            let app_session = create_session(app);
+            let app_session = AppSession::from(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -633,11 +669,11 @@ mod tests {
             //  B
             //  |
             //  A
-            create_app_with_rigging(Rigging {
+            App::for_test(Rigging {
                 components: [
-                    create_component("a", Some(json!({ "b": "$$.b" }))),
-                    create_component("b", Some(json!({ "c": "$$.c" }))),
-                    create_component("c", None),
+                    ComponentRigging::for_test("a", Some(json!({ "b": "$$.b" }))),
+                    ComponentRigging::for_test("b", Some(json!({ "c": "$$.c" }))),
+                    ComponentRigging::for_test("c", None),
                 ]
                 .into_iter()
                 .collect(),
@@ -648,7 +684,7 @@ mod tests {
         fn setting_output_override_should_affect_execution_states() {
             let app = create_app();
 
-            let app_session = create_session(app);
+            let app_session = AppSession::from(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -679,7 +715,7 @@ mod tests {
         fn setting_output_should_use_input_hash() {
             let app = create_app();
 
-            let app_session = create_session(app);
+            let app_session = AppSession::from(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -727,7 +763,7 @@ mod tests {
         fn setting_output_should_update_dependent_input_hashes() {
             let app = create_app();
 
-            let app_session = create_session(app);
+            let app_session = AppSession::from(app);
 
             let mut s = app_session.initialize().unwrap();
 

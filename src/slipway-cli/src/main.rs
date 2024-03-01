@@ -1,10 +1,11 @@
 mod cli;
+mod print_app_state;
 
 use std::collections::{HashMap, HashSet};
 
 use clap::Parser;
 use cli::{Cli, Commands};
-use slipway_lib::{create_app_session_from_string, errors::SlipwayError, ComponentHandle};
+use slipway_lib::{parse_app, AppSession, ComponentHandle};
 
 fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
@@ -21,7 +22,8 @@ fn main() -> anyhow::Result<()> {
 fn debug_app_command(input: std::path::PathBuf) -> anyhow::Result<()> {
     println!("Debugging {}", input.display());
     let file_contents = std::fs::read_to_string(input)?;
-    let session = create_app_session_from_string(&file_contents)?;
+    let app = parse_app(&file_contents)?;
+    let session = AppSession::from(app);
     let state = session.initialize()?;
     let components = state.component_states();
 

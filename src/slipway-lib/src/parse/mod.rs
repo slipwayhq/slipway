@@ -4,11 +4,11 @@ use self::types::{App, Component};
 
 pub(crate) mod types;
 
-pub(crate) fn parse_app(input: &str) -> Result<App, SlipwayError> {
+pub fn parse_app(input: &str) -> Result<App, SlipwayError> {
     serde_json::from_str(input).map_err(SlipwayError::ParseFailed)
 }
 
-pub(crate) fn parse_component(input: &str) -> Result<Component, SlipwayError> {
+pub fn parse_component(input: &str) -> Result<Component, SlipwayError> {
     serde_json::from_str(input).map_err(SlipwayError::ParseFailed)
 }
 
