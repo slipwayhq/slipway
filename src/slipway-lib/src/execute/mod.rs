@@ -8,7 +8,7 @@ use crate::{
 pub(crate) mod evaluate_component_inputs;
 mod initialize;
 mod primitives;
-mod step;
+pub mod step;
 mod topological_sort;
 
 use primitives::Hash;
@@ -101,10 +101,7 @@ pub struct ComponentState<'app> {
 
 impl<'app> ComponentState<'app> {
     /// Get the input of the component, which is either the input_override or the input or None.
-    pub(crate) fn input(
-        &self,
-        component_rigging: &'app ComponentRigging,
-    ) -> Option<&serde_json::Value> {
+    pub fn input(&self, component_rigging: &'app ComponentRigging) -> Option<&serde_json::Value> {
         match self.input_override.as_ref() {
             Some(input_override) => Some(&input_override.value),
             None => component_rigging.input.as_ref(),
@@ -112,7 +109,7 @@ impl<'app> ComponentState<'app> {
     }
 
     /// Get the output of the component, which is either the output_override or the execution_output or None.
-    pub(crate) fn output(&self) -> Option<&serde_json::Value> {
+    pub fn output(&self) -> Option<&serde_json::Value> {
         match self.output_override.as_ref() {
             Some(output_override) => Some(&output_override.value),
             None => self.execution_output.as_ref().map(|output| &output.value),

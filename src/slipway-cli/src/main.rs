@@ -25,8 +25,13 @@ fn debug_app_command(input: std::path::PathBuf) -> anyhow::Result<()> {
     let app = parse_app(&file_contents)?;
     let session = AppSession::from(app);
     let state = session.initialize()?;
-    let components = state.component_states();
+    // let components = state.component_states();
 
+    // Create stdout writer.
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+
+    let lines = print_app_state::format_app_state(&state)?;
     // let graph = components
     //     .iter()
     //     .map(|c| (c.handle, c.dependencies.clone()))

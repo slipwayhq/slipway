@@ -90,11 +90,11 @@ pub(super) fn to_view_model<'app>(
 }
 
 pub(super) struct AppExecutionStateViewModel<'app> {
-    groups: Vec<ComponentGroupViewModel<'app>>,
+    pub groups: Vec<ComponentGroupViewModel<'app>>,
 }
 
 pub(super) struct ComponentGroupViewModel<'app> {
-    components: Vec<ComponentViewModel<'app>>,
+    pub components: Vec<ComponentViewModel<'app>>,
 }
 
 pub(super) struct ComponentViewModel<'app> {

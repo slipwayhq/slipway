@@ -2,8 +2,8 @@
 #![allow(dead_code)]
 
 pub use execute::{
-    AppExecutionState, AppSession, ComponentInput, ComponentInputOverride, ComponentOutput,
-    ComponentOutputOverride, ComponentState,
+    step::Instruction, AppExecutionState, AppSession, ComponentInput, ComponentInputOverride,
+    ComponentOutput, ComponentOutputOverride, ComponentState,
 };
 pub use parse::parse_app;
 pub use parse::parse_component;

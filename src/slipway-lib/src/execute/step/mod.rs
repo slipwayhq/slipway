@@ -32,7 +32,7 @@ pub enum Instruction {
     },
 }
 
-pub fn step(
+pub(crate) fn step(
     state: AppExecutionState,
     instruction: Instruction,
 ) -> Result<AppExecutionState, SlipwayError> {
