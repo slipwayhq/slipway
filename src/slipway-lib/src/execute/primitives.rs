@@ -18,22 +18,30 @@ impl Display for Hash {
 }
 
 impl Hash {
+    pub fn new(value: [u8; 32]) -> Self {
+        Hash { value }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct JsonMetadata {
+    pub hash: Hash,
+    pub serialized: String,
+}
+
+impl JsonMetadata {
     pub fn from_value(value: &Value) -> Self {
-        // Convert the JSON value to a sorted string to ensure consistency
         let serialized = serde_json::to_string(&value).expect("serde_json::Value should serialize");
+        let serialized_bytes = serialized.as_bytes();
 
-        // Create a Sha256 object
         let mut hasher = Sha256::new();
-
-        // Write input message
-        hasher.update(serialized.as_bytes());
+        hasher.update(serialized_bytes);
 
         // Read hash digest and consume hasher
         let value = hasher.finalize();
+        let hash = Hash::new(value.into());
 
-        Hash {
-            value: value.into(),
-        }
+        JsonMetadata { hash, serialized }
     }
 }
 
@@ -44,7 +52,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_should_hash_json_value() {
+    fn it_should_create_json_value_metadata() {
         let json = json!({
             "a": 1,
             "b": 2,
@@ -59,13 +67,15 @@ mod tests {
             "c": 3,
         });
 
-        let hash = Hash::from_value(&json);
-        let hash_of_clone = Hash::from_value(&json_clone);
-        let hash_of_other = Hash::from_value(&json_other);
+        let metadata = JsonMetadata::from_value(&json);
+        let metadata_of_clone = JsonMetadata::from_value(&json_clone);
+        let metadata_of_other = JsonMetadata::from_value(&json_other);
 
-        assert_eq!(hash.to_string(), hash_of_clone.to_string());
-        assert_ne!(hash.to_string(), hash_of_other.to_string());
+        assert_eq!(metadata, metadata_of_clone);
+        assert_ne!(metadata, metadata_of_other);
 
-        assert_eq!(hash.value.len(), 32);
+        assert_eq!(metadata.hash.value.len(), 32);
+
+        assert_eq!(metadata.serialized, "{\"a\":1,\"b\":2,\"c\":3}");
     }
 }

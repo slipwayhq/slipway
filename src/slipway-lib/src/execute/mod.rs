@@ -7,11 +7,13 @@ use crate::{
 
 pub(crate) mod evaluate_component_inputs;
 mod initialize;
-mod primitives;
+pub mod primitives;
 pub mod step;
 mod topological_sort;
 
 use primitives::Hash;
+
+use self::primitives::JsonMetadata;
 
 pub struct AppSession {
     app: App,
@@ -119,7 +121,7 @@ impl<'app> ComponentState<'app> {
 
 pub struct ComponentInput {
     pub value: serde_json::Value,
-    pub hash: Hash,
+    pub metadata: JsonMetadata,
 }
 
 pub struct ComponentInputOverride {
@@ -129,10 +131,12 @@ pub struct ComponentInputOverride {
 pub struct ComponentOutput {
     pub value: serde_json::Value,
     pub input_hash_used: Hash,
+    pub metadata: JsonMetadata,
 }
 
 pub struct ComponentOutputOverride {
     pub value: serde_json::Value,
+    pub metadata: JsonMetadata,
 }
 
 #[cfg(test)]
@@ -590,7 +594,7 @@ mod tests {
             let b_input_hash = {
                 let b = s.get_component_state(&ch("b")).unwrap();
                 assert!(b.execution_output.is_none());
-                b.execution_input.as_ref().unwrap().hash.clone()
+                b.execution_input.as_ref().unwrap().metadata.hash.clone()
             };
 
             // Set "b" output.
@@ -604,9 +608,12 @@ mod tests {
             {
                 // Check input and output hashes match.
                 let b = s.get_component_state(&ch("b")).unwrap();
-                assert_eq!(b.execution_input.as_ref().unwrap().hash, b_input_hash);
                 assert_eq!(
-                    b.execution_input.as_ref().unwrap().hash,
+                    b.execution_input.as_ref().unwrap().metadata.hash,
+                    b_input_hash
+                );
+                assert_eq!(
+                    b.execution_input.as_ref().unwrap().metadata.hash,
                     b.execution_output.as_ref().unwrap().input_hash_used
                 );
             }
@@ -624,11 +631,11 @@ mod tests {
 
                 // Input and output hash should no longer match.
                 assert_ne!(
-                    b.execution_input.as_ref().unwrap().hash,
+                    b.execution_input.as_ref().unwrap().metadata.hash,
                     b.execution_output.as_ref().unwrap().input_hash_used
                 );
 
-                b.execution_input.as_ref().unwrap().hash.clone()
+                b.execution_input.as_ref().unwrap().metadata.hash.clone()
             };
 
             // Input hash should have changed.
@@ -646,9 +653,12 @@ mod tests {
                 // Check input and output hashes match again.
                 let b = s.get_component_state(&ch("b")).unwrap();
                 assert!(b.execution_output.is_some());
-                assert_eq!(b.execution_input.as_ref().unwrap().hash, b_input_hash_2);
                 assert_eq!(
-                    b.execution_input.as_ref().unwrap().hash,
+                    b.execution_input.as_ref().unwrap().metadata.hash,
+                    b_input_hash_2
+                );
+                assert_eq!(
+                    b.execution_input.as_ref().unwrap().metadata.hash,
                     b.execution_output.as_ref().unwrap().input_hash_used
                 );
             }
@@ -727,14 +737,14 @@ mod tests {
             // Verify the input and output hashes match for "c".
             let c = s.get_component_state(&ch("c")).unwrap();
             assert_eq!(
-                c.execution_input.as_ref().unwrap().hash,
+                c.execution_input.as_ref().unwrap().metadata.hash,
                 c.execution_output.as_ref().unwrap().input_hash_used
             );
 
             // Save "b" input hash to compare against later.
             let b_input_hash = {
                 let b = s.get_component_state(&ch("b")).unwrap();
-                b.execution_input.as_ref().unwrap().hash.clone()
+                b.execution_input.as_ref().unwrap().metadata.hash.clone()
             };
 
             // Set "b" output.
@@ -748,9 +758,12 @@ mod tests {
             {
                 // Check input and output hashes match.
                 let b = s.get_component_state(&ch("b")).unwrap();
-                assert_eq!(b.execution_input.as_ref().unwrap().hash, b_input_hash);
                 assert_eq!(
-                    b.execution_input.as_ref().unwrap().hash,
+                    b.execution_input.as_ref().unwrap().metadata.hash,
+                    b_input_hash
+                );
+                assert_eq!(
+                    b.execution_input.as_ref().unwrap().metadata.hash,
                     b.execution_output.as_ref().unwrap().input_hash_used
                 );
             }
@@ -780,7 +793,7 @@ mod tests {
             // Save "b" input hash to compare against later.
             let b_input_hash = {
                 let b = s.get_component_state(&ch("b")).unwrap();
-                b.execution_input.as_ref().unwrap().hash.clone()
+                b.execution_input.as_ref().unwrap().metadata.hash.clone()
             };
 
             // Set "b" output.
@@ -794,9 +807,12 @@ mod tests {
             {
                 // Check input and output hashes match.
                 let b = s.get_component_state(&ch("b")).unwrap();
-                assert_eq!(b.execution_input.as_ref().unwrap().hash, b_input_hash);
                 assert_eq!(
-                    b.execution_input.as_ref().unwrap().hash,
+                    b.execution_input.as_ref().unwrap().metadata.hash,
+                    b_input_hash
+                );
+                assert_eq!(
+                    b.execution_input.as_ref().unwrap().metadata.hash,
                     b.execution_output.as_ref().unwrap().input_hash_used
                 );
             }
@@ -811,7 +827,7 @@ mod tests {
 
             let b_input_hash_2 = {
                 let b = s.get_component_state(&ch("b")).unwrap();
-                b.execution_input.as_ref().unwrap().hash.clone()
+                b.execution_input.as_ref().unwrap().metadata.hash.clone()
             };
 
             // Hashes should be different.
@@ -827,7 +843,7 @@ mod tests {
 
             let b_input_hash_3 = {
                 let b = s.get_component_state(&ch("b")).unwrap();
-                b.execution_input.as_ref().unwrap().hash.clone()
+                b.execution_input.as_ref().unwrap().metadata.hash.clone()
             };
 
             assert_ne!(b_input_hash_3, b_input_hash_2);

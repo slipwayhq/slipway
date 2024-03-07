@@ -1,7 +1,8 @@
 use crate::{
     errors::SlipwayError,
     execute::{
-        AppExecutionState, ComponentInputOverride, ComponentOutput, ComponentOutputOverride,
+        primitives::JsonMetadata, AppExecutionState, ComponentInputOverride, ComponentOutput,
+        ComponentOutputOverride,
     },
 };
 
@@ -27,7 +28,8 @@ pub fn evaluate_instruction(
         Instruction::SetOutputOverride { handle, value } => {
             let mut state = state;
             let component_state = state.get_component_state_mut(&handle)?;
-            component_state.output_override = Some(ComponentOutputOverride { value });
+            let metadata = JsonMetadata::from_value(&value);
+            component_state.output_override = Some(ComponentOutputOverride { value, metadata });
             Ok(state)
         }
         Instruction::ClearOutputOverride { handle } => {
@@ -49,9 +51,11 @@ pub fn evaluate_instruction(
                 handle
             )))?;
 
+            let metadata = JsonMetadata::from_value(&value);
             component_state.execution_output = Some(ComponentOutput {
                 value,
-                input_hash_used: input.hash.clone(),
+                input_hash_used: input.metadata.hash.clone(),
+                metadata,
             });
             Ok(state)
         }

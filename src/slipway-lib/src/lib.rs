@@ -1,6 +1,7 @@
 // While we're developing...
 #![allow(dead_code)]
 
+pub use execute::primitives::*;
 pub use execute::{
     step::Instruction, AppExecutionState, AppSession, ComponentInput, ComponentInputOverride,
     ComponentOutput, ComponentOutputOverride, ComponentState,

@@ -1,11 +1,12 @@
-mod cli;
-mod print_app_state;
+#![allow(dead_code)]
 
-use std::collections::{HashMap, HashSet};
+mod cli;
+mod utils;
+mod write_app_state;
 
 use clap::Parser;
 use cli::{Cli, Commands};
-use slipway_lib::{parse_app, AppSession, ComponentHandle};
+use slipway_lib::{parse_app, AppSession};
 
 fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
@@ -29,9 +30,9 @@ fn debug_app_command(input: std::path::PathBuf) -> anyhow::Result<()> {
 
     // Create stdout writer.
     let stdout = std::io::stdout();
-    let mut stdout = stdout.lock();
+    let mut stdout_handle = stdout.lock();
 
-    let lines = print_app_state::format_app_state(&state)?;
+    write_app_state::write_app_state(&mut stdout_handle, &state)?;
     // let graph = components
     //     .iter()
     //     .map(|c| (c.handle, c.dependencies.clone()))
@@ -42,17 +43,4 @@ fn debug_app_command(input: std::path::PathBuf) -> anyhow::Result<()> {
     //     print_dependencies(&component.dependencies, &graph, 1);
     // }
     Ok(())
-}
-
-fn print_dependencies(
-    dependencies: &HashSet<&ComponentHandle>,
-    graph: &HashMap<&ComponentHandle, HashSet<&ComponentHandle>>,
-    level: usize,
-) {
-    for dependency in dependencies {
-        println!("{}- {}", " ".repeat(level * 4), dependency);
-        if let Some(sub_dependencies) = graph.get(dependency) {
-            print_dependencies(sub_dependencies, graph, level + 1);
-        }
-    }
 }

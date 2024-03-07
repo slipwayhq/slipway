@@ -6,7 +6,7 @@ use jsonpath_rust::{JsonPathInst, JsonPtr};
 
 use crate::{
     errors::SlipwayError,
-    execute::{primitives::Hash, ComponentInput},
+    execute::{primitives::JsonMetadata, ComponentInput},
     ComponentHandle,
 };
 
@@ -70,19 +70,19 @@ pub(super) fn evaluate_input(
                     .replace(&mut evaluated_input, extracted_result)?;
             }
 
-            let hash = Hash::from_value(&evaluated_input);
+            let metadata = JsonMetadata::from_value(&evaluated_input);
 
             ComponentInput {
                 value: evaluated_input,
-                hash,
+                metadata,
             }
         }
         None => {
             let input_value = json!({});
-            let hash = Hash::from_value(&input_value);
+            let metadata = JsonMetadata::from_value(&input_value);
             ComponentInput {
                 value: input_value,
-                hash,
+                metadata,
             }
         }
     };
