@@ -18,7 +18,7 @@
     "url_loader": {
       "component": "slipway.url_loader.0.0.1",
       "input": {
-        "url": "$$!weather_url_resolver"
+        "url": "$$.weather_url_resolver"
       },
       "permissions": [
         { "type": "domain", "domain": "weather.yahoo.com" },
@@ -29,13 +29,13 @@
       "component": "slipway.weather_transformer.0.0.1",
       "input": {
         "provider": "$.constants.weather_provider",
-        "data": "$$!url_loader"
+        "data": "$$.url_loader"
       }
     },
     "weather_renderer": {
       "component": "slipway.weather_renderer.0.0.1",
       "input": {
-        "data": "$$!weather_transformer"
+        "data": "$$.weather_transformer"
       }
     },
     "network_permissions": {

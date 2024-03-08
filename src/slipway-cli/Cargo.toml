@@ -12,3 +12,4 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 petgraph = "0.6.4"
 termion = "3.0.0"
+ctrlc = "3.4.2"

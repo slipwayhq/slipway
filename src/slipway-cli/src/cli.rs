@@ -13,5 +13,5 @@ pub(crate) struct Cli {
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
     #[command(arg_required_else_help = true)]
-    DebugApp { input: PathBuf },
+    Debug { input: PathBuf },
 }
