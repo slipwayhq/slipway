@@ -2,6 +2,7 @@
 
 mod cli;
 mod debug_app;
+mod to_view_model;
 mod utils;
 mod write_app_state;
 

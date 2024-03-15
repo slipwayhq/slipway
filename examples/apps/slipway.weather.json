@@ -37,15 +37,6 @@
       "input": {
         "data": "$$.weather_transformer"
       }
-    },
-    "network_permissions": {
-      "component": "slipway.network_permissions.0.0.1",
-      "input": {
-        "allow_domains": [
-          "weather.yahoo.com",
-          "met.com"
-        ]
-      }
     }
   }
 }

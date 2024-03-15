@@ -1,10 +1,13 @@
 // While we're developing...
 #![allow(dead_code)]
 
+use std::ops::Deref;
+
 pub use execute::primitives::*;
+pub use execute::step::Instruction;
 pub use execute::{
-    step::Instruction, AppExecutionState, AppSession, ComponentInput, ComponentInputOverride,
-    ComponentOutput, ComponentOutputOverride, ComponentState,
+    AppExecutionState, AppSession, ComponentInput, ComponentInputOverride, ComponentOutput,
+    ComponentOutputOverride, ComponentState,
 };
 pub use parse::parse_app;
 pub use parse::parse_component;
@@ -19,3 +22,21 @@ pub mod utils;
 
 #[cfg(test)]
 pub mod test_utils;
+
+pub struct Immutable<T> {
+    value: T,
+}
+
+impl<T> Immutable<T> {
+    pub fn new(value: T) -> Self {
+        Immutable { value }
+    }
+}
+
+impl<T> Deref for Immutable<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}

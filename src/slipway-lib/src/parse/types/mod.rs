@@ -104,7 +104,6 @@ impl Component {
     }
 }
 
-#[cfg(feature = "internal")]
 mod tests {
     use super::*;
     use crate::utils::ch;

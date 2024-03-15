@@ -1,8 +1,12 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 use crate::{
     errors::SlipwayError,
     parse::types::{primitives::ComponentHandle, App, ComponentRigging},
+    Immutable,
 };
 
 pub(crate) mod evaluate_component_inputs;
@@ -15,6 +19,7 @@ use primitives::Hash;
 
 use self::primitives::JsonMetadata;
 
+#[derive(Debug)]
 pub struct AppSession {
     app: App,
 }
@@ -26,37 +31,25 @@ impl From<App> for AppSession {
 }
 
 impl AppSession {
-    pub fn initialize(&self) -> Result<AppExecutionState, SlipwayError> {
+    pub fn initialize(&self) -> Result<Immutable<AppExecutionState>, SlipwayError> {
         initialize::initialize(self)
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct AppExecutionState<'app> {
-    session: &'app AppSession,
-    component_states: HashMap<&'app ComponentHandle, ComponentState<'app>>,
-    valid_execution_order: Vec<&'app ComponentHandle>,
-    component_groups: Vec<HashSet<&'app ComponentHandle>>,
-    wasm_cache: HashMap<&'app ComponentHandle, Vec<u8>>,
+    pub session: &'app AppSession,
+    pub component_states: HashMap<&'app ComponentHandle, ComponentState<'app>>,
+    pub valid_execution_order: Vec<&'app ComponentHandle>,
+    pub component_groups: Vec<HashSet<&'app ComponentHandle>>,
 }
 
 impl<'app> AppExecutionState<'app> {
     pub fn step(
-        self,
+        &self,
         instruction: step::Instruction,
-    ) -> Result<AppExecutionState<'app>, SlipwayError> {
+    ) -> Result<Immutable<AppExecutionState<'app>>, SlipwayError> {
         step::step(self, instruction)
-    }
-
-    pub fn component_states(&self) -> &HashMap<&'app ComponentHandle, ComponentState> {
-        &self.component_states
-    }
-
-    pub fn valid_execution_order(&self) -> &Vec<&'app ComponentHandle> {
-        &self.valid_execution_order
-    }
-
-    pub fn component_groups(&self) -> &Vec<HashSet<&'app ComponentHandle>> {
-        &self.component_groups
     }
 
     /// Internal because it returns a StepFailed error if the component does not exist.
@@ -92,21 +85,23 @@ impl<'app> AppExecutionState<'app> {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct ComponentState<'app> {
     pub handle: &'app ComponentHandle,
+    pub rigging: &'app ComponentRigging,
     pub dependencies: HashSet<&'app ComponentHandle>,
-    pub input_override: Option<ComponentInputOverride>,
-    pub output_override: Option<ComponentOutputOverride>,
-    pub execution_input: Option<ComponentInput>,
-    pub execution_output: Option<ComponentOutput>,
+    pub input_override: Option<Rc<ComponentInputOverride>>,
+    pub output_override: Option<Rc<ComponentOutputOverride>>,
+    pub execution_input: Option<Rc<ComponentInput>>,
+    pub execution_output: Option<Rc<ComponentOutput>>,
 }
 
 impl<'app> ComponentState<'app> {
     /// Get the input of the component, which is either the input_override or the input or None.
-    pub fn input(&self, component_rigging: &'app ComponentRigging) -> Option<&serde_json::Value> {
+    pub fn input(&self) -> Option<&serde_json::Value> {
         match self.input_override.as_ref() {
             Some(input_override) => Some(&input_override.value),
-            None => component_rigging.input.as_ref(),
+            None => self.rigging.input.as_ref(),
         }
     }
 
@@ -119,21 +114,25 @@ impl<'app> ComponentState<'app> {
     }
 }
 
+#[derive(Debug)]
 pub struct ComponentInput {
     pub value: serde_json::Value,
     pub metadata: JsonMetadata,
 }
 
+#[derive(Debug)]
 pub struct ComponentInputOverride {
     pub value: serde_json::Value,
 }
 
+#[derive(Debug)]
 pub struct ComponentOutput {
     pub value: serde_json::Value,
     pub input_hash_used: Hash,
     pub metadata: JsonMetadata,
 }
 
+#[derive(Debug)]
 pub struct ComponentOutputOverride {
     pub value: serde_json::Value,
     pub metadata: JsonMetadata,
@@ -154,7 +153,7 @@ mod tests {
         execution_state: &AppExecutionState,
         runnable_handles: &[&str],
     ) {
-        for (handle, component_state) in execution_state.component_states() {
+        for (handle, component_state) in execution_state.component_states.iter() {
             let assert_ready = runnable_handles.contains(&handle.0.as_str());
             if assert_ready {
                 if component_state.execution_input.is_none() {
@@ -190,10 +189,10 @@ mod tests {
     }
 
     fn set_output_to<'a>(
-        execution_state: AppExecutionState<'a>,
+        execution_state: Immutable<AppExecutionState<'a>>,
         next: &str,
         value: serde_json::Value,
-    ) -> AppExecutionState<'a> {
+    ) -> Immutable<AppExecutionState<'a>> {
         execution_state
             .step(Instruction::SetOutput {
                 handle: ch(next),
@@ -204,7 +203,10 @@ mod tests {
     }
 
     // Set the output of a component with a string of the same value as the component name.
-    fn set_output<'a>(execution_state: AppExecutionState<'a>, next: &str) -> AppExecutionState<'a> {
+    fn set_output<'a>(
+        execution_state: Immutable<AppExecutionState<'a>>,
+        next: &str,
+    ) -> Immutable<AppExecutionState<'a>> {
         set_output_to(execution_state, next, json!(next))
     }
 
@@ -507,7 +509,7 @@ mod tests {
             expected_handles: &[&str],
         ) {
             let actual_handles: Vec<_> = execution_state
-                .component_groups()
+                .component_groups
                 .get(group_index)
                 .unwrap()
                 .iter()

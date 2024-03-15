@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{errors::SlipwayError, ComponentHandle};
+use crate::{errors::SlipwayError, ComponentHandle, Immutable};
 
 use super::{evaluate_component_inputs::evaluate_component_inputs, AppExecutionState};
 
@@ -32,9 +32,11 @@ pub enum Instruction {
     },
 }
 
-pub(crate) fn step(
-    state: AppExecutionState,
+pub(crate) fn step<'app>(
+    state: &AppExecutionState<'app>,
     instruction: Instruction,
-) -> Result<AppExecutionState, SlipwayError> {
-    evaluate_component_inputs(evaluate_instruction(state, instruction)?)
+) -> Result<Immutable<AppExecutionState<'app>>, SlipwayError> {
+    // The clone is inexpensive because the input and output JSON structures are reference counted.
+    let state: AppExecutionState<'app> = state.clone();
+    evaluate_component_inputs(evaluate_instruction(state, instruction)?).map(Immutable::new)
 }

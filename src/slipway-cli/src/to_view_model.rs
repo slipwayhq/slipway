@@ -1,23 +1,24 @@
 use std::collections::{HashMap, HashSet};
 
-use slipway_lib::{AppExecutionState, ComponentHandle, ComponentState};
+use slipway_lib::{AppExecutionState, ComponentHandle, ComponentState, Immutable};
 
-pub(super) fn to_view_model<'app>(
-    state: &'app AppExecutionState<'app>,
-) -> AppExecutionStateViewModel<'app> {
-    let mut result = AppExecutionStateViewModel { groups: Vec::new() };
+pub(super) fn to_view_model(
+    state: Immutable<AppExecutionState<'_>>,
+) -> AppExecutionStateViewModel<'_> {
+    let mut groups = Vec::new();
+
     let mut used_shortcuts = HashSet::new();
     let mut all_output_row_indexes = HashMap::new();
 
-    let components = state.component_states();
+    let components = &state.component_states;
 
-    for (group_index, group) in state.component_groups().iter().enumerate() {
+    for (group_index, group) in state.component_groups.iter().enumerate() {
         let mut group_view_model = ComponentGroupViewModel {
             components: Vec::new(),
         };
 
         let mut row_index = 0;
-        for &handle in state.valid_execution_order() {
+        for &handle in state.valid_execution_order.iter() {
             if !group.contains(handle) {
                 continue;
             }
@@ -45,7 +46,6 @@ pub(super) fn to_view_model<'app>(
 
             let view_model = ComponentViewModel {
                 handle,
-                state,
                 shortcut,
                 group_index,
                 row_index,
@@ -69,10 +69,10 @@ pub(super) fn to_view_model<'app>(
             row_index += 1;
         }
 
-        result.groups.push(group_view_model);
+        groups.push(group_view_model);
     }
 
-    for group_view_models in result.groups.iter_mut() {
+    for group_view_models in groups.iter_mut() {
         for component_view_model in group_view_models.components.iter_mut() {
             if let Some(output_row_indexes) =
                 all_output_row_indexes.remove(&component_view_model.handle)
@@ -86,10 +86,11 @@ pub(super) fn to_view_model<'app>(
         }
     }
 
-    result
+    AppExecutionStateViewModel { state, groups }
 }
 
 pub(super) struct AppExecutionStateViewModel<'app> {
+    pub state: Immutable<AppExecutionState<'app>>,
     pub groups: Vec<ComponentGroupViewModel<'app>>,
 }
 
@@ -99,13 +100,25 @@ pub(super) struct ComponentGroupViewModel<'app> {
 
 pub(super) struct ComponentViewModel<'app> {
     pub handle: &'app ComponentHandle,
-    pub state: &'app ComponentState<'app>,
     pub shortcut: String,
     pub group_index: usize,
     pub row_index: usize,
     pub input_columns_indexes: Vec<usize>,
     pub output_row_indexes: Vec<usize>,
     // row: Vec<ComponentRowCharacter>,
+}
+
+impl ComponentViewModel<'_> {
+    pub fn state<'app>(
+        &self,
+        view_model: &'app AppExecutionStateViewModel<'app>,
+    ) -> &'app ComponentState<'app> {
+        view_model
+            .state
+            .component_states
+            .get(self.handle)
+            .expect("Component should exist")
+    }
 }
 
 #[cfg(test)]
@@ -143,7 +156,7 @@ mod tests {
 
         let app_session = AppSession::from(app);
         let state = app_session.initialize().unwrap();
-        let view_model = to_view_model(&state);
+        let view_model = to_view_model(state);
 
         assert_eq!(view_model.groups.len(), 1);
         assert_eq!(get_component(&view_model, ch("cat")).shortcut, "c");
@@ -182,7 +195,7 @@ mod tests {
 
         let app_session = AppSession::from(app);
         let state = app_session.initialize().unwrap();
-        let view_model = to_view_model(&state);
+        let view_model = to_view_model(state);
 
         assert_eq!(view_model.groups.len(), 3);
 
@@ -242,7 +255,7 @@ mod tests {
 
         let app_session = AppSession::from(app);
         let state = app_session.initialize().unwrap();
-        let view_model = to_view_model(&state);
+        let view_model = to_view_model(state);
 
         assert_eq!(view_model.groups.len(), 3);
 

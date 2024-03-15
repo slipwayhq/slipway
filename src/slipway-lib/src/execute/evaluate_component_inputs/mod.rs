@@ -1,5 +1,8 @@
 use crate::{errors::SlipwayError, ComponentHandle};
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 use self::{
     extract_dependencies_from_json_path_strings::ExtractDependencies,
@@ -25,11 +28,9 @@ pub(crate) fn evaluate_component_inputs(
     let mut component_evaluate_input_params: HashMap<&ComponentHandle, EvaluateInputParams> =
         HashMap::new();
 
-    for (key, component) in state.session.app.rigging.components.iter() {
-        let component_state = state.get_component_state(key)?;
-
+    for component_state in state.component_states.values() {
         // Get the input of the component, which is either the input_override or the input or None.
-        let input = component_state.input(component);
+        let input = component_state.input();
 
         // Find all the JSON path strings in the input of the component.
         let json_path_strings = match input {
@@ -52,7 +53,7 @@ pub(crate) fn evaluate_component_inputs(
         if can_execute {
             // The component can execute, so add it to the list of inputs we need to evaluate.
             component_evaluate_input_params.insert(
-                key,
+                component_state.handle,
                 EvaluateInputParams {
                     input,
                     json_path_strings,
@@ -60,7 +61,7 @@ pub(crate) fn evaluate_component_inputs(
             );
         }
 
-        dependency_map.insert(key, component_dependencies);
+        dependency_map.insert(component_state.handle, component_dependencies);
     }
 
     let dependency_map_refs =
@@ -126,7 +127,7 @@ pub(crate) fn evaluate_component_inputs(
     // Update the execution input of every component.
     for key in state.session.app.rigging.components.keys() {
         let component_state = state.get_component_state_mut(key)?;
-        component_state.execution_input = execution_inputs.remove(key);
+        component_state.execution_input = execution_inputs.remove(key).map(Rc::new);
         component_state.dependencies = dependency_map_refs
             .get(key)
             .expect("component should exist in dependency map")

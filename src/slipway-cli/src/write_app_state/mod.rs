@@ -1,12 +1,11 @@
 use std::io::Write;
 
-use slipway_lib::AppExecutionState;
-
 use termion::{color, style};
 
-use crate::utils::{format_bytes, skip_first_n_chars};
-
-mod to_view_model;
+use crate::{
+    to_view_model::{AppExecutionStateViewModel, ComponentGroupViewModel, ComponentViewModel},
+    utils::{format_bytes, skip_first_n_chars},
+};
 
 const HASH_RENDER_CHAR_COUNT: usize = 8;
 const COLUMN_PADDING: &str = "  ";
@@ -26,20 +25,18 @@ const COLUMN_CHAR: char = '┆';
 
 pub(crate) fn write_app_state<F: Write>(
     f: &mut F,
-    state: &AppExecutionState<'_>,
+    view_model: &AppExecutionStateViewModel<'_>,
 ) -> anyhow::Result<()> {
-    let view_model = to_view_model::to_view_model(state);
-
-    let max_component_state_row_length = get_max_component_state_row_length(&view_model);
-    let max_input_size_string_length = get_max_input_size_string_length(&view_model);
-    let max_output_size_string_length = get_max_output_size_string_length(&view_model);
+    let max_component_state_row_length = get_max_component_state_row_length(view_model);
+    let max_input_size_string_length = get_max_input_size_string_length(view_model);
+    let max_output_size_string_length = get_max_output_size_string_length(view_model);
 
     for group in view_model.groups.iter() {
         for component in group.components.iter() {
-            write!(f, "{}", COLUMN_CHAR)?;
-            write!(f, "{}", COLUMN_PADDING)?;
+            // write!(f, "{}", COLUMN_CHAR)?;
+            // write!(f, "{}", COLUMN_PADDING)?;
 
-            write_component_state(f, component, group)?;
+            write_component_state(f, view_model, component, group)?;
 
             let padding_required = max_component_state_row_length // The longest state length
                 - component.handle.0.len() // Subtract the handle length
@@ -50,7 +47,7 @@ pub(crate) fn write_app_state<F: Write>(
             write!(f, "{}", COLUMN_CHAR)?;
             write!(f, "{}", COLUMN_PADDING)?;
 
-            write_metadata(f, component, MetadataType::Hashes)?;
+            write_metadata(f, view_model, component, MetadataType::Hashes)?;
 
             write!(f, "{}", COLUMN_PADDING)?;
             write!(f, "{}", COLUMN_CHAR)?;
@@ -58,6 +55,7 @@ pub(crate) fn write_app_state<F: Write>(
 
             write_metadata(
                 f,
+                view_model,
                 component,
                 MetadataType::Sizes {
                     max_input_size_string_length,
@@ -65,8 +63,8 @@ pub(crate) fn write_app_state<F: Write>(
                 },
             )?;
 
-            write!(f, "{}", COLUMN_PADDING)?;
-            write!(f, "{}", COLUMN_CHAR)?;
+            // write!(f, "{}", COLUMN_PADDING)?;
+            // write!(f, "{}", COLUMN_CHAR)?;
 
             writeln!(f)?;
         }
@@ -76,9 +74,7 @@ pub(crate) fn write_app_state<F: Write>(
 
 /// Returns the length of the longest component state row, including the tree structure,
 /// excluding metadata like hashes and sizes.
-fn get_max_component_state_row_length(
-    view_model: &to_view_model::AppExecutionStateViewModel<'_>,
-) -> usize {
+fn get_max_component_state_row_length(view_model: &AppExecutionStateViewModel<'_>) -> usize {
     view_model
         .groups
         .iter()
@@ -92,15 +88,13 @@ fn get_max_component_state_row_length(
 }
 
 /// Returns the length of the longest input size string.
-fn get_max_input_size_string_length(
-    view_model: &to_view_model::AppExecutionStateViewModel<'_>,
-) -> usize {
+fn get_max_input_size_string_length(view_model: &AppExecutionStateViewModel<'_>) -> usize {
     view_model
         .groups
         .iter()
         .flat_map(|g| {
             g.components.iter().map(|c| {
-                c.state
+                c.state(view_model)
                     .execution_input
                     .as_ref()
                     .map(|i| format_bytes(i.metadata.serialized.len()).len())
@@ -112,20 +106,18 @@ fn get_max_input_size_string_length(
 }
 
 /// Returns the length of the longest output size string.
-fn get_max_output_size_string_length(
-    view_model: &to_view_model::AppExecutionStateViewModel<'_>,
-) -> usize {
+fn get_max_output_size_string_length(view_model: &AppExecutionStateViewModel<'_>) -> usize {
     view_model
         .groups
         .iter()
         .flat_map(|g| {
             g.components.iter().map(|c| {
-                c.state
+                c.state(view_model)
                     .output_override
                     .as_ref()
                     .map(|i| format_bytes(i.metadata.serialized.len()).len())
                     .unwrap_or(
-                        c.state
+                        c.state(view_model)
                             .execution_output
                             .as_ref()
                             .map(|i| format_bytes(i.metadata.serialized.len()).len())
@@ -139,8 +131,9 @@ fn get_max_output_size_string_length(
 
 fn write_component_state<F: Write>(
     f: &mut F,
-    component: &to_view_model::ComponentViewModel<'_>,
-    group: &to_view_model::ComponentGroupViewModel<'_>,
+    view_model: &AppExecutionStateViewModel<'_>,
+    component: &ComponentViewModel<'_>,
+    group: &ComponentGroupViewModel<'_>,
 ) -> anyhow::Result<()> {
     const NO_INPUT_NO_OUTPUT: char = '□';
     const INPUT_NO_OUTPUT: char = '◩';
@@ -193,12 +186,12 @@ fn write_component_state<F: Write>(
             }
         }
     }
-    let component_color = match component.state.output() {
-        Some(_) => match component.state.execution_input {
+    let component_color = match component.state(view_model).output() {
+        Some(_) => match component.state(view_model).execution_input {
             Some(_) => ComponentColors::HasInputAndOutput,
             None => ComponentColors::HasOutput,
         },
-        None => match component.state.execution_input {
+        None => match component.state(view_model).execution_input {
             Some(_) => ComponentColors::HasInput,
             None => ComponentColors::Default,
         },
@@ -233,15 +226,16 @@ enum MetadataType {
 
 fn write_metadata<F: Write>(
     f: &mut F,
-    component: &to_view_model::ComponentViewModel<'_>,
+    view_model: &AppExecutionStateViewModel<'_>,
+    component: &ComponentViewModel<'_>,
     metadata_type: MetadataType,
 ) -> anyhow::Result<()> {
     const OUTPUT_FROM_INPUT: char = '➜';
     const OUTPUT_NOT_FROM_INPUT: char = '!';
     const NO_OUTPUT: char = ' ';
 
-    if let Some(input) = &component.state.execution_input {
-        let should_underline = component.state.input_override.is_some();
+    if let Some(input) = &component.state(view_model).execution_input {
+        let should_underline = component.state(view_model).input_override.is_some();
         write!(f, "{}", color::Fg(color::Blue))?;
 
         match metadata_type {
@@ -295,9 +289,9 @@ fn write_metadata<F: Write>(
         }
     }
 
-    if component.state.output().is_some() {
+    if component.state(view_model).output().is_some() {
         let (color, hash, size): (ComponentColors, &slipway_lib::Hash, usize) = {
-            if let Some(output_override) = &component.state.output_override {
+            if let Some(output_override) = &component.state(view_model).output_override {
                 (
                     ComponentColors::HashesIgnored,
                     &output_override.metadata.hash,
@@ -305,13 +299,13 @@ fn write_metadata<F: Write>(
                 )
             } else {
                 let execution_output = &component
-                    .state
+                    .state(view_model)
                     .execution_output
                     .as_ref()
                     .expect("Either execution_output or output_override should exist");
                 let output_hash = &execution_output.metadata.hash;
                 let output_size = execution_output.metadata.serialized.len();
-                if let Some(execution_input) = &component.state.execution_input {
+                if let Some(execution_input) = &component.state(view_model).execution_input {
                     if execution_input.metadata.hash == execution_output.input_hash_used {
                         (ComponentColors::HashesMatch, output_hash, output_size)
                     } else {
@@ -328,7 +322,7 @@ fn write_metadata<F: Write>(
             _ => write!(f, " {} ", OUTPUT_NOT_FROM_INPUT)?,
         }
 
-        let should_underline = component.state.output_override.is_some();
+        let should_underline = component.state(view_model).output_override.is_some();
 
         color.write_foreground(f)?;
 
@@ -410,6 +404,8 @@ mod tests {
     use serde_json::json;
     use slipway_lib::{utils::ch, App, AppSession, ComponentRigging, Instruction, Rigging};
 
+    use crate::to_view_model::to_view_model;
+
     use super::*;
 
     #[test]
@@ -452,8 +448,10 @@ mod tests {
             })
             .unwrap();
 
+        let view_model = to_view_model(state);
+
         let mut buffer = Vec::new();
-        write_app_state(&mut buffer, &state).unwrap();
+        write_app_state(&mut buffer, &view_model).unwrap();
         let buffer_string = String::from_utf8(buffer).unwrap();
         println!("{}", buffer_string);
 
@@ -461,9 +459,10 @@ mod tests {
 
         assert_eq!(lines.len(), 7);
 
-        fn state_start_index(s: &str) -> usize {
-            let search_string = format!("{}  ", COLUMN_CHAR);
-            s.find(&search_string).unwrap() + search_string.len()
+        fn state_start_index(_: &str) -> usize {
+            0
+            // let search_string = format!("{}  ", COLUMN_CHAR);
+            // s.find(&search_string).unwrap() + search_string.len()
         }
 
         fn state_end_index(s: &str) -> usize {
@@ -636,8 +635,10 @@ mod tests {
             })
             .unwrap();
 
+        let view_model = to_view_model(state);
+
         let mut buffer = Vec::new();
-        write_app_state(&mut buffer, &state).unwrap();
+        write_app_state(&mut buffer, &view_model).unwrap();
         let buffer_string = String::from_utf8(buffer).unwrap();
         println!("{}", buffer_string);
 
@@ -654,8 +655,9 @@ mod tests {
         }
 
         fn size_end_index(s: &str) -> usize {
-            let search_string = format!("  {}", COLUMN_CHAR);
-            s.rfind(&search_string).unwrap()
+            s.len()
+            // let search_string = format!("  {}", COLUMN_CHAR);
+            // s.rfind(&search_string).unwrap()
         }
 
         fn get_next_line<'a>(lines: &mut Vec<&'a str>) -> &'a str {

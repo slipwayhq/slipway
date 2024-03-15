@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
     errors::SlipwayError,
     execute::{
@@ -16,7 +18,7 @@ pub fn evaluate_instruction(
         Instruction::SetInputOverride { handle, value } => {
             let mut state = state;
             let component_state = state.get_component_state_mut(&handle)?;
-            component_state.input_override = Some(ComponentInputOverride { value });
+            component_state.input_override = Some(Rc::new(ComponentInputOverride { value }));
             Ok(state)
         }
         Instruction::ClearInputOverride { handle } => {
@@ -29,7 +31,8 @@ pub fn evaluate_instruction(
             let mut state = state;
             let component_state = state.get_component_state_mut(&handle)?;
             let metadata = JsonMetadata::from_value(&value);
-            component_state.output_override = Some(ComponentOutputOverride { value, metadata });
+            component_state.output_override =
+                Some(Rc::new(ComponentOutputOverride { value, metadata }));
             Ok(state)
         }
         Instruction::ClearOutputOverride { handle } => {
@@ -52,11 +55,11 @@ pub fn evaluate_instruction(
             )))?;
 
             let metadata = JsonMetadata::from_value(&value);
-            component_state.execution_output = Some(ComponentOutput {
+            component_state.execution_output = Some(Rc::new(ComponentOutput {
                 value,
                 input_hash_used: input.metadata.hash.clone(),
                 metadata,
-            });
+            }));
             Ok(state)
         }
     }

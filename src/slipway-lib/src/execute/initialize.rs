@@ -1,20 +1,21 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
-use crate::{errors::SlipwayError, AppSession, ComponentState};
+use crate::{errors::SlipwayError, AppSession, ComponentState, Immutable};
 
 use super::{evaluate_component_inputs::evaluate_component_inputs, AppExecutionState};
 
-pub fn initialize(session: &AppSession) -> Result<AppExecutionState, SlipwayError> {
+pub fn initialize(session: &AppSession) -> Result<Immutable<AppExecutionState>, SlipwayError> {
     let component_states = session
         .app
         .rigging
         .components
-        .keys()
-        .map(|handle| {
+        .iter()
+        .map(|(handle, rigging)| {
             (
                 handle,
                 ComponentState {
                     handle,
+                    rigging,
                     input_override: None,
                     output_override: None,
                     execution_input: None,
@@ -30,10 +31,9 @@ pub fn initialize(session: &AppSession) -> Result<AppExecutionState, SlipwayErro
         component_states,
         valid_execution_order: Vec::new(),
         component_groups: Vec::new(),
-        wasm_cache: HashMap::new(),
     };
 
     let state = evaluate_component_inputs(state)?;
 
-    Ok(state)
+    Ok(Immutable::new(state))
 }
