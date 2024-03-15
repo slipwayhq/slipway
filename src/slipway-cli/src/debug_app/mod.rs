@@ -225,7 +225,7 @@ fn edit_json(template: &serde_json::Value) -> Result<serde_json::Value, SlipwayD
 
 fn get_handle<'app>(
     matches: &clap::ArgMatches,
-    state: &'app AppExecutionState<'app>,
+    state: &AppExecutionState<'app>,
 ) -> Result<&'app ComponentHandle, SlipwayDebugError> {
     let handle_str = matches
         .get_one::<String>("handle")

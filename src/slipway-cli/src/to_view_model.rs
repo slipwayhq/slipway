@@ -84,7 +84,7 @@ where
 }
 
 pub(super) fn to_shortcuts<'app>(
-    state: &'app AppExecutionState,
+    state: &AppExecutionState<'app>,
 ) -> HashMap<String, &'app ComponentHandle> {
     let mut shortcuts = HashMap::new();
     for &handle in state.valid_execution_order.iter() {
