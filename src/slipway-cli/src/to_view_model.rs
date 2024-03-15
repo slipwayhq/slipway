@@ -1,13 +1,16 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
-use slipway_lib::{AppExecutionState, ComponentHandle, ComponentState, Immutable};
+use slipway_lib::{AppExecutionState, ComponentHandle, ComponentState};
 
-pub(super) fn to_view_model(
-    state: Immutable<AppExecutionState<'_>>,
-) -> AppExecutionStateViewModel<'_> {
+pub(super) fn to_view_model<'state, 'app>(
+    state: &'state AppExecutionState<'app>,
+) -> AppExecutionStateViewModel<'app>
+where
+    'state: 'app,
+{
     let mut groups = Vec::new();
 
-    let mut used_shortcuts = HashSet::new();
+    let mut used_shortcuts = HashMap::new();
     let mut all_output_row_indexes = HashMap::new();
 
     let components = &state.component_states;
@@ -25,17 +28,7 @@ pub(super) fn to_view_model(
 
             let state = components.get(handle).expect("Component should exist");
 
-            let shortcut = {
-                let mut s = String::new();
-                for c in handle.0.chars() {
-                    s.push(c);
-                    if !used_shortcuts.contains(&s) {
-                        used_shortcuts.insert(s.clone());
-                        break;
-                    }
-                }
-                s
-            };
+            let shortcut = to_shortcut(handle, &mut used_shortcuts);
 
             for &dependency_handle in state.dependencies.iter() {
                 all_output_row_indexes
@@ -46,6 +39,7 @@ pub(super) fn to_view_model(
 
             let view_model = ComponentViewModel {
                 handle,
+                state,
                 shortcut,
                 group_index,
                 row_index,
@@ -86,11 +80,35 @@ pub(super) fn to_view_model(
         }
     }
 
-    AppExecutionStateViewModel { state, groups }
+    AppExecutionStateViewModel { groups }
+}
+
+pub(super) fn to_shortcuts<'app>(
+    state: &'app AppExecutionState,
+) -> HashMap<String, &'app ComponentHandle> {
+    let mut shortcuts = HashMap::new();
+    for &handle in state.valid_execution_order.iter() {
+        to_shortcut(handle, &mut shortcuts);
+    }
+    shortcuts
+}
+
+fn to_shortcut<'app>(
+    handle: &'app ComponentHandle,
+    used_shortcuts: &mut HashMap<String, &'app ComponentHandle>,
+) -> String {
+    let mut s = String::new();
+    for c in handle.0.chars() {
+        s.push(c);
+        if !used_shortcuts.contains_key(&s) {
+            used_shortcuts.insert(s.clone(), handle);
+            break;
+        }
+    }
+    s
 }
 
 pub(super) struct AppExecutionStateViewModel<'app> {
-    pub state: Immutable<AppExecutionState<'app>>,
     pub groups: Vec<ComponentGroupViewModel<'app>>,
 }
 
@@ -100,25 +118,13 @@ pub(super) struct ComponentGroupViewModel<'app> {
 
 pub(super) struct ComponentViewModel<'app> {
     pub handle: &'app ComponentHandle,
+    pub state: &'app ComponentState<'app>,
     pub shortcut: String,
     pub group_index: usize,
     pub row_index: usize,
     pub input_columns_indexes: Vec<usize>,
     pub output_row_indexes: Vec<usize>,
     // row: Vec<ComponentRowCharacter>,
-}
-
-impl ComponentViewModel<'_> {
-    pub fn state<'app>(
-        &self,
-        view_model: &'app AppExecutionStateViewModel<'app>,
-    ) -> &'app ComponentState<'app> {
-        view_model
-            .state
-            .component_states
-            .get(self.handle)
-            .expect("Component should exist")
-    }
 }
 
 #[cfg(test)]
@@ -156,7 +162,7 @@ mod tests {
 
         let app_session = AppSession::from(app);
         let state = app_session.initialize().unwrap();
-        let view_model = to_view_model(state);
+        let view_model = to_view_model(&state);
 
         assert_eq!(view_model.groups.len(), 1);
         assert_eq!(get_component(&view_model, ch("cat")).shortcut, "c");
@@ -195,7 +201,7 @@ mod tests {
 
         let app_session = AppSession::from(app);
         let state = app_session.initialize().unwrap();
-        let view_model = to_view_model(state);
+        let view_model = to_view_model(&state);
 
         assert_eq!(view_model.groups.len(), 3);
 
@@ -255,7 +261,7 @@ mod tests {
 
         let app_session = AppSession::from(app);
         let state = app_session.initialize().unwrap();
-        let view_model = to_view_model(state);
+        let view_model = to_view_model(&state);
 
         assert_eq!(view_model.groups.len(), 3);
 

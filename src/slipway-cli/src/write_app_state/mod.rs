@@ -36,7 +36,7 @@ pub(crate) fn write_app_state<F: Write>(
             // write!(f, "{}", COLUMN_CHAR)?;
             // write!(f, "{}", COLUMN_PADDING)?;
 
-            write_component_state(f, view_model, component, group)?;
+            write_component_state(f, component, group)?;
 
             let padding_required = max_component_state_row_length // The longest state length
                 - component.handle.0.len() // Subtract the handle length
@@ -47,7 +47,7 @@ pub(crate) fn write_app_state<F: Write>(
             write!(f, "{}", COLUMN_CHAR)?;
             write!(f, "{}", COLUMN_PADDING)?;
 
-            write_metadata(f, view_model, component, MetadataType::Hashes)?;
+            write_metadata(f, component, MetadataType::Hashes)?;
 
             write!(f, "{}", COLUMN_PADDING)?;
             write!(f, "{}", COLUMN_CHAR)?;
@@ -55,7 +55,6 @@ pub(crate) fn write_app_state<F: Write>(
 
             write_metadata(
                 f,
-                view_model,
                 component,
                 MetadataType::Sizes {
                     max_input_size_string_length,
@@ -94,7 +93,7 @@ fn get_max_input_size_string_length(view_model: &AppExecutionStateViewModel<'_>)
         .iter()
         .flat_map(|g| {
             g.components.iter().map(|c| {
-                c.state(view_model)
+                c.state
                     .execution_input
                     .as_ref()
                     .map(|i| format_bytes(i.metadata.serialized.len()).len())
@@ -112,12 +111,12 @@ fn get_max_output_size_string_length(view_model: &AppExecutionStateViewModel<'_>
         .iter()
         .flat_map(|g| {
             g.components.iter().map(|c| {
-                c.state(view_model)
+                c.state
                     .output_override
                     .as_ref()
                     .map(|i| format_bytes(i.metadata.serialized.len()).len())
                     .unwrap_or(
-                        c.state(view_model)
+                        c.state
                             .execution_output
                             .as_ref()
                             .map(|i| format_bytes(i.metadata.serialized.len()).len())
@@ -131,7 +130,6 @@ fn get_max_output_size_string_length(view_model: &AppExecutionStateViewModel<'_>
 
 fn write_component_state<F: Write>(
     f: &mut F,
-    view_model: &AppExecutionStateViewModel<'_>,
     component: &ComponentViewModel<'_>,
     group: &ComponentGroupViewModel<'_>,
 ) -> anyhow::Result<()> {
@@ -186,12 +184,12 @@ fn write_component_state<F: Write>(
             }
         }
     }
-    let component_color = match component.state(view_model).output() {
-        Some(_) => match component.state(view_model).execution_input {
+    let component_color = match component.state.output() {
+        Some(_) => match component.state.execution_input {
             Some(_) => ComponentColors::HasInputAndOutput,
             None => ComponentColors::HasOutput,
         },
-        None => match component.state(view_model).execution_input {
+        None => match component.state.execution_input {
             Some(_) => ComponentColors::HasInput,
             None => ComponentColors::Default,
         },
@@ -226,7 +224,6 @@ enum MetadataType {
 
 fn write_metadata<F: Write>(
     f: &mut F,
-    view_model: &AppExecutionStateViewModel<'_>,
     component: &ComponentViewModel<'_>,
     metadata_type: MetadataType,
 ) -> anyhow::Result<()> {
@@ -234,8 +231,8 @@ fn write_metadata<F: Write>(
     const OUTPUT_NOT_FROM_INPUT: char = '!';
     const NO_OUTPUT: char = ' ';
 
-    if let Some(input) = &component.state(view_model).execution_input {
-        let should_underline = component.state(view_model).input_override.is_some();
+    if let Some(input) = &component.state.execution_input {
+        let should_underline = component.state.input_override.is_some();
         write!(f, "{}", color::Fg(color::Blue))?;
 
         match metadata_type {
@@ -289,9 +286,9 @@ fn write_metadata<F: Write>(
         }
     }
 
-    if component.state(view_model).output().is_some() {
+    if component.state.output().is_some() {
         let (color, hash, size): (ComponentColors, &slipway_lib::Hash, usize) = {
-            if let Some(output_override) = &component.state(view_model).output_override {
+            if let Some(output_override) = &component.state.output_override {
                 (
                     ComponentColors::HashesIgnored,
                     &output_override.metadata.hash,
@@ -299,13 +296,13 @@ fn write_metadata<F: Write>(
                 )
             } else {
                 let execution_output = &component
-                    .state(view_model)
+                    .state
                     .execution_output
                     .as_ref()
                     .expect("Either execution_output or output_override should exist");
                 let output_hash = &execution_output.metadata.hash;
                 let output_size = execution_output.metadata.serialized.len();
-                if let Some(execution_input) = &component.state(view_model).execution_input {
+                if let Some(execution_input) = &component.state.execution_input {
                     if execution_input.metadata.hash == execution_output.input_hash_used {
                         (ComponentColors::HashesMatch, output_hash, output_size)
                     } else {
@@ -322,7 +319,7 @@ fn write_metadata<F: Write>(
             _ => write!(f, " {} ", OUTPUT_NOT_FROM_INPUT)?,
         }
 
-        let should_underline = component.state(view_model).output_override.is_some();
+        let should_underline = component.state.output_override.is_some();
 
         color.write_foreground(f)?;
 
@@ -448,7 +445,7 @@ mod tests {
             })
             .unwrap();
 
-        let view_model = to_view_model(state);
+        let view_model = to_view_model(&state);
 
         let mut buffer = Vec::new();
         write_app_state(&mut buffer, &view_model).unwrap();
@@ -635,7 +632,7 @@ mod tests {
             })
             .unwrap();
 
-        let view_model = to_view_model(state);
+        let view_model = to_view_model(&state);
 
         let mut buffer = Vec::new();
         write_app_state(&mut buffer, &view_model).unwrap();

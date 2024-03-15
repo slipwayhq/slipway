@@ -6,7 +6,7 @@ use slipway_lib::{
     parse_app, AppExecutionState, AppSession, ComponentHandle, Immutable, Instruction,
 };
 
-use crate::to_view_model::{to_view_model, AppExecutionStateViewModel};
+use crate::to_view_model::{to_shortcuts, to_view_model};
 use crate::write_app_state;
 
 use self::errors::SlipwayDebugError;
@@ -14,62 +14,18 @@ use self::errors::SlipwayDebugError;
 mod errors;
 
 pub(crate) fn debug_app(input: std::path::PathBuf) -> anyhow::Result<()> {
+    set_ctrl_c_handler();
+
     println!("Debugging {}", input.display());
     println!();
     let file_contents = std::fs::read_to_string(input)?;
     let app = parse_app(&file_contents)?;
     let session = AppSession::from(app);
-    let state = session.initialize()?;
+    let mut state = session.initialize()?;
 
-    let stdout = std::io::stdout();
-    let mut stdout_handle = stdout.lock();
+    print_state(&state)?;
 
-    let mut view_model = to_view_model(state);
-
-    write_app_state::write_app_state(&mut stdout_handle, &view_model)?;
-    println!();
-
-    // Set the Ctrl+C handler
-    ctrlc::set_handler(move || {
-        std::process::exit(1);
-    })
-    .expect("Error setting Ctrl-C handler");
-
-    let command = Command::new("Slipway Interactive Debugger")
-        .subcommand(
-            Command::new("run")
-                .about("Runs a component")
-                .arg(Arg::new("handle").required(true)),
-        )
-        .subcommand(
-            Command::new("input")
-                .about("Edits the input of a component")
-                .arg(Arg::new("handle").required(true)),
-        )
-        .subcommand(
-            Command::new("output")
-                .about("Edits the output of a component")
-                .arg(Arg::new("handle").required(true)),
-        )
-        .subcommand(
-            Command::new("clear")
-                .about("Clears either the input or output override of a component")
-                .subcommand(
-                    Command::new("input")
-                        .about("Clears the input override of a component")
-                        .arg(Arg::new("handle").required(true)),
-                )
-                .subcommand(
-                    Command::new("output")
-                        .about("Clears the output override of a component")
-                        .arg(Arg::new("handle").required(true)),
-                )
-                .subcommand_required(true)
-                .infer_subcommands(true),
-        )
-        .subcommand(Command::new("exit").about("Exits the debugger"))
-        .subcommand_required(true)
-        .infer_subcommands(true);
+    let command = create_command_structure();
 
     let help_color = color::Fg(color::Yellow);
     println!(
@@ -95,15 +51,19 @@ pub(crate) fn debug_app(input: std::path::PathBuf) -> anyhow::Result<()> {
             args.insert(0, "slipway");
 
             match command.clone().try_get_matches_from(args) {
-                Ok(matches) => match handle_command(matches, &view_model) {
-                    Ok(HandleCommandResult::Continue(Some(new_state))) => {
-                        view_model = to_view_model(new_state);
+                Ok(matches) => match handle_command(matches, &state) {
+                    Ok(HandleCommandResult::Continue(Some(s))) => {
+                        state = s;
+                        print_state(&state)?;
                     }
                     Ok(HandleCommandResult::Continue(None)) => {}
                     Ok(HandleCommandResult::Exit) => break,
-                    Err(e) => println!("{}{}{}", color::Fg(color::Red), e, color::Fg(color::Reset)),
+                    Err(e) => {
+                        println!("{}{}{}", color::Fg(color::Red), e, color::Fg(color::Reset));
+                        print_state(&state)?;
+                    }
                 },
-                Err(e) => e.print().expect("Parsing errors should be printed"), // Display parsing errors
+                Err(e) => e.print().expect("Parsing errors should be printed"),
             }
         } else {
             println!("Error reading input");
@@ -115,42 +75,109 @@ pub(crate) fn debug_app(input: std::path::PathBuf) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn set_ctrl_c_handler() {
+    ctrlc::set_handler(move || {
+        std::process::exit(1);
+    })
+    .expect("Error setting Ctrl-C handler");
+}
+
+const RUN_COMMAND: &str = "run";
+const INPUT_COMMAND: &str = "input";
+const OUTPUT_COMMAND: &str = "output";
+const CLEAR_COMMAND: &str = "clear";
+const EXIT_COMMAND: &str = "exit";
+
+fn create_command_structure() -> Command {
+    Command::new("Slipway Interactive Debugger")
+        .subcommand(
+            Command::new(RUN_COMMAND)
+                .about("Runs a component")
+                .arg(Arg::new("handle").required(true)),
+        )
+        .subcommand(
+            Command::new(INPUT_COMMAND)
+                .about("Edits the input of a component")
+                .arg(Arg::new("handle").required(true)),
+        )
+        .subcommand(
+            Command::new(OUTPUT_COMMAND)
+                .about("Edits the output of a component")
+                .arg(Arg::new("handle").required(true)),
+        )
+        .subcommand(
+            Command::new(CLEAR_COMMAND)
+                .about("Clears either the input or output override of a component")
+                .subcommand(
+                    Command::new(INPUT_COMMAND)
+                        .about("Clears the input override of a component")
+                        .arg(Arg::new("handle").required(true)),
+                )
+                .subcommand(
+                    Command::new(OUTPUT_COMMAND)
+                        .about("Clears the output override of a component")
+                        .arg(Arg::new("handle").required(true)),
+                )
+                .subcommand_required(true)
+                .infer_subcommands(true),
+        )
+        .subcommand(Command::new(EXIT_COMMAND).about("Exits the debugger"))
+        .subcommand_required(true)
+        .infer_subcommands(true)
+}
+
 enum HandleCommandResult<'app> {
     Continue(Option<Immutable<AppExecutionState<'app>>>),
     Exit,
 }
 
-fn handle_command<'app>(
+fn handle_command<'app, 'state>(
     matches: ArgMatches,
-    view_model: &AppExecutionStateViewModel<'app>,
-) -> Result<HandleCommandResult<'app>, SlipwayDebugError> {
-    if let Some(matches) = matches.subcommand_matches("input") {
-        let handle = get_handle(matches, view_model)?;
-        let new_state = handle_input_command(handle, &view_model.state)?;
-        return Ok(HandleCommandResult::Continue(Some(new_state)));
-    } else if let Some(matches) = matches.subcommand_matches("output") {
-        let handle = get_handle(matches, view_model)?;
-        println!("Edit the output of {}", handle);
-    } else if let Some(matches) = matches.subcommand_matches("run") {
-        let handle = get_handle(matches, view_model)?;
-        println!("Run {}", handle);
-    } else if let Some(matches) = matches.subcommand_matches("clear") {
-        if let Some(matches) = matches.subcommand_matches("input") {
-            let handle = get_handle(matches, view_model)?;
-            println!("Clear input override for {}", handle);
-        } else if let Some(matches) = matches.subcommand_matches("output") {
-            let handle = get_handle(matches, view_model)?;
-            println!("Clear output override for {}", handle);
-        }
-    } else if matches.subcommand_matches("exit").is_some() {
-        return Ok(HandleCommandResult::Exit);
-    }
+    state: &'state AppExecutionState<'app>,
+) -> anyhow::Result<HandleCommandResult<'app>> {
+    let result: HandleCommandResult<'app> =
+        if let Some(matches) = matches.subcommand_matches(INPUT_COMMAND) {
+            let handle = get_handle(matches, state)?;
+            let new_state = handle_input_command(handle, state)?;
+            HandleCommandResult::Continue(Some(new_state))
+        } else if let Some(matches) = matches.subcommand_matches(OUTPUT_COMMAND) {
+            let handle = get_handle(matches, state)?;
+            println!("Edit the output of {}", handle);
+            HandleCommandResult::Continue(None)
+        } else if let Some(matches) = matches.subcommand_matches(RUN_COMMAND) {
+            let handle = get_handle(matches, state)?;
+            println!("Run {}", handle);
+            HandleCommandResult::Continue(None)
+        } else if let Some(matches) = matches.subcommand_matches(CLEAR_COMMAND) {
+            if let Some(matches) = matches.subcommand_matches(INPUT_COMMAND) {
+                let handle = get_handle(matches, state)?;
+                println!("Clear input override for {}", handle);
+                HandleCommandResult::Continue(None)
+            } else if let Some(matches) = matches.subcommand_matches(OUTPUT_COMMAND) {
+                let handle = get_handle(matches, state)?;
+                println!("Clear output override for {}", handle);
+                HandleCommandResult::Continue(None)
+            } else {
+                HandleCommandResult::Continue(None)
+            }
+        } else if matches.subcommand_matches(EXIT_COMMAND).is_some() {
+            HandleCommandResult::Exit
+        } else {
+            HandleCommandResult::Continue(None)
+        };
 
-    Ok(HandleCommandResult::Continue(None))
+    Ok(result)
+}
+
+fn print_state(state: &AppExecutionState<'_>) -> Result<(), anyhow::Error> {
+    let view_model = to_view_model(state);
+    write_app_state::write_app_state(&mut io::stdout(), &view_model)?;
+    println!();
+    Ok(())
 }
 
 fn handle_input_command<'app>(
-    handle: ComponentHandle,
+    handle: &'app ComponentHandle,
     state: &AppExecutionState<'app>,
 ) -> Result<Immutable<AppExecutionState<'app>>, SlipwayDebugError> {
     let component = state
@@ -165,7 +192,7 @@ fn handle_input_command<'app>(
     let new_input = edit_json(template)?;
 
     let new_state = state.step(Instruction::SetInputOverride {
-        handle,
+        handle: handle.clone(),
         value: new_input,
     })?;
 
@@ -196,25 +223,22 @@ fn edit_json(template: &serde_json::Value) -> Result<serde_json::Value, SlipwayD
     }
 }
 
-fn get_handle(
+fn get_handle<'app>(
     matches: &clap::ArgMatches,
-    view_model: &AppExecutionStateViewModel<'_>,
-) -> Result<ComponentHandle, SlipwayDebugError> {
+    state: &'app AppExecutionState<'app>,
+) -> Result<&'app ComponentHandle, SlipwayDebugError> {
     let handle_str = matches
         .get_one::<String>("handle")
         .expect("Handle is required");
 
-    // Find the first component whose handle matches handle_str or whose shortcut matches handle_str.
-    view_model
-        .groups
-        .iter()
-        .flat_map(|g| g.components.iter())
-        .find(|c| &c.handle.0 == handle_str || &c.shortcut == handle_str)
-        .map(|c| c.handle.clone())
-        .ok_or_else(|| {
-            SlipwayDebugError::UserError(format!(
-                "No component found with handle or shortcut {}",
-                handle_str
-            ))
-        })
+    let shortcuts = to_shortcuts(state);
+
+    if let Some(&handle) = shortcuts.get(handle_str) {
+        return Ok(handle);
+    }
+
+    Err(SlipwayDebugError::UserError(format!(
+        "No component found for handle or shortcut {}",
+        handle_str
+    )))
 }
