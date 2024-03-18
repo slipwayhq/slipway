@@ -1,13 +1,27 @@
 #![allow(dead_code)]
 
-mod cli;
 mod debug_app;
 mod to_view_model;
 mod utils;
 mod write_app_state;
 
-use clap::Parser;
-use cli::{Cli, Commands};
+use std::path::PathBuf;
+
+use clap::{Parser, Subcommand};
+
+#[derive(Debug, Parser)]
+#[command(name = "slipway")]
+#[command(about = "Slipway CLI", long_about = None)]
+pub(crate) struct Cli {
+    #[command(subcommand)]
+    pub command: Commands,
+}
+
+#[derive(Debug, Subcommand)]
+pub(crate) enum Commands {
+    #[command(arg_required_else_help = true)]
+    Debug { input: PathBuf },
+}
 
 fn main() -> anyhow::Result<()> {
     let args = Cli::parse();

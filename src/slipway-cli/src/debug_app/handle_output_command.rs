@@ -1,0 +1,26 @@
+use serde_json::json;
+use slipway_lib::{AppExecutionState, ComponentHandle, Immutable, Instruction};
+
+use super::{edit_json, errors::SlipwayDebugError};
+
+pub(super) fn handle_output_command<'app>(
+    handle: &'app ComponentHandle,
+    state: &AppExecutionState<'app>,
+) -> Result<Immutable<AppExecutionState<'app>>, SlipwayDebugError> {
+    let component = state
+        .component_states
+        .get(&handle)
+        .expect("Component should exist");
+
+    let default_template = json!({});
+    let template = component.output().unwrap_or(&default_template);
+
+    let new_output = edit_json(template)?;
+
+    let new_state = state.step(Instruction::SetOutputOverride {
+        handle: handle.clone(),
+        value: new_output,
+    })?;
+
+    Ok(new_state)
+}
