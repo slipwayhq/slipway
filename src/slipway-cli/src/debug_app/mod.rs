@@ -50,40 +50,32 @@ enum Commands {
     Print {},
     /// Run a component
     Run {
+        /// The component to run
         #[arg(required = true)]
         handle: String,
     },
     /// Override the input of a component
     Input {
+        /// The component to update
         #[arg(required = true)]
         handle: String,
+
+        /// Clear the input override
+        #[arg(short, long, default_value = "false")]
+        clear: bool,
     },
     /// Override the output of a component
     Output {
+        /// The component to update
         #[arg(required = true)]
         handle: String,
-    },
-    /// Clear an overridden input or output of a component
-    Clear {
-        #[command(subcommand)]
-        clear_command: ClearCommands,
+
+        /// Clear the output override
+        #[arg(short, long, default_value = "false")]
+        clear: bool,
     },
     /// Exit the debugger
     Exit,
-}
-
-#[derive(Subcommand)]
-enum ClearCommands {
-    /// Clear the overridden input of a component
-    Input {
-        #[arg(required = true)]
-        handle: String,
-    },
-    /// Clear the overridden output of a component
-    Output {
-        #[arg(required = true)]
-        handle: String,
-    },
 }
 
 pub(crate) fn debug_app(input: std::path::PathBuf) -> anyhow::Result<()> {
@@ -174,30 +166,36 @@ fn handle_command<'app>(
             let new_state = handle_run_command::handle_run_command(handle, state)?;
             HandleCommandResult::Continue(Some(new_state))
         }
-        Commands::Input { handle } => {
+        Commands::Input { handle, clear } => {
             let handle = get_handle(&handle, state)?;
-            let new_state = handle_input_command::handle_input_command(handle, state)?;
-            HandleCommandResult::Continue(Some(new_state))
+
+            match clear {
+                true => {
+                    let new_state =
+                        handle_clear_input_command::handle_clear_input_command(handle, state)?;
+                    HandleCommandResult::Continue(Some(new_state))
+                }
+                false => {
+                    let new_state = handle_input_command::handle_input_command(handle, state)?;
+                    HandleCommandResult::Continue(Some(new_state))
+                }
+            }
         }
-        Commands::Output { handle } => {
+        Commands::Output { handle, clear } => {
             let handle = get_handle(&handle, state)?;
-            let new_state = handle_output_command::handle_output_command(handle, state)?;
-            HandleCommandResult::Continue(Some(new_state))
+
+            match clear {
+                true => {
+                    let new_state =
+                        handle_clear_output_command::handle_clear_output_command(handle, state)?;
+                    HandleCommandResult::Continue(Some(new_state))
+                }
+                false => {
+                    let new_state = handle_output_command::handle_output_command(handle, state)?;
+                    HandleCommandResult::Continue(Some(new_state))
+                }
+            }
         }
-        Commands::Clear { clear_command } => match clear_command {
-            ClearCommands::Input { handle } => {
-                let handle = get_handle(&handle, state)?;
-                let new_state =
-                    handle_clear_input_command::handle_clear_input_command(handle, state)?;
-                HandleCommandResult::Continue(Some(new_state))
-            }
-            ClearCommands::Output { handle } => {
-                let handle = get_handle(&handle, state)?;
-                let new_state =
-                    handle_clear_output_command::handle_clear_output_command(handle, state)?;
-                HandleCommandResult::Continue(Some(new_state))
-            }
-        },
         Commands::Exit => HandleCommandResult::Exit,
     };
 
