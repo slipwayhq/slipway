@@ -48,12 +48,14 @@ struct DebugCli {
 enum Commands {
     /// Prints the component graph
     Print {},
+
     /// Run a component
     Run {
         /// The component to run
         #[arg(required = true)]
         handle: String,
     },
+
     /// Override the input of a component
     Input {
         /// The component to update
@@ -64,6 +66,7 @@ enum Commands {
         #[arg(short, long, default_value = "false")]
         clear: bool,
     },
+
     /// Override the output of a component
     Output {
         /// The component to update
@@ -74,6 +77,7 @@ enum Commands {
         #[arg(short, long, default_value = "false")]
         clear: bool,
     },
+
     /// Exit the debugger
     Exit,
 }
