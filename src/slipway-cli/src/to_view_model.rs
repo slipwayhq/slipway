@@ -160,7 +160,7 @@ mod tests {
             .collect(),
         });
 
-        let app_session = AppSession::from(app);
+        let app_session = AppSession::new(app);
         let state = app_session.initialize().unwrap();
         let view_model = to_view_model(&state);
 
@@ -199,7 +199,7 @@ mod tests {
             .collect(),
         });
 
-        let app_session = AppSession::from(app);
+        let app_session = AppSession::new(app);
         let state = app_session.initialize().unwrap();
         let view_model = to_view_model(&state);
 
@@ -259,7 +259,7 @@ mod tests {
             .collect(),
         });
 
-        let app_session = AppSession::from(app);
+        let app_session = AppSession::new(app);
         let state = app_session.initialize().unwrap();
         let view_model = to_view_model(&state);
 

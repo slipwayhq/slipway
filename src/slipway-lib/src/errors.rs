@@ -24,4 +24,7 @@ pub enum SlipwayError {
     // into a `serde_json::Error` and wrapped in a ParseFailed error.
     #[error("invalid type \"{0}\": {1}")]
     InvalidSlipwayPrimitive(String, String),
+
+    #[error("component load failed: {0} ({1})")]
+    ComponentLoadFailed(String, String),
 }
