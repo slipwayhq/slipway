@@ -19,7 +19,7 @@ mod topological_sort;
 use primitives::Hash;
 
 use self::{
-    load_components::InMemoryComponentCache, load_components::LoadedComponentCache,
+    load_components::{InMemoryComponentCache, LoadedComponentCache},
     primitives::JsonMetadata,
 };
 
@@ -32,7 +32,10 @@ impl AppSession {
     pub fn new(app: App) -> Self {
         AppSession {
             app,
-            component_cache: Box::new(InMemoryComponentCache::new(Vec::new(), Vec::new())),
+            component_cache: Box::new(InMemoryComponentCache::new(
+                vec![Box::new(load_components::LocalComponentLoader {})],
+                vec![Box::new(load_components::LocalComponentLoader {})],
+            )),
         }
     }
 }
@@ -41,6 +44,10 @@ impl AppSession {
     pub fn initialize(&self) -> Result<Immutable<AppExecutionState>, SlipwayError> {
         initialize::initialize(self)
     }
+}
+
+struct AppSessionOptions {
+    execution_concurrency: usize,
 }
 
 #[derive(Clone)]

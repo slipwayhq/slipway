@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use crate::{errors::SlipwayError, SlipwayReference};
 
-use super::{component_loaders::ComponentLoader, primitives::LoaderId};
+use super::{loaders::ComponentPartLoader, primitives::LoaderId};
 
-pub(crate) struct LoadedComponent<T> {
+pub(crate) struct LoadComponentResult<T> {
     component_reference: SlipwayReference,
     value: Option<T>,
     loader_failures: Vec<LoaderFailure>,
@@ -15,10 +15,10 @@ pub(crate) struct LoaderFailure {
     error: SlipwayError,
 }
 
-pub(super) async fn load_component<T>(
+pub(super) async fn try_load_component_part<T>(
     component_reference: SlipwayReference,
-    loaders: Arc<Vec<Box<dyn ComponentLoader<T>>>>,
-) -> LoadedComponent<T> {
+    loaders: Arc<Vec<Box<dyn ComponentPartLoader<T>>>>,
+) -> LoadComponentResult<T> {
     let mut loaded_component = None;
     let mut errors = Vec::new();
 
@@ -38,7 +38,7 @@ pub(super) async fn load_component<T>(
         }
     }
 
-    LoadedComponent::<T> {
+    LoadComponentResult::<T> {
         component_reference: component_reference.clone(),
         value: loaded_component,
         loader_failures: errors,

@@ -1,25 +1,18 @@
-use std::str::FromStr;
-
 use async_trait::async_trait;
 
-use crate::{errors::SlipwayError, Component, SlipwayReference};
+use std::str::FromStr;
 
-use super::primitives::LoaderId;
+use super::ComponentPartLoader;
 
-#[async_trait]
-pub(crate) trait ComponentLoader<TResult>: Send + Sync {
-    fn id(&self) -> LoaderId;
+use crate::{
+    errors::SlipwayError, execute::load_components::primitives::LoaderId, Component,
+    SlipwayReference,
+};
 
-    async fn load(
-        &self,
-        component_reference: &SlipwayReference,
-    ) -> Result<Option<TResult>, SlipwayError>;
-}
-
-struct LocalComponentLoader {}
+pub(crate) struct LocalComponentLoader {}
 
 #[async_trait]
-impl ComponentLoader<Component> for LocalComponentLoader {
+impl ComponentPartLoader<Component> for LocalComponentLoader {
     fn id(&self) -> LoaderId {
         LoaderId::from_str("local").expect("LoaderId should be valid")
     }
@@ -45,7 +38,7 @@ impl ComponentLoader<Component> for LocalComponentLoader {
 }
 
 #[async_trait]
-impl ComponentLoader<Vec<u8>> for LocalComponentLoader {
+impl ComponentPartLoader<Vec<u8>> for LocalComponentLoader {
     fn id(&self) -> LoaderId {
         LoaderId::from_str("local").expect("LoaderId should be valid")
     }

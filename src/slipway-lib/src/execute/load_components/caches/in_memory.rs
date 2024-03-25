@@ -5,20 +5,12 @@ use tokio::{runtime::Runtime, task::JoinHandle};
 use crate::{Component, SlipwayReference};
 
 use super::{
-    component_loaders::ComponentLoader,
-    load_component::{load_component, LoadedComponent},
+    super::{
+        loaders::ComponentPartLoader,
+        try_load_component_part::{try_load_component_part, LoadComponentResult},
+    },
+    LoadedComponentCache,
 };
-
-pub(crate) trait LoadedComponentCache {
-    fn prime_cache_for(&mut self, component_reference: &SlipwayReference);
-
-    fn get_definition(
-        &mut self,
-        component_reference: &SlipwayReference,
-    ) -> &LoadedComponent<Component>;
-
-    fn get_wasm(&mut self, component_reference: &SlipwayReference) -> &LoadedComponent<Vec<u8>>;
-}
 
 pub(crate) struct InMemoryComponentCache {
     definition: InMemoryComponentPartCache<Component>,
@@ -28,8 +20,8 @@ pub(crate) struct InMemoryComponentCache {
 
 impl InMemoryComponentCache {
     pub(crate) fn new(
-        definition_loaders: Vec<Box<dyn ComponentLoader<Component>>>,
-        wasm_loaders: Vec<Box<dyn ComponentLoader<Vec<u8>>>>,
+        definition_loaders: Vec<Box<dyn ComponentPartLoader<Component>>>,
+        wasm_loaders: Vec<Box<dyn ComponentPartLoader<Vec<u8>>>>,
     ) -> Self {
         Self {
             definition: InMemoryComponentPartCache::new(definition_loaders),
@@ -55,26 +47,29 @@ impl LoadedComponentCache for InMemoryComponentCache {
     fn get_definition(
         &mut self,
         component_reference: &SlipwayReference,
-    ) -> &LoadedComponent<Component> {
+    ) -> &LoadComponentResult<Component> {
         self.definition.get(&self.runtime, component_reference)
     }
 
-    fn get_wasm(&mut self, component_reference: &SlipwayReference) -> &LoadedComponent<Vec<u8>> {
+    fn get_wasm(
+        &mut self,
+        component_reference: &SlipwayReference,
+    ) -> &LoadComponentResult<Vec<u8>> {
         self.wasm.get(&self.runtime, component_reference)
     }
 }
 
 struct InMemoryComponentPartCache<T> {
-    cache: HashMap<SlipwayReference, LoadedComponent<T>>,
-    future_cache: HashMap<SlipwayReference, JoinHandle<LoadedComponent<T>>>,
-    loaders: Arc<Vec<Box<dyn ComponentLoader<T>>>>,
+    cache: HashMap<SlipwayReference, LoadComponentResult<T>>,
+    future_cache: HashMap<SlipwayReference, JoinHandle<LoadComponentResult<T>>>,
+    loaders: Arc<Vec<Box<dyn ComponentPartLoader<T>>>>,
 }
 
 impl<T> InMemoryComponentPartCache<T>
 where
     T: Send + Sync + 'static,
 {
-    pub fn new(loaders: Vec<Box<dyn ComponentLoader<T>>>) -> Self {
+    pub fn new(loaders: Vec<Box<dyn ComponentPartLoader<T>>>) -> Self {
         Self {
             cache: HashMap::new(),
             future_cache: HashMap::new(),
@@ -83,7 +78,7 @@ where
     }
 
     fn prime_cache_for(&mut self, component_reference: &SlipwayReference, runtime: &Runtime) {
-        let future = load_component(component_reference.clone(), self.loaders.clone());
+        let future = try_load_component_part(component_reference.clone(), self.loaders.clone());
         let join_handle = runtime.spawn(future);
         self.future_cache
             .insert(component_reference.clone(), join_handle);
@@ -93,7 +88,7 @@ where
         &mut self,
         runtime: &Runtime,
         component_reference: &SlipwayReference,
-    ) -> &LoadedComponent<T> {
+    ) -> &LoadComponentResult<T> {
         if let Some(future) = self.future_cache.remove(component_reference) {
             let result = runtime.block_on(future).expect("Join should be successful");
             self.cache.insert(component_reference.clone(), result);
