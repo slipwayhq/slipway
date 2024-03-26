@@ -1,4 +1,4 @@
-use crate::errors::SlipwayError;
+use crate::errors::AppError;
 use core::fmt;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize};

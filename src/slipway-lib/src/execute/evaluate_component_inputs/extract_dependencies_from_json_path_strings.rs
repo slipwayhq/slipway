@@ -3,7 +3,7 @@ use std::{collections::HashSet, str::FromStr};
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-use crate::{errors::SlipwayError, parse::types::primitives::ComponentHandle};
+use crate::{errors::AppError, parse::types::primitives::ComponentHandle};
 
 use super::find_json_path_strings::FoundJsonPathString;
 
@@ -19,11 +19,11 @@ static COMPONENT_DEPENDENCY_REGEX: Lazy<Regex> = Lazy::new(|| {
 });
 
 pub(crate) trait ExtractDependencies {
-    fn extract_dependencies(&self) -> Result<HashSet<ComponentHandle>, SlipwayError>;
+    fn extract_dependencies(&self) -> Result<HashSet<ComponentHandle>, AppError>;
 }
 
 impl ExtractDependencies for Vec<FoundJsonPathString<'_>> {
-    fn extract_dependencies(&self) -> Result<HashSet<ComponentHandle>, SlipwayError> {
+    fn extract_dependencies(&self) -> Result<HashSet<ComponentHandle>, AppError> {
         let mut result = HashSet::new();
 
         for found in self {

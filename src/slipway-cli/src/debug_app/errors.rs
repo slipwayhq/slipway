@@ -1,10 +1,10 @@
-use slipway_lib::errors::SlipwayError;
+use slipway_lib::errors::AppError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum SlipwayDebugError {
     #[error("slipway error: {0}")]
-    SlipwayError(#[from] SlipwayError),
+    SlipwayError(#[from] AppError),
 
     #[error("{0}")]
     UserError(String),

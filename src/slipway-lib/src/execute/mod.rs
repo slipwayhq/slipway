@@ -4,14 +4,14 @@ use std::{
 };
 
 use crate::{
-    errors::SlipwayError,
+    errors::AppError,
     parse::types::{primitives::ComponentHandle, App, ComponentRigging},
     Immutable,
 };
 
 pub(crate) mod evaluate_component_inputs;
 mod initialize;
-mod load_components;
+pub(crate) mod load_components;
 pub mod primitives;
 pub mod step;
 mod topological_sort;
@@ -41,7 +41,7 @@ impl AppSession {
 }
 
 impl AppSession {
-    pub fn initialize(&self) -> Result<Immutable<AppExecutionState>, SlipwayError> {
+    pub fn initialize(&self) -> Result<Immutable<AppExecutionState>, AppError> {
         initialize::initialize(self)
     }
 }
@@ -62,7 +62,7 @@ impl<'app> AppExecutionState<'app> {
     pub fn step(
         &self,
         instruction: step::Instruction,
-    ) -> Result<Immutable<AppExecutionState<'app>>, SlipwayError> {
+    ) -> Result<Immutable<AppExecutionState<'app>>, AppError> {
         step::step(self, instruction)
     }
 
@@ -70,14 +70,14 @@ impl<'app> AppExecutionState<'app> {
     fn get_component_state_mut(
         &mut self,
         handle: &ComponentHandle,
-    ) -> Result<&mut ComponentState<'app>, SlipwayError> {
-        let component_state =
-            self.component_states
-                .get_mut(handle)
-                .ok_or(SlipwayError::StepFailed(format!(
-                    "component {:?} does not exist in component states",
-                    handle
-                )))?;
+    ) -> Result<&mut ComponentState<'app>, AppError> {
+        let component_state = self
+            .component_states
+            .get_mut(handle)
+            .ok_or(AppError::StepFailed(format!(
+                "component {:?} does not exist in component states",
+                handle
+            )))?;
 
         Ok(component_state)
     }
@@ -86,11 +86,11 @@ impl<'app> AppExecutionState<'app> {
     fn get_component_state(
         &self,
         handle: &ComponentHandle,
-    ) -> Result<&ComponentState<'app>, SlipwayError> {
+    ) -> Result<&ComponentState<'app>, AppError> {
         let component_state = self
             .component_states
             .get(handle)
-            .ok_or(SlipwayError::StepFailed(format!(
+            .ok_or(AppError::StepFailed(format!(
                 "component {:?} does not exist in component states",
                 handle
             )))?;
@@ -351,7 +351,7 @@ mod tests {
 
             match execution_state_result {
                 Ok(_) => panic!("expected an error"),
-                Err(SlipwayError::StepFailed(s)) => {
+                Err(AppError::StepFailed(s)) => {
                     assert_eq!(
                     s,
                     "component g cannot currently be executed, did you intend to override the output?"
@@ -396,7 +396,7 @@ mod tests {
 
             match execution_state_result {
                 Ok(_) => panic!("expected an error"),
-                Err(SlipwayError::ResolveJsonPathFailed { message, state: _ }) => {
+                Err(AppError::ResolveJsonPathFailed { message, state: _ }) => {
                     assert_eq!(
                         message,
                         r#"The input path "f.input.c_z" required "$.rigging.c.output.z" to be a value"#

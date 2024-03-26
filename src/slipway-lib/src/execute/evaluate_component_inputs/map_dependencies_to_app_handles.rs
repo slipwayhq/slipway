@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::{errors::SlipwayError, parse::types::primitives::ComponentHandle};
+use crate::{errors::AppError, parse::types::primitives::ComponentHandle};
 
 /// When we pull dependencies out of the App JSON we end up with references to handles
 /// in the rigging mapping to component handle values.
@@ -8,7 +8,7 @@ use crate::{errors::SlipwayError, parse::types::primitives::ComponentHandle};
 /// so that all the handles in the dependency_map are references with the same lifetime.
 pub(crate) fn map_dependencies_to_app_handles(
     dependency_map: HashMap<&ComponentHandle, HashSet<ComponentHandle>>,
-) -> Result<HashMap<&ComponentHandle, HashSet<&ComponentHandle>>, SlipwayError> {
+) -> Result<HashMap<&ComponentHandle, HashSet<&ComponentHandle>>, AppError> {
     let mut result: HashMap<&ComponentHandle, HashSet<&ComponentHandle>> = HashMap::new();
     for (&k, v) in dependency_map.iter() {
         let mut refs = HashSet::with_capacity(v.len());
@@ -17,7 +17,7 @@ pub(crate) fn map_dependencies_to_app_handles(
             let kr = match lookup_result {
                 Some((kr, _)) => kr,
                 None => {
-                    return Err(SlipwayError::ValidationFailed(format!(
+                    return Err(AppError::ValidationFailed(format!(
                         "dependency {:?} not found in rigging component keys",
                         d
                     )))

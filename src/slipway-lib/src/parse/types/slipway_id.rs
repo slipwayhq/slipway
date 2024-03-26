@@ -3,7 +3,7 @@ use std::{fmt::Display, str::FromStr};
 use semver::Version;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::errors::SlipwayError;
+use crate::errors::AppError;
 
 use super::{
     parse_component_version,
@@ -41,7 +41,7 @@ impl SlipwayId {
 }
 
 impl FromStr for SlipwayId {
-    type Err = SlipwayError;
+    type Err = AppError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(captures) = REGISTRY_REGEX.captures(s) {
@@ -54,7 +54,7 @@ impl FromStr for SlipwayId {
             });
         }
 
-        Err(SlipwayError::InvalidSlipwayPrimitive(
+        Err(AppError::InvalidSlipwayPrimitive(
             stringify!(SlipwayId).to_string(),
             format!("id '{}' was not in a valid format", s),
         ))

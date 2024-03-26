@@ -1,4 +1,4 @@
-use crate::{errors::SlipwayError, parse::types::parse_component_version};
+use crate::{errors::AppError, parse::types::parse_component_version};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use semver::Version;
@@ -46,7 +46,7 @@ pub enum SlipwayReference {
 }
 
 impl FromStr for SlipwayReference {
-    type Err = SlipwayError;
+    type Err = AppError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(caps) = REGISTRY_REGEX.captures(s) {
@@ -73,7 +73,7 @@ impl FromStr for SlipwayReference {
             return match uri.scheme() {
                 "file" => {
                     let file_path = uri.to_file_path().map_err(|_| {
-                        SlipwayError::InvalidSlipwayPrimitive(
+                        AppError::InvalidSlipwayPrimitive(
                             stringify!(SlipwayReference).to_string(),
                             format!("unable to convert file URI to local path: {uri}"),
                         )
@@ -82,14 +82,14 @@ impl FromStr for SlipwayReference {
                     Ok(SlipwayReference::Local { path: file_path })
                 }
                 "https" => Ok(SlipwayReference::Url { url: uri }),
-                other => Err(SlipwayError::InvalidSlipwayPrimitive(
+                other => Err(AppError::InvalidSlipwayPrimitive(
                     stringify!(SlipwayReference).to_string(),
                     format!("unsupported URI scheme: {other}"),
                 )),
             };
         }
 
-        Err(SlipwayError::InvalidSlipwayPrimitive(
+        Err(AppError::InvalidSlipwayPrimitive(
             stringify!(SlipwayReference).to_string(),
             format!("component reference '{}' was not in a valid format", s),
         ))
@@ -103,7 +103,7 @@ pub enum GitHubVersion {
 }
 
 impl FromStr for GitHubVersion {
-    type Err = SlipwayError;
+    type Err = AppError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         const SEMVER_PREFIX: &str = "semver:";

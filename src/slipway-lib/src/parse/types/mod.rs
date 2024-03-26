@@ -16,7 +16,7 @@ use jtd::SerdeSchema;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
-use crate::errors::SlipwayError;
+use crate::errors::AppError;
 
 use self::{
     primitives::{ComponentHandle, Description, Name, Publisher},
@@ -33,9 +33,9 @@ pub(crate) const VERSION_SEPARATOR: char = '.';
 
 pub(crate) const TEST_PUBLISHER: &str = "test_publisher";
 
-fn parse_component_version(version_string: &str) -> Result<Version, SlipwayError> {
+fn parse_component_version(version_string: &str) -> Result<Version, AppError> {
     Version::parse(version_string).map_err(|e| {
-        SlipwayError::InvalidSlipwayPrimitive(stringify!(Version).to_string(), e.to_string())
+        AppError::InvalidSlipwayPrimitive(stringify!(Version).to_string(), e.to_string())
     })
 }
 

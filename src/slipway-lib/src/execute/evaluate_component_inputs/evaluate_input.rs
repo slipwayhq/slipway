@@ -5,7 +5,7 @@ use serde_json::json;
 use jsonpath_rust::{JsonPathInst, JsonPtr};
 
 use crate::{
-    errors::SlipwayError,
+    errors::AppError,
     execute::{primitives::JsonMetadata, ComponentInput},
     ComponentHandle,
 };
@@ -23,13 +23,13 @@ pub(super) fn evaluate_input(
     serialized_app_state: &serde_json::Value,
     input: Option<&serde_json::Value>,
     json_path_strings: &Vec<FoundJsonPathString>,
-) -> Result<ComponentInput, SlipwayError> {
+) -> Result<ComponentInput, AppError> {
     let evaluated_input = match input {
         Some(input) => {
             let mut evaluated_input = input.clone();
             for found in json_path_strings {
                 let path = JsonPathInst::from_str(&found.path).map_err(|e| {
-                    SlipwayError::InvalidJsonPathExpression(
+                    AppError::InvalidJsonPathExpression(
                         format!(
                             "{JSON_PATH_SOURCE_EXTERNAL_PREFIX}{0}{JSON_PATH_SOURCE_EXTERNAL_SUFFIX}",
                             found.path_to.to_json_path_string()
@@ -51,7 +51,7 @@ pub(super) fn evaluate_input(
                         .unwrap_or_default(),
                     PathType::RequiredValue => {
                         result.into_iter().next().map(map_json_ptr_to_value).ok_or(
-                            SlipwayError::ResolveJsonPathFailed {
+                            AppError::ResolveJsonPathFailed {
                                 message: format!(
                                     r#"The input path "{}" required "{}" to be a value"#,
                                     found.path_to.to_prefixed_path_string(

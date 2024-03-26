@@ -2,13 +2,13 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use itertools::Itertools;
 
-use crate::{errors::SlipwayError, parse::types::primitives::ComponentHandle};
+use crate::{errors::AppError, parse::types::primitives::ComponentHandle};
 
 const CYCLE_DETECTED_ERROR: &str = "Cycle detected in the graph";
 
 pub(crate) fn sort_and_group<'app>(
     components_and_dependencies: &HashMap<&'app ComponentHandle, HashSet<&'app ComponentHandle>>,
-) -> Result<SortedAndGrouped<'app>, SlipwayError> {
+) -> Result<SortedAndGrouped<'app>, AppError> {
     let graph = build_graph(components_and_dependencies);
     let sorted = graph.topological_sort()?;
     let grouped = graph.get_isolated_groups();
@@ -112,14 +112,14 @@ impl<'a> Graph<'a> {
         None
     }
 
-    fn detect_cycle(&self) -> Result<(), SlipwayError> {
+    fn detect_cycle(&self) -> Result<(), AppError> {
         if let Some(path) = self.find_cycle() {
             let cycle = path
                 .iter()
                 .map(|&x| x.to_string())
                 .collect::<Vec<String>>()
                 .join(" -> ");
-            return Err(SlipwayError::ValidationFailed(format!(
+            return Err(AppError::ValidationFailed(format!(
                 "{}: {}",
                 CYCLE_DETECTED_ERROR, cycle
             )));
@@ -128,7 +128,7 @@ impl<'a> Graph<'a> {
         Ok(())
     }
 
-    fn topological_sort(&self) -> Result<Vec<&'a ComponentHandle>, SlipwayError> {
+    fn topological_sort(&self) -> Result<Vec<&'a ComponentHandle>, AppError> {
         self.detect_cycle()?;
 
         let mut in_degree = self.in_degree.clone();
@@ -246,7 +246,7 @@ mod tests {
                 &'app ComponentHandle,
                 HashSet<&'app ComponentHandle>,
             >,
-        ) -> Result<Vec<&'app ComponentHandle>, SlipwayError> {
+        ) -> Result<Vec<&'app ComponentHandle>, AppError> {
             let graph = build_graph(components_and_dependencies);
             graph.topological_sort()
         }
@@ -308,7 +308,7 @@ mod tests {
             assert!(result.is_err());
 
             match result {
-                Err(SlipwayError::ValidationFailed(msg)) => {
+                Err(AppError::ValidationFailed(msg)) => {
                     // There are a few cycles it could report, e.g. C -> B -> A -> C, but
                     // sorting during cycle detection ensures it always reports the same one.
                     assert_eq!(msg, format!("{}: {}", CYCLE_DETECTED_ERROR, "A -> C -> A"));

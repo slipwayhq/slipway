@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
-use crate::{errors::SlipwayError, AppSession, ComponentState, Immutable};
+use crate::{errors::AppError, AppSession, ComponentState, Immutable};
 
 use super::{evaluate_component_inputs::evaluate_component_inputs, AppExecutionState};
 
-pub fn initialize(session: &AppSession) -> Result<Immutable<AppExecutionState>, SlipwayError> {
+pub fn initialize(session: &AppSession) -> Result<Immutable<AppExecutionState>, AppError> {
     let component_states = session
         .app
         .rigging

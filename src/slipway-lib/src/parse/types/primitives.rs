@@ -1,4 +1,4 @@
-use crate::errors::SlipwayError;
+use crate::errors::AppError;
 use core::fmt;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -25,11 +25,11 @@ mod tests {
     use super::*;
 
     trait SlipwayErrorTrait {
-        fn as_slipway_error(&self) -> Option<&SlipwayError>;
+        fn as_slipway_error(&self) -> Option<&AppError>;
     }
 
-    impl SlipwayErrorTrait for SlipwayError {
-        fn as_slipway_error(&self) -> Option<&SlipwayError> {
+    impl SlipwayErrorTrait for AppError {
+        fn as_slipway_error(&self) -> Option<&AppError> {
             Some(self)
         }
     }
@@ -42,7 +42,7 @@ mod tests {
         match T::from_str(input) {
             Ok(_) => panic!("Should not have parsed"),
             Err(e) => {
-                if let Some(SlipwayError::InvalidSlipwayPrimitive(t, m)) = e.as_slipway_error() {
+                if let Some(AppError::InvalidSlipwayPrimitive(t, m)) = e.as_slipway_error() {
                     assert_eq!(t, expected_type);
                     assert!(
                         m.starts_with(expected_error),

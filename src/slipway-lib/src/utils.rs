@@ -10,12 +10,12 @@ macro_rules! create_validated_string_struct {
         }
 
         impl FromStr for $name {
-            type Err = SlipwayError;
+            type Err = AppError;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 if let Some(min_length) = $min_length {
                     if s.len() < min_length {
-                        return Err(SlipwayError::InvalidSlipwayPrimitive(
+                        return Err(AppError::InvalidSlipwayPrimitive(
                             stringify!($name).to_string(),
                             format!(
                                 "{} is shorter than the minimum length of {}",
@@ -27,7 +27,7 @@ macro_rules! create_validated_string_struct {
                 }
 
                 if s.len() > $max_length {
-                    return Err(SlipwayError::InvalidSlipwayPrimitive(
+                    return Err(AppError::InvalidSlipwayPrimitive(
                         stringify!($name).to_string(),
                         format!(
                             "{} is longer than the maximum length of {}",
@@ -40,7 +40,7 @@ macro_rules! create_validated_string_struct {
                 if let Some(pattern) = $pattern {
                     let regex = Regex::new(pattern).unwrap();
                     if !regex.is_match(&s) {
-                        return Err(SlipwayError::InvalidSlipwayPrimitive(
+                        return Err(AppError::InvalidSlipwayPrimitive(
                             stringify!($name).to_string(),
                             format!("{} does not match the required format", stringify!($name)),
                         ));

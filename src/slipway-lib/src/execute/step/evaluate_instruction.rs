@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::{
-    errors::SlipwayError,
+    errors::AppError,
     execute::{
         primitives::JsonMetadata, AppExecutionState, ComponentInputOverride, ComponentOutput,
         ComponentOutputOverride,
@@ -13,7 +13,7 @@ use super::Instruction;
 pub fn evaluate_instruction(
     state: AppExecutionState,
     instruction: Instruction,
-) -> Result<AppExecutionState, SlipwayError> {
+) -> Result<AppExecutionState, AppError> {
     match instruction {
         Instruction::SetInputOverride { handle, value } => {
             let mut state = state;
@@ -45,11 +45,10 @@ pub fn evaluate_instruction(
             let mut state = state;
             let component_state = state.get_component_state_mut(&handle)?;
 
-            let input =
-                component_state
-                    .execution_input
-                    .as_ref()
-                    .ok_or(SlipwayError::StepFailed(format!(
+            let input = component_state
+                .execution_input
+                .as_ref()
+                .ok_or(AppError::StepFailed(format!(
                 "component {} cannot currently be executed, did you intend to override the output?",
                 handle
             )))?;

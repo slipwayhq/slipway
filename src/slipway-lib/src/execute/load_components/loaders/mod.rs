@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::{errors::SlipwayError, SlipwayReference};
+use crate::{errors::ComponentError, SlipwayReference};
 
 use super::primitives::LoaderId;
 
@@ -13,5 +13,5 @@ pub(crate) trait ComponentPartLoader<TResult>: Send + Sync {
     async fn load(
         &self,
         component_reference: &SlipwayReference,
-    ) -> Result<Option<TResult>, SlipwayError>;
+    ) -> Result<Option<TResult>, ComponentError>;
 }

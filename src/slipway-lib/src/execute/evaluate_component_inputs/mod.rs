@@ -1,4 +1,4 @@
-use crate::{errors::SlipwayError, ComponentHandle};
+use crate::{errors::AppError, ComponentHandle};
 use std::{
     collections::{HashMap, HashSet},
     rc::Rc,
@@ -23,7 +23,7 @@ const OUTPUT_KEY: &str = "output";
 
 pub(crate) fn evaluate_component_inputs(
     state: AppExecutionState,
-) -> Result<AppExecutionState, SlipwayError> {
+) -> Result<AppExecutionState, AppError> {
     let mut dependency_map: HashMap<&ComponentHandle, HashSet<ComponentHandle>> = HashMap::new();
     let mut component_evaluate_input_params: HashMap<&ComponentHandle, EvaluateInputParams> =
         HashMap::new();
@@ -104,6 +104,20 @@ pub(crate) fn evaluate_component_inputs(
                     evaluate_input_params.input,
                     &evaluate_input_params.json_path_strings,
                 )?;
+
+                // TODO: Validate execution input and update metadata.
+                // let component_definition = state
+                //     .session
+                //     .component_cache
+                //     .get_definition(&component_state.rigging.component);
+                // match component_definition.value {
+                //     Some(value) => {}
+                //     None => {
+                //         return Err(AppError::ComponentLoadFailed(
+                //             component_definition.loader_failures.clone(),
+                //         ));
+                //     }
+                // }
 
                 // Set the execution input in the serialized app state (in case
                 // later components reference this component's input).

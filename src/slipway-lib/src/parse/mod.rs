@@ -1,24 +1,29 @@
-use crate::errors::SlipwayError;
+use std::sync::Arc;
+
+use crate::errors::{AppError, ComponentError};
 
 use self::types::{App, Component};
 
 pub(crate) mod types;
 
-pub fn parse_app(input: &str) -> Result<App, SlipwayError> {
-    serde_json::from_str(input).map_err(SlipwayError::ParseFailed)
+pub fn parse_app(input: &str) -> Result<App, AppError> {
+    serde_json::from_str(input).map_err(AppError::ParseFailed)
 }
 
-pub fn parse_component(input: &str) -> Result<Component, SlipwayError> {
-    serde_json::from_str(input).map_err(SlipwayError::ParseFailed)
+pub fn parse_component(input: &str) -> Result<Component, ComponentError> {
+    serde_json::from_str(input).map_err(|e| ComponentError::ParseFailed(Arc::new(e)))
 }
 
 #[cfg(test)]
 mod tests {
+    use std::fmt::Debug;
+
     use super::*;
 
-    fn it_should_parse_examples_folder<T, TParse>(examples_dir: &str, parse_method: TParse)
+    fn it_should_parse_examples_folder<T, TParse, TError>(examples_dir: &str, parse_method: TParse)
     where
-        TParse: Fn(&str) -> Result<T, SlipwayError>,
+        TParse: Fn(&str) -> Result<T, TError>,
+        TError: Debug,
     {
         let mut parsed_files = 0;
         for entry in std::fs::read_dir(examples_dir).unwrap() {
@@ -72,7 +77,7 @@ mod tests {
         match parse_app(json) {
             Ok(_) => panic!("Expected an error"),
             Err(e) => match e {
-                SlipwayError::ParseFailed(e) => {
+                AppError::ParseFailed(e) => {
                     assert!(
                         e.to_string().starts_with(expected),
                         "Expected error to start with \"{}\" but it was \"{}\"",
@@ -106,7 +111,7 @@ mod tests {
         match parse_app(json) {
             Ok(_) => panic!("Expected an error"),
             Err(e) => match e {
-                SlipwayError::ParseFailed(e) => {
+                AppError::ParseFailed(e) => {
                     assert!(
                         e.to_string().starts_with(DUPLICATE_RIGGING_KEY),
                         "Expected error to start with \"{}\" but it was \"{}\"",
