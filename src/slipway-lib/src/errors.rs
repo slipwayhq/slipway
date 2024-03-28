@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use thiserror::Error;
 
-use crate::{execute::load_components::LoaderId, SlipwayReference};
+use crate::{execute::load_components::LoaderId, ComponentHandle, SlipwayReference};
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -29,13 +29,14 @@ pub enum AppError {
     #[error("invalid type \"{0}\": {1}")]
     InvalidSlipwayPrimitive(String, String),
 
-    #[error("component load failed: {0:?}")]
-    ComponentLoadFailed(Vec<ComponentLoaderFailure>),
+    #[error("component load failed for \"{0}\": {1:?}")]
+    ComponentLoadFailed(ComponentHandle, Vec<ComponentLoaderFailure>),
 }
 
 #[derive(Error, Debug, Clone)]
 #[error("component load failed for {reference}: {error}")]
 pub enum ComponentError {
+    // We're using Arc so that ComponentError can be cloned.
     #[error("component parse failed")]
     ParseFailed(#[from] Arc<serde_json::Error>),
 

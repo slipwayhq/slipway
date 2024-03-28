@@ -1,4 +1,5 @@
 use std::{
+    cell::RefCell,
     collections::{HashMap, HashSet},
     rc::Rc,
 };
@@ -25,17 +26,17 @@ use self::{
 
 pub struct AppSession {
     app: App,
-    component_cache: Box<dyn LoadedComponentCache>,
+    component_cache: RefCell<Box<dyn LoadedComponentCache>>,
 }
 
 impl AppSession {
     pub fn new(app: App) -> Self {
         AppSession {
             app,
-            component_cache: Box::new(InMemoryComponentCache::new(
+            component_cache: RefCell::new(Box::new(InMemoryComponentCache::new(
                 vec![Box::new(load_components::LocalComponentLoader {})],
                 vec![Box::new(load_components::LocalComponentLoader {})],
-            )),
+            ))),
         }
     }
 }

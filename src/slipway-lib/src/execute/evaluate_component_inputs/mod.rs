@@ -106,14 +106,14 @@ pub(crate) fn evaluate_component_inputs(
                 )?;
 
                 // TODO: Validate execution input and update metadata.
-                // let component_definition = state
-                //     .session
-                //     .component_cache
-                //     .get_definition(&component_state.rigging.component);
-                // match component_definition.value {
+                // let mut component_cache = state.session.component_cache.borrow_mut();
+                // let component_definition =
+                //     component_cache.get_definition(&component_state.rigging.component);
+                // match &component_definition.value {
                 //     Some(value) => {}
                 //     None => {
                 //         return Err(AppError::ComponentLoadFailed(
+                //             component_handle.clone(),
                 //             component_definition.loader_failures.clone(),
                 //         ));
                 //     }
