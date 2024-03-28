@@ -33,7 +33,26 @@ pub fn initialize(session: &AppSession) -> Result<Immutable<AppExecutionState>, 
         component_groups: Vec::new(),
     };
 
+    prime_component_cache(session);
+
     let state = evaluate_component_inputs(state)?;
 
     Ok(Immutable::new(state))
+}
+
+fn prime_component_cache(session: &AppSession) {
+    let distinct_component_references: HashSet<_> = session
+        .app
+        .rigging
+        .components
+        .values()
+        .map(|v| &v.component)
+        .collect();
+
+    for component_reference in distinct_component_references {
+        session
+            .component_cache
+            .borrow_mut()
+            .prime_cache_for(component_reference);
+    }
 }

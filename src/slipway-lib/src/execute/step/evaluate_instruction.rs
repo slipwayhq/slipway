@@ -3,8 +3,9 @@ use std::rc::Rc;
 use crate::{
     errors::AppError,
     execute::{
-        primitives::JsonMetadata, AppExecutionState, ComponentInputOverride, ComponentOutput,
-        ComponentOutputOverride,
+        primitives::JsonMetadata,
+        validate_component_io::{validate_component_io, ValidationData},
+        AppExecutionState, ComponentInputOverride, ComponentOutput, ComponentOutputOverride,
     },
 };
 
@@ -42,6 +43,15 @@ pub fn evaluate_instruction(
             Ok(state)
         }
         Instruction::SetOutput { handle, value } => {
+            {
+                let component_state = state.get_component_state(&handle)?;
+                validate_component_io(
+                    state.session,
+                    component_state,
+                    ValidationData::Output(&value),
+                )?;
+            }
+
             let mut state = state;
             let component_state = state.get_component_state_mut(&handle)?;
 
@@ -59,6 +69,7 @@ pub fn evaluate_instruction(
                 input_hash_used: input.metadata.hash.clone(),
                 metadata,
             }));
+
             Ok(state)
         }
     }

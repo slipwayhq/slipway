@@ -9,7 +9,11 @@ use self::{
     find_json_path_strings::FoundJsonPathString,
 };
 
-use super::{topological_sort::sort_and_group, AppExecutionState, ComponentInput};
+use super::{
+    topological_sort::sort_and_group,
+    validate_component_io::{validate_component_io, ValidationData},
+    AppExecutionState, ComponentInput,
+};
 
 mod evaluate_input;
 mod extract_dependencies_from_json_path_strings;
@@ -105,19 +109,11 @@ pub(crate) fn evaluate_component_inputs(
                     &evaluate_input_params.json_path_strings,
                 )?;
 
-                // TODO: Validate execution input and update metadata.
-                // let mut component_cache = state.session.component_cache.borrow_mut();
-                // let component_definition =
-                //     component_cache.get_definition(&component_state.rigging.component);
-                // match &component_definition.value {
-                //     Some(value) => {}
-                //     None => {
-                //         return Err(AppError::ComponentLoadFailed(
-                //             component_handle.clone(),
-                //             component_definition.loader_failures.clone(),
-                //         ));
-                //     }
-                // }
+                validate_component_io(
+                    state.session,
+                    component_state,
+                    ValidationData::Input(&execution_input.value),
+                )?;
 
                 // Set the execution input in the serialized app state (in case
                 // later components reference this component's input).

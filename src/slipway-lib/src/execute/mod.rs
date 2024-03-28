@@ -16,6 +16,7 @@ pub(crate) mod load_components;
 pub mod primitives;
 pub mod step;
 mod topological_sort;
+mod validate_component_io;
 
 use primitives::Hash;
 
