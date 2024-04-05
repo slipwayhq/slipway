@@ -17,7 +17,7 @@ pub(crate) fn map_dependencies_to_app_handles(
             let kr = match lookup_result {
                 Some((kr, _)) => kr,
                 None => {
-                    return Err(AppError::ValidationFailed(format!(
+                    return Err(AppError::AppValidationFailed(format!(
                         "dependency {:?} not found in rigging component keys",
                         d
                     )))

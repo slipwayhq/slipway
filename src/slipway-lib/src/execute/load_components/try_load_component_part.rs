@@ -1,8 +1,11 @@
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
-use crate::{errors::ComponentLoaderFailure, SlipwayReference};
+use crate::{
+    errors::{ComponentError, ComponentLoaderFailure},
+    SlipwayReference,
+};
 
-use super::loaders::ComponentPartLoader;
+use super::{loaders::ComponentPartLoader, LoaderId};
 
 pub(crate) struct LoadComponentResult<T> {
     pub component_reference: SlipwayReference,
@@ -31,6 +34,23 @@ pub(super) async fn try_load_component_part<T>(
                 });
             }
         }
+    }
+
+    if errors.is_empty() && loaded_component.is_none() {
+        let all_loader_ids = loaders
+            .iter()
+            .map(|loader| loader.id().to_string())
+            .collect::<Vec<String>>()
+            .join(",");
+
+        errors.push(ComponentLoaderFailure {
+            loader_id: LoaderId::from_str(&format!("[{all_loader_ids}]"))
+                .expect("All loaders ID should be valid"),
+            error: ComponentError::LoadFailed {
+                reference: component_reference.clone(),
+                error: "No loader was able to load the component".to_string(),
+            },
+        });
     }
 
     LoadComponentResult::<T> {

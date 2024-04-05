@@ -10,7 +10,7 @@ pub(crate) trait LoadedComponentCache {
     fn get_definition(
         &mut self,
         component_reference: &SlipwayReference,
-    ) -> &LoadComponentResult<Component>;
+    ) -> &LoadComponentResult<Component<jtd::Schema>>;
 
     fn get_wasm(&mut self, component_reference: &SlipwayReference)
         -> &LoadComponentResult<Vec<u8>>;

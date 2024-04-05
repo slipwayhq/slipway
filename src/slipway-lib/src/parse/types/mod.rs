@@ -12,7 +12,6 @@
 
 use std::collections::HashMap;
 
-use jtd::SerdeSchema;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
@@ -89,16 +88,16 @@ pub enum ComponentPermission {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(deny_unknown_fields)]
-pub struct Component {
+pub struct Component<TSchema> {
     pub publisher: Publisher,
     pub name: Name,
     pub version: Version,
     pub description: Option<Description>,
-    pub input: SerdeSchema,
-    pub output: SerdeSchema,
+    pub input: TSchema,
+    pub output: TSchema,
 }
 
-impl Component {
+impl<TSchema> Component<TSchema> {
     pub fn get_id(&self) -> SlipwayId {
         SlipwayId::new(&self.publisher, &self.name, &self.version)
     }

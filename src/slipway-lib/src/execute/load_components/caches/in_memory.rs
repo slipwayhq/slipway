@@ -13,14 +13,14 @@ use super::{
 };
 
 pub(crate) struct InMemoryComponentCache {
-    definition: InMemoryComponentPartCache<Component>,
+    definition: InMemoryComponentPartCache<Component<jtd::Schema>>,
     wasm: InMemoryComponentPartCache<Vec<u8>>,
     runtime: Runtime,
 }
 
 impl InMemoryComponentCache {
     pub(crate) fn new(
-        definition_loaders: Vec<Box<dyn ComponentPartLoader<Component>>>,
+        definition_loaders: Vec<Box<dyn ComponentPartLoader<Component<jtd::Schema>>>>,
         wasm_loaders: Vec<Box<dyn ComponentPartLoader<Vec<u8>>>>,
     ) -> Self {
         Self {
@@ -47,7 +47,7 @@ impl LoadedComponentCache for InMemoryComponentCache {
     fn get_definition(
         &mut self,
         component_reference: &SlipwayReference,
-    ) -> &LoadComponentResult<Component> {
+    ) -> &LoadComponentResult<Component<jtd::Schema>> {
         self.definition.get(&self.runtime, component_reference)
     }
 

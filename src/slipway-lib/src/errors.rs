@@ -13,7 +13,7 @@ pub enum AppError {
     InvalidJsonPathExpression(String, String),
 
     #[error("validation failed: {0}")]
-    ValidationFailed(String),
+    AppValidationFailed(String),
 
     #[error("step failed: {0}")]
     StepFailed(String),
@@ -31,6 +31,12 @@ pub enum AppError {
 
     #[error("component load failed for \"{0}\": {1:?}")]
     ComponentLoadFailed(ComponentHandle, Vec<ComponentLoaderFailure>),
+
+    #[error("component input validation failed for \"{0}\": {1:?}")]
+    ComponentInputValidationFailed(ComponentHandle, jtd::ValidateError),
+
+    #[error("component output validation failed for \"{0}\": {1:?}")]
+    ComponentOutputValidationFailed(ComponentHandle, jtd::ValidateError),
 }
 
 #[derive(Error, Debug, Clone)]
@@ -39,6 +45,10 @@ pub enum ComponentError {
     // We're using Arc so that ComponentError can be cloned.
     #[error("component parse failed")]
     ParseFailed(#[from] Arc<serde_json::Error>),
+
+    // We're using Arc so that ComponentError can be cloned.
+    #[error("component schema parse failed")]
+    SchemaParseFailed(#[from] jtd::FromSerdeSchemaError),
 
     #[error("load failed for \"{reference}\": {error}")]
     LoadFailed {

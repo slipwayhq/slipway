@@ -12,7 +12,7 @@ use crate::{
 pub(crate) struct LocalComponentLoader {}
 
 #[async_trait]
-impl ComponentPartLoader<Component> for LocalComponentLoader {
+impl ComponentPartLoader<Component<jtd::Schema>> for LocalComponentLoader {
     fn id(&self) -> LoaderId {
         LoaderId::from_str("local").expect("LoaderId should be valid")
     }
@@ -20,7 +20,7 @@ impl ComponentPartLoader<Component> for LocalComponentLoader {
     async fn load(
         &self,
         component_reference: &SlipwayReference,
-    ) -> Result<Option<Component>, ComponentError> {
+    ) -> Result<Option<Component<jtd::Schema>>, ComponentError> {
         match component_reference {
             SlipwayReference::Local { path } => {
                 let file_contents =
@@ -29,7 +29,17 @@ impl ComponentPartLoader<Component> for LocalComponentLoader {
                         error: e.to_string(),
                     })?;
                 let component = crate::parse::parse_component(&file_contents)?;
-                Ok(Some(component))
+
+                let result = Component::<jtd::Schema> {
+                    publisher: component.publisher,
+                    name: component.name,
+                    version: component.version,
+                    description: component.description,
+                    input: jtd::Schema::from_serde_schema(component.input)?,
+                    output: jtd::Schema::from_serde_schema(component.output)?,
+                };
+
+                Ok(Some(result))
             }
             _ => Ok(None),
         }
