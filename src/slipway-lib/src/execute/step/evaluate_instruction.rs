@@ -5,8 +5,8 @@ use crate::{
     execute::{
         primitives::JsonMetadata,
         validate_component_io::{validate_component_io, ValidationData},
-        AppExecutionState, ComponentInputOverride, ComponentOutput, ComponentOutputOverride,
     },
+    AppExecutionState, ComponentInputOverride, ComponentOutput, ComponentOutputOverride,
 };
 
 use super::Instruction;

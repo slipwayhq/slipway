@@ -4,11 +4,7 @@ use serde_json::json;
 
 use jsonpath_rust::{JsonPathInst, JsonPtr};
 
-use crate::{
-    errors::AppError,
-    execute::{primitives::JsonMetadata, ComponentInput},
-    ComponentHandle,
-};
+use crate::{errors::AppError, execute::primitives::JsonMetadata, ComponentHandle, ComponentInput};
 
 use super::{
     find_json_path_strings::{FoundJsonPathString, PathType},

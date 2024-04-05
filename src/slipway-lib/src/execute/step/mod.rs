@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{errors::AppError, ComponentHandle, Immutable};
+use crate::{errors::AppError, AppExecutionState, ComponentHandle, Immutable};
 
-use super::{evaluate_component_inputs::evaluate_component_inputs, AppExecutionState};
+use super::evaluate_component_inputs::evaluate_component_inputs;
 
 mod evaluate_instruction;
 

@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
-use crate::{errors::AppError, AppSession, ComponentState, Immutable};
+use crate::{errors::AppError, AppExecutionState, AppSession, ComponentState, Immutable};
 
-use super::{evaluate_component_inputs::evaluate_component_inputs, AppExecutionState};
+use super::evaluate_component_inputs::evaluate_component_inputs;
 
 pub fn initialize(session: &AppSession) -> Result<Immutable<AppExecutionState>, AppError> {
     let component_states = session

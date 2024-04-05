@@ -1,15 +1,3 @@
-use std::{
-    cell::RefCell,
-    collections::{HashMap, HashSet},
-    rc::Rc,
-};
-
-use crate::{
-    errors::AppError,
-    parse::types::{primitives::ComponentHandle, App, ComponentRigging},
-    Immutable,
-};
-
 pub(crate) mod evaluate_component_inputs;
 mod initialize;
 pub(crate) mod load_components;
@@ -18,141 +6,9 @@ pub mod step;
 mod topological_sort;
 mod validate_component_io;
 
-use primitives::Hash;
-
-use self::{
-    load_components::{InMemoryComponentCache, LoadedComponentCache},
-    primitives::JsonMetadata,
-};
-
-pub struct AppSession {
-    app: App,
-    component_cache: RefCell<Box<dyn LoadedComponentCache>>,
-}
-
-impl AppSession {
-    pub fn new(app: App) -> Self {
-        AppSession {
-            app,
-            component_cache: RefCell::new(Box::new(InMemoryComponentCache::new(
-                vec![Box::new(load_components::LocalComponentLoader {})],
-                vec![Box::new(load_components::LocalComponentLoader {})],
-            ))),
-        }
-    }
-}
-
-impl AppSession {
-    pub fn initialize(&self) -> Result<Immutable<AppExecutionState>, AppError> {
-        initialize::initialize(self)
-    }
-}
-
-struct AppSessionOptions {
-    execution_concurrency: usize,
-}
-
-#[derive(Clone)]
-pub struct AppExecutionState<'app> {
-    pub session: &'app AppSession,
-    pub component_states: HashMap<&'app ComponentHandle, ComponentState<'app>>,
-    pub valid_execution_order: Vec<&'app ComponentHandle>,
-    pub component_groups: Vec<HashSet<&'app ComponentHandle>>,
-}
-
-impl<'app> AppExecutionState<'app> {
-    pub fn step(
-        &self,
-        instruction: step::Instruction,
-    ) -> Result<Immutable<AppExecutionState<'app>>, AppError> {
-        step::step(self, instruction)
-    }
-
-    /// Internal because it returns a StepFailed error if the component does not exist.
-    fn get_component_state_mut(
-        &mut self,
-        handle: &ComponentHandle,
-    ) -> Result<&mut ComponentState<'app>, AppError> {
-        let component_state = self
-            .component_states
-            .get_mut(handle)
-            .ok_or(AppError::StepFailed(format!(
-                "component {:?} does not exist in component states",
-                handle
-            )))?;
-
-        Ok(component_state)
-    }
-
-    /// Internal because it returns a StepFailed error if the component does not exist.
-    fn get_component_state(
-        &self,
-        handle: &ComponentHandle,
-    ) -> Result<&ComponentState<'app>, AppError> {
-        let component_state = self
-            .component_states
-            .get(handle)
-            .ok_or(AppError::StepFailed(format!(
-                "component {:?} does not exist in component states",
-                handle
-            )))?;
-
-        Ok(component_state)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct ComponentState<'app> {
-    pub handle: &'app ComponentHandle,
-    pub rigging: &'app ComponentRigging,
-    pub dependencies: HashSet<&'app ComponentHandle>,
-    pub input_override: Option<Rc<ComponentInputOverride>>,
-    pub output_override: Option<Rc<ComponentOutputOverride>>,
-    pub execution_input: Option<Rc<ComponentInput>>,
-    pub execution_output: Option<Rc<ComponentOutput>>,
-}
-
-impl<'app> ComponentState<'app> {
-    /// Get the input of the component, which is either the input_override or the input or None.
-    pub fn input(&self) -> Option<&serde_json::Value> {
-        match self.input_override.as_ref() {
-            Some(input_override) => Some(&input_override.value),
-            None => self.rigging.input.as_ref(),
-        }
-    }
-
-    /// Get the output of the component, which is either the output_override or the execution_output or None.
-    pub fn output(&self) -> Option<&serde_json::Value> {
-        match self.output_override.as_ref() {
-            Some(output_override) => Some(&output_override.value),
-            None => self.execution_output.as_ref().map(|output| &output.value),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct ComponentInput {
-    pub value: serde_json::Value,
-    pub metadata: JsonMetadata,
-}
-
-#[derive(Debug)]
-pub struct ComponentInputOverride {
-    pub value: serde_json::Value,
-}
-
-#[derive(Debug)]
-pub struct ComponentOutput {
-    pub value: serde_json::Value,
-    pub input_hash_used: Hash,
-    pub metadata: JsonMetadata,
-}
-
-#[derive(Debug)]
-pub struct ComponentOutputOverride {
-    pub value: serde_json::Value,
-    pub metadata: JsonMetadata,
-}
+pub mod app_execution_state;
+pub mod app_session;
+pub mod component_state;
 
 #[cfg(test)]
 mod tests {
@@ -161,6 +17,7 @@ mod tests {
     use crate::{
         parse::types::{App, ComponentRigging, Rigging},
         utils::ch,
+        AppExecutionState, ComponentState, Immutable,
     };
 
     use super::{step::Instruction, *};
@@ -227,6 +84,8 @@ mod tests {
     }
 
     mod step {
+        use crate::errors::AppError;
+
         use super::*;
 
         fn create_app() -> App {
@@ -292,7 +151,7 @@ mod tests {
         fn initialize_should_populate_execution_inputs_of_components_that_can_run_immediately() {
             let app = create_app();
 
-            let app_session = AppSession::new(app);
+            let app_session = app_session::AppSession::new(app);
 
             let execution_state = app_session.initialize().unwrap();
 
@@ -303,7 +162,7 @@ mod tests {
         fn it_should_populate_references_to_other_parts_of_app() {
             let app = create_app();
 
-            let app_session = AppSession::new(app);
+            let app_session = app_session::AppSession::new(app);
 
             let s = app_session.initialize().unwrap();
 
@@ -323,7 +182,7 @@ mod tests {
         fn it_should_allow_setting_the_output_on_a_component_which_can_execute() {
             let app = create_app();
 
-            let app_session = AppSession::new(app);
+            let app_session = app_session::AppSession::new(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -342,7 +201,7 @@ mod tests {
         fn it_should_not_allow_setting_the_output_on_a_component_which_cannot_execute() {
             let app = create_app();
 
-            let app_session = AppSession::new(app);
+            let app_session = app_session::AppSession::new(app);
 
             let s = app_session.initialize().unwrap();
 
@@ -367,7 +226,7 @@ mod tests {
         fn it_should_allow_optional_json_path_references_missing_resolved_values() {
             let app = create_app();
 
-            let app_session = AppSession::new(app);
+            let app_session = app_session::AppSession::new(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -387,7 +246,7 @@ mod tests {
         fn it_should_not_allow_required_json_path_references_missing_resolved_values() {
             let app = create_app();
 
-            let app_session = AppSession::new(app);
+            let app_session = app_session::AppSession::new(app);
 
             let s = app_session.initialize().unwrap();
 
@@ -412,7 +271,7 @@ mod tests {
         fn it_should_resolve_references_to_other_inputs_using_the_resolved_referenced_input() {
             let app = create_app();
 
-            let app_session = AppSession::new(app);
+            let app_session = app_session::AppSession::new(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -433,7 +292,7 @@ mod tests {
         fn it_should_step_though_entire_graph() {
             let app = create_app();
 
-            let app_session = AppSession::new(app);
+            let app_session = app_session::AppSession::new(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -541,7 +400,7 @@ mod tests {
         fn setting_input_override_should_affect_dependencies() {
             let app = create_app();
 
-            let app_session = AppSession::new(app);
+            let app_session = app_session::AppSession::new(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -596,7 +455,7 @@ mod tests {
         fn setting_input_override_should_update_input_hash() {
             let app = create_app();
 
-            let app_session = AppSession::new(app);
+            let app_session = app_session::AppSession::new(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -709,7 +568,7 @@ mod tests {
         fn setting_output_override_should_affect_execution_states() {
             let app = create_app();
 
-            let app_session = AppSession::new(app);
+            let app_session = app_session::AppSession::new(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -740,7 +599,7 @@ mod tests {
         fn setting_output_should_use_input_hash() {
             let app = create_app();
 
-            let app_session = AppSession::new(app);
+            let app_session = app_session::AppSession::new(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -791,7 +650,7 @@ mod tests {
         fn setting_output_should_update_dependent_input_hashes() {
             let app = create_app();
 
-            let app_session = AppSession::new(app);
+            let app_session = app_session::AppSession::new(app);
 
             let mut s = app_session.initialize().unwrap();
 

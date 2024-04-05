@@ -7,5 +7,6 @@ pub(crate) use caches::in_memory::InMemoryComponentCache;
 pub(crate) use caches::LoadedComponentCache;
 
 pub(crate) use loaders::local::LocalComponentLoader;
+pub(crate) use loaders::ComponentPartLoader;
 
 pub use self::primitives::LoaderId;
