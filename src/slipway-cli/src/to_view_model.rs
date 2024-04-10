@@ -129,10 +129,9 @@ pub(super) struct ComponentViewModel<'app> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use serde_json::json;
     use slipway_lib::{utils::ch, App, AppSession, ComponentRigging, Rigging};
-
-    use super::*;
 
     fn get_component<'app>(
         view_model: &'app AppExecutionStateViewModel<'app>,
@@ -160,7 +159,7 @@ mod tests {
             .collect(),
         });
 
-        let app_session = AppSession::new(app);
+        let app_session = AppSession::for_test(app);
         let state = app_session.initialize().unwrap();
         let view_model = to_view_model(&state);
 
@@ -199,7 +198,7 @@ mod tests {
             .collect(),
         });
 
-        let app_session = AppSession::new(app);
+        let app_session = AppSession::for_test(app);
         let state = app_session.initialize().unwrap();
         let view_model = to_view_model(&state);
 
@@ -259,7 +258,7 @@ mod tests {
             .collect(),
         });
 
-        let app_session = AppSession::new(app);
+        let app_session = AppSession::for_test(app);
         let state = app_session.initialize().unwrap();
         let view_model = to_view_model(&state);
 

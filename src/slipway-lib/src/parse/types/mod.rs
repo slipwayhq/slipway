@@ -30,8 +30,6 @@ pub(crate) mod slipway_reference;
 pub(crate) const REGISTRY_PUBLISHER_SEPARATOR: char = '.';
 pub(crate) const VERSION_SEPARATOR: char = '.';
 
-pub(crate) const TEST_PUBLISHER: &str = "test_publisher";
-
 fn parse_component_version(version_string: &str) -> Result<Version, AppError> {
     Version::parse(version_string).map_err(|e| {
         AppError::InvalidSlipwayPrimitive(stringify!(Version).to_string(), e.to_string())
@@ -100,40 +98,5 @@ pub struct Component<TSchema> {
 impl<TSchema> Component<TSchema> {
     pub fn get_id(&self) -> SlipwayId {
         SlipwayId::new(&self.publisher, &self.name, &self.version)
-    }
-}
-
-mod tests {
-    use super::*;
-    use crate::utils::ch;
-    use serde_json::json;
-    use serde_json::Value;
-    use std::str::FromStr;
-
-    impl App {
-        pub fn for_test(rigging: Rigging) -> App {
-            App {
-                publisher: Publisher::from_str(TEST_PUBLISHER).unwrap(),
-                name: Name::from_str("test_name").unwrap(),
-                version: Version::from_str("0.1.0").unwrap(),
-                description: None,
-                constants: Some(json!({"test_constant": "test_constant_value"})),
-                rigging,
-            }
-        }
-    }
-
-    impl ComponentRigging {
-        pub fn for_test(name: &str, input: Option<Value>) -> (ComponentHandle, ComponentRigging) {
-            (
-                ch(name),
-                ComponentRigging {
-                    component: SlipwayReference::from_str(&format!("p{name}.{name}.0.1.0"))
-                        .unwrap(),
-                    input,
-                    permissions: None,
-                },
-            )
-        }
     }
 }

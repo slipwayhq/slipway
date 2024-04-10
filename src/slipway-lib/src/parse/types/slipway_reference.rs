@@ -116,19 +116,6 @@ impl FromStr for GitHubVersion {
     }
 }
 
-impl SlipwayReference {
-    #[cfg(test)]
-    pub fn for_test(id: &str, version: &str) -> Self {
-        use super::TEST_PUBLISHER;
-
-        SlipwayReference::Registry {
-            publisher: TEST_PUBLISHER.to_string(),
-            name: id.to_string(),
-            version: Version::parse(version).expect("Invalid version"),
-        }
-    }
-}
-
 impl Display for GitHubVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

@@ -151,7 +151,7 @@ mod tests {
         fn initialize_should_populate_execution_inputs_of_components_that_can_run_immediately() {
             let app = create_app();
 
-            let app_session = app_session::AppSession::new(app);
+            let app_session = app_session::AppSession::for_test(app);
 
             let execution_state = app_session.initialize().unwrap();
 
@@ -162,7 +162,7 @@ mod tests {
         fn it_should_populate_references_to_other_parts_of_app() {
             let app = create_app();
 
-            let app_session = app_session::AppSession::new(app);
+            let app_session = app_session::AppSession::for_test(app);
 
             let s = app_session.initialize().unwrap();
 
@@ -182,7 +182,7 @@ mod tests {
         fn it_should_allow_setting_the_output_on_a_component_which_can_execute() {
             let app = create_app();
 
-            let app_session = app_session::AppSession::new(app);
+            let app_session = app_session::AppSession::for_test(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -201,7 +201,7 @@ mod tests {
         fn it_should_not_allow_setting_the_output_on_a_component_which_cannot_execute() {
             let app = create_app();
 
-            let app_session = app_session::AppSession::new(app);
+            let app_session = app_session::AppSession::for_test(app);
 
             let s = app_session.initialize().unwrap();
 
@@ -226,7 +226,7 @@ mod tests {
         fn it_should_allow_optional_json_path_references_missing_resolved_values() {
             let app = create_app();
 
-            let app_session = app_session::AppSession::new(app);
+            let app_session = app_session::AppSession::for_test(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -246,7 +246,7 @@ mod tests {
         fn it_should_not_allow_required_json_path_references_missing_resolved_values() {
             let app = create_app();
 
-            let app_session = app_session::AppSession::new(app);
+            let app_session = app_session::AppSession::for_test(app);
 
             let s = app_session.initialize().unwrap();
 
@@ -271,7 +271,7 @@ mod tests {
         fn it_should_resolve_references_to_other_inputs_using_the_resolved_referenced_input() {
             let app = create_app();
 
-            let app_session = app_session::AppSession::new(app);
+            let app_session = app_session::AppSession::for_test(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -292,7 +292,7 @@ mod tests {
         fn it_should_step_though_entire_graph() {
             let app = create_app();
 
-            let app_session = app_session::AppSession::new(app);
+            let app_session = app_session::AppSession::for_test(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -400,7 +400,7 @@ mod tests {
         fn setting_input_override_should_affect_dependencies() {
             let app = create_app();
 
-            let app_session = app_session::AppSession::new(app);
+            let app_session = app_session::AppSession::for_test(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -455,7 +455,7 @@ mod tests {
         fn setting_input_override_should_update_input_hash() {
             let app = create_app();
 
-            let app_session = app_session::AppSession::new(app);
+            let app_session = app_session::AppSession::for_test(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -568,7 +568,7 @@ mod tests {
         fn setting_output_override_should_affect_execution_states() {
             let app = create_app();
 
-            let app_session = app_session::AppSession::new(app);
+            let app_session = app_session::AppSession::for_test(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -599,7 +599,7 @@ mod tests {
         fn setting_output_should_use_input_hash() {
             let app = create_app();
 
-            let app_session = app_session::AppSession::new(app);
+            let app_session = app_session::AppSession::for_test(app);
 
             let mut s = app_session.initialize().unwrap();
 
@@ -650,7 +650,7 @@ mod tests {
         fn setting_output_should_update_dependent_input_hashes() {
             let app = create_app();
 
-            let app_session = app_session::AppSession::new(app);
+            let app_session = app_session::AppSession::for_test(app);
 
             let mut s = app_session.initialize().unwrap();
 

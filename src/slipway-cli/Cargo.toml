@@ -7,7 +7,7 @@ authors.workspace = true
 [dependencies]
 anyhow = "1.0.75"
 clap = { version = "4.3.22", features = ["derive"] }
-slipway-lib = { path = "../slipway-lib", features = [] }
+slipway-lib = { path = "../slipway-lib", features = ["unstable-test-utils"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 petgraph = "0.6.4"
@@ -15,3 +15,5 @@ termion = "3.0.0"
 ctrlc = "3.4.2"
 edit = "0.1.5"
 thiserror = { workspace = true }
+semver = { workspace = true }
+jtd = { workspace = true }

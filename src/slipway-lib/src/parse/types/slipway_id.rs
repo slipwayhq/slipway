@@ -27,17 +27,6 @@ impl SlipwayId {
             version: version.clone(),
         }
     }
-
-    #[cfg(test)]
-    pub fn for_test(name: &str, version: Version) -> Self {
-        use super::TEST_PUBLISHER;
-
-        SlipwayId {
-            publisher: Publisher::from_str(TEST_PUBLISHER).unwrap(),
-            name: Name::from_str(name).unwrap(),
-            version,
-        }
-    }
 }
 
 impl FromStr for SlipwayId {

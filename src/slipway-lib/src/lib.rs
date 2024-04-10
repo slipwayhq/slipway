@@ -22,8 +22,8 @@ mod execute;
 mod parse;
 pub mod utils;
 
-#[cfg(test)]
-pub mod test_utils;
+#[cfg(any(feature = "unstable-test-utils", test))]
+mod test_utils;
 
 pub struct Immutable<T> {
     value: T,

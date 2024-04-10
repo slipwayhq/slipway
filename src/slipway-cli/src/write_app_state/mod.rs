@@ -428,7 +428,7 @@ mod tests {
             .collect(),
         });
 
-        let app_session = AppSession::new(app);
+        let app_session = AppSession::for_test(app);
         let mut state = app_session.initialize().unwrap();
 
         state = state
@@ -573,7 +573,7 @@ mod tests {
             .collect(),
         });
 
-        let app_session = AppSession::new(app);
+        let app_session = AppSession::for_test(app);
         let mut state = app_session.initialize().unwrap();
 
         state = state

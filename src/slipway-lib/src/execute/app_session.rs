@@ -34,6 +34,4 @@ impl AppSession {
 
 pub(crate) struct AppSessionOptions {
     // pub(crate) execution_concurrency: usize,
-    // pub additional_definition_loaders: Vec<Box<dyn ComponentPartLoader<Component<jtd::Schema>>>>,
-    // pub additional_wasm_loaders: Vec<Box<dyn ComponentPartLoader<Vec<u8>>>>,
 }
