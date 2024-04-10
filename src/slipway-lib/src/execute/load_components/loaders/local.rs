@@ -5,7 +5,7 @@ use std::str::FromStr;
 use super::ComponentPartLoader;
 
 use crate::{
-    errors::ComponentError, execute::load_components::primitives::LoaderId, Component,
+    errors::ComponentLoadError, execute::load_components::primitives::LoaderId, Component,
     SlipwayReference,
 };
 
@@ -20,14 +20,15 @@ impl ComponentPartLoader<Component<jtd::Schema>> for LocalComponentLoader {
     async fn load(
         &self,
         component_reference: &SlipwayReference,
-    ) -> Result<Option<Component<jtd::Schema>>, ComponentError> {
+    ) -> Result<Option<Component<jtd::Schema>>, ComponentLoadError> {
         match component_reference {
             SlipwayReference::Local { path } => {
-                let file_contents =
-                    std::fs::read_to_string(path).map_err(|e| ComponentError::LoadFailed {
+                let file_contents = std::fs::read_to_string(path).map_err(|e| {
+                    ComponentLoadError::DefinitionLoadFailed {
                         reference: component_reference.clone(),
                         error: e.to_string(),
-                    })?;
+                    }
+                })?;
                 let component = crate::parse::parse_component(&file_contents)?;
 
                 let result = Component::<jtd::Schema> {
@@ -55,12 +56,12 @@ impl ComponentPartLoader<Vec<u8>> for LocalComponentLoader {
     async fn load(
         &self,
         component_reference: &SlipwayReference,
-    ) -> Result<Option<Vec<u8>>, ComponentError> {
+    ) -> Result<Option<Vec<u8>>, ComponentLoadError> {
         match component_reference {
             SlipwayReference::Local { path } => {
                 let path = path.with_extension("wasm");
                 let file_contents =
-                    std::fs::read(path).map_err(|e| ComponentError::LoadFailed {
+                    std::fs::read(path).map_err(|e| ComponentLoadError::WasmLoadFailed {
                         reference: component_reference.clone(),
                         error: e.to_string(),
                     })?;

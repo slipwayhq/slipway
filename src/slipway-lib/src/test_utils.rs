@@ -1,4 +1,4 @@
-use crate::errors::ComponentError;
+use crate::errors::ComponentLoadError;
 use crate::execute::load_components::ComponentPartLoader;
 use crate::execute::load_components::InMemoryComponentCache;
 use crate::execute::load_components::LoaderId;
@@ -158,7 +158,7 @@ impl ComponentPartLoader<Component<jtd::Schema>> for MockComponentLoader {
     async fn load(
         &self,
         component_reference: &SlipwayReference,
-    ) -> Result<Option<Component<jtd::Schema>>, ComponentError> {
+    ) -> Result<Option<Component<jtd::Schema>>, ComponentLoadError> {
         self.schemas
             .get(component_reference)
             .map(|(input_schema, output_schema)| {
@@ -181,7 +181,7 @@ impl ComponentPartLoader<Vec<u8>> for MockComponentLoader {
     async fn load(
         &self,
         _component_reference: &SlipwayReference,
-    ) -> Result<Option<Vec<u8>>, ComponentError> {
+    ) -> Result<Option<Vec<u8>>, ComponentLoadError> {
         unimplemented!();
     }
 }
@@ -197,7 +197,7 @@ impl ComponentPartLoader<Component<jtd::Schema>> for LooseMockComponentLoader {
     async fn load(
         &self,
         component_reference: &SlipwayReference,
-    ) -> Result<Option<Component<jtd::Schema>>, ComponentError> {
+    ) -> Result<Option<Component<jtd::Schema>>, ComponentLoadError> {
         Ok(Some(Component::<jtd::Schema>::for_test(
             component_reference,
             schema_any(),
@@ -215,7 +215,7 @@ impl ComponentPartLoader<Vec<u8>> for LooseMockComponentLoader {
     async fn load(
         &self,
         _component_reference: &SlipwayReference,
-    ) -> Result<Option<Vec<u8>>, ComponentError> {
+    ) -> Result<Option<Vec<u8>>, ComponentLoadError> {
         unimplemented!();
     }
 }

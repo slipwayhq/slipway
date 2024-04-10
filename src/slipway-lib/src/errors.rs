@@ -41,24 +41,35 @@ pub enum AppError {
 
 #[derive(Error, Debug, Clone)]
 #[error("component load failed for {reference}: {error}")]
-pub enum ComponentError {
-    // We're using Arc so that ComponentError can be cloned.
-    #[error("component parse failed")]
-    ParseFailed(#[from] Arc<serde_json::Error>),
+pub enum ComponentLoadError {
+    // We're using Arc here so that ComponentError can be cloned.
+    #[error("component definition parse failed")]
+    DefinitionParseFailed(#[from] Arc<serde_json::Error>),
 
-    // We're using Arc so that ComponentError can be cloned.
     #[error("component schema parse failed")]
     SchemaParseFailed(#[from] jtd::FromSerdeSchemaError),
 
-    #[error("load failed for \"{reference}\": {error}")]
-    LoadFailed {
+    #[error("component definition load failed for \"{reference}\": {error}")]
+    DefinitionLoadFailed {
         reference: SlipwayReference,
         error: String,
+    },
+
+    #[error("component wasm load failed for \"{reference}\": {error}")]
+    WasmLoadFailed {
+        reference: SlipwayReference,
+        error: String,
+    },
+
+    #[error("component \"{reference}\" was not found by any loader: {loader_ids:?}")]
+    NotFound {
+        reference: SlipwayReference,
+        loader_ids: Vec<LoaderId>,
     },
 }
 
 #[derive(Clone, Debug)]
 pub struct ComponentLoaderFailure {
-    pub loader_id: LoaderId,
-    pub error: ComponentError,
+    pub loader_id: Option<LoaderId>,
+    pub error: ComponentLoadError,
 }

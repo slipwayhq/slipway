@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::errors::{AppError, ComponentError};
+use crate::errors::{AppError, ComponentLoadError};
 
 use self::types::{App, Component};
 
@@ -10,8 +10,8 @@ pub fn parse_app(input: &str) -> Result<App, AppError> {
     serde_json::from_str(input).map_err(AppError::ParseFailed)
 }
 
-pub fn parse_component(input: &str) -> Result<Component<jtd::SerdeSchema>, ComponentError> {
-    serde_json::from_str(input).map_err(|e| ComponentError::ParseFailed(Arc::new(e)))
+pub fn parse_component(input: &str) -> Result<Component<jtd::SerdeSchema>, ComponentLoadError> {
+    serde_json::from_str(input).map_err(|e| ComponentLoadError::DefinitionParseFailed(Arc::new(e)))
 }
 
 #[cfg(test)]
