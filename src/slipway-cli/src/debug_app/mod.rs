@@ -89,7 +89,7 @@ pub(crate) fn debug_app(input: std::path::PathBuf) -> anyhow::Result<()> {
     println!();
     let file_contents = std::fs::read_to_string(input)?;
     let app = parse_app(&file_contents)?;
-    let session = AppSession::new(app);
+    let session = AppSession::new(app, Default::default());
     let mut state = session.initialize()?;
 
     print_state(&state)?;

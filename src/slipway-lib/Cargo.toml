@@ -19,6 +19,7 @@ sha2 = "0.10.8"
 thiserror = { workspace = true }
 tokio = { version = "1.36.0", features = ["full"] }
 url = "2.4.1"
+tracing = { workspace = true }
 
 [features]
 unstable-test-utils = []

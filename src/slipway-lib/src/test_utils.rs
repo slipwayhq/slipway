@@ -1,4 +1,5 @@
 use crate::errors::ComponentLoadError;
+use crate::execute::app_session::AppSessionOptions;
 use crate::execute::load_components::ComponentPartLoader;
 use crate::execute::load_components::InMemoryComponentCache;
 use crate::execute::load_components::LoaderId;
@@ -88,6 +89,7 @@ impl AppSession {
             .map(|(key, value)| (SlipwayReference::for_test(&key), value))
             .collect();
 
+        let options = AppSessionOptions::default();
         AppSession {
             app,
             component_cache: RefCell::new(Box::new(InMemoryComponentCache::new(
@@ -96,16 +98,19 @@ impl AppSession {
                     schemas: HashMap::new(),
                 })],
             ))),
+            component_load_error_behavior: options.component_load_error_behavior,
         }
     }
 
     pub fn for_test(app: App) -> Self {
+        let options = AppSessionOptions::default();
         AppSession {
             app,
             component_cache: RefCell::new(Box::new(InMemoryComponentCache::new(
                 vec![Box::new(LooseMockComponentLoader {})],
                 vec![Box::new(LooseMockComponentLoader {})],
             ))),
+            component_load_error_behavior: options.component_load_error_behavior,
         }
     }
 }
