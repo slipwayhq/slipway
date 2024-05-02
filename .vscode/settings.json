@@ -1,4 +1,9 @@
 {
+    "peacock.remoteColor": "#1e2d32",
+    "peacock.color": "#1e2d32",
+    "search.exclude": {
+        "**/.git": true
+    },
     "workbench.colorCustomizations": {
         "activityBar.activeBackground": "#314a52",
         "activityBar.background": "#314a52",
@@ -17,9 +22,5 @@
         "titleBar.activeForeground": "#e7e7e7",
         "titleBar.inactiveBackground": "#1e2d3299",
         "titleBar.inactiveForeground": "#e7e7e799"
-    },
-    "peacock.remoteColor": "#1e2d32",
-    "search.exclude": {
-        "**/.git": true
     },
 }
