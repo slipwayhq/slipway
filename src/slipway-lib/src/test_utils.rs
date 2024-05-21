@@ -150,6 +150,11 @@ pub fn schema_any() -> jtd::Schema {
     }
 }
 
+pub fn schema_valid(json: serde_json::Value) -> jtd::Schema {
+    jtd::Schema::from_serde_schema(serde_json::from_value(json).expect("Parse schema"))
+        .expect("schema should be valid")
+}
+
 pub(crate) struct MockComponentLoader {
     pub schemas: HashMap<SlipwayReference, (jtd::Schema, jtd::Schema)>,
 }
@@ -187,7 +192,7 @@ impl ComponentPartLoader<Vec<u8>> for MockComponentLoader {
         &self,
         _component_reference: &SlipwayReference,
     ) -> Result<Option<Vec<u8>>, ComponentLoadError> {
-        unimplemented!();
+        Ok(None)
     }
 }
 
@@ -221,6 +226,6 @@ impl ComponentPartLoader<Vec<u8>> for LooseMockComponentLoader {
         &self,
         _component_reference: &SlipwayReference,
     ) -> Result<Option<Vec<u8>>, ComponentLoadError> {
-        unimplemented!();
+        Ok(None)
     }
 }

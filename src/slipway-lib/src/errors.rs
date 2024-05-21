@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
 use thiserror::Error;
 
@@ -32,11 +32,11 @@ pub enum AppError {
     #[error("component load failed for \"{0}\": {1:?}")]
     ComponentLoadFailed(ComponentHandle, Vec<ComponentLoaderFailure>),
 
-    #[error("component input validation failed for \"{0}\": {1:?}")]
-    ComponentInputValidationFailed(ComponentHandle, jtd::ValidateError),
+    #[error("component {1} validation failed for \"{0}\": {2:?}")]
+    ComponentValidationAborted(ComponentHandle, ValidationType, jtd::ValidateError),
 
-    #[error("component output validation failed for \"{0}\": {1:?}")]
-    ComponentOutputValidationFailed(ComponentHandle, jtd::ValidateError),
+    #[error("component {1} validation failed for \"{0}\": {2:?}")]
+    ComponentValidationFailed(ComponentHandle, ValidationType, Vec<ValidationFailure>),
 }
 
 #[derive(Error, Debug, Clone)]
@@ -72,4 +72,59 @@ pub enum ComponentLoadError {
 pub struct ComponentLoaderFailure {
     pub loader_id: Option<LoaderId>,
     pub error: ComponentLoadError,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ValidationType {
+    Input,
+    Output,
+}
+
+impl fmt::Display for ValidationType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ValidationType::Input => write!(f, "input"),
+            ValidationType::Output => write!(f, "output"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ValidationFailure {
+    /// A path to the part of the instance that was rejected.
+    pub instance_path: Vec<String>,
+
+    /// A path to the part of the schema that rejected the instance.
+    pub schema_path: Vec<String>,
+}
+
+impl ValidationFailure {
+    pub fn instance_path_str(&self) -> String {
+        self.instance_path.join(".")
+    }
+
+    pub fn schema_path_str(&self) -> String {
+        self.schema_path.join(".")
+    }
+}
+
+impl fmt::Display for ValidationFailure {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "instance path: {:?}, schema path: {:?}",
+            self.instance_path_str(),
+            self.schema_path_str()
+        )
+    }
+}
+
+impl<'a> From<jtd::ValidationErrorIndicator<'a>> for ValidationFailure {
+    fn from(error: jtd::ValidationErrorIndicator) -> Self {
+        let (instance_path, schema_path) = error.into_owned_paths();
+        ValidationFailure {
+            instance_path,
+            schema_path,
+        }
+    }
 }
