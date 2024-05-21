@@ -103,13 +103,13 @@ mod tests {
     fn create_app() -> App {
         // Create a fully populated app instance.
         // Dependency graph:
-        //  B
-        //  |
         //  A
+        //  |
+        //  B
         App::for_test(Rigging {
             components: [
-                ComponentRigging::for_test("a", Some(json!({ "b": "$$.b" }))),
-                ComponentRigging::for_test("b", None),
+                ComponentRigging::for_test("a", None),
+                ComponentRigging::for_test("b", Some(json!({ "a_output": "$$.a" }))),
             ]
             .into_iter()
             .collect(),
@@ -123,15 +123,15 @@ mod tests {
         let app_session = AppSession::for_test_with_schemas(
             app,
             [
-                ("b".to_string(), (schema_any(), schema_any())),
+                ("a".to_string(), (schema_any(), schema_any())),
                 (
-                    "a".to_string(),
+                    "b".to_string(),
                     (
                         schema_valid(json!({
                             "properties": {
-                                "b": {
+                                "a_output": {
                                     "properties": {
-                                        "d": {
+                                        "foo": {
                                             "type": "string"
                                         }
                                     }
@@ -149,14 +149,17 @@ mod tests {
         let mut s = app_session.initialize().unwrap();
         s = s
             .step(Instruction::SetOutput {
-                handle: ch("b"),
-                value: json!({ "d": "foo" }),
+                handle: ch("a"),
+                value: json!({ "foo": "bar" }),
             })
             .unwrap();
 
-        let a_component_state = s.get_component_state(&ch("a")).unwrap();
-        let a_execution_input = a_component_state.execution_input.as_ref().unwrap();
-        assert_eq!(a_execution_input.value, json!({ "b": { "d": "foo" } }));
+        let b_component_state = s.get_component_state(&ch("b")).unwrap();
+        let b_execution_input = b_component_state.execution_input.as_ref().unwrap();
+        assert_eq!(
+            b_execution_input.value,
+            json!({ "a_output": { "foo": "bar" } })
+        );
     }
 
     #[test]
@@ -166,15 +169,15 @@ mod tests {
         let app_session = AppSession::for_test_with_schemas(
             app,
             [
-                ("b".to_string(), (schema_any(), schema_any())),
+                ("a".to_string(), (schema_any(), schema_any())),
                 (
-                    "a".to_string(),
+                    "b".to_string(),
                     (
                         schema_valid(json!({
                             "properties": {
-                                "b": {
+                                "a_output": {
                                     "properties": {
-                                        "d": {
+                                        "foo": {
                                             "type": "int32"
                                         }
                                     }
@@ -191,19 +194,19 @@ mod tests {
 
         let s = app_session.initialize().unwrap();
         let s_result = s.step(Instruction::SetOutput {
-            handle: ch("b"),
-            value: json!({ "d": "foo" }),
+            handle: ch("a"),
+            value: json!({ "foo": "bar" }),
         });
 
         match s_result {
             Err(AppError::ComponentValidationFailed(component_handle, validation_type, errors)) => {
-                assert_eq!(component_handle, ch("a"));
+                assert_eq!(component_handle, ch("b"));
                 assert_eq!(validation_type, ValidationType::Input);
                 assert_eq!(errors.len(), 1);
-                assert_eq!(errors[0].instance_path_str(), "b.d");
+                assert_eq!(errors[0].instance_path_str(), "a_output.foo");
                 assert_eq!(
                     errors[0].schema_path_str(),
-                    "properties.b.properties.d.type"
+                    "properties.a_output.properties.foo.type"
                 );
             }
             _ => panic!("Expected ComponentValidationFailed error"),
@@ -218,19 +221,19 @@ mod tests {
             app,
             [
                 (
-                    "b".to_string(),
+                    "a".to_string(),
                     (
                         schema_any(),
                         schema_valid(json!({
                             "properties": {
-                                "d": {
+                                "foo": {
                                     "type": "string"
                                 }
                             }
                         })),
                     ),
                 ),
-                ("a".to_string(), (schema_any(), schema_any())),
+                ("b".to_string(), (schema_any(), schema_any())),
             ]
             .into_iter()
             .collect(),
@@ -239,14 +242,17 @@ mod tests {
         let mut s = app_session.initialize().unwrap();
         s = s
             .step(Instruction::SetOutput {
-                handle: ch("b"),
-                value: json!({ "d": "foo" }),
+                handle: ch("a"),
+                value: json!({ "foo": "bar" }),
             })
             .unwrap();
 
-        let a_component_state = s.get_component_state(&ch("a")).unwrap();
-        let a_execution_input = a_component_state.execution_input.as_ref().unwrap();
-        assert_eq!(a_execution_input.value, json!({ "b": { "d": "foo" } }));
+        let b_component_state = s.get_component_state(&ch("b")).unwrap();
+        let b_execution_input = b_component_state.execution_input.as_ref().unwrap();
+        assert_eq!(
+            b_execution_input.value,
+            json!({ "a_output": { "foo": "bar" } })
+        );
     }
 
     #[test]
@@ -257,19 +263,19 @@ mod tests {
             app,
             [
                 (
-                    "b".to_string(),
+                    "a".to_string(),
                     (
                         schema_any(),
                         schema_valid(json!({
                             "properties": {
-                                "d": {
+                                "foo": {
                                     "type": "int32"
                                 }
                             }
                         })),
                     ),
                 ),
-                ("a".to_string(), (schema_any(), schema_any())),
+                ("b".to_string(), (schema_any(), schema_any())),
             ]
             .into_iter()
             .collect(),
@@ -277,17 +283,17 @@ mod tests {
 
         let s = app_session.initialize().unwrap();
         let s_result = s.step(Instruction::SetOutput {
-            handle: ch("b"),
-            value: json!({ "d": "foo" }),
+            handle: ch("a"),
+            value: json!({ "foo": "bar" }),
         });
 
         match s_result {
             Err(AppError::ComponentValidationFailed(component_handle, validation_type, errors)) => {
-                assert_eq!(component_handle, ch("b"));
+                assert_eq!(component_handle, ch("a"));
                 assert_eq!(validation_type, ValidationType::Output);
                 assert_eq!(errors.len(), 1);
-                assert_eq!(errors[0].instance_path_str(), "d");
-                assert_eq!(errors[0].schema_path_str(), "properties.d.type");
+                assert_eq!(errors[0].instance_path_str(), "foo");
+                assert_eq!(errors[0].schema_path_str(), "properties.foo.type");
             }
             _ => panic!("Expected ComponentValidationFailed error"),
         }
