@@ -18,7 +18,7 @@ static COMPONENT_DEPENDENCY_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"^\$\.rigging\.(?<component_handle>\w+)\.(output|input)([\.\[]|$)").unwrap()
 });
 
-pub(crate) trait ExtractDependencies {
+pub(super) trait ExtractDependencies {
     fn extract_dependencies(&self) -> Result<HashSet<ComponentHandle>, AppError>;
 }
 

@@ -24,7 +24,7 @@ const RIGGING_KEY: &str = "rigging";
 const INPUT_KEY: &str = "input";
 const OUTPUT_KEY: &str = "output";
 
-pub(crate) fn evaluate_component_inputs(
+pub(super) fn evaluate_component_inputs(
     state: AppExecutionState,
 ) -> Result<AppExecutionState, AppError> {
     let mut dependency_map: HashMap<&ComponentHandle, HashSet<ComponentHandle>> = HashMap::new();
@@ -137,10 +137,11 @@ pub(crate) fn evaluate_component_inputs(
     for key in state.session.app.rigging.components.keys() {
         let component_state = state.get_component_state_mut(key)?;
         component_state.execution_input = execution_inputs.remove(key).map(Rc::new);
-        component_state.dependencies = dependency_map_refs
-            .get(key)
-            .expect("component should exist in dependency map")
-            .clone();
+        component_state.dependencies.clone_from(
+            dependency_map_refs
+                .get(key)
+                .expect("component should exist in dependency map"),
+        );
     }
 
     Ok(state)

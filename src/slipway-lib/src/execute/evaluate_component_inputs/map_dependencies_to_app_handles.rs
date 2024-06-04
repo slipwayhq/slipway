@@ -6,7 +6,7 @@ use crate::{errors::AppError, parse::types::primitives::ComponentHandle};
 /// in the rigging mapping to component handle values.
 /// This function converts the component handle values back to references to handles in the rigging,
 /// so that all the handles in the dependency_map are references with the same lifetime.
-pub(crate) fn map_dependencies_to_app_handles(
+pub(super) fn map_dependencies_to_app_handles(
     dependency_map: HashMap<&ComponentHandle, HashSet<ComponentHandle>>,
 ) -> Result<HashMap<&ComponentHandle, HashSet<&ComponentHandle>>, AppError> {
     let mut result: HashMap<&ComponentHandle, HashSet<&ComponentHandle>> = HashMap::new();

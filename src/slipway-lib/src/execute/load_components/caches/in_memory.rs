@@ -69,7 +69,7 @@ impl<T> InMemoryComponentPartCache<T>
 where
     T: Send + Sync + 'static,
 {
-    pub fn new(loaders: Vec<Box<dyn ComponentPartLoader<T>>>) -> Self {
+    pub(crate) fn new(loaders: Vec<Box<dyn ComponentPartLoader<T>>>) -> Self {
         Self {
             cache: HashMap::new(),
             future_cache: HashMap::new(),

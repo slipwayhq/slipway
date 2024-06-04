@@ -6,7 +6,7 @@ use crate::{errors::AppError, parse::types::primitives::ComponentHandle};
 
 const CYCLE_DETECTED_ERROR: &str = "Cycle detected in the graph";
 
-pub(crate) fn sort_and_group<'app>(
+pub(super) fn sort_and_group<'app>(
     components_and_dependencies: &HashMap<&'app ComponentHandle, HashSet<&'app ComponentHandle>>,
 ) -> Result<SortedAndGrouped<'app>, AppError> {
     let graph = build_graph(components_and_dependencies);
@@ -15,7 +15,7 @@ pub(crate) fn sort_and_group<'app>(
     Ok(SortedAndGrouped { sorted, grouped })
 }
 
-pub(crate) struct SortedAndGrouped<'app> {
+pub(super) struct SortedAndGrouped<'app> {
     pub sorted: Vec<&'app ComponentHandle>,
     pub grouped: Vec<HashSet<&'app ComponentHandle>>,
 }

@@ -3,14 +3,14 @@ use serde_json::Value;
 use crate::errors::AppError;
 
 #[derive(Eq, PartialEq, Debug, Clone, PartialOrd, Ord)]
-pub(crate) enum SimpleJsonPath<'a> {
+pub(super) enum SimpleJsonPath<'a> {
     // Field of an object
     Field(&'a str),
     // Index of an array
     Index(usize),
 }
 
-pub(crate) trait JsonPathOperations {
+pub(super) trait JsonPathOperations {
     fn to_json_path_string(&self) -> String;
 
     fn to_prefixed_path_string(&self, prefix: &str) -> String;

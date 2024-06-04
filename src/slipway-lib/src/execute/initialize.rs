@@ -4,7 +4,7 @@ use crate::{errors::AppError, AppExecutionState, AppSession, ComponentState, Imm
 
 use super::evaluate_component_inputs::evaluate_component_inputs;
 
-pub fn initialize(session: &AppSession) -> Result<Immutable<AppExecutionState>, AppError> {
+pub(super) fn initialize(session: &AppSession) -> Result<Immutable<AppExecutionState>, AppError> {
     let component_states = session
         .app
         .rigging

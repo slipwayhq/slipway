@@ -9,6 +9,7 @@ pub use execute::component_state::{
     ComponentInput, ComponentInputOverride, ComponentOutput, ComponentOutputOverride,
     ComponentState,
 };
+pub use execute::load_components::LoaderId;
 pub use execute::primitives::*;
 pub use execute::step::Instruction;
 pub use parse::parse_app;

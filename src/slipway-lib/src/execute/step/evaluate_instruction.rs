@@ -11,7 +11,7 @@ use crate::{
 
 use super::Instruction;
 
-pub fn evaluate_instruction(
+pub(super) fn evaluate_instruction(
     state: AppExecutionState,
     instruction: Instruction,
 ) -> Result<AppExecutionState, AppError> {

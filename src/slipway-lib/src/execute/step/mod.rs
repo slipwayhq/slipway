@@ -32,7 +32,7 @@ pub enum Instruction {
     },
 }
 
-pub(crate) fn step<'app>(
+pub(super) fn step<'app>(
     state: &AppExecutionState<'app>,
     instruction: Instruction,
 ) -> Result<Immutable<AppExecutionState<'app>>, AppError> {

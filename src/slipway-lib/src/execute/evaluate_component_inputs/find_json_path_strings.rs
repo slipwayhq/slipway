@@ -26,20 +26,20 @@ static COMPONENT_OUTPUT_SHORTCUT_REGEX: Lazy<Regex> = Lazy::new(|| {
 });
 
 #[derive(Eq, PartialEq, Debug)]
-pub(crate) struct FoundJsonPathString<'a> {
+pub(super) struct FoundJsonPathString<'a> {
     pub path_to: Vec<SimpleJsonPath<'a>>,
     pub path: Cow<'a, str>,
     pub path_type: PathType,
 }
 
 #[derive(Eq, PartialEq, Debug)]
-pub(crate) enum PathType {
+pub(super) enum PathType {
     Array,
     OptionalValue,
     RequiredValue,
 }
 
-pub(crate) fn find_json_path_strings(value: &Value) -> Vec<FoundJsonPathString> {
+pub(super) fn find_json_path_strings(value: &Value) -> Vec<FoundJsonPathString> {
     let mut results = Vec::new();
     let mut current_path = Vec::new();
     find_json_path_strings_inner(value, &mut current_path, &mut results);

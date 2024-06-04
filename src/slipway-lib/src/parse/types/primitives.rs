@@ -34,7 +34,7 @@ mod tests {
         }
     }
 
-    fn test_invalid_primitive<T: FromStr>(input: &str, expected_type: &str, expected_error: &str)
+    fn test_invalid_primitive<T>(input: &str, expected_type: &str, expected_error: &str)
     where
         T: FromStr,
         T::Err: SlipwayErrorTrait,
