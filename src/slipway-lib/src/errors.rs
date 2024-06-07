@@ -29,8 +29,11 @@ pub enum AppError {
     #[error("invalid type \"{0}\": {1}")]
     InvalidSlipwayPrimitive(String, String),
 
-    #[error("component load failed for \"{0}\": {1:?}")]
-    ComponentLoadFailed(ComponentHandle, Vec<ComponentLoaderFailure>),
+    #[error("component definition load failed for \"{0}\": {1:?}")]
+    ComponentDefinitionLoadFailed(ComponentHandle, Vec<ComponentLoaderFailure>),
+
+    #[error("component wasm load failed for \"{0}\": {1:?}")]
+    ComponentWasmLoadFailed(ComponentHandle, Vec<ComponentLoaderFailure>),
 
     #[error("component {1} validation failed for \"{0}\": {2:?}")]
     ComponentValidationAborted(ComponentHandle, ValidationType, jtd::ValidateError),

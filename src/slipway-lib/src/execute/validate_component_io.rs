@@ -20,7 +20,7 @@ pub(super) fn validate_component_io<'app>(
             if !maybe_component_definition.loader_failures.is_empty() {
                 match session.component_load_error_behavior {
                     ComponentLoaderErrorBehavior::ErrorAlways => {
-                        return Err(AppError::ComponentLoadFailed(
+                        return Err(AppError::ComponentDefinitionLoadFailed(
                             component_state.handle.clone(),
                             maybe_component_definition.loader_failures.clone(),
                         ));
@@ -73,7 +73,7 @@ pub(super) fn validate_component_io<'app>(
             }
         }
         None => {
-            return Err(AppError::ComponentLoadFailed(
+            return Err(AppError::ComponentDefinitionLoadFailed(
                 component_state.handle.clone(),
                 maybe_component_definition.loader_failures.clone(),
             ));

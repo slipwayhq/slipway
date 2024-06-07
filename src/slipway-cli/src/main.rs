@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 mod debug_app;
+mod run_component_wasm;
 mod to_view_model;
 mod utils;
 mod write_app_state;

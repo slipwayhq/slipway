@@ -1,3 +1,6 @@
+pub(crate) mod app_execution_state;
+pub(crate) mod app_session;
+pub(crate) mod component_state;
 mod evaluate_component_inputs;
 mod initialize;
 pub(crate) mod load_components;
@@ -5,10 +8,6 @@ pub(crate) mod primitives;
 pub(crate) mod step;
 mod topological_sort;
 mod validate_component_io;
-
-pub(crate) mod app_execution_state;
-pub(crate) mod app_session;
-pub(crate) mod component_state;
 
 #[cfg(test)]
 mod tests {

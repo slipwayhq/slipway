@@ -41,11 +41,11 @@ The final column shows the input and output sizes for each component."#
 )]
 struct DebugCli {
     #[command(subcommand)]
-    command: Commands,
+    command: DebuggerCommand,
 }
 
 #[derive(Subcommand)]
-enum Commands {
+enum DebuggerCommand {
     /// Prints the component graph
     Print {},
 
@@ -161,16 +161,16 @@ fn handle_command<'app>(
     state: &AppExecutionState<'app>,
 ) -> anyhow::Result<HandleCommandResult<'app>> {
     let result = match matches.command {
-        Commands::Print {} => {
+        DebuggerCommand::Print {} => {
             print_state(state)?;
             HandleCommandResult::Continue(None)
         }
-        Commands::Run { handle } => {
+        DebuggerCommand::Run { handle } => {
             let handle = get_handle(&handle, state)?;
             let new_state = handle_run_command::handle_run_command(handle, state)?;
             HandleCommandResult::Continue(Some(new_state))
         }
-        Commands::Input { handle, clear } => {
+        DebuggerCommand::Input { handle, clear } => {
             let handle = get_handle(&handle, state)?;
 
             match clear {
@@ -185,7 +185,7 @@ fn handle_command<'app>(
                 }
             }
         }
-        Commands::Output { handle, clear } => {
+        DebuggerCommand::Output { handle, clear } => {
             let handle = get_handle(&handle, state)?;
 
             match clear {
@@ -200,7 +200,7 @@ fn handle_command<'app>(
                 }
             }
         }
-        Commands::Exit => HandleCommandResult::Exit,
+        DebuggerCommand::Exit => HandleCommandResult::Exit,
     };
 
     Ok(result)

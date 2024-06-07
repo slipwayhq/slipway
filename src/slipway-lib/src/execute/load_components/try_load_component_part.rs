@@ -9,7 +9,7 @@ use super::loaders::ComponentPartLoader;
 
 pub(crate) struct LoadComponentResult<T> {
     pub component_reference: SlipwayReference,
-    pub value: Option<T>,
+    pub value: Option<Arc<T>>,
     pub loader_failures: Vec<ComponentLoaderFailure>,
 }
 
@@ -23,7 +23,7 @@ pub(super) async fn try_load_component_part<T>(
     for loader in loaders.iter() {
         match loader.load(&component_reference).await {
             Ok(Some(component)) => {
-                loaded_component = Some(component);
+                loaded_component = Some(Arc::new(component));
                 break;
             }
             Ok(None) => {}
