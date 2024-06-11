@@ -1,4 +1,8 @@
 use slipway_lib::ComponentExecutionData;
+use wasi_common::{
+    pipe::{ReadPipe, WritePipe},
+    sync::WasiCtxBuilder,
+};
 use wasmtime::*;
 
 use self::errors::WasmExecutionError;
@@ -6,71 +10,88 @@ use self::errors::WasmExecutionError;
 pub(super) mod errors;
 
 pub(super) fn run_component_wasm(
-    _execution_data: ComponentExecutionData,
+    execution_data: ComponentExecutionData,
 ) -> Result<serde_json::Value, WasmExecutionError> {
-    todo!();
-    // // Create an engine and store
-    // let engine = Engine::default();
-    // let mut store = Store::new(&engine, ());
+    // Serialize the input JSON to a vector of bytes
+    let input_bytes = serde_json::to_vec(&execution_data.input.value)
+        .map_err(WasmExecutionError::SerializeInputFailed)?;
 
-    // // Compile the module
-    // let module = Module::new(&engine, &*execution_data.wasm_bytes)?;
+    // Create a pipe for stdin and stdout
+    let stdin = ReadPipe::from(input_bytes);
+    let stdout = WritePipe::new_in_memory();
+    let stderr = WritePipe::new_in_memory();
 
-    // // Create an instance of the module
-    // let instance = Instance::new(&mut store, &module, &[])?;
+    // Create an engine and store
+    let engine = Engine::default();
+    let mut linker = Linker::new(&engine);
 
-    // // Get the WASM function
-    // let wasm_func = instance
-    //     .get_func(&mut store, "your_wasm_function")
-    //     .expect("function not found")
-    //     .typed::<i32, i32, _>(&store)?;
+    // Add WASI to linker
+    wasi_common::sync::add_to_linker(&mut linker, |s| s)?;
 
-    // // Example input JSON
-    // let input_json: Value = serde_json::from_str(r#"{"key": "value"}"#)?;
+    // Create a WASI context, including stdin and stdout pipes
+    let wasi = WasiCtxBuilder::new()
+        .stdin(Box::new(stdin.clone()))
+        .stdout(Box::new(stdout.clone()))
+        .stderr(Box::new(stderr.clone()))
+        .build();
 
-    // // Serialize the input JSON to a vector of bytes
-    // let input_bytes = to_vec(&input_json)?;
+    // Create a store
+    let mut store = Store::new(&engine, wasi);
 
-    // // Pass the serialized JSON to the WASM function
-    // let input_ptr = store
-    //     .get_global("input_ptr")
-    //     .expect("input_ptr not found")
-    //     .i32()
-    //     .unwrap();
+    // Compile the module
+    let module = Module::new(&engine, &*execution_data.wasm_bytes)?;
 
-    // // Here, you might need to copy input_bytes to the memory buffer used by WASM.
-    // // This step depends on your WASM memory management and API.
-    // // For simplicity, let's assume you have a function to do this:
-    // copy_bytes_to_wasm_memory(&mut store, input_ptr, &input_bytes)?;
+    linker.module(&mut store, "", &module)?;
 
-    // // Call the function (assuming it returns a pointer to the output in WASM memory)
-    // let output_ptr = wasm_func.call(&mut store, input_ptr)?;
+    // Create an instance of the module
+    let instance = linker.instantiate(&mut store, &module)?;
 
-    // // Retrieve the result from WASM memory
-    // let output_bytes = read_bytes_from_wasm_memory(&mut store, output_ptr)?;
+    // Get the WASM function
+    let wasm_func = instance
+        .get_func(&mut store, "step")
+        .ok_or(WasmExecutionError::StepCallNotFound())?
+        .typed::<(), ()>(&store)
+        .map_err(WasmExecutionError::StepCallUnexpectedSignature)?;
 
-    // // Deserialize the output bytes back into JSON
-    // let output_json: Value = from_slice(&output_bytes)?;
+    // Call the function
+    let call_result = wasm_func.call(&mut store, ());
 
-    // // Print the output JSON
-    // println!("Output JSON: {}", output_json);
+    // Drop the store so we can read from the stdout pipe
+    drop(store);
+
+    // Read the contents of the stderr pipe
+    let stderr_contents: Vec<u8> = stderr
+        .try_into_inner()
+        .expect("sole remaining reference")
+        .into_inner();
+
+    // If the stderr pipe is not empty, return an error
+    if !stderr_contents.is_empty() {
+        let stderr_string = String::from_utf8(stderr_contents)
+            .map_err(|_err| anyhow::Error::msg("stderr is not valid UTF-8"))?;
+
+        // If the call result is an error, include it in the error message
+        call_result
+            .map_err(|e| WasmExecutionError::StepCallFailed(stderr_string.clone(), Some(e)))?;
+
+        // Otherwise, return an error with the stderr contents
+        return Err(WasmExecutionError::StepCallFailed(stderr_string, None));
+    }
+
+    // If the call result is an error, and there was no stderr, then return a more generic error message.
+    call_result.map_err(|e| {
+        WasmExecutionError::StepCallFailed("step call returned an error".to_string(), Some(e))
+    })?;
+
+    // Read the contents of the stdout pipe
+    let stdout_contents: Vec<u8> = stdout
+        .try_into_inner()
+        .expect("sole remaining reference")
+        .into_inner();
+
+    // Deserialize the output JSON
+    let output: serde_json::Value = serde_json::from_slice(&stdout_contents)
+        .map_err(WasmExecutionError::DeserializeOutputFailed)?;
+
+    Ok(output)
 }
-
-// fn copy_bytes_to_wasm_memory(
-//     store: &mut Store<()>,
-//     ptr: i32,
-//     bytes: &[u8],
-// ) -> Result<(), Box<dyn std::error::Error>> {
-//     // Implementation to copy bytes to WASM memory
-//     // This is a placeholder and should be implemented based on your WASM memory management
-//     Ok(())
-// }
-
-// fn read_bytes_from_wasm_memory(
-//     store: &mut Store<()>,
-//     ptr: i32,
-// ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-//     // Implementation to read bytes from WASM memory
-//     // This is a placeholder and should be implemented based on your WASM memory management
-//     Ok(Vec::new())
-// }

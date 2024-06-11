@@ -1,0 +1,27 @@
+{
+  "publisher": "slipway",
+  "name": "slipway_test_component",
+  "description": "Does a simple JSON modification.",
+  "version": "0.0.1",
+  "input": {
+    "discriminator": "type",
+    "mapping": {
+      "increment": {
+        "properties": {
+          "value": {
+            "type": "int32"
+          }
+        }
+      },
+      "panic": {},
+      "stderr": {}
+    }
+  },
+  "output": {
+    "properties": {
+      "value": {
+        "type": "int32"
+      }
+    }
+  }
+}

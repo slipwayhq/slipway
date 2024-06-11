@@ -18,3 +18,4 @@ thiserror = { workspace = true }
 semver = { workspace = true }
 jtd = { workspace = true }
 wasmtime = "21.0.1"
+wasi-common = "21.0.1"

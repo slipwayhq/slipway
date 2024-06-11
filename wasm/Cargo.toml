@@ -1,0 +1,10 @@
+[workspace]
+members = ["slipway-test-component"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["James Thurley"]
+
+[workspace.dependencies]

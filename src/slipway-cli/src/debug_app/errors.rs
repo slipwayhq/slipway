@@ -14,6 +14,6 @@ pub enum SlipwayDebugError {
     #[error("parsing JSON from text editor failed")]
     ParseFailed(#[from] serde_json::Error),
 
-    #[error("parsing JSON from text editor failed")]
+    #[error("failed to execute wasm: {0}")]
     WasmExecutionFailed(#[from] WasmExecutionError),
 }

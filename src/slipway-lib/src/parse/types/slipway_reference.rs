@@ -18,6 +18,9 @@ static GITHUB_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"^github:(?<user>[\w-]+)/(?<repository>[\w-]+)#(?<version>.+)$").unwrap()
 });
 
+static RELATIVE_FILE_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^file:(?<path>[^/].*)$").unwrap());
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SlipwayReference {
     // publisher.name#version
@@ -67,6 +70,11 @@ impl FromStr for SlipwayReference {
                 repository: caps["repository"].to_string(),
                 version,
             });
+        }
+
+        if let Some(caps) = RELATIVE_FILE_REGEX.captures(s) {
+            let path = PathBuf::from_str(&caps["path"]).expect("PathBuf::from_str is infallible");
+            return Ok(SlipwayReference::Local { path });
         }
 
         if let Ok(uri) = Url::parse(s) {
@@ -151,8 +159,12 @@ impl Display for SlipwayReference {
                 version
             )),
             SlipwayReference::Local { path } => {
-                let url = Url::from_file_path(path).map_err(|_| std::fmt::Error {})?;
-                f.write_fmt(format_args!("{}", url))
+                if path.is_relative() {
+                    f.write_fmt(format_args!("file:{}", path.display()))
+                } else {
+                    let url = Url::from_file_path(path).map_err(|_| std::fmt::Error {})?;
+                    f.write_fmt(format_args!("{}", url))
+                }
             }
             SlipwayReference::Url { url } => f.write_fmt(format_args!("{}", url)),
         }
@@ -349,6 +361,42 @@ mod tests {
             };
 
             assert_eq!(path, PathBuf::from_str("/usr/local/rigging.json").unwrap());
+        }
+
+        #[test]
+        fn it_should_serialize_and_deserialize_relative_local_files() {
+            let uri = r"file:../rigging.json";
+            let json = quote(uri);
+
+            let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
+
+            assert_eq!(
+                reference,
+                SlipwayReference::Local {
+                    path: PathBuf::from_str("../rigging.json").unwrap()
+                }
+            );
+
+            let json_out = serde_json::to_string(&reference).unwrap();
+            assert_eq!(json, json_out);
+        }
+
+        #[test]
+        fn it_should_serialize_and_deserialize_local_file_name() {
+            let uri = r"file:rigging.json";
+            let json = quote(uri);
+
+            let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
+
+            assert_eq!(
+                reference,
+                SlipwayReference::Local {
+                    path: PathBuf::from_str("rigging.json").unwrap()
+                }
+            );
+
+            let json_out = serde_json::to_string(&reference).unwrap();
+            assert_eq!(json, json_out);
         }
     }
 
