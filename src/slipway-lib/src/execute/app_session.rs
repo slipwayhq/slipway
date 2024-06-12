@@ -1,29 +1,36 @@
 use crate::errors::AppError;
+use crate::load::ComponentCache;
 use crate::Immutable;
 
 use super::app_execution_state::AppExecutionState;
 use super::initialize::initialize;
-use super::load_components::{InMemoryComponentCache, LoadedComponentCache, LocalComponentLoader};
-
-use std::cell::RefCell;
 
 use crate::parse::types::App;
 
 pub struct AppSession {
     pub(crate) app: App,
-    pub(crate) component_cache: RefCell<Box<dyn LoadedComponentCache>>,
-    pub(crate) component_load_error_behavior: ComponentLoaderErrorBehavior,
+    pub(crate) component_cache: ComponentCache,
+    pub(crate) options: AppSessionOptions,
 }
 
 impl AppSession {
-    pub fn new(app: App, options: AppSessionOptions) -> Self {
+    pub fn new_with_options(
+        app: App,
+        component_cache: ComponentCache,
+        options: AppSessionOptions,
+    ) -> Self {
         AppSession {
             app,
-            component_cache: RefCell::new(Box::new(InMemoryComponentCache::new(
-                vec![Box::new(LocalComponentLoader {})],
-                vec![Box::new(LocalComponentLoader {})],
-            ))),
-            component_load_error_behavior: options.component_load_error_behavior,
+            component_cache,
+            options,
+        }
+    }
+
+    pub fn new(app: App, component_cache: ComponentCache) -> Self {
+        AppSession {
+            app,
+            component_cache,
+            options: Default::default(),
         }
     }
 }
@@ -34,19 +41,5 @@ impl AppSession {
     }
 }
 
-pub struct AppSessionOptions {
-    pub(crate) component_load_error_behavior: ComponentLoaderErrorBehavior,
-}
-
-pub enum ComponentLoaderErrorBehavior {
-    ErrorAlways,
-    ErrorIfComponentNotLoaded,
-}
-
-impl Default for AppSessionOptions {
-    fn default() -> Self {
-        AppSessionOptions {
-            component_load_error_behavior: ComponentLoaderErrorBehavior::ErrorAlways,
-        }
-    }
-}
+#[derive(Default)]
+pub struct AppSessionOptions {}

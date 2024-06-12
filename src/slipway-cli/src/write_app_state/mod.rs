@@ -399,7 +399,9 @@ impl ComponentColors {
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use slipway_lib::{utils::ch, App, AppSession, ComponentRigging, Instruction, Rigging};
+    use slipway_lib::{
+        utils::ch, App, AppSession, ComponentCache, ComponentRigging, Instruction, Rigging,
+    };
 
     use crate::to_view_model::to_view_model;
 
@@ -428,7 +430,8 @@ mod tests {
             .collect(),
         });
 
-        let app_session = AppSession::for_test(app);
+        let component_cache = ComponentCache::for_test_permissive(&app);
+        let app_session = AppSession::new(app, component_cache);
         let mut state = app_session.initialize().unwrap();
 
         state = state
@@ -573,7 +576,8 @@ mod tests {
             .collect(),
         });
 
-        let app_session = AppSession::for_test(app);
+        let component_cache = ComponentCache::for_test_permissive(&app);
+        let app_session = AppSession::new(app, component_cache);
         let mut state = app_session.initialize().unwrap();
 
         state = state

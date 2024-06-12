@@ -9,9 +9,10 @@ pub use execute::component_state::{
     ComponentInput, ComponentInputOverride, ComponentOutput, ComponentOutputOverride,
     ComponentState,
 };
-pub use execute::load_components::LoaderId;
 pub use execute::primitives::*;
 pub use execute::step::Instruction;
+pub use load::basic_components_loader::BasicComponentsLoader;
+pub use load::*;
 pub use parse::parse_app;
 pub use parse::parse_component;
 pub use parse::types::primitives::*;
@@ -20,6 +21,7 @@ pub use parse::types::slipway_reference::*;
 pub use parse::types::*;
 pub mod errors;
 mod execute;
+mod load;
 mod parse;
 pub mod utils;
 

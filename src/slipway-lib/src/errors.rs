@@ -2,7 +2,7 @@ use std::{fmt, sync::Arc};
 
 use thiserror::Error;
 
-use crate::{execute::load_components::LoaderId, ComponentHandle, SlipwayReference};
+use crate::{ComponentHandle, SlipwayReference};
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -28,12 +28,6 @@ pub enum AppError {
     // into a `serde_json::Error` and wrapped in a ParseFailed error.
     #[error("invalid type \"{0}\": {1}")]
     InvalidSlipwayPrimitive(String, String),
-
-    #[error("component definition load failed for \"{0}\": {1:?}")]
-    ComponentDefinitionLoadFailed(ComponentHandle, Vec<ComponentLoaderFailure>),
-
-    #[error("component wasm load failed for \"{0}\": {1:?}")]
-    ComponentWasmLoadFailed(ComponentHandle, Vec<ComponentLoaderFailure>),
 
     #[error("component {1} validation failed for \"{0}\": {2:?}")]
     ComponentValidationAborted(ComponentHandle, ValidationType, jtd::ValidateError),
@@ -64,17 +58,8 @@ pub enum ComponentLoadError {
         error: String,
     },
 
-    #[error("component \"{reference}\" was not found by any loader: {loader_ids:?}")]
-    NotFound {
-        reference: SlipwayReference,
-        loader_ids: Vec<LoaderId>,
-    },
-}
-
-#[derive(Clone, Debug)]
-pub struct ComponentLoaderFailure {
-    pub loader_id: Option<LoaderId>,
-    pub error: ComponentLoadError,
+    #[error("component \"{reference}\" was not found")]
+    NotFound { reference: SlipwayReference },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -82,3 +82,33 @@ pub fn ch(handle: &str) -> ComponentHandle {
 pub fn ch_vec(handles: Vec<&str>) -> HashSet<ComponentHandle> {
     handles.into_iter().map(ch).collect()
 }
+
+pub(crate) trait ExpectWith<T> {
+    fn expect_with<F>(self, f: F) -> T
+    where
+        F: FnOnce() -> String;
+}
+
+impl<T> ExpectWith<T> for Option<T> {
+    fn expect_with<F>(self, f: F) -> T
+    where
+        F: FnOnce() -> String,
+    {
+        match self {
+            Some(value) => value,
+            None => panic!("{}", f()),
+        }
+    }
+}
+
+impl<T, E> ExpectWith<T> for Result<T, E> {
+    fn expect_with<F>(self, f: F) -> T
+    where
+        F: FnOnce() -> String,
+    {
+        match self {
+            Ok(value) => value,
+            Err(_) => panic!("{}", f()),
+        }
+    }
+}

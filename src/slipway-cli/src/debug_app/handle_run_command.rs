@@ -25,7 +25,10 @@ mod tests {
     use std::{path::PathBuf, str::FromStr};
 
     use serde_json::json;
-    use slipway_lib::{utils::ch, App, AppSession, ComponentRigging, Rigging, SlipwayReference};
+    use slipway_lib::{
+        utils::ch, App, AppSession, BasicComponentsLoader, ComponentCache, ComponentRigging,
+        Rigging, SlipwayReference,
+    };
 
     use crate::run_component_wasm::errors::WasmExecutionError;
 
@@ -79,7 +82,8 @@ mod tests {
             .collect(),
         });
 
-        let app_session = AppSession::new(app, Default::default());
+        let component_cache = ComponentCache::primed(&app, &BasicComponentsLoader::new()).unwrap();
+        let app_session = AppSession::new(app, component_cache);
         let mut state = app_session.initialize().unwrap();
 
         state = handle_run_command(&handle, &state).unwrap();
@@ -100,7 +104,7 @@ mod tests {
     }
 
     #[test]
-    fn it_should_run_handle_component_that_panics() {
+    fn it_should_handle_component_that_panics() {
         let handle = ch("test_component");
         let app = App::for_test(Rigging {
             components: [(
@@ -122,7 +126,8 @@ mod tests {
             .collect(),
         });
 
-        let app_session = AppSession::new(app, Default::default());
+        let component_cache = ComponentCache::primed(&app, &BasicComponentsLoader::new()).unwrap();
+        let app_session = AppSession::new(app, component_cache);
         let state = app_session.initialize().unwrap();
 
         let maybe_state = handle_run_command(&handle, &state);
@@ -139,7 +144,7 @@ mod tests {
     }
 
     #[test]
-    fn it_should_run_handle_component_that_errors() {
+    fn it_should_handle_component_that_errors() {
         let handle = ch("test_component");
         let app = App::for_test(Rigging {
             components: [(
@@ -161,7 +166,8 @@ mod tests {
             .collect(),
         });
 
-        let app_session = AppSession::new(app, Default::default());
+        let component_cache = ComponentCache::primed(&app, &BasicComponentsLoader::new()).unwrap();
+        let app_session = AppSession::new(app, component_cache);
         let state = app_session.initialize().unwrap();
 
         let maybe_state = handle_run_command(&handle, &state);

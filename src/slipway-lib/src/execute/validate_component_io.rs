@@ -1,8 +1,6 @@
-use tracing::warn;
-
 use crate::{
     errors::{AppError, ValidationType},
-    AppSession, ComponentLoaderErrorBehavior, ComponentState,
+    AppSession, ComponentState,
 };
 
 pub(super) fn validate_component_io<'app>(
@@ -10,75 +8,40 @@ pub(super) fn validate_component_io<'app>(
     component_state: &ComponentState<'app>,
     validation_data: ValidationData,
 ) -> Result<(), AppError> {
-    let mut component_cache = session.component_cache.borrow_mut();
     let component_reference = &component_state.rigging.component;
-    let maybe_component_definition = component_cache.get_definition(component_reference);
-    match &maybe_component_definition.value {
-        Some(component_definition) => {
-            // If the component was loaded but there were loader failures, either error or warn
-            // depending on the session options.
-            if !maybe_component_definition.loader_failures.is_empty() {
-                match session.component_load_error_behavior {
-                    ComponentLoaderErrorBehavior::ErrorAlways => {
-                        return Err(AppError::ComponentDefinitionLoadFailed(
-                            component_state.handle.clone(),
-                            maybe_component_definition.loader_failures.clone(),
-                        ));
-                    }
-                    ComponentLoaderErrorBehavior::ErrorIfComponentNotLoaded => {
-                        for loader_failure in &maybe_component_definition.loader_failures {
-                            warn!(
-                                "component {} was loaded but an earlier loader {} reported an error: {}",
-                                component_reference,
-                                loader_failure
-                                    .loader_id
-                                    .as_ref()
-                                    .expect("loader_id should exist on all errors if component was loaded"),
-                                loader_failure.error
-                            );
-                        }
-                    }
-                }
-            }
+    let component_definition = session.component_cache.get_definition(component_reference);
 
-            // Validate the data against either the component input or output schema.
-            let (validation_type, validation_result) = match validation_data {
-                ValidationData::Input(input) => (
-                    ValidationType::Input,
-                    jtd::validate(&component_definition.input, input, Default::default()),
-                ),
-                ValidationData::Output(output) => (
-                    ValidationType::Output,
-                    jtd::validate(&component_definition.output, output, Default::default()),
-                ),
-            };
+    // Validate the data against either the component input or output schema.
+    let (validation_type, validation_result) = match validation_data {
+        ValidationData::Input(input) => (
+            ValidationType::Input,
+            jtd::validate(&component_definition.input, input, Default::default()),
+        ),
+        ValidationData::Output(output) => (
+            ValidationType::Output,
+            jtd::validate(&component_definition.output, output, Default::default()),
+        ),
+    };
 
-            // The errors returned as part of the Result are fundamental validation errors when trying
-            // to validate, rather than errors caused by the JSON not matching the schema.
-            let errors = validation_result.map_err(|e| {
-                AppError::ComponentValidationAborted(
-                    component_state.handle.clone(),
-                    validation_type.clone(),
-                    e,
-                )
-            })?;
+    // The errors returned as part of the Result are fundamental validation errors when trying
+    // to validate, rather than errors caused by the JSON not matching the schema.
+    let errors = validation_result.map_err(|e| {
+        AppError::ComponentValidationAborted(
+            component_state.handle.clone(),
+            validation_type.clone(),
+            e,
+        )
+    })?;
 
-            // The errors returned within the result are the actual schema validation errors.
-            if !errors.is_empty() {
-                return Err(AppError::ComponentValidationFailed(
-                    component_state.handle.clone(),
-                    validation_type.clone(),
-                    errors.into_iter().map(|e| e.into()).collect(),
-                ));
-            }
-        }
-        None => {
-            return Err(AppError::ComponentDefinitionLoadFailed(
-                component_state.handle.clone(),
-                maybe_component_definition.loader_failures.clone(),
-            ));
-        }
+    // The errors returned within the result are the actual schema validation errors.
+    if !errors.is_empty() {
+        return Err(AppError::ComponentValidationFailed(
+            component_state.handle.clone(),
+            validation_type.clone(),
+            errors.into_iter().map(|e| e.into()).collect(),
+        ));
     }
+
     Ok(())
 }
 
@@ -95,7 +58,7 @@ mod tests {
     use crate::{
         test_utils::{schema_any, schema_valid},
         utils::ch,
-        App, ComponentRigging, Instruction, Rigging,
+        App, ComponentCache, ComponentRigging, Instruction, Rigging,
     };
 
     use super::*;
@@ -120,8 +83,8 @@ mod tests {
     fn it_should_validate_component_input() {
         let app = create_app();
 
-        let app_session = AppSession::for_test_with_schemas(
-            app,
+        let component_cache = ComponentCache::for_test_with_schemas(
+            &app,
             [
                 ("a".to_string(), (schema_any(), schema_any())),
                 (
@@ -146,7 +109,10 @@ mod tests {
             .collect(),
         );
 
+        let app_session = AppSession::new(app, component_cache);
+
         let mut s = app_session.initialize().unwrap();
+
         s = s
             .step(Instruction::SetOutput {
                 handle: ch("a"),
@@ -166,8 +132,8 @@ mod tests {
     fn it_should_fail_to_validate_invalid_component_input() {
         let app = create_app();
 
-        let app_session = AppSession::for_test_with_schemas(
-            app,
+        let component_cache = ComponentCache::for_test_with_schemas(
+            &app,
             [
                 ("a".to_string(), (schema_any(), schema_any())),
                 (
@@ -191,6 +157,8 @@ mod tests {
             .into_iter()
             .collect(),
         );
+
+        let app_session = AppSession::new(app, component_cache);
 
         let s = app_session.initialize().unwrap();
         let s_result = s.step(Instruction::SetOutput {
@@ -217,8 +185,8 @@ mod tests {
     fn it_should_validate_component_output() {
         let app = create_app();
 
-        let app_session = AppSession::for_test_with_schemas(
-            app,
+        let component_cache = ComponentCache::for_test_with_schemas(
+            &app,
             [
                 (
                     "a".to_string(),
@@ -238,6 +206,8 @@ mod tests {
             .into_iter()
             .collect(),
         );
+
+        let app_session = AppSession::new(app, component_cache);
 
         let mut s = app_session.initialize().unwrap();
         s = s
@@ -259,8 +229,8 @@ mod tests {
     fn it_should_fail_to_validate_invalid_component_output() {
         let app = create_app();
 
-        let app_session = AppSession::for_test_with_schemas(
-            app,
+        let component_cache = ComponentCache::for_test_with_schemas(
+            &app,
             [
                 (
                     "a".to_string(),
@@ -280,6 +250,8 @@ mod tests {
             .into_iter()
             .collect(),
         );
+
+        let app_session = AppSession::new(app, component_cache);
 
         let s = app_session.initialize().unwrap();
         let s_result = s.step(Instruction::SetOutput {

@@ -1,12 +1,10 @@
 use crate::errors::ComponentLoadError;
-use crate::execute::app_session::AppSessionOptions;
-use crate::execute::load_components::ComponentPartLoader;
-use crate::execute::load_components::InMemoryComponentCache;
-use crate::execute::load_components::LoaderId;
+use crate::load::ComponentsLoader;
+use crate::load::LoadedComponent;
 use crate::utils::ch;
 use crate::App;
-use crate::AppSession;
 use crate::Component;
+use crate::ComponentCache;
 use crate::ComponentHandle;
 use crate::ComponentRigging;
 use crate::Name;
@@ -14,11 +12,10 @@ use crate::Publisher;
 use crate::Rigging;
 use crate::SlipwayId;
 use crate::SlipwayReference;
-use async_trait::async_trait;
+use jtd::SerdeSchema;
 use semver::Version;
 use serde_json::json;
 use serde_json::Value;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -78,43 +75,6 @@ impl<TSchema> Component<TSchema> {
     }
 }
 
-impl AppSession {
-    pub fn for_test_with_schemas(
-        app: App,
-        schemas: HashMap<String, (jtd::Schema, jtd::Schema)>,
-    ) -> Self {
-        // Map keys to use SlipwayReference::for_test_from_id(key)
-        let schemas = schemas
-            .into_iter()
-            .map(|(key, value)| (SlipwayReference::for_test(&key), value))
-            .collect();
-
-        let options = AppSessionOptions::default();
-        AppSession {
-            app,
-            component_cache: RefCell::new(Box::new(InMemoryComponentCache::new(
-                vec![Box::new(MockComponentLoader { schemas })],
-                vec![Box::new(MockComponentLoader {
-                    schemas: HashMap::new(),
-                })],
-            ))),
-            component_load_error_behavior: options.component_load_error_behavior,
-        }
-    }
-
-    pub fn for_test(app: App) -> Self {
-        let options = AppSessionOptions::default();
-        AppSession {
-            app,
-            component_cache: RefCell::new(Box::new(InMemoryComponentCache::new(
-                vec![Box::new(LooseMockComponentLoader {})],
-                vec![Box::new(LooseMockComponentLoader {})],
-            ))),
-            component_load_error_behavior: options.component_load_error_behavior,
-        }
-    }
-}
-
 impl SlipwayId {
     pub fn for_test(name: &str, version: Version) -> Self {
         SlipwayId {
@@ -155,77 +115,96 @@ pub fn schema_valid(json: serde_json::Value) -> jtd::Schema {
         .expect("schema should be valid")
 }
 
-pub(crate) struct MockComponentLoader {
+pub(crate) struct MockComponentsLoader {
     pub schemas: HashMap<SlipwayReference, (jtd::Schema, jtd::Schema)>,
 }
 
-#[async_trait]
-impl ComponentPartLoader<Component<jtd::Schema>> for MockComponentLoader {
-    fn id(&self) -> LoaderId {
-        LoaderId::from_str("Mock").expect("LoaderId should be valid")
-    }
+impl MockComponentsLoader {
+    pub fn new(schemas: HashMap<String, (jtd::Schema, jtd::Schema)>) -> Self {
+        let schemas = schemas
+            .into_iter()
+            .map(|(key, value)| (SlipwayReference::for_test(&key), value))
+            .collect();
 
-    async fn load(
+        MockComponentsLoader { schemas }
+    }
+}
+
+impl ComponentsLoader for MockComponentsLoader {
+    fn load_components<'app>(
         &self,
-        component_reference: &SlipwayReference,
-    ) -> Result<Option<Component<jtd::Schema>>, ComponentLoadError> {
-        self.schemas
-            .get(component_reference)
-            .map(|(input_schema, output_schema)| {
-                Component::<jtd::Schema>::for_test(
-                    component_reference,
-                    input_schema.clone(),
-                    output_schema.clone(),
-                )
+        component_references: &[&'app SlipwayReference],
+    ) -> Vec<Result<LoadedComponent<'app>, ComponentLoadError>> {
+        component_references
+            .iter()
+            .map(|&component_reference| {
+                self.schemas
+                    .get(component_reference)
+                    .map(|(input_schema, output_schema)| {
+                        LoadedComponent::new(
+                            component_reference,
+                            serde_json::to_string(&Component::<SerdeSchema>::for_test(
+                                component_reference,
+                                input_schema.clone().into_serde_schema(),
+                                output_schema.clone().into_serde_schema(),
+                            ))
+                            .expect("schema should serialize"),
+                            Vec::new(),
+                        )
+                    })
+                    .ok_or(ComponentLoadError::DefinitionLoadFailed {
+                        reference: component_references[0].clone(),
+                        error: "Schema not found".to_string(),
+                    })
             })
-            .map_or(Ok(None), |component| Ok(Some(component)))
+            .collect()
     }
 }
 
-#[async_trait]
-impl ComponentPartLoader<Vec<u8>> for MockComponentLoader {
-    fn id(&self) -> LoaderId {
-        LoaderId::from_str("Mock").expect("LoaderId should be valid")
-    }
+pub(crate) struct PermissiveMockComponentsLoader {}
 
-    async fn load(
-        &self,
-        _component_reference: &SlipwayReference,
-    ) -> Result<Option<Vec<u8>>, ComponentLoadError> {
-        Ok(None)
+impl PermissiveMockComponentsLoader {
+    pub fn new() -> Self {
+        Self {}
     }
 }
 
-pub(crate) struct LooseMockComponentLoader {}
-
-#[async_trait]
-impl ComponentPartLoader<Component<jtd::Schema>> for LooseMockComponentLoader {
-    fn id(&self) -> LoaderId {
-        LoaderId::from_str("Mock").expect("LoaderId should be valid")
-    }
-
-    async fn load(
+impl ComponentsLoader for PermissiveMockComponentsLoader {
+    fn load_components<'app>(
         &self,
-        component_reference: &SlipwayReference,
-    ) -> Result<Option<Component<jtd::Schema>>, ComponentLoadError> {
-        Ok(Some(Component::<jtd::Schema>::for_test(
-            component_reference,
-            schema_any(),
-            schema_any(),
-        )))
+        component_references: &[&'app SlipwayReference],
+    ) -> Vec<Result<LoadedComponent<'app>, ComponentLoadError>> {
+        component_references
+            .iter()
+            .map(|&component_reference| {
+                let component_definition = Component::<SerdeSchema>::for_test(
+                    component_reference,
+                    schema_any().into_serde_schema(),
+                    schema_any().into_serde_schema(),
+                );
+
+                let definition_string =
+                    serde_json::to_string(&component_definition).expect("schema should serialize");
+
+                Ok(LoadedComponent::new(
+                    component_reference,
+                    definition_string,
+                    Vec::new(),
+                ))
+            })
+            .collect()
     }
 }
 
-#[async_trait]
-impl ComponentPartLoader<Vec<u8>> for LooseMockComponentLoader {
-    fn id(&self) -> LoaderId {
-        LoaderId::from_str("Mock").expect("LoaderId should be valid")
+impl ComponentCache {
+    pub fn for_test_with_schemas(
+        app: &App,
+        schemas: HashMap<String, (jtd::Schema, jtd::Schema)>,
+    ) -> Self {
+        ComponentCache::primed(app, &MockComponentsLoader::new(schemas)).unwrap()
     }
 
-    async fn load(
-        &self,
-        _component_reference: &SlipwayReference,
-    ) -> Result<Option<Vec<u8>>, ComponentLoadError> {
-        Ok(None)
+    pub fn for_test_permissive(app: &App) -> Self {
+        ComponentCache::primed(app, &PermissiveMockComponentsLoader::new()).unwrap()
     }
 }

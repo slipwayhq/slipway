@@ -1,7 +1,9 @@
 use std::io::{self, ErrorKind, Write};
 use termion::{color, style};
 
-use slipway_lib::{parse_app, AppExecutionState, AppSession, ComponentHandle, Immutable};
+use slipway_lib::{
+    parse_app, AppExecutionState, AppSession, ComponentCache, ComponentHandle, Immutable,
+};
 
 use crate::to_view_model::{to_shortcuts, to_view_model};
 use crate::write_app_state;
@@ -89,7 +91,7 @@ pub(crate) fn debug_app(input: std::path::PathBuf) -> anyhow::Result<()> {
     println!();
     let file_contents = std::fs::read_to_string(input)?;
     let app = parse_app(&file_contents)?;
-    let session = AppSession::new(app, Default::default());
+    let session = AppSession::new(app, ComponentCache::empty());
     let mut state = session.initialize()?;
 
     print_state(&state)?;

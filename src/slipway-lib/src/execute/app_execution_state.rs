@@ -47,26 +47,17 @@ impl<'app> AppExecutionState<'app> {
             ))
         })?;
 
-        let mut component_cache = self.session.component_cache.borrow_mut();
         let component_reference = &component_state.rigging.component;
-        let maybe_component_wasm = component_cache.get_wasm(component_reference);
+        let wasm_bytes = self.session.component_cache.get_wasm(component_reference);
 
-        match &maybe_component_wasm.value {
-            Some(wasm_bytes) => {
-                let wasm_bytes = Arc::clone(wasm_bytes);
-                let input = Rc::clone(execution_input);
-                let permissions = component_state.rigging.permissions.as_ref();
-                Ok(ComponentExecutionData {
-                    wasm_bytes,
-                    input,
-                    permissions,
-                })
-            }
-            None => Err(AppError::ComponentWasmLoadFailed(
-                component_state.handle.clone(),
-                maybe_component_wasm.loader_failures.clone(),
-            )),
-        }
+        let wasm_bytes = Arc::clone(&wasm_bytes);
+        let input = Rc::clone(execution_input);
+        let permissions = component_state.rigging.permissions.as_ref();
+        Ok(ComponentExecutionData {
+            wasm_bytes,
+            input,
+            permissions,
+        })
     }
 
     /// Internal because it returns a StepFailed error if the component does not exist,
