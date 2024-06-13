@@ -1,8 +1,11 @@
+use serde_json::json;
 use std::io::{self, ErrorKind, Write};
+use std::str::FromStr;
 use termion::{color, style};
 
 use slipway_lib::{
-    parse_app, AppExecutionState, AppSession, ComponentCache, ComponentHandle, Immutable,
+    parse_app, App, AppExecutionState, AppSession, BasicComponentsLoader, ComponentCache,
+    ComponentHandle, ComponentRigging, Immutable, Name, Publisher, Rigging, SlipwayReference,
 };
 
 use crate::to_view_model::{to_shortcuts, to_view_model};
@@ -84,14 +87,64 @@ enum DebuggerCommand {
     Exit,
 }
 
-pub(crate) fn debug_app(input: std::path::PathBuf) -> anyhow::Result<()> {
-    set_ctrl_c_handler();
-
+pub(crate) fn debug_app_from_component_file(input: std::path::PathBuf) -> anyhow::Result<()> {
     println!("Debugging {}", input.display());
     println!();
+
+    if !input.exists() {
+        println!("File does not exist");
+        return Ok(());
+    }
+
+    let component_reference = match input.is_absolute() {
+        true => SlipwayReference::from_str(&format!("file://{}", input.to_string_lossy()))?,
+        false => SlipwayReference::from_str(&format!("file:{}", input.to_string_lossy()))?,
+    };
+
+    println!("Enter initial component input...");
+    let initial_input = edit_json(&json!({}))?;
+    println!("...done");
+
+    let app = App {
+        publisher: Publisher::from_str("test").expect("generated app publisher should be valid"),
+        name: Name::from_str("test").expect("generated app name should be valid"),
+        version: semver::Version::parse("0.0.1").expect("generated app version should be valid"),
+        description: None,
+        constants: None,
+        rigging: Rigging {
+            components: [(
+                ComponentHandle::from_str("test").unwrap(),
+                ComponentRigging {
+                    component: component_reference,
+                    input: Some(initial_input),
+                    permissions: None,
+                },
+            )]
+            .into_iter()
+            .collect(),
+        },
+    };
+
+    debug_app(app)
+}
+
+pub(crate) fn debug_app_from_app_file(input: std::path::PathBuf) -> anyhow::Result<()> {
+    println!("Debugging {}", input.display());
+    println!();
+
+    if !input.exists() {
+        println!("File does not exist");
+        return Ok(());
+    }
+
     let file_contents = std::fs::read_to_string(input)?;
     let app = parse_app(&file_contents)?;
-    let session = AppSession::new(app, ComponentCache::empty());
+    debug_app(app)
+}
+
+pub(crate) fn debug_app(app: App) -> anyhow::Result<()> {
+    let component_cache = ComponentCache::primed(&app, &BasicComponentsLoader::new())?;
+    let session = AppSession::new(app, component_cache);
     let mut state = session.initialize()?;
 
     print_state(&state)?;
@@ -144,13 +197,6 @@ pub(crate) fn debug_app(input: std::path::PathBuf) -> anyhow::Result<()> {
     println!("Exiting application...");
 
     Ok(())
-}
-
-fn set_ctrl_c_handler() {
-    ctrlc::set_handler(move || {
-        std::process::exit(1);
-    })
-    .expect("Error setting Ctrl-C handler");
 }
 
 enum HandleCommandResult<'app> {
@@ -246,6 +292,14 @@ fn get_handle<'app>(
     let shortcuts = to_shortcuts(state);
 
     if let Some(&handle) = shortcuts.get(handle_str) {
+        return Ok(handle);
+    }
+
+    if let Some(&handle) = state
+        .valid_execution_order
+        .iter()
+        .find(|&h| h.0 == handle_str)
+    {
         return Ok(handle);
     }
 

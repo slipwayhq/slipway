@@ -10,7 +10,7 @@ pub(super) fn handle_run_command<'app>(
 ) -> Result<Immutable<AppExecutionState<'app>>, SlipwayDebugError> {
     let execution_data = state.get_component_execution_data(handle)?;
 
-    let output = run_component_wasm(execution_data)?;
+    let output = run_component_wasm(execution_data, handle)?;
 
     let new_state = state.step(Instruction::SetOutput {
         handle: handle.clone(),

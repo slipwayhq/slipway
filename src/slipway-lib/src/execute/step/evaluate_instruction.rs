@@ -64,6 +64,7 @@ pub(super) fn evaluate_instruction(
             )))?;
 
             let metadata = JsonMetadata::from_value(&value);
+            component_state.output_override = None;
             component_state.execution_output = Some(Rc::new(ComponentOutput {
                 value,
                 input_hash_used: input.metadata.hash.clone(),

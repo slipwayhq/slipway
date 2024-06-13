@@ -19,3 +19,5 @@ semver = { workspace = true }
 jtd = { workspace = true }
 wasmtime = "21.0.1"
 wasi-common = "21.0.1"
+tracing = { workspace = true }
+tracing-subscriber = "0.3.18"

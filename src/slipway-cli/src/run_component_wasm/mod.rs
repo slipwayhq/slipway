@@ -1,4 +1,5 @@
-use slipway_lib::ComponentExecutionData;
+use slipway_lib::{ComponentExecutionData, ComponentHandle};
+use tracing::info;
 use wasi_common::{
     pipe::{ReadPipe, WritePipe},
     sync::WasiCtxBuilder,
@@ -11,6 +12,7 @@ pub(super) mod errors;
 
 pub(super) fn run_component_wasm(
     execution_data: ComponentExecutionData,
+    handle: &ComponentHandle,
 ) -> Result<serde_json::Value, WasmExecutionError> {
     // Serialize the input JSON to a vector of bytes
     let input_bytes = serde_json::to_vec(&execution_data.input.value)
@@ -89,9 +91,61 @@ pub(super) fn run_component_wasm(
         .expect("sole remaining reference")
         .into_inner();
 
+    // Log all output lines until we have a JSON object at the start of a line.
+    let json_index = write_until_bracket(&stdout_contents, handle);
+
     // Deserialize the output JSON
-    let output: serde_json::Value = serde_json::from_slice(&stdout_contents)
+    let output: serde_json::Value = serde_json::from_slice(&stdout_contents[json_index..])
         .map_err(WasmExecutionError::DeserializeOutputFailed)?;
 
     Ok(output)
+}
+
+/// Write all lines from the input until a JSON object is found at the start of a line.
+/// Returns the index of the first byte of the JSON object.
+fn write_until_bracket(input: &[u8], component_handle: &ComponentHandle) -> usize {
+    let mut buffer = Vec::new();
+    let mut prev_byte = b'\n';
+    let mut json_index = 0;
+    for &byte in input.iter() {
+        if prev_byte == b'\n' && byte == b'{' {
+            break;
+        }
+        buffer.push(byte);
+        if byte == b'\n' {
+            if let Ok(line) = String::from_utf8(buffer.clone()) {
+                info!(
+                    component = component_handle.to_string(),
+                    "{}",
+                    line.trim_end()
+                );
+            }
+            buffer.clear();
+        }
+        prev_byte = byte;
+        json_index += 1;
+    }
+
+    // Log any remaining buffered data
+    if !buffer.is_empty() {
+        if let Ok(line) = String::from_utf8(buffer) {
+            info!("{}", line.trim_end());
+        }
+    }
+
+    json_index
+}
+
+#[cfg(test)]
+mod test {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn write_until_bracket_should_write_lines_until_it_finds_a_bracket_after_a_newline() {
+        let input = b"line 1\nline 2\nline 3\n{ \"key\": \"value\" }";
+        let json_index = write_until_bracket(input, &ComponentHandle::from_str("test").unwrap());
+        assert_eq!(json_index, 21);
+    }
 }

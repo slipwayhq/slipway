@@ -37,7 +37,8 @@ pub enum SlipwayReference {
         version: GitHubVersion,
     },
 
-    // file://path
+    // file://absolute-path
+    // file:./relative-path
     Local {
         path: PathBuf,
     },
