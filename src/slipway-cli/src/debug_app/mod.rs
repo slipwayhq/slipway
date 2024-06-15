@@ -104,6 +104,7 @@ pub(crate) fn debug_app_from_component_file(input: std::path::PathBuf) -> anyhow
     println!("Enter initial component input...");
     let initial_input = edit_json(&json!({}))?;
     println!("...done");
+    println!();
 
     let app = App {
         publisher: Publisher::from_str("test").expect("generated app publisher should be valid"),

@@ -2,8 +2,11 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub(crate) enum WasmExecutionError {
-    #[error("unexpected failure: {0}")]
+    #[error("wasm execution error: {0}")]
     GenericError(#[from] anyhow::Error),
+
+    #[error("wasm execution error: {0}")]
+    Other(String),
 
     #[error("wasm step call not found")]
     StepCallNotFound(),

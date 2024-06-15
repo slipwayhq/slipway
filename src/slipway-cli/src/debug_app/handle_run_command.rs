@@ -177,7 +177,7 @@ mod tests {
                 stderr_string,
                 None,
             ))) => {
-                assert_eq!(stderr_string, "slipway-test-component-stderr\n");
+                assert_eq!(stderr_string, "slipway-test-component-stderr");
             }
             _ => panic!("Expected WasmExecutionError/StepCallFailed"),
         }
