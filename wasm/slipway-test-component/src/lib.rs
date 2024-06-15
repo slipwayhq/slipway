@@ -12,10 +12,14 @@ pub fn step() {
 
     let input: Input = serde_json::from_str(&input_string).expect("should parse JSON from stdin");
 
-    println!("Hello world!");
-
     match input {
         Input::Increment { value } => {
+            println!("error: This is an error.");
+            println!("warn: This is a warning.");
+            println!("info: This is information.");
+            println!("debug: This is debug information.");
+            println!("trace: This is trace information.");
+            println!("This is more information.");
             let output = Output { value: value + 1 };
             println!(
                 "{}",

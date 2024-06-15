@@ -17,6 +17,11 @@ pub(super) fn handle_output_command<'app>(
 
     let new_output = edit_json(template)?;
 
+    if new_output == *template {
+        // Nothing changed, so don't set output override.
+        return Ok(Immutable::new(state.clone()));
+    }
+
     let new_state = state.step(Instruction::SetOutputOverride {
         handle: handle.clone(),
         value: new_output,
