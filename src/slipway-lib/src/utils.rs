@@ -15,35 +15,35 @@ macro_rules! create_validated_string_struct {
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 if let Some(min_length) = $min_length {
                     if s.len() < min_length {
-                        return Err(AppError::InvalidSlipwayPrimitive(
-                            stringify!($name).to_string(),
-                            format!(
+                        return Err(AppError::InvalidSlipwayPrimitive{
+                            primitive_type: stringify!($name).to_string(),
+                            message: format!(
                                 "{} is shorter than the minimum length of {}",
                                 stringify!($name),
                                 min_length
                             ),
-                        ));
+                        });
                     }
                 }
 
                 if s.len() > $max_length {
-                    return Err(AppError::InvalidSlipwayPrimitive(
-                        stringify!($name).to_string(),
-                        format!(
+                    return Err(AppError::InvalidSlipwayPrimitive{
+                        primitive_type: stringify!($name).to_string(),
+                        message: format!(
                             "{} is longer than the maximum length of {}",
                             stringify!($name),
                             $max_length
                         ),
-                    ));
+                    });
                 }
 
                 if let Some(pattern) = $pattern {
                     let regex = Regex::new(pattern).unwrap();
                     if !regex.is_match(&s) {
-                        return Err(AppError::InvalidSlipwayPrimitive(
-                            stringify!($name).to_string(),
-                            format!("{} does not match the required format", stringify!($name)),
-                        ));
+                        return Err(AppError::InvalidSlipwayPrimitive{
+                            primitive_type: stringify!($name).to_string(),
+                            message: format!("{} does not match the required format", stringify!($name)),
+                        });
                     }
                 }
 

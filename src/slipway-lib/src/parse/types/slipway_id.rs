@@ -43,10 +43,10 @@ impl FromStr for SlipwayId {
             });
         }
 
-        Err(AppError::InvalidSlipwayPrimitive(
-            stringify!(SlipwayId).to_string(),
-            format!("id '{}' was not in a valid format", s),
-        ))
+        Err(AppError::InvalidSlipwayPrimitive {
+            primitive_type: stringify!(SlipwayId).to_string(),
+            message: format!("id '{}' was not in a valid format", s),
+        })
     }
 }
 

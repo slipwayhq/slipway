@@ -81,27 +81,27 @@ impl FromStr for SlipwayReference {
         if let Ok(uri) = Url::parse(s) {
             return match uri.scheme() {
                 "file" => {
-                    let file_path = uri.to_file_path().map_err(|_| {
-                        AppError::InvalidSlipwayPrimitive(
-                            stringify!(SlipwayReference).to_string(),
-                            format!("unable to convert file URI to local path: {uri}"),
-                        )
-                    })?;
+                    let file_path =
+                        uri.to_file_path()
+                            .map_err(|_| AppError::InvalidSlipwayPrimitive {
+                                primitive_type: stringify!(SlipwayReference).to_string(),
+                                message: format!("unable to convert file URI to local path: {uri}"),
+                            })?;
 
                     Ok(SlipwayReference::Local { path: file_path })
                 }
                 "https" => Ok(SlipwayReference::Url { url: uri }),
-                other => Err(AppError::InvalidSlipwayPrimitive(
-                    stringify!(SlipwayReference).to_string(),
-                    format!("unsupported URI scheme: {other}"),
-                )),
+                other => Err(AppError::InvalidSlipwayPrimitive {
+                    primitive_type: stringify!(SlipwayReference).to_string(),
+                    message: format!("unsupported URI scheme: {other}"),
+                }),
             };
         }
 
-        Err(AppError::InvalidSlipwayPrimitive(
-            stringify!(SlipwayReference).to_string(),
-            format!("component reference '{}' was not in a valid format", s),
-        ))
+        Err(AppError::InvalidSlipwayPrimitive {
+            primitive_type: stringify!(SlipwayReference).to_string(),
+            message: format!("component reference '{}' was not in a valid format", s),
+        })
     }
 }
 

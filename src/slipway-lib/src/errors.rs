@@ -6,19 +6,19 @@ use crate::{ComponentHandle, SlipwayReference};
 
 #[derive(Error, Debug)]
 pub enum AppError {
-    #[error("app parse failed")]
+    #[error("App definition parse failed.\n{0}")]
     ParseFailed(#[from] serde_json::Error),
 
-    #[error("invalid json path ({0}): {1}")]
-    InvalidJsonPathExpression(String, String),
+    #[error("Invalid JSONPath expression at location \"{location}\".\n{message}")]
+    InvalidJsonPathExpression { location: String, message: String },
 
-    #[error("validation failed: {0}")]
+    #[error("App validation failed: {0}")]
     AppValidationFailed(String),
 
-    #[error("step failed: {0}")]
+    #[error("Step failed: {0}")]
     StepFailed(String),
 
-    #[error("resolve json path failed: {message}, state: {state:#}")]
+    #[error("Resolve JSONPath failed: {message}\nState: {state:#}")]
     ResolveJsonPathFailed {
         message: String,
         state: serde_json::Value,
@@ -26,20 +26,24 @@ pub enum AppError {
 
     // If this error is generated during Serde deserialization it will be converted
     // into a `serde_json::Error` and wrapped in a ParseFailed error.
-    #[error("invalid type \"{0}\": {1}")]
-    InvalidSlipwayPrimitive(String, String),
+    #[error("Invalid {primitive_type}: {message}")]
+    InvalidSlipwayPrimitive {
+        primitive_type: String,
+        message: String,
+    },
 
     #[error(
-        "component {validation_type} validation failed for \"{component_handle}\": {validation_error:?}"
+        "Component {validation_type} validation failed for \"{component_handle}\".\n{validation_error:?}"
     )]
     ComponentValidationAborted {
         component_handle: ComponentHandle,
         validation_type: ValidationType,
+        #[source]
         validation_error: jtd::ValidateError,
     },
 
     #[error(
-        "component {validation_type} validation failed for \"{component_handle}\": {validation_failures:?}\n{validated_data}"
+        "Component {validation_type} validation failed for \"{component_handle}\".\nFailures:\n{validation_failures:#?}\nData:\n{validated_data:#}"
     )]
     ComponentValidationFailed {
         component_handle: ComponentHandle,
@@ -53,25 +57,25 @@ pub enum AppError {
 #[error("component load failed for {reference}: {error}")]
 pub enum ComponentLoadError {
     // We're using Arc here so that ComponentError can be cloned.
-    #[error("component definition parse failed")]
+    #[error("Component definition parse failed.\n{0}")]
     DefinitionParseFailed(#[from] Arc<serde_json::Error>),
 
-    #[error("component schema parse failed")]
+    #[error("Component schema parse failed.\n{0}")]
     SchemaParseFailed(#[from] jtd::FromSerdeSchemaError),
 
-    #[error("component definition load failed for \"{reference}\": {error}")]
+    #[error("Component definition load failed for \"{reference}\"\n{error}")]
     DefinitionLoadFailed {
         reference: SlipwayReference,
         error: String,
     },
 
-    #[error("component wasm load failed for \"{reference}\": {error}")]
+    #[error("Component WASM load failed for \"{reference}\"\n{error}")]
     WasmLoadFailed {
         reference: SlipwayReference,
         error: String,
     },
 
-    #[error("component \"{reference}\" was not found")]
+    #[error("Component \"{reference}\" was not found.")]
     NotFound { reference: SlipwayReference },
 }
 

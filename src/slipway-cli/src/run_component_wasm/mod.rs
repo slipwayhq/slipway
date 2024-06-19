@@ -16,7 +16,7 @@ pub(super) fn run_component_wasm(
 ) -> Result<serde_json::Value, WasmExecutionError> {
     // Serialize the input JSON to a vector of bytes
     let input_bytes = serde_json::to_vec(&execution_data.input.value)
-        .map_err(WasmExecutionError::SerializeInputFailed)?;
+        .map_err(|source| WasmExecutionError::SerializeInputFailed { source })?;
 
     // Create a pipe for stdin and stdout
     let stdin = ReadPipe::from(input_bytes);
@@ -51,9 +51,9 @@ pub(super) fn run_component_wasm(
     // Get the WASM function
     let wasm_func = instance
         .get_func(&mut store, "step")
-        .ok_or(WasmExecutionError::StepCallNotFound())?
+        .ok_or(WasmExecutionError::StepFunctionNotFound())?
         .typed::<(), ()>(&store)
-        .map_err(WasmExecutionError::StepCallUnexpectedSignature)?;
+        .map_err(|source| WasmExecutionError::StepFunctionUnexpectedSignature { source })?;
 
     // Call the function
     let call_result = wasm_func.call(&mut store, ());
@@ -86,18 +86,18 @@ pub(super) fn run_component_wasm(
             .trim()
             .to_string();
 
-        return Err(WasmExecutionError::StepCallFailed(
-            match stderr_string.is_empty() {
+        return Err(WasmExecutionError::StepCallFailed {
+            message: match stderr_string.is_empty() {
                 true => "component step call failed".to_string(),
                 false => stderr_string,
             },
-            error_result,
-        ));
+            source: error_result,
+        });
     }
 
     // Deserialize the output JSON
-    let output =
-        serde_json::from_slice(json_buffer).map_err(WasmExecutionError::DeserializeOutputFailed)?;
+    let output = serde_json::from_slice(json_buffer)
+        .map_err(|source| WasmExecutionError::DeserializeOutputFailed { source })?;
 
     Ok(output)
 }

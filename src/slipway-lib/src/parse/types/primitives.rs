@@ -42,13 +42,17 @@ mod tests {
         match T::from_str(input) {
             Ok(_) => panic!("Should not have parsed"),
             Err(e) => {
-                if let Some(AppError::InvalidSlipwayPrimitive(t, m)) = e.as_slipway_error() {
-                    assert_eq!(t, expected_type);
+                if let Some(AppError::InvalidSlipwayPrimitive {
+                    primitive_type,
+                    message,
+                }) = e.as_slipway_error()
+                {
+                    assert_eq!(primitive_type, expected_type);
                     assert!(
-                        m.starts_with(expected_error),
+                        message.starts_with(expected_error),
                         "Expected error to start with \"{}\" but it was \"{}\"",
                         expected_error,
-                        m
+                        message
                     );
                 } else {
                     panic!("Expected a InvalidSlipwayPrimitive error");

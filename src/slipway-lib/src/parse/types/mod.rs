@@ -31,8 +31,9 @@ pub(crate) const REGISTRY_PUBLISHER_SEPARATOR: char = '.';
 pub(crate) const VERSION_SEPARATOR: char = '.';
 
 fn parse_component_version(version_string: &str) -> Result<Version, AppError> {
-    Version::parse(version_string).map_err(|e| {
-        AppError::InvalidSlipwayPrimitive(stringify!(Version).to_string(), e.to_string())
+    Version::parse(version_string).map_err(|e| AppError::InvalidSlipwayPrimitive {
+        primitive_type: stringify!(Version).to_string(),
+        message: e.to_string(),
     })
 }
 

@@ -2,24 +2,27 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub(crate) enum WasmExecutionError {
-    #[error("wasm execution error: {0}")]
+    #[error("WASM execution error.\n{0}")]
     GenericError(#[from] anyhow::Error),
 
-    #[error("wasm execution error: {0}")]
+    #[error("WASM execution error.\n{0}")]
     Other(String),
 
-    #[error("wasm step call not found")]
-    StepCallNotFound(),
+    #[error("WASM step function not found.")]
+    StepFunctionNotFound(),
 
-    #[error("wasm step call had an unexpected signature: {0}")]
-    StepCallUnexpectedSignature(anyhow::Error),
+    #[error("WASM step function had an unexpected signature.\n{source}")]
+    StepFunctionUnexpectedSignature { source: anyhow::Error },
 
-    #[error("wasm step call failed: {0}\n{1:?}")]
-    StepCallFailed(String, Option<anyhow::Error>),
+    #[error("WASM step call failed: {message}\nAdditional details: {source:?}")]
+    StepCallFailed {
+        message: String,
+        source: Option<anyhow::Error>,
+    },
 
-    #[error("serializing input JSON failed: {0}")]
-    SerializeInputFailed(serde_json::Error),
+    #[error("Serializing input JSON failed.\n{source}")]
+    SerializeInputFailed { source: serde_json::Error },
 
-    #[error("deserializing output JSON failed: {0}")]
-    DeserializeOutputFailed(serde_json::Error),
+    #[error("Deserializing output JSON failed.\n{source}")]
+    DeserializeOutputFailed { source: serde_json::Error },
 }

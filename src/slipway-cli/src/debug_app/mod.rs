@@ -1,3 +1,4 @@
+use anyhow::Context;
 use handle_command::{handle_command, HandleCommandResult};
 use json_editor::{JsonEditor, JsonEditorImpl};
 use serde_json::json;
@@ -152,12 +153,8 @@ pub(crate) fn debug_app_from_app_file<W: Write>(
     writeln!(w, "Debugging {}", input.display())?;
     writeln!(w)?;
 
-    if !input.exists() {
-        writeln!(w, "File does not exist")?;
-        return Ok(());
-    }
-
-    let file_contents = std::fs::read_to_string(input)?;
+    let file_contents = std::fs::read_to_string(input.clone())
+        .with_context(|| format!("Failed to read component from {}", input.display()))?;
     let app = parse_app(&file_contents)?;
 
     let json_editor = JsonEditorImpl::new();

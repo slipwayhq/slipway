@@ -11,9 +11,6 @@ use super::{
     simple_json_path::JsonPathOperations,
 };
 
-const JSON_PATH_SOURCE_EXTERNAL_PREFIX: &str = "at location \"";
-const JSON_PATH_SOURCE_EXTERNAL_SUFFIX: &str = "\"";
-
 pub(super) fn evaluate_input(
     component_handle: &ComponentHandle,
     serialized_app_state: &serde_json::Value,
@@ -25,13 +22,10 @@ pub(super) fn evaluate_input(
             let mut evaluated_input = input.clone();
             for found in json_path_strings {
                 let path = JsonPathInst::from_str(&found.path).map_err(|e| {
-                    AppError::InvalidJsonPathExpression(
-                        format!(
-                            "{JSON_PATH_SOURCE_EXTERNAL_PREFIX}{0}{JSON_PATH_SOURCE_EXTERNAL_SUFFIX}",
-                            found.path_to.to_json_path_string()
-                        ),
-                        e,
-                    )
+                    AppError::InvalidJsonPathExpression {
+                        location: found.path_to.to_json_path_string(),
+                        message: e,
+                    }
                 })?;
 
                 let result = path.find_slice(serialized_app_state);

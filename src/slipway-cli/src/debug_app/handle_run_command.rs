@@ -94,10 +94,10 @@ mod tests {
         let maybe_state = handle_run_command(&handle, &state);
 
         match maybe_state {
-            Err(SlipwayDebugError::WasmExecutionFailed(WasmExecutionError::StepCallFailed(
-                stderr_string,
-                Some(_),
-            ))) => {
+            Err(SlipwayDebugError::WasmExecutionFailed(WasmExecutionError::StepCallFailed {
+                message: stderr_string,
+                source: Some(_),
+            })) => {
                 assert!(stderr_string.contains("slipway-test-component-panic"));
             }
             _ => panic!("Expected WasmExecutionError/StepCallFailed"),
@@ -116,10 +116,10 @@ mod tests {
         let maybe_state = handle_run_command(&handle, &state);
 
         match maybe_state {
-            Err(SlipwayDebugError::WasmExecutionFailed(WasmExecutionError::StepCallFailed(
-                stderr_string,
-                None,
-            ))) => {
+            Err(SlipwayDebugError::WasmExecutionFailed(WasmExecutionError::StepCallFailed {
+                message: stderr_string,
+                source: None,
+            })) => {
                 assert_eq!(stderr_string, "slipway-test-component-stderr");
             }
             _ => panic!("Expected WasmExecutionError/StepCallFailed"),
