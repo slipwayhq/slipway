@@ -1,24 +1,26 @@
+use handle_command::{handle_command, HandleCommandResult};
+use json_editor::{JsonEditor, JsonEditorImpl};
 use serde_json::json;
-use std::io::{self, ErrorKind, Write};
+use std::io::{self, Write};
 use std::str::FromStr;
 use termion::{color, style};
 
 use slipway_lib::{
     parse_app, App, AppExecutionState, AppSession, BasicComponentsLoader, ComponentCache,
-    ComponentHandle, ComponentRigging, Immutable, Name, Publisher, Rigging, SlipwayReference,
+    ComponentHandle, ComponentRigging, Name, Publisher, Rigging, SlipwayReference,
 };
 
-use crate::to_view_model::{to_shortcuts, to_view_model};
+use crate::to_view_model::to_view_model;
 use crate::write_app_state;
-
-use self::errors::SlipwayDebugError;
 
 mod errors;
 mod handle_clear_input_command;
 mod handle_clear_output_command;
+mod handle_command;
 mod handle_input_command;
 mod handle_output_command;
 mod handle_run_command;
+mod json_editor;
 
 use clap::{Parser, Subcommand};
 
@@ -87,12 +89,24 @@ enum DebuggerCommand {
     Exit,
 }
 
-pub(crate) fn debug_app_from_component_file(input: std::path::PathBuf) -> anyhow::Result<()> {
-    println!("Debugging {}", input.display());
-    println!();
+#[cfg(test)]
+impl DebugCli {
+    fn for_test(command: &str) -> Self {
+        let mut args = command.split_whitespace().collect::<Vec<&str>>();
+        args.insert(0, "slipway");
+        Self::try_parse_from(args).expect("Should parse")
+    }
+}
+
+pub(crate) fn debug_app_from_component_file<W: Write>(
+    w: &mut W,
+    input: std::path::PathBuf,
+) -> anyhow::Result<()> {
+    writeln!(w, "Debugging {}", input.display())?;
+    writeln!(w)?;
 
     if !input.exists() {
-        println!("File does not exist");
+        writeln!(w, "File does not exist")?;
         return Ok(());
     }
 
@@ -101,10 +115,12 @@ pub(crate) fn debug_app_from_component_file(input: std::path::PathBuf) -> anyhow
         false => SlipwayReference::from_str(&format!("file:{}", input.to_string_lossy()))?,
     };
 
-    println!("Enter initial component input...");
-    let initial_input = edit_json(&json!({}))?;
-    println!("...done");
-    println!();
+    let json_editor = JsonEditorImpl::new();
+
+    writeln!(w, "Enter initial component input...")?;
+    let initial_input = json_editor.edit(&json!({}))?;
+    writeln!(w, "...done")?;
+    writeln!(w)?;
 
     let app = App {
         publisher: Publisher::from_str("test").expect("generated app publisher should be valid"),
@@ -126,43 +142,55 @@ pub(crate) fn debug_app_from_component_file(input: std::path::PathBuf) -> anyhow
         },
     };
 
-    debug_app(app)
+    debug_app(w, app, json_editor)
 }
 
-pub(crate) fn debug_app_from_app_file(input: std::path::PathBuf) -> anyhow::Result<()> {
-    println!("Debugging {}", input.display());
-    println!();
+pub(crate) fn debug_app_from_app_file<W: Write>(
+    w: &mut W,
+    input: std::path::PathBuf,
+) -> anyhow::Result<()> {
+    writeln!(w, "Debugging {}", input.display())?;
+    writeln!(w)?;
 
     if !input.exists() {
-        println!("File does not exist");
+        writeln!(w, "File does not exist")?;
         return Ok(());
     }
 
     let file_contents = std::fs::read_to_string(input)?;
     let app = parse_app(&file_contents)?;
-    debug_app(app)
+
+    let json_editor = JsonEditorImpl::new();
+
+    debug_app(w, app, json_editor)
 }
 
-pub(crate) fn debug_app(app: App) -> anyhow::Result<()> {
+fn debug_app<W: Write>(w: &mut W, app: App, json_editor: impl JsonEditor) -> anyhow::Result<()> {
     let component_cache = ComponentCache::primed(&app, &BasicComponentsLoader::new())?;
     let session = AppSession::new(app, component_cache);
     let mut state = session.initialize()?;
 
-    print_state(&state)?;
+    print_state(w, &state)?;
 
     let help_color = color::Fg(color::Yellow);
-    println!(
+    writeln!(
+        w,
         "{}Type {}help{}{} for commands.{}",
         help_color,
         style::Underline,
         style::Reset,
         help_color,
         color::Fg(color::Reset)
-    );
+    )?;
 
     loop {
-        print!("{}>> {}", color::Fg(color::Green), color::Fg(color::Reset));
-        io::stdout().flush().unwrap();
+        write!(
+            w,
+            "{}>> {}",
+            color::Fg(color::Green),
+            color::Fg(color::Reset)
+        )?;
+        w.flush().unwrap();
 
         let mut input = String::new();
         if io::stdin().read_line(&mut input).is_ok() {
@@ -174,138 +202,41 @@ pub(crate) fn debug_app(app: App) -> anyhow::Result<()> {
             args.insert(0, "slipway");
 
             match DebugCli::try_parse_from(args) {
-                Ok(result) => match handle_command(result, &state) {
+                Ok(result) => match handle_command(w, result, &state, &json_editor) {
                     Ok(HandleCommandResult::Continue(Some(s))) => {
                         state = s;
-                        println!();
-                        print_state(&state)?;
+                        writeln!(w)?;
+                        print_state(w, &state)?;
                     }
                     Ok(HandleCommandResult::Continue(None)) => {}
                     Ok(HandleCommandResult::Exit) => break,
                     Err(e) => {
-                        println!("{}{}{}", color::Fg(color::Red), e, color::Fg(color::Reset));
-                        println!();
-                        print_state(&state)?;
+                        writeln!(
+                            w,
+                            "{}{}{}",
+                            color::Fg(color::Red),
+                            e,
+                            color::Fg(color::Reset)
+                        )?;
+                        writeln!(w)?;
+                        print_state(w, &state)?;
                     }
                 },
                 Err(e) => e.print().expect("Parsing errors should be printed"),
             }
         } else {
-            println!("Error reading input");
+            writeln!(w, "Error reading input")?;
         }
     }
 
-    println!("Exiting application...");
+    writeln!(w, "Exiting application...")?;
 
     Ok(())
 }
 
-enum HandleCommandResult<'app> {
-    Continue(Option<Immutable<AppExecutionState<'app>>>),
-    Exit,
-}
-
-fn handle_command<'app>(
-    matches: DebugCli,
-    state: &AppExecutionState<'app>,
-) -> anyhow::Result<HandleCommandResult<'app>> {
-    let result = match matches.command {
-        DebuggerCommand::Print {} => {
-            print_state(state)?;
-            HandleCommandResult::Continue(None)
-        }
-        DebuggerCommand::Run { handle } => {
-            let handle = get_handle(&handle, state)?;
-            let new_state = handle_run_command::handle_run_command(handle, state)?;
-            HandleCommandResult::Continue(Some(new_state))
-        }
-        DebuggerCommand::Input { handle, clear } => {
-            let handle = get_handle(&handle, state)?;
-
-            match clear {
-                true => {
-                    let new_state =
-                        handle_clear_input_command::handle_clear_input_command(handle, state)?;
-                    HandleCommandResult::Continue(Some(new_state))
-                }
-                false => {
-                    let new_state = handle_input_command::handle_input_command(handle, state)?;
-                    HandleCommandResult::Continue(Some(new_state))
-                }
-            }
-        }
-        DebuggerCommand::Output { handle, clear } => {
-            let handle = get_handle(&handle, state)?;
-
-            match clear {
-                true => {
-                    let new_state =
-                        handle_clear_output_command::handle_clear_output_command(handle, state)?;
-                    HandleCommandResult::Continue(Some(new_state))
-                }
-                false => {
-                    let new_state = handle_output_command::handle_output_command(handle, state)?;
-                    HandleCommandResult::Continue(Some(new_state))
-                }
-            }
-        }
-        DebuggerCommand::Exit => HandleCommandResult::Exit,
-    };
-
-    Ok(result)
-}
-
-fn print_state(state: &AppExecutionState<'_>) -> Result<(), anyhow::Error> {
+fn print_state<W: Write>(w: &mut W, state: &AppExecutionState<'_>) -> Result<(), anyhow::Error> {
     let view_model = to_view_model(state);
-    write_app_state::write_app_state(&mut io::stdout(), &view_model)?;
-    println!();
+    write_app_state::write_app_state(w, &view_model)?;
+    writeln!(w)?;
     Ok(())
-}
-
-fn edit_json(template: &serde_json::Value) -> Result<serde_json::Value, SlipwayDebugError> {
-    let template_string =
-        serde_json::to_string_pretty(&template).expect("Component input should be serializable");
-    let maybe_edited = edit::edit(template_string);
-    match maybe_edited {
-        Ok(edited) => {
-            let result = serde_json::from_str(&edited)?;
-            Ok(result)
-        }
-        Err(e) => match e.kind() {
-            ErrorKind::InvalidData => Err(SlipwayDebugError::UserError(
-                "Could not decode input as UTF-8".into(),
-            )),
-            ErrorKind::NotFound => {
-                Err(SlipwayDebugError::UserError("Text editor not found".into()))
-            }
-            other_error => Err(SlipwayDebugError::UserError(format!(
-                "Failed to open the file: {:?}",
-                other_error
-            ))),
-        },
-    }
-}
-
-fn get_handle<'app>(
-    handle_str: &str,
-    state: &AppExecutionState<'app>,
-) -> Result<&'app ComponentHandle, SlipwayDebugError> {
-    let shortcuts = to_shortcuts(state);
-
-    if let Some(&handle) = shortcuts.get(handle_str) {
-        return Ok(handle);
-    }
-
-    if let Some(&handle) = state
-        .valid_execution_order
-        .iter()
-        .find(|&h| h.0 == handle_str)
-    {
-        return Ok(handle);
-    }
-
-    Err(SlipwayDebugError::UserError(format!(
-        "No component found for handle or shortcut {}",
-        handle_str
-    )))
 }

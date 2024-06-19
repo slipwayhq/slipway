@@ -1,11 +1,12 @@
 use serde_json::json;
 use slipway_lib::{AppExecutionState, ComponentHandle, Immutable, Instruction};
 
-use super::{edit_json, errors::SlipwayDebugError};
+use super::{errors::SlipwayDebugError, json_editor::JsonEditor};
 
 pub(super) fn handle_output_command<'app>(
     handle: &'app ComponentHandle,
     state: &AppExecutionState<'app>,
+    json_editor: &impl JsonEditor,
 ) -> Result<Immutable<AppExecutionState<'app>>, SlipwayDebugError> {
     let component = state
         .component_states
@@ -15,7 +16,7 @@ pub(super) fn handle_output_command<'app>(
     let default_template = json!({});
     let template = component.output().unwrap_or(&default_template);
 
-    let new_output = edit_json(template)?;
+    let new_output = json_editor.edit(template)?;
 
     if new_output == *template {
         // Nothing changed, so don't set output override.

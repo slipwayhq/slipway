@@ -23,8 +23,8 @@ const COLUMN_CHAR: char = '┆';
 //   ╰─┴───┴───────┴─• 10
 // • 3
 
-pub(crate) fn write_app_state<F: Write>(
-    f: &mut F,
+pub(crate) fn write_app_state<W: Write>(
+    w: &mut W,
     view_model: &AppExecutionStateViewModel<'_>,
 ) -> anyhow::Result<()> {
     let max_component_state_row_length = get_max_component_state_row_length(view_model);
@@ -36,25 +36,25 @@ pub(crate) fn write_app_state<F: Write>(
             // write!(f, "{}", COLUMN_CHAR)?;
             // write!(f, "{}", COLUMN_PADDING)?;
 
-            write_component_state(f, component, group)?;
+            write_component_state(w, component, group)?;
 
             let padding_required = max_component_state_row_length // The longest state length
                 - component.handle.0.len() // Subtract the handle length
                 - 2 * component.row_index; // Subtract twice the row index (the tree structure chars)
-            write!(f, "{}", " ".repeat(padding_required))?;
+            write!(w, "{}", " ".repeat(padding_required))?;
 
-            write!(f, "{}", COLUMN_PADDING)?;
-            write!(f, "{}", COLUMN_CHAR)?;
-            write!(f, "{}", COLUMN_PADDING)?;
+            write!(w, "{}", COLUMN_PADDING)?;
+            write!(w, "{}", COLUMN_CHAR)?;
+            write!(w, "{}", COLUMN_PADDING)?;
 
-            write_metadata(f, component, MetadataType::Hashes)?;
+            write_metadata(w, component, MetadataType::Hashes)?;
 
-            write!(f, "{}", COLUMN_PADDING)?;
-            write!(f, "{}", COLUMN_CHAR)?;
-            write!(f, "{}", COLUMN_PADDING)?;
+            write!(w, "{}", COLUMN_PADDING)?;
+            write!(w, "{}", COLUMN_CHAR)?;
+            write!(w, "{}", COLUMN_PADDING)?;
 
             write_metadata(
-                f,
+                w,
                 component,
                 MetadataType::Sizes {
                     max_input_size_string_length,
@@ -65,7 +65,7 @@ pub(crate) fn write_app_state<F: Write>(
             // write!(f, "{}", COLUMN_PADDING)?;
             // write!(f, "{}", COLUMN_CHAR)?;
 
-            writeln!(f)?;
+            writeln!(w)?;
         }
     }
     Ok(())

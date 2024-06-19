@@ -30,57 +30,36 @@ mod tests {
         Rigging, SlipwayReference,
     };
 
-    use crate::run_component_wasm::errors::WasmExecutionError;
+    use crate::{
+        run_component_wasm::errors::WasmExecutionError,
+        test_utils::{find_ancestor_path, SLIPWAY_TEST_COMPONENT_PATH},
+    };
 
     use super::*;
 
-    fn find_ancestor_path(path_to_find: PathBuf) -> PathBuf {
-        let mut current_path = std::env::current_dir().unwrap();
-
-        let mut searched = Vec::new();
-        loop {
-            let current_search_path = current_path.join(&path_to_find);
-            searched.push(current_search_path.clone());
-
-            if current_search_path.exists() {
-                return current_search_path;
-            }
-
-            if !current_path.pop() {
-                panic!(
-                    "Could not find ancestor path: {path_to_find:?}.\nSearched:\n{searched}\n",
-                    searched = searched
-                        .iter()
-                        .map(|p| p.display().to_string())
-                        .collect::<Vec<String>>()
-                        .join("\n")
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn it_should_run_basic_component() {
-        let handle = ch("test_component");
-        let app = App::for_test(Rigging {
+    fn create_app(component_handle: &ComponentHandle, input: serde_json::Value) -> App {
+        App::for_test(Rigging {
             components: [(
-                handle.clone(),
+                component_handle.clone(),
                 ComponentRigging {
                     component: SlipwayReference::Local {
                         path: find_ancestor_path(
-                            PathBuf::from_str(
-                                "wasm/target/wasm32-wasi/debug/slipway_test_component.json",
-                            )
-                            .unwrap(),
+                            PathBuf::from_str(SLIPWAY_TEST_COMPONENT_PATH).unwrap(),
                         ),
                     },
-                    input: Some(json!({ "type": "increment", "value": 42})),
+                    input: Some(input),
                     permissions: None,
                 },
             )]
             .into_iter()
             .collect(),
-        });
+        })
+    }
+
+    #[test]
+    fn it_should_run_basic_component() {
+        let handle = ch("test_component");
+        let app = create_app(&handle, json!({ "type": "increment", "value": 42}));
 
         let component_cache = ComponentCache::primed(&app, &BasicComponentsLoader::new()).unwrap();
         let app_session = AppSession::new(app, component_cache);
@@ -106,25 +85,7 @@ mod tests {
     #[test]
     fn it_should_handle_component_that_panics() {
         let handle = ch("test_component");
-        let app = App::for_test(Rigging {
-            components: [(
-                handle.clone(),
-                ComponentRigging {
-                    component: SlipwayReference::Local {
-                        path: find_ancestor_path(
-                            PathBuf::from_str(
-                                "wasm/target/wasm32-wasi/debug/slipway_test_component.json",
-                            )
-                            .unwrap(),
-                        ),
-                    },
-                    input: Some(json!({ "type": "panic" })),
-                    permissions: None,
-                },
-            )]
-            .into_iter()
-            .collect(),
-        });
+        let app = create_app(&handle, json!({ "type": "panic" }));
 
         let component_cache = ComponentCache::primed(&app, &BasicComponentsLoader::new()).unwrap();
         let app_session = AppSession::new(app, component_cache);
@@ -146,25 +107,7 @@ mod tests {
     #[test]
     fn it_should_handle_component_that_errors() {
         let handle = ch("test_component");
-        let app = App::for_test(Rigging {
-            components: [(
-                handle.clone(),
-                ComponentRigging {
-                    component: SlipwayReference::Local {
-                        path: find_ancestor_path(
-                            PathBuf::from_str(
-                                "wasm/target/wasm32-wasi/debug/slipway_test_component.json",
-                            )
-                            .unwrap(),
-                        ),
-                    },
-                    input: Some(json!({ "type": "stderr" })),
-                    permissions: None,
-                },
-            )]
-            .into_iter()
-            .collect(),
-        });
+        let app = create_app(&handle, json!({ "type": "stderr" }));
 
         let component_cache = ComponentCache::primed(&app, &BasicComponentsLoader::new()).unwrap();
         let app_session = AppSession::new(app, component_cache);

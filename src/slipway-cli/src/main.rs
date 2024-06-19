@@ -4,6 +4,10 @@ mod debug_app;
 mod run_component_wasm;
 mod to_view_model;
 mod utils;
+
+#[cfg(test)]
+mod test_utils;
+
 mod write_app_state;
 
 use std::path::PathBuf;
@@ -47,10 +51,10 @@ fn main() -> anyhow::Result<()> {
 
     match args.command {
         Commands::Debug { path } => {
-            debug_app::debug_app_from_app_file(path)?;
+            debug_app::debug_app_from_app_file(&mut std::io::stdout(), path)?;
         }
         Commands::DebugComponent { path } => {
-            debug_app::debug_app_from_component_file(path)?;
+            debug_app::debug_app_from_component_file(&mut std::io::stdout(), path)?;
         }
         Commands::Launch { path: _ } => {
             todo!();

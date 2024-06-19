@@ -29,11 +29,24 @@ pub enum AppError {
     #[error("invalid type \"{0}\": {1}")]
     InvalidSlipwayPrimitive(String, String),
 
-    #[error("component {1} validation failed for \"{0}\": {2:?}")]
-    ComponentValidationAborted(ComponentHandle, ValidationType, jtd::ValidateError),
+    #[error(
+        "component {validation_type} validation failed for \"{component_handle}\": {validation_error:?}"
+    )]
+    ComponentValidationAborted {
+        component_handle: ComponentHandle,
+        validation_type: ValidationType,
+        validation_error: jtd::ValidateError,
+    },
 
-    #[error("component {1} validation failed for \"{0}\": {2:?}")]
-    ComponentValidationFailed(ComponentHandle, ValidationType, Vec<ValidationFailure>),
+    #[error(
+        "component {validation_type} validation failed for \"{component_handle}\": {validation_failures:?}\n{validated_data}"
+    )]
+    ComponentValidationFailed {
+        component_handle: ComponentHandle,
+        validation_type: ValidationType,
+        validation_failures: Vec<ValidationFailure>,
+        validated_data: serde_json::Value,
+    },
 }
 
 #[derive(Error, Debug, Clone)]

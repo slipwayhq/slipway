@@ -25,21 +25,23 @@ pub(super) fn validate_component_io<'app>(
 
     // The errors returned as part of the Result are fundamental validation errors when trying
     // to validate, rather than errors caused by the JSON not matching the schema.
-    let errors = validation_result.map_err(|e| {
-        AppError::ComponentValidationAborted(
-            component_state.handle.clone(),
-            validation_type.clone(),
-            e,
-        )
+    let errors = validation_result.map_err(|e| AppError::ComponentValidationAborted {
+        component_handle: component_state.handle.clone(),
+        validation_type: validation_type.clone(),
+        validation_error: e,
     })?;
 
     // The errors returned within the result are the actual schema validation errors.
     if !errors.is_empty() {
-        return Err(AppError::ComponentValidationFailed(
-            component_state.handle.clone(),
-            validation_type.clone(),
-            errors.into_iter().map(|e| e.into()).collect(),
-        ));
+        return Err(AppError::ComponentValidationFailed {
+            component_handle: component_state.handle.clone(),
+            validation_type: validation_type.clone(),
+            validation_failures: errors.into_iter().map(|e| e.into()).collect(),
+            validated_data: match validation_data {
+                ValidationData::Input(input) => input.clone(),
+                ValidationData::Output(output) => output.clone(),
+            },
+        });
     }
 
     Ok(())
@@ -167,15 +169,21 @@ mod tests {
         });
 
         match s_result {
-            Err(AppError::ComponentValidationFailed(component_handle, validation_type, errors)) => {
+            Err(AppError::ComponentValidationFailed {
+                component_handle,
+                validation_type,
+                validation_failures,
+                validated_data,
+            }) => {
                 assert_eq!(component_handle, ch("b"));
                 assert_eq!(validation_type, ValidationType::Input);
-                assert_eq!(errors.len(), 1);
-                assert_eq!(errors[0].instance_path_str(), "a_output.foo");
+                assert_eq!(validation_failures.len(), 1);
+                assert_eq!(validation_failures[0].instance_path_str(), "a_output.foo");
                 assert_eq!(
-                    errors[0].schema_path_str(),
+                    validation_failures[0].schema_path_str(),
                     "properties.a_output.properties.foo.type"
                 );
+                assert_eq!(validated_data, json!({ "a_output": { "foo": "bar" } }));
             }
             _ => panic!("Expected ComponentValidationFailed error"),
         }
@@ -260,12 +268,21 @@ mod tests {
         });
 
         match s_result {
-            Err(AppError::ComponentValidationFailed(component_handle, validation_type, errors)) => {
+            Err(AppError::ComponentValidationFailed {
+                component_handle,
+                validation_type,
+                validation_failures,
+                validated_data,
+            }) => {
                 assert_eq!(component_handle, ch("a"));
                 assert_eq!(validation_type, ValidationType::Output);
-                assert_eq!(errors.len(), 1);
-                assert_eq!(errors[0].instance_path_str(), "foo");
-                assert_eq!(errors[0].schema_path_str(), "properties.foo.type");
+                assert_eq!(validation_failures.len(), 1);
+                assert_eq!(validation_failures[0].instance_path_str(), "foo");
+                assert_eq!(
+                    validation_failures[0].schema_path_str(),
+                    "properties.foo.type"
+                );
+                assert_eq!(validated_data, json!({ "foo": "bar" }));
             }
             _ => panic!("Expected ComponentValidationFailed error"),
         }

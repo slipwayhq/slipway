@@ -1,10 +1,11 @@
 use slipway_lib::{AppExecutionState, ComponentHandle, Immutable, Instruction};
 
-use super::{edit_json, errors::SlipwayDebugError};
+use super::{errors::SlipwayDebugError, json_editor::JsonEditor};
 
 pub(super) fn handle_input_command<'app>(
     handle: &'app ComponentHandle,
     state: &AppExecutionState<'app>,
+    json_editor: &impl JsonEditor,
 ) -> Result<Immutable<AppExecutionState<'app>>, SlipwayDebugError> {
     let component = state
         .component_states
@@ -15,7 +16,7 @@ pub(super) fn handle_input_command<'app>(
         SlipwayDebugError::UserError(format!("Component {} has no input", handle))
     })?;
 
-    let new_input = edit_json(template)?;
+    let new_input = json_editor.edit(template)?;
 
     if new_input == *template {
         // Nothing changed, so don't set input override.
