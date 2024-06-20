@@ -73,7 +73,7 @@ mod tests {
             }
           }"#;
 
-        let expected = "invalid type \"SlipwayReference\"";
+        let expected = "Invalid SlipwayReference:";
         match parse_app(json) {
             Ok(_) => panic!("Expected an error"),
             Err(e) => match e {
