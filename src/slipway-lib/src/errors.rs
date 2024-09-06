@@ -1,5 +1,6 @@
 use std::{fmt, sync::Arc};
 
+use jsonschema::error::ValidationErrorKind;
 use thiserror::Error;
 
 use crate::{ComponentHandle, SlipwayReference};
@@ -48,9 +49,15 @@ pub enum AppError {
     ComponentValidationFailed {
         component_handle: ComponentHandle,
         validation_type: ValidationType,
-        validation_failures: Vec<ValidationFailure>,
+        validation_failures: SchemaValidationFailures,
         validated_data: serde_json::Value,
     },
+}
+
+#[derive(Debug)]
+pub enum SchemaValidationFailures {
+    JsonTypeDef(Vec<JsonTypeDefValidationFailure>),
+    JsonSchema(Vec<JsonSchemaValidationFailure>),
 }
 
 #[derive(Error, Debug, Clone)]
@@ -59,6 +66,9 @@ pub enum ComponentLoadError {
     // We're using Arc here so that ComponentError can be cloned.
     #[error("Component definition parse failed.\n{0}")]
     DefinitionParseFailed(#[from] Arc<serde_json::Error>),
+
+    #[error("JSON Schema parse failed.\n{0:?}")]
+    JsonSchemaParseFailed(JsonSchemaValidationFailure),
 
     #[error("Component schema parse failed.\n{0}")]
     SchemaParseFailed(#[from] jtd::FromSerdeSchemaError),
@@ -94,8 +104,21 @@ impl fmt::Display for ValidationType {
     }
 }
 
+pub trait SchemaValidationFailure {
+    fn instance_path(&self) -> &Vec<String>;
+    fn schema_path(&self) -> &Vec<String>;
+
+    fn instance_path_str(&self) -> String {
+        self.instance_path().join(".")
+    }
+
+    fn schema_path_str(&self) -> String {
+        self.schema_path().join(".")
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ValidationFailure {
+pub struct JsonTypeDefValidationFailure {
     /// A path to the part of the instance that was rejected.
     pub instance_path: Vec<String>,
 
@@ -103,17 +126,17 @@ pub struct ValidationFailure {
     pub schema_path: Vec<String>,
 }
 
-impl ValidationFailure {
-    pub fn instance_path_str(&self) -> String {
-        self.instance_path.join(".")
+impl SchemaValidationFailure for JsonTypeDefValidationFailure {
+    fn instance_path(&self) -> &Vec<String> {
+        &self.instance_path
     }
 
-    pub fn schema_path_str(&self) -> String {
-        self.schema_path.join(".")
+    fn schema_path(&self) -> &Vec<String> {
+        &self.schema_path
     }
 }
 
-impl fmt::Display for ValidationFailure {
+impl fmt::Display for JsonTypeDefValidationFailure {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -124,12 +147,44 @@ impl fmt::Display for ValidationFailure {
     }
 }
 
-impl<'a> From<jtd::ValidationErrorIndicator<'a>> for ValidationFailure {
+impl<'a> From<jtd::ValidationErrorIndicator<'a>> for JsonTypeDefValidationFailure {
     fn from(error: jtd::ValidationErrorIndicator) -> Self {
         let (instance_path, schema_path) = error.into_owned_paths();
-        ValidationFailure {
+        JsonTypeDefValidationFailure {
             instance_path,
             schema_path,
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct JsonSchemaValidationFailure {
+    /// Type of validation error.
+    pub kind: Arc<ValidationErrorKind>,
+
+    /// Path to the value that failed validation.
+    pub instance_path: Vec<String>,
+
+    /// Path to the JSON Schema keyword that failed validation.
+    pub schema_path: Vec<String>,
+}
+
+impl<'a> From<jsonschema::ValidationError<'a>> for JsonSchemaValidationFailure {
+    fn from(error: jsonschema::ValidationError<'a>) -> Self {
+        JsonSchemaValidationFailure {
+            kind: Arc::new(error.kind),
+            instance_path: error.instance_path.into_vec(),
+            schema_path: error.schema_path.into_vec(),
+        }
+    }
+}
+
+impl SchemaValidationFailure for JsonSchemaValidationFailure {
+    fn instance_path(&self) -> &Vec<String> {
+        &self.instance_path
+    }
+
+    fn schema_path(&self) -> &Vec<String> {
+        &self.schema_path
     }
 }

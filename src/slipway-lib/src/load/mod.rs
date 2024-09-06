@@ -1,6 +1,8 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{errors::ComponentLoadError, utils::ExpectWith, App, Component, SlipwayReference};
+use crate::{
+    errors::ComponentLoadError, utils::ExpectWith, App, Component, Schema, SlipwayReference,
+};
 
 pub(super) mod basic_components_loader;
 mod prime_component_cache;
@@ -50,7 +52,7 @@ impl ComponentCache {
     pub fn add(
         &mut self,
         component_reference: &SlipwayReference,
-        definition: Component<jtd::Schema>,
+        definition: Component<Schema>,
         wasm_bytes: Vec<u8>,
     ) {
         self.components.insert(
@@ -62,10 +64,7 @@ impl ComponentCache {
         );
     }
 
-    pub fn get_definition(
-        &self,
-        component_reference: &SlipwayReference,
-    ) -> Arc<Component<jtd::Schema>> {
+    pub fn get_definition(&self, component_reference: &SlipwayReference) -> Arc<Component<Schema>> {
         self.get(component_reference).definition.clone()
     }
 
@@ -81,6 +80,6 @@ impl ComponentCache {
 }
 
 struct PrimedComponent {
-    pub definition: Arc<Component<jtd::Schema>>,
+    pub definition: Arc<Component<Schema>>,
     pub wasm_bytes: Arc<Vec<u8>>,
 }

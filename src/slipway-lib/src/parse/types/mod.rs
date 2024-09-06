@@ -101,3 +101,8 @@ impl<TSchema> Component<TSchema> {
         SlipwayId::new(&self.publisher, &self.name, &self.version)
     }
 }
+
+pub enum Schema {
+    JsonTypeDef(jtd::Schema),
+    JsonSchema(jsonschema::JSONSchema),
+}

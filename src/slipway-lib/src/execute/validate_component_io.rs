@@ -1,6 +1,6 @@
 use crate::{
-    errors::{AppError, ValidationType},
-    AppSession, ComponentState,
+    errors::{AppError, SchemaValidationFailures, ValidationType},
+    AppSession, ComponentState, Schema,
 };
 
 pub(super) fn validate_component_io<'app>(
@@ -15,28 +15,49 @@ pub(super) fn validate_component_io<'app>(
     let (validation_type, validation_result) = match validation_data {
         ValidationData::Input(input) => (
             ValidationType::Input,
-            jtd::validate(&component_definition.input, input, Default::default()),
+            validate_json(&component_definition.input, input),
         ),
         ValidationData::Output(output) => (
             ValidationType::Output,
-            jtd::validate(&component_definition.output, output, Default::default()),
+            validate_json(&component_definition.output, output),
         ),
     };
 
-    // The errors returned as part of the Result are fundamental validation errors when trying
-    // to validate, rather than errors caused by the JSON not matching the schema.
-    let errors = validation_result.map_err(|e| AppError::ComponentValidationAborted {
-        component_handle: component_state.handle.clone(),
-        validation_type: validation_type.clone(),
-        validation_error: e,
-    })?;
+    let validation_failures = match validation_result {
+        ValidationResult::JsonTypeDef(validation_result) => {
+            // The errors returned as part of the Result are fundamental validation errors when trying
+            // to validate, rather than errors caused by the JSON not matching the schema.
+            let errors = validation_result.map_err(|e| AppError::ComponentValidationAborted {
+                component_handle: component_state.handle.clone(),
+                validation_type: validation_type.clone(),
+                validation_error: e,
+            })?;
 
-    // The errors returned within the result are the actual schema validation errors.
-    if !errors.is_empty() {
+            // The errors returned within the result are the actual schema validation errors.
+            if !errors.is_empty() {
+                Some(SchemaValidationFailures::JsonTypeDef(
+                    errors.into_iter().map(|e| e.into()).collect(),
+                ))
+            } else {
+                None
+            }
+        }
+        ValidationResult::JsonSchema(result) => {
+            if let Err(errors) = result {
+                Some(SchemaValidationFailures::JsonSchema(
+                    errors.map(|e| e.into()).collect(),
+                ))
+            } else {
+                None
+            }
+        }
+    };
+
+    if let Some(validation_failures) = validation_failures {
         return Err(AppError::ComponentValidationFailed {
             component_handle: component_state.handle.clone(),
             validation_type: validation_type.clone(),
-            validation_failures: errors.into_iter().map(|e| e.into()).collect(),
+            validation_failures,
             validated_data: match validation_data {
                 ValidationData::Input(input) => input.clone(),
                 ValidationData::Output(output) => output.clone(),
@@ -45,6 +66,32 @@ pub(super) fn validate_component_io<'app>(
     }
 
     Ok(())
+}
+
+fn validate_json<'app, 'data>(
+    schema: &'app Schema,
+    data: &'data serde_json::Value,
+) -> ValidationResult<'data>
+where
+    'app: 'data,
+{
+    match schema {
+        Schema::JsonTypeDef(json_type_def_schema) => {
+            let validation_result = jtd::validate(json_type_def_schema, data, Default::default());
+            ValidationResult::JsonTypeDef(validation_result)
+        }
+        Schema::JsonSchema(json_schema) => {
+            let validation_result = json_schema.validate(data);
+            // .map_err(|es| es.into_iter().map(|e| e.into()).collect());
+
+            ValidationResult::JsonSchema(validation_result)
+        }
+    }
+}
+
+pub enum ValidationResult<'data> {
+    JsonTypeDef(Result<Vec<jtd::ValidationErrorIndicator<'data>>, jtd::ValidateError>),
+    JsonSchema(Result<(), jsonschema::ErrorIterator<'data>>),
 }
 
 pub(super) enum ValidationData<'data> {
@@ -58,6 +105,7 @@ mod tests {
     use serde_json::json;
 
     use crate::{
+        errors::SchemaValidationFailure,
         test_utils::{schema_any, schema_valid},
         utils::ch,
         App, ComponentCache, ComponentRigging, Instruction, Rigging,
@@ -177,12 +225,19 @@ mod tests {
             }) => {
                 assert_eq!(component_handle, ch("b"));
                 assert_eq!(validation_type, ValidationType::Input);
-                assert_eq!(validation_failures.len(), 1);
-                assert_eq!(validation_failures[0].instance_path_str(), "a_output.foo");
-                assert_eq!(
-                    validation_failures[0].schema_path_str(),
-                    "properties.a_output.properties.foo.type"
-                );
+
+                match validation_failures {
+                    SchemaValidationFailures::JsonTypeDef(validation_failures) => {
+                        assert_eq!(validation_failures.len(), 1);
+                        assert_eq!(validation_failures[0].instance_path_str(), "a_output.foo");
+                        assert_eq!(
+                            validation_failures[0].schema_path_str(),
+                            "properties.a_output.properties.foo.type"
+                        );
+                    }
+                    _ => panic!("Expected JsonTypeDef validation failures"),
+                }
+
                 assert_eq!(validated_data, json!({ "a_output": { "foo": "bar" } }));
             }
             _ => panic!("Expected ComponentValidationFailed error"),
@@ -276,12 +331,18 @@ mod tests {
             }) => {
                 assert_eq!(component_handle, ch("a"));
                 assert_eq!(validation_type, ValidationType::Output);
-                assert_eq!(validation_failures.len(), 1);
-                assert_eq!(validation_failures[0].instance_path_str(), "foo");
-                assert_eq!(
-                    validation_failures[0].schema_path_str(),
-                    "properties.foo.type"
-                );
+
+                match validation_failures {
+                    SchemaValidationFailures::JsonTypeDef(validation_failures) => {
+                        assert_eq!(validation_failures.len(), 1);
+                        assert_eq!(validation_failures[0].instance_path_str(), "foo");
+                        assert_eq!(
+                            validation_failures[0].schema_path_str(),
+                            "properties.foo.type"
+                        );
+                    }
+                    _ => panic!("Expected JsonTypeDef validation failures"),
+                }
                 assert_eq!(validated_data, json!({ "foo": "bar" }));
             }
             _ => panic!("Expected ComponentValidationFailed error"),
