@@ -76,12 +76,15 @@ where
     'app: 'data,
 {
     match schema {
-        Schema::JsonTypeDef(json_type_def_schema) => {
-            let validation_result = jtd::validate(json_type_def_schema, data, Default::default());
+        Schema::JsonTypeDef { schema } => {
+            let validation_result = jtd::validate(schema, data, Default::default());
             ValidationResult::JsonTypeDef(validation_result)
         }
-        Schema::JsonSchema(json_schema) => {
-            let validation_result = json_schema.validate(data);
+        Schema::JsonSchema {
+            schema,
+            original: _,
+        } => {
+            let validation_result = schema.validate(data);
             // .map_err(|es| es.into_iter().map(|e| e.into()).collect());
 
             ValidationResult::JsonSchema(validation_result)
@@ -344,6 +347,131 @@ mod tests {
                     _ => panic!("Expected JsonTypeDef validation failures"),
                 }
                 assert_eq!(validated_data, json!({ "foo": "bar" }));
+            }
+            _ => panic!("Expected ComponentValidationFailed error"),
+        }
+    }
+
+    #[test]
+    fn it_should_validate_component_input_with_json_schema() {
+        let app = create_app();
+
+        let component_cache = ComponentCache::for_test_with_schemas(
+            &app,
+            [
+                ("a".to_string(), (schema_any(), schema_any())),
+                (
+                    "b".to_string(),
+                    (
+                        schema_valid(json!({
+                            "$schema": "http://json-schema.org/draft-07/schema#",
+                            "properties": {
+                                "a_output": {
+                                    "properties": {
+                                        "foo": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": ["foo"],
+                                    "additionalProperties": false
+                                },
+                            },
+                            "required": ["a_output"],
+                            "additionalProperties": false
+                        })),
+                        schema_any(),
+                    ),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        );
+
+        let app_session = AppSession::new(app, component_cache);
+
+        let mut s = app_session.initialize().unwrap();
+
+        s = s
+            .step(Instruction::SetOutput {
+                handle: ch("a"),
+                value: json!({ "foo": "bar" }),
+            })
+            .unwrap();
+
+        let b_component_state = s.get_component_state(&ch("b")).unwrap();
+        let b_execution_input = b_component_state.execution_input.as_ref().unwrap();
+        assert_eq!(
+            b_execution_input.value,
+            json!({ "a_output": { "foo": "bar" } })
+        );
+    }
+
+    #[test]
+    fn it_should_fail_to_validate_invalid_component_input_with_json_schema() {
+        let app = create_app();
+
+        let component_cache = ComponentCache::for_test_with_schemas(
+            &app,
+            [
+                ("a".to_string(), (schema_any(), schema_any())),
+                (
+                    "b".to_string(),
+                    (
+                        schema_valid(json!({
+                            "$schema": "http://json-schema.org/draft-07/schema#",
+                            "properties": {
+                                "a_output": {
+                                    "properties": {
+                                        "foo": {
+                                            "type": "number"
+                                        }
+                                    },
+                                    "required": ["foo"],
+                                    "additionalProperties": false
+                                },
+                            },
+                            "required": ["a_output"],
+                            "additionalProperties": false
+                        })),
+                        schema_any(),
+                    ),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        );
+
+        let app_session = AppSession::new(app, component_cache);
+
+        let s = app_session.initialize().unwrap();
+        let s_result = s.step(Instruction::SetOutput {
+            handle: ch("a"),
+            value: json!({ "foo": "bar" }),
+        });
+
+        match s_result {
+            Err(AppError::ComponentValidationFailed {
+                component_handle,
+                validation_type,
+                validation_failures,
+                validated_data,
+            }) => {
+                assert_eq!(component_handle, ch("b"));
+                assert_eq!(validation_type, ValidationType::Input);
+
+                match validation_failures {
+                    SchemaValidationFailures::JsonSchema(validation_failures) => {
+                        assert_eq!(validation_failures.len(), 1);
+                        assert_eq!(validation_failures[0].instance_path_str(), "a_output.foo");
+                        assert_eq!(
+                            validation_failures[0].schema_path_str(),
+                            "properties.a_output.properties.foo.type"
+                        );
+                    }
+                    _ => panic!("Expected JsonTypeDef validation failures"),
+                }
+
+                assert_eq!(validated_data, json!({ "a_output": { "foo": "bar" } }));
             }
             _ => panic!("Expected ComponentValidationFailed error"),
         }

@@ -10,9 +10,9 @@ use crate::ComponentRigging;
 use crate::Name;
 use crate::Publisher;
 use crate::Rigging;
+use crate::Schema;
 use crate::SlipwayId;
 use crate::SlipwayReference;
-use jtd::SerdeSchema;
 use semver::Version;
 use serde_json::json;
 use serde_json::Value;
@@ -103,24 +103,25 @@ impl SlipwayReference {
     }
 }
 
-pub fn schema_any() -> jtd::Schema {
-    jtd::Schema::Empty {
-        definitions: Default::default(),
-        metadata: Default::default(),
+pub fn schema_any() -> Schema {
+    Schema::JsonTypeDef {
+        schema: jtd::Schema::Empty {
+            definitions: Default::default(),
+            metadata: Default::default(),
+        },
     }
 }
 
-pub fn schema_valid(json: serde_json::Value) -> jtd::Schema {
-    jtd::Schema::from_serde_schema(serde_json::from_value(json).expect("Parse schema"))
-        .expect("schema should be valid")
+pub fn schema_valid(json: serde_json::Value) -> Schema {
+    crate::parse_schema(json).expect("schema should be valid")
 }
 
 pub(crate) struct MockComponentsLoader {
-    pub schemas: HashMap<SlipwayReference, (jtd::Schema, jtd::Schema)>,
+    pub schemas: HashMap<SlipwayReference, (Schema, Schema)>,
 }
 
 impl MockComponentsLoader {
-    pub fn new(schemas: HashMap<String, (jtd::Schema, jtd::Schema)>) -> Self {
+    pub fn new(schemas: HashMap<String, (Schema, Schema)>) -> Self {
         let schemas = schemas
             .into_iter()
             .map(|(key, value)| (SlipwayReference::for_test(&key), value))
@@ -143,10 +144,10 @@ impl ComponentsLoader for MockComponentsLoader {
                     .map(|(input_schema, output_schema)| {
                         LoadedComponent::new(
                             component_reference,
-                            serde_json::to_string(&Component::<SerdeSchema>::for_test(
+                            serde_json::to_string(&Component::<Schema>::for_test(
                                 component_reference,
-                                input_schema.clone().into_serde_schema(),
-                                output_schema.clone().into_serde_schema(),
+                                input_schema.clone(),
+                                output_schema.clone(),
                             ))
                             .expect("schema should serialize"),
                             Vec::new(),
@@ -177,11 +178,8 @@ impl ComponentsLoader for PermissiveMockComponentsLoader {
         component_references
             .iter()
             .map(|&component_reference| {
-                let component_definition = Component::<SerdeSchema>::for_test(
-                    component_reference,
-                    schema_any().into_serde_schema(),
-                    schema_any().into_serde_schema(),
-                );
+                let component_definition =
+                    Component::<Schema>::for_test(component_reference, schema_any(), schema_any());
 
                 let definition_string =
                     serde_json::to_string(&component_definition).expect("schema should serialize");
@@ -197,10 +195,7 @@ impl ComponentsLoader for PermissiveMockComponentsLoader {
 }
 
 impl ComponentCache {
-    pub fn for_test_with_schemas(
-        app: &App,
-        schemas: HashMap<String, (jtd::Schema, jtd::Schema)>,
-    ) -> Self {
+    pub fn for_test_with_schemas(app: &App, schemas: HashMap<String, (Schema, Schema)>) -> Self {
         ComponentCache::primed(app, &MockComponentsLoader::new(schemas)).unwrap()
     }
 

@@ -10,12 +10,13 @@
 //! and is what the users will expect based on other toolchains
 //! such as Node's package.json.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
+use jsonschema::JSONSchema;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
-use crate::errors::AppError;
+use crate::errors::{AppError, ComponentLoadError};
 
 use self::{
     primitives::{ComponentHandle, Description, Name, Publisher},
@@ -102,7 +103,71 @@ impl<TSchema> Component<TSchema> {
     }
 }
 
+#[derive(Debug)]
 pub enum Schema {
-    JsonTypeDef(jtd::Schema),
-    JsonSchema(jsonschema::JSONSchema),
+    JsonTypeDef {
+        schema: jtd::Schema,
+    },
+    JsonSchema {
+        schema: jsonschema::JSONSchema,
+        original: serde_json::Value,
+    },
+}
+
+impl Serialize for Schema {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Schema::JsonTypeDef { schema } => {
+                schema.clone().into_serde_schema().serialize(serializer)
+            }
+            Schema::JsonSchema {
+                schema: _,
+                original,
+            } => original.serialize(serializer),
+        }
+    }
+}
+
+impl Clone for Schema {
+    fn clone(&self) -> Self {
+        match self {
+            Schema::JsonTypeDef { schema } => Schema::JsonTypeDef {
+                schema: schema.clone(),
+            },
+            Schema::JsonSchema {
+                schema: _,
+                original,
+            } => Schema::JsonSchema {
+                schema: jsonschema::JSONSchema::compile(original)
+                    .expect("cloned schema should be valid"),
+                original: original.clone(),
+            },
+        }
+    }
+}
+
+pub fn parse_schema(schema: serde_json::Value) -> Result<Schema, ComponentLoadError> {
+    if let Some(serde_json::Value::String(schema_uri)) = schema.get("$schema") {
+        if schema_uri.contains("://json-schema.org/") {
+            // If the schema contains a $schema property, and the domain is json-schema.org, it is a JSON Schema.
+            let compiled_schema = JSONSchema::compile(&schema)
+                .map_err(|e| ComponentLoadError::JsonSchemaParseFailed(e.into()))?;
+
+            return Ok(Schema::JsonSchema {
+                schema: compiled_schema,
+                original: schema,
+            });
+        }
+    }
+
+    // Otherwise it is JsonTypeDef.
+    let jtd_serde_schema: jtd::SerdeSchema = serde_json::from_value(schema)
+        .map_err(|e| ComponentLoadError::DefinitionParseFailed(Arc::new(e)))?;
+
+    let jtd_schema = jtd::Schema::from_serde_schema(jtd_serde_schema)?;
+
+    Ok(Schema::JsonTypeDef { schema: jtd_schema })
 }
