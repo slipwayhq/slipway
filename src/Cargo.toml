@@ -1,5 +1,5 @@
 [workspace]
-members = ["slipway-lib", "slipway-cli"]
+members = ["slipway-lib", "slipway"]
 resolver = "2"
 
 [workspace.package]
