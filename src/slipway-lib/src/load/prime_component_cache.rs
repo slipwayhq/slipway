@@ -27,8 +27,8 @@ pub(super) fn prime_component_cache(
 
         let parsed_definition = crate::parse::parse_component(&loaded_component.definition)?;
 
-        let input = parse_schema(parsed_definition.input)?;
-        let output = parse_schema(parsed_definition.output)?;
+        let input = parse_schema("input", parsed_definition.input)?;
+        let output = parse_schema("output", parsed_definition.output)?;
 
         let definition = Component::<Schema> {
             publisher: parsed_definition.publisher,

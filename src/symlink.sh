@@ -1,3 +1,3 @@
 #!/bin/bash
 
-ln -sf $(pwd)/target/release/slipway ~/bin/slipway
+ln -sf $(pwd)/target/debug/slipway ~/bin/slipway

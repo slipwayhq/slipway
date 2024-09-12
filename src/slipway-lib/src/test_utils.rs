@@ -112,8 +112,8 @@ pub fn schema_any() -> Schema {
     }
 }
 
-pub fn schema_valid(json: serde_json::Value) -> Schema {
-    crate::parse_schema(json).expect("schema should be valid")
+pub fn schema_valid(schema_name: &str, json: serde_json::Value) -> Schema {
+    crate::parse_schema(schema_name, json).expect("schema should be valid")
 }
 
 pub(crate) struct MockComponentsLoader {

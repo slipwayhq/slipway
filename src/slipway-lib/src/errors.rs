@@ -67,8 +67,17 @@ pub enum ComponentLoadError {
     #[error("Component definition parse failed.\n{0}")]
     DefinitionParseFailed(#[from] Arc<serde_json::Error>),
 
-    #[error("JSON Schema parse failed.\n{0:?}")]
-    JsonSchemaParseFailed(JsonSchemaValidationFailure),
+    #[error("JSON TypeDef parse failed for {schema_name}.\n{error}")]
+    JsonTypeDefParseFailed {
+        schema_name: String,
+        error: Arc<serde_json::Error>,
+    },
+
+    #[error("JSON Schema parse failed for {schema_name}.\n{error:?}")]
+    JsonSchemaParseFailed {
+        schema_name: String,
+        error: JsonSchemaValidationFailure,
+    },
 
     #[error("Component schema parse failed.\n{0}")]
     SchemaParseFailed(#[from] jtd::FromSerdeSchemaError),

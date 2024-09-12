@@ -143,17 +143,20 @@ mod tests {
                 (
                     "b".to_string(),
                     (
-                        schema_valid(json!({
-                            "properties": {
-                                "a_output": {
-                                    "properties": {
-                                        "foo": {
-                                            "type": "string"
+                        schema_valid(
+                            "b.input",
+                            json!({
+                                "properties": {
+                                    "a_output": {
+                                        "properties": {
+                                            "foo": {
+                                                "type": "string"
+                                            }
                                         }
-                                    }
-                                },
-                            }
-                        })),
+                                    },
+                                }
+                            }),
+                        ),
                         schema_any(),
                     ),
                 ),
@@ -192,17 +195,20 @@ mod tests {
                 (
                     "b".to_string(),
                     (
-                        schema_valid(json!({
-                            "properties": {
-                                "a_output": {
-                                    "properties": {
-                                        "foo": {
-                                            "type": "int32"
+                        schema_valid(
+                            "b.input",
+                            json!({
+                                "properties": {
+                                    "a_output": {
+                                        "properties": {
+                                            "foo": {
+                                                "type": "int32"
+                                            }
                                         }
-                                    }
-                                },
-                            }
-                        })),
+                                    },
+                                }
+                            }),
+                        ),
                         schema_any(),
                     ),
                 ),
@@ -258,13 +264,16 @@ mod tests {
                     "a".to_string(),
                     (
                         schema_any(),
-                        schema_valid(json!({
-                            "properties": {
-                                "foo": {
-                                    "type": "string"
+                        schema_valid(
+                            "a.output",
+                            json!({
+                                "properties": {
+                                    "foo": {
+                                        "type": "string"
+                                    }
                                 }
-                            }
-                        })),
+                            }),
+                        ),
                     ),
                 ),
                 ("b".to_string(), (schema_any(), schema_any())),
@@ -302,13 +311,16 @@ mod tests {
                     "a".to_string(),
                     (
                         schema_any(),
-                        schema_valid(json!({
-                            "properties": {
-                                "foo": {
-                                    "type": "int32"
+                        schema_valid(
+                            "a.output",
+                            json!({
+                                "properties": {
+                                    "foo": {
+                                        "type": "int32"
+                                    }
                                 }
-                            }
-                        })),
+                            }),
+                        ),
                     ),
                 ),
                 ("b".to_string(), (schema_any(), schema_any())),
@@ -363,22 +375,25 @@ mod tests {
                 (
                     "b".to_string(),
                     (
-                        schema_valid(json!({
-                            "$schema": "http://json-schema.org/draft-07/schema#",
-                            "properties": {
-                                "a_output": {
-                                    "properties": {
-                                        "foo": {
-                                            "type": "string"
-                                        }
+                        schema_valid(
+                            "b.input",
+                            json!({
+                                "$schema": "http://json-schema.org/draft-07/schema#",
+                                "properties": {
+                                    "a_output": {
+                                        "properties": {
+                                            "foo": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": ["foo"],
+                                        "additionalProperties": false
                                     },
-                                    "required": ["foo"],
-                                    "additionalProperties": false
                                 },
-                            },
-                            "required": ["a_output"],
-                            "additionalProperties": false
-                        })),
+                                "required": ["a_output"],
+                                "additionalProperties": false
+                            }),
+                        ),
                         schema_any(),
                     ),
                 ),
@@ -417,22 +432,25 @@ mod tests {
                 (
                     "b".to_string(),
                     (
-                        schema_valid(json!({
-                            "$schema": "http://json-schema.org/draft-07/schema#",
-                            "properties": {
-                                "a_output": {
-                                    "properties": {
-                                        "foo": {
-                                            "type": "number"
-                                        }
+                        schema_valid(
+                            "b.input",
+                            json!({
+                                "$schema": "http://json-schema.org/draft-07/schema#",
+                                "properties": {
+                                    "a_output": {
+                                        "properties": {
+                                            "foo": {
+                                                "type": "number"
+                                            }
+                                        },
+                                        "required": ["foo"],
+                                        "additionalProperties": false
                                     },
-                                    "required": ["foo"],
-                                    "additionalProperties": false
                                 },
-                            },
-                            "required": ["a_output"],
-                            "additionalProperties": false
-                        })),
+                                "required": ["a_output"],
+                                "additionalProperties": false
+                            }),
+                        ),
                         schema_any(),
                     ),
                 ),

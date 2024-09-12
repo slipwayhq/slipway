@@ -111,6 +111,8 @@ pub(crate) fn debug_app_from_component_file<W: Write>(
         return Ok(());
     }
 
+    let input = redirect_to_json_if_wasm(&input);
+
     let component_reference = match input.is_absolute() {
         true => SlipwayReference::from_str(&format!("file://{}", input.to_string_lossy()))?,
         false => SlipwayReference::from_str(&format!("file:{}", input.to_string_lossy()))?,
@@ -160,6 +162,16 @@ pub(crate) fn debug_app_from_app_file<W: Write>(
     let json_editor = JsonEditorImpl::new();
 
     debug_app(w, app, json_editor)
+}
+
+fn redirect_to_json_if_wasm(input: &std::path::Path) -> std::path::PathBuf {
+    if input.extension().map(|e| e == "wasm").unwrap_or(false) {
+        let mut new_path = input.to_owned();
+        new_path.set_extension("json");
+        new_path
+    } else {
+        input.to_owned()
+    }
 }
 
 fn debug_app<W: Write>(w: &mut W, app: App, json_editor: impl JsonEditor) -> anyhow::Result<()> {
