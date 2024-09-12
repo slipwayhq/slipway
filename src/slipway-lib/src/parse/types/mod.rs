@@ -177,7 +177,12 @@ pub fn parse_schema(
             error: Arc::new(e),
         })?;
 
-    let jtd_schema = jtd::Schema::from_serde_schema(jtd_serde_schema)?;
+    let jtd_schema = jtd::Schema::from_serde_schema(jtd_serde_schema).map_err(|e| {
+        ComponentLoadError::JsonTypeDefConversionFailed {
+            schema_name: schema_name.to_string(),
+            error: e,
+        }
+    })?;
 
     Ok(Schema::JsonTypeDef { schema: jtd_schema })
 }

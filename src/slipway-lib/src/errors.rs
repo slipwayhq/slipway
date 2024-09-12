@@ -73,14 +73,17 @@ pub enum ComponentLoadError {
         error: Arc<serde_json::Error>,
     },
 
+    #[error("JSON TypeDef conversion failed for {schema_name}.\n{error}")]
+    JsonTypeDefConversionFailed {
+        schema_name: String,
+        error: jtd::FromSerdeSchemaError,
+    },
+
     #[error("JSON Schema parse failed for {schema_name}.\n{error:?}")]
     JsonSchemaParseFailed {
         schema_name: String,
         error: JsonSchemaValidationFailure,
     },
-
-    #[error("Component schema parse failed.\n{0}")]
-    SchemaParseFailed(#[from] jtd::FromSerdeSchemaError),
 
     #[error("Component definition load failed for \"{reference}\"\n{error}")]
     DefinitionLoadFailed {
