@@ -40,15 +40,19 @@ impl<'app> AppExecutionState<'app> {
     ) -> Result<ComponentExecutionData<'app>, AppError> {
         let component_state = self.get_component_state(handle)?;
 
-        let execution_input = component_state.execution_input.as_ref().ok_or_else(|| {
-            AppError::StepFailed(format!(
-                "Component {} has no execution input",
-                component_state.handle
-            ))
-        })?;
+        let execution_input =
+            component_state
+                .execution_input
+                .as_ref()
+                .ok_or_else(|| AppError::StepFailed {
+                    error: format!(
+                        "Component {} has no execution input",
+                        component_state.handle
+                    ),
+                })?;
 
         let component_reference = &component_state.rigging.component;
-        let wasm_bytes = self.session.component_cache.get_wasm(component_reference);
+        let wasm_bytes = self.session.component_cache.get_wasm(component_reference)?;
 
         let wasm_bytes = Arc::clone(&wasm_bytes);
         let input = Rc::clone(execution_input);
@@ -66,13 +70,12 @@ impl<'app> AppExecutionState<'app> {
         &mut self,
         handle: &ComponentHandle,
     ) -> Result<&mut ComponentState<'app>, AppError> {
-        let component_state = self
-            .component_states
-            .get_mut(handle)
-            .ok_or(AppError::StepFailed(format!(
-                "component {:?} does not exist in component states",
-                handle
-            )))?;
+        let component_state =
+            self.component_states
+                .get_mut(handle)
+                .ok_or(AppError::StepFailed {
+                    error: format!("component {:?} does not exist in component states", handle),
+                })?;
 
         Ok(component_state)
     }
@@ -86,10 +89,9 @@ impl<'app> AppExecutionState<'app> {
         let component_state = self
             .component_states
             .get(handle)
-            .ok_or(AppError::StepFailed(format!(
-                "component {:?} does not exist in component states",
-                handle
-            )))?;
+            .ok_or(AppError::StepFailed {
+                error: format!("component {:?} does not exist in component states", handle),
+            })?;
 
         Ok(component_state)
     }

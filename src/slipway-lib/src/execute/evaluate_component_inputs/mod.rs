@@ -80,7 +80,8 @@ pub(super) fn evaluate_component_inputs(
     // evaluated inputs of their dependencies.
     if !component_evaluate_input_params.is_empty() {
         // Serialize the app state to a JSON value.
-        let mut serialized_app_state = serde_json::to_value(&state.session.app)?;
+        let mut serialized_app_state = serde_json::to_value(&state.session.app)
+            .map_err(|error| AppError::AppParseFailed { error })?;
 
         // For each component handle, in execution order.
         for &component_handle in execution_order.iter() {

@@ -214,9 +214,9 @@ mod tests {
 
             match execution_state_result {
                 Ok(_) => panic!("expected an error"),
-                Err(AppError::StepFailed(s)) => {
+                Err(AppError::StepFailed { error }) => {
                     assert_eq!(
-                    s,
+                    error,
                     "component g cannot currently be executed, did you intend to override the output?"
                 );
                 }

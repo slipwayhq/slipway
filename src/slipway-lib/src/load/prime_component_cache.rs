@@ -1,7 +1,9 @@
 use itertools::Itertools;
 
 use crate::{
-    errors::ComponentLoadError, load::ComponentsLoader, parse_schema, App, Component, Schema,
+    errors::{ComponentLoadError, ComponentLoadErrorInner},
+    load::ComponentsLoader,
+    parse_component, parse_schema, App, Component, Schema, SlipwayReference,
 };
 
 use super::ComponentCache;
@@ -25,10 +27,20 @@ pub(super) fn prime_component_cache(
     for maybe_loaded_component in loaded_components {
         let loaded_component = maybe_loaded_component?;
 
-        let parsed_definition = crate::parse::parse_component(&loaded_component.definition)?;
+        let parsed_definition = handle_component_load_error(
+            loaded_component.reference,
+            parse_component(&loaded_component.definition),
+        )?;
 
-        let input = parse_schema("input", parsed_definition.input)?;
-        let output = parse_schema("output", parsed_definition.output)?;
+        let input = handle_component_load_error(
+            loaded_component.reference,
+            parse_schema("input", parsed_definition.input),
+        )?;
+
+        let output = handle_component_load_error(
+            loaded_component.reference,
+            parse_schema("output", parsed_definition.output),
+        )?;
 
         let definition = Component::<Schema> {
             publisher: parsed_definition.publisher,
@@ -42,9 +54,17 @@ pub(super) fn prime_component_cache(
         component_cache.add(
             loaded_component.reference,
             definition,
-            loaded_component.wasm_bytes,
+            loaded_component.wasm,
+            loaded_component.json,
         );
     }
 
     Ok(component_cache)
+}
+
+fn handle_component_load_error<T>(
+    reference: &SlipwayReference,
+    result: Result<T, ComponentLoadErrorInner>,
+) -> Result<T, ComponentLoadError> {
+    result.map_err(|e| ComponentLoadError::new(reference, e))
 }

@@ -17,10 +17,9 @@ pub(super) fn map_dependencies_to_app_handles(
             let kr = match lookup_result {
                 Some((kr, _)) => kr,
                 None => {
-                    return Err(AppError::AppValidationFailed(format!(
-                        "dependency {:?} not found in rigging component keys",
-                        d
-                    )))
+                    return Err(AppError::AppValidationFailed {
+                        error: format!("dependency {:?} not found in rigging component keys", d),
+                    })
                 }
             };
             refs.insert(*kr);

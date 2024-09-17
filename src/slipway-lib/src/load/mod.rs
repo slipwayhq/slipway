@@ -14,18 +14,33 @@ pub trait ComponentsLoader {
     ) -> Vec<Result<LoadedComponent<'app>, ComponentLoadError>>;
 }
 
+pub trait ComponentWasm {
+    fn get(&self) -> Result<Arc<Vec<u8>>, ComponentLoadError>;
+}
+
+pub trait ComponentJson {
+    fn get(&self, file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError>;
+}
+
 pub struct LoadedComponent<'app> {
     pub reference: &'app SlipwayReference,
     pub definition: String,
-    pub wasm_bytes: Vec<u8>,
+    pub wasm: Box<dyn ComponentWasm>,
+    pub json: Box<dyn ComponentJson>,
 }
 
 impl<'app> LoadedComponent<'app> {
-    pub fn new(reference: &'app SlipwayReference, definition: String, wasm_bytes: Vec<u8>) -> Self {
+    pub fn new(
+        reference: &'app SlipwayReference,
+        definition: String,
+        wasm: Box<dyn ComponentWasm>,
+        json: Box<dyn ComponentJson>,
+    ) -> Self {
         Self {
             reference,
             definition,
-            wasm_bytes,
+            wasm,
+            json,
         }
     }
 }
@@ -53,13 +68,15 @@ impl ComponentCache {
         &mut self,
         component_reference: &SlipwayReference,
         definition: Component<Schema>,
-        wasm_bytes: Vec<u8>,
+        wasm: Box<dyn ComponentWasm>,
+        json: Box<dyn ComponentJson>,
     ) {
         self.components.insert(
             component_reference.clone(),
             PrimedComponent {
                 definition: Arc::new(definition),
-                wasm_bytes: Arc::new(wasm_bytes),
+                wasm,
+                json,
             },
         );
     }
@@ -68,8 +85,19 @@ impl ComponentCache {
         self.get(component_reference).definition.clone()
     }
 
-    pub fn get_wasm(&self, component_reference: &SlipwayReference) -> Arc<Vec<u8>> {
-        self.get(component_reference).wasm_bytes.clone()
+    pub fn get_wasm(
+        &self,
+        component_reference: &SlipwayReference,
+    ) -> Result<Arc<Vec<u8>>, ComponentLoadError> {
+        self.get(component_reference).wasm.get()
+    }
+
+    pub fn get_json(
+        &self,
+        component_reference: &SlipwayReference,
+        file_name: &str,
+    ) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
+        self.get(component_reference).json.get(file_name)
     }
 
     fn get(&self, component_reference: &SlipwayReference) -> &PrimedComponent {
@@ -81,5 +109,6 @@ impl ComponentCache {
 
 struct PrimedComponent {
     pub definition: Arc<Component<Schema>>,
-    pub wasm_bytes: Arc<Vec<u8>>,
+    pub wasm: Box<dyn ComponentWasm>,
+    pub json: Box<dyn ComponentJson>,
 }

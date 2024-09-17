@@ -16,7 +16,7 @@ use jsonschema::JSONSchema;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
-use crate::errors::{AppError, ComponentLoadError};
+use crate::errors::{AppError, ComponentLoadErrorInner};
 
 use self::{
     primitives::{ComponentHandle, Description, Name, Publisher},
@@ -152,12 +152,12 @@ impl Clone for Schema {
 pub fn parse_schema(
     schema_name: &str,
     schema: serde_json::Value,
-) -> Result<Schema, ComponentLoadError> {
+) -> Result<Schema, ComponentLoadErrorInner> {
     if let Some(serde_json::Value::String(schema_uri)) = schema.get("$schema") {
         if schema_uri.contains("://json-schema.org/") {
             // If the schema contains a $schema property, and the domain is json-schema.org, it is a JSON Schema.
             let compiled_schema = JSONSchema::compile(&schema).map_err(|e| {
-                ComponentLoadError::JsonSchemaParseFailed {
+                ComponentLoadErrorInner::JsonSchemaParseFailed {
                     schema_name: schema_name.to_string(),
                     error: e.into(),
                 }
@@ -171,14 +171,15 @@ pub fn parse_schema(
     }
 
     // Otherwise it is JsonTypeDef.
-    let jtd_serde_schema: jtd::SerdeSchema =
-        serde_json::from_value(schema).map_err(|e| ComponentLoadError::JsonTypeDefParseFailed {
+    let jtd_serde_schema: jtd::SerdeSchema = serde_json::from_value(schema).map_err(|e| {
+        ComponentLoadErrorInner::JsonTypeDefParseFailed {
             schema_name: schema_name.to_string(),
             error: Arc::new(e),
-        })?;
+        }
+    })?;
 
     let jtd_schema = jtd::Schema::from_serde_schema(jtd_serde_schema).map_err(|e| {
-        ComponentLoadError::JsonTypeDefConversionFailed {
+        ComponentLoadErrorInner::JsonTypeDefConversionFailed {
             schema_name: schema_name.to_string(),
             error: e,
         }

@@ -1,4 +1,4 @@
-use std::{fmt, sync::Arc};
+use std::{fmt, path::PathBuf, sync::Arc};
 
 use jsonschema::error::ValidationErrorKind;
 use thiserror::Error;
@@ -7,17 +7,17 @@ use crate::{ComponentHandle, SlipwayReference};
 
 #[derive(Error, Debug)]
 pub enum AppError {
-    #[error("App definition parse failed.\n{0}")]
-    ParseFailed(#[from] serde_json::Error),
+    #[error("App definition parse failed.\n{error}")]
+    AppParseFailed { error: serde_json::Error },
 
     #[error("Invalid JSONPath expression at location \"{location}\".\n{message}")]
     InvalidJsonPathExpression { location: String, message: String },
 
-    #[error("App validation failed: {0}")]
-    AppValidationFailed(String),
+    #[error("App validation failed: {error}")]
+    AppValidationFailed { error: String },
 
-    #[error("Step failed: {0}")]
-    StepFailed(String),
+    #[error("Step failed: {error}")]
+    StepFailed { error: String },
 
     #[error("Resolve JSONPath failed: {message}\nState: {state:#}")]
     ResolveJsonPathFailed {
@@ -52,6 +52,9 @@ pub enum AppError {
         validation_failures: SchemaValidationFailures,
         validated_data: serde_json::Value,
     },
+
+    #[error("App component load failed.\n{0}")]
+    ComponentLoadFailed(#[from] ComponentLoadError),
 }
 
 #[derive(Debug)]
@@ -62,10 +65,26 @@ pub enum SchemaValidationFailures {
 
 #[derive(Error, Debug, Clone)]
 #[error("component load failed for {reference}: {error}")]
-pub enum ComponentLoadError {
-    // We're using Arc here so that ComponentError can be cloned.
-    #[error("Component definition parse failed.\n{0}")]
-    DefinitionParseFailed(#[from] Arc<serde_json::Error>),
+pub struct ComponentLoadError {
+    reference: Box<SlipwayReference>,
+    error: ComponentLoadErrorInner,
+}
+
+impl ComponentLoadError {
+    pub fn new(reference: &SlipwayReference, error: ComponentLoadErrorInner) -> Self {
+        Self {
+            reference: Box::new(reference.clone()),
+            error,
+        }
+    }
+}
+
+#[derive(Error, Debug, Clone)]
+pub enum ComponentLoadErrorInner {
+    #[error("Component definition parse failed.\n{error}")]
+    DefinitionParseFailed {
+        error: Arc<serde_json::Error>, // We're using Arc here so that ComponentError can be cloned.
+    },
 
     #[error("JSON TypeDef parse failed for {schema_name}.\n{error}")]
     JsonTypeDefParseFailed {
@@ -85,20 +104,23 @@ pub enum ComponentLoadError {
         error: JsonSchemaValidationFailure,
     },
 
-    #[error("Component definition load failed for \"{reference}\"\n{error}")]
-    DefinitionLoadFailed {
-        reference: SlipwayReference,
-        error: String,
+    #[error("Component definition load failed:\n{error}")]
+    DefinitionLoadFailed { error: String },
+
+    #[error("Component WASM load failed:\n{error}")]
+    WasmLoadFailed { error: String },
+
+    #[error("Component file load failed:\n{path}\n{error}")]
+    FileLoadFailed { path: PathBuf, error: String },
+
+    #[error("Component JSON file parse failed:\n{path}\n{error}")]
+    FileJsonParseFailed {
+        path: PathBuf,
+        error: Arc<serde_json::Error>, // We're using Arc here so that ComponentError can be cloned.
     },
 
-    #[error("Component WASM load failed for \"{reference}\"\n{error}")]
-    WasmLoadFailed {
-        reference: SlipwayReference,
-        error: String,
-    },
-
-    #[error("Component \"{reference}\" was not found.")]
-    NotFound { reference: SlipwayReference },
+    #[error("Component was not found.")]
+    NotFound,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

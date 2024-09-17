@@ -119,10 +119,9 @@ impl<'a> Graph<'a> {
                 .map(|&x| x.to_string())
                 .collect::<Vec<String>>()
                 .join(" -> ");
-            return Err(AppError::AppValidationFailed(format!(
-                "{}: {}",
-                CYCLE_DETECTED_ERROR, cycle
-            )));
+            return Err(AppError::AppValidationFailed {
+                error: format!("{}: {}", CYCLE_DETECTED_ERROR, cycle),
+            });
         }
 
         Ok(())
@@ -308,10 +307,13 @@ mod tests {
             assert!(result.is_err());
 
             match result {
-                Err(AppError::AppValidationFailed(msg)) => {
+                Err(AppError::AppValidationFailed { error }) => {
                     // There are a few cycles it could report, e.g. C -> B -> A -> C, but
                     // sorting during cycle detection ensures it always reports the same one.
-                    assert_eq!(msg, format!("{}: {}", CYCLE_DETECTED_ERROR, "A -> C -> A"));
+                    assert_eq!(
+                        error,
+                        format!("{}: {}", CYCLE_DETECTED_ERROR, "A -> C -> A")
+                    );
                 }
                 _ => panic!("Expected a ValidationFailed error"),
             }

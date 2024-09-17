@@ -46,30 +46,38 @@ impl<'a> JsonPathOperations for Vec<SimpleJsonPath<'a>> {
                 SimpleJsonPath::Field(field) => {
                     current = current
                         .as_object_mut()
-                        .ok_or(AppError::StepFailed(format!(
-                            "Expected {} to be an object",
-                            path_so_far.to_json_path_string()
-                        )))?
+                        .ok_or(AppError::StepFailed {
+                            error: format!(
+                                "Expected {} to be an object",
+                                path_so_far.to_json_path_string()
+                            ),
+                        })?
                         .get_mut(*field)
-                        .ok_or(AppError::StepFailed(format!(
-                            "Expected field {} at {} to exist",
-                            field,
-                            path_so_far.to_json_path_string()
-                        )))?;
+                        .ok_or(AppError::StepFailed {
+                            error: format!(
+                                "Expected field {} at {} to exist",
+                                field,
+                                path_so_far.to_json_path_string()
+                            ),
+                        })?;
                 }
                 SimpleJsonPath::Index(index) => {
                     current = current
                         .as_array_mut()
-                        .ok_or(AppError::StepFailed(format!(
-                            "Expected {} to be an array",
-                            path_so_far.to_json_path_string()
-                        )))?
+                        .ok_or(AppError::StepFailed {
+                            error: format!(
+                                "Expected {} to be an array",
+                                path_so_far.to_json_path_string()
+                            ),
+                        })?
                         .get_mut(*index)
-                        .ok_or(AppError::StepFailed(format!(
-                            "Expected index {} at {} to exist",
-                            index,
-                            path_so_far.to_json_path_string()
-                        )))?;
+                        .ok_or(AppError::StepFailed {
+                            error: format!(
+                                "Expected index {} at {} to exist",
+                                index,
+                                path_so_far.to_json_path_string()
+                            ),
+                        })?;
                 }
             }
         }

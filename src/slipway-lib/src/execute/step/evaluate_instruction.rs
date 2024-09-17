@@ -58,10 +58,12 @@ pub(super) fn evaluate_instruction(
             let input = component_state
                 .execution_input
                 .as_ref()
-                .ok_or(AppError::StepFailed(format!(
-                "component {} cannot currently be executed, did you intend to override the output?",
-                handle
-            )))?;
+                .ok_or(AppError::StepFailed {
+                    error: format!(
+                        "component {} cannot currently be executed, did you intend to override the output?",
+                        handle
+                    ),
+                })?;
 
             let metadata = JsonMetadata::from_value(&value);
             component_state.output_override = None;

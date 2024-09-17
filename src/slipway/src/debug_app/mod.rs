@@ -101,27 +101,37 @@ impl DebugCli {
 
 pub(crate) fn debug_app_from_component_file<W: Write>(
     w: &mut W,
-    input: std::path::PathBuf,
+    component_path: std::path::PathBuf,
+    input_path: Option<std::path::PathBuf>,
 ) -> anyhow::Result<()> {
-    writeln!(w, "Debugging {}", input.display())?;
+    writeln!(w, "Debugging {}", component_path.display())?;
     writeln!(w)?;
 
-    if !input.exists() {
-        writeln!(w, "File does not exist")?;
+    if !component_path.exists() {
+        writeln!(w, "Component file does not exist")?;
         return Ok(());
     }
 
-    let input = redirect_to_json_if_wasm(&input);
+    let component_path = redirect_to_json_if_wasm(&component_path);
 
-    let component_reference = match input.is_absolute() {
-        true => SlipwayReference::from_str(&format!("file://{}", input.to_string_lossy()))?,
-        false => SlipwayReference::from_str(&format!("file:{}", input.to_string_lossy()))?,
+    let component_reference = match component_path.is_absolute() {
+        true => {
+            SlipwayReference::from_str(&format!("file://{}", component_path.to_string_lossy()))?
+        }
+        false => SlipwayReference::from_str(&format!("file:{}", component_path.to_string_lossy()))?,
     };
 
     let json_editor = JsonEditorImpl::new();
 
     writeln!(w, "Enter initial component input...")?;
-    let initial_input = json_editor.edit(&json!({}))?;
+    let initial_input = match input_path {
+        None => json_editor.edit(&json!({}))?,
+        Some(input_path) => serde_json::from_str(
+            &std::fs::read_to_string(input_path.clone())
+                .with_context(|| format!("Failed to read input from {}", input_path.display()))?,
+        )?,
+    };
+
     writeln!(w, "...done")?;
     writeln!(w)?;
 

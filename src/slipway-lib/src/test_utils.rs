@@ -1,4 +1,5 @@
 use crate::errors::ComponentLoadError;
+use crate::errors::ComponentLoadErrorInner;
 use crate::load::ComponentsLoader;
 use crate::load::LoadedComponent;
 use crate::utils::ch;
@@ -6,7 +7,9 @@ use crate::App;
 use crate::Component;
 use crate::ComponentCache;
 use crate::ComponentHandle;
+use crate::ComponentJson;
 use crate::ComponentRigging;
+use crate::ComponentWasm;
 use crate::Name;
 use crate::Publisher;
 use crate::Rigging;
@@ -18,6 +21,7 @@ use serde_json::json;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::sync::Arc;
 
 pub const TEST_PUBLISHER: &str = "test_publisher";
 
@@ -131,6 +135,22 @@ impl MockComponentsLoader {
     }
 }
 
+struct NoComponentWasm {}
+
+impl ComponentWasm for NoComponentWasm {
+    fn get(&self) -> Result<Arc<Vec<u8>>, ComponentLoadError> {
+        panic!("NoComponentWasm should not be executed");
+    }
+}
+
+struct NoComponentJson {}
+
+impl ComponentJson for NoComponentJson {
+    fn get(&self, _file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
+        panic!("NoComponentJson should not be executed");
+    }
+}
+
 impl ComponentsLoader for MockComponentsLoader {
     fn load_components<'app>(
         &self,
@@ -150,13 +170,16 @@ impl ComponentsLoader for MockComponentsLoader {
                                 output_schema.clone(),
                             ))
                             .expect("schema should serialize"),
-                            Vec::new(),
+                            Box::new(NoComponentWasm {}),
+                            Box::new(NoComponentJson {}),
                         )
                     })
-                    .ok_or(ComponentLoadError::DefinitionLoadFailed {
-                        reference: component_references[0].clone(),
-                        error: "Schema not found".to_string(),
-                    })
+                    .ok_or(ComponentLoadError::new(
+                        component_reference,
+                        ComponentLoadErrorInner::DefinitionLoadFailed {
+                            error: "Schema not found".to_string(),
+                        },
+                    ))
             })
             .collect()
     }
@@ -187,7 +210,8 @@ impl ComponentsLoader for PermissiveMockComponentsLoader {
                 Ok(LoadedComponent::new(
                     component_reference,
                     definition_string,
-                    Vec::new(),
+                    Box::new(NoComponentWasm {}),
+                    Box::new(NoComponentJson {}),
                 ))
             })
             .collect()

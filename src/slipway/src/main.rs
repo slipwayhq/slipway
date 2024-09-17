@@ -59,6 +59,9 @@ pub(crate) enum Commands {
         path: PathBuf,
 
         #[arg(short, long)]
+        input: Option<PathBuf>,
+
+        #[arg(short, long)]
         log_level: Option<String>,
     },
 }
@@ -73,9 +76,13 @@ fn main() -> anyhow::Result<()> {
             configure_tracing(log_level);
             debug_app::debug_app_from_app_file(&mut std::io::stdout(), path)?;
         }
-        Commands::DebugComponent { path, log_level } => {
+        Commands::DebugComponent {
+            path,
+            input,
+            log_level,
+        } => {
             configure_tracing(log_level);
-            debug_app::debug_app_from_component_file(&mut std::io::stdout(), path)?;
+            debug_app::debug_app_from_component_file(&mut std::io::stdout(), path, input)?;
         }
         Commands::Launch { path: _, log_level } => {
             configure_tracing(log_level);

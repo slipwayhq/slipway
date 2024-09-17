@@ -1,17 +1,20 @@
 use std::sync::Arc;
 
-use crate::errors::{AppError, ComponentLoadError};
+use crate::errors::{AppError, ComponentLoadErrorInner};
 
 use self::types::{App, Component};
 
 pub(crate) mod types;
 
 pub fn parse_app(input: &str) -> Result<App, AppError> {
-    serde_json::from_str(input).map_err(AppError::ParseFailed)
+    serde_json::from_str(input).map_err(|error| AppError::AppParseFailed { error })
 }
 
-pub fn parse_component(input: &str) -> Result<Component<serde_json::Value>, ComponentLoadError> {
-    serde_json::from_str(input).map_err(|e| ComponentLoadError::DefinitionParseFailed(Arc::new(e)))
+pub fn parse_component(
+    input: &str,
+) -> Result<Component<serde_json::Value>, ComponentLoadErrorInner> {
+    serde_json::from_str(input)
+        .map_err(|e| ComponentLoadErrorInner::DefinitionParseFailed { error: Arc::new(e) })
 }
 
 #[cfg(test)]
@@ -77,12 +80,12 @@ mod tests {
         match parse_app(json) {
             Ok(_) => panic!("Expected an error"),
             Err(e) => match e {
-                AppError::ParseFailed(e) => {
+                AppError::AppParseFailed { error } => {
                     assert!(
-                        e.to_string().starts_with(expected),
+                        error.to_string().starts_with(expected),
                         "Expected error to start with \"{}\" but it was \"{}\"",
                         expected,
-                        e
+                        error
                     );
                 }
                 _ => panic!("Expected a InvalidComponentReference error"),
@@ -111,12 +114,12 @@ mod tests {
         match parse_app(json) {
             Ok(_) => panic!("Expected an error"),
             Err(e) => match e {
-                AppError::ParseFailed(e) => {
+                AppError::AppParseFailed { error } => {
                     assert!(
-                        e.to_string().starts_with(DUPLICATE_RIGGING_KEY),
+                        error.to_string().starts_with(DUPLICATE_RIGGING_KEY),
                         "Expected error to start with \"{}\" but it was \"{}\"",
                         DUPLICATE_RIGGING_KEY,
-                        e
+                        error
                     );
                 }
                 _ => panic!("Expected a duplicate key error"),
