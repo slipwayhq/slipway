@@ -1,5 +1,6 @@
 use std::{fmt, path::PathBuf, sync::Arc};
 
+use jsonpath_rust::parser::JsonPathParserError;
 use jsonschema::error::ValidationErrorKind;
 use thiserror::Error;
 
@@ -10,8 +11,11 @@ pub enum AppError {
     #[error("App definition parse failed.\n{error}")]
     AppParseFailed { error: serde_json::Error },
 
-    #[error("Invalid JSONPath expression at location \"{location}\".\n{message}")]
-    InvalidJsonPathExpression { location: String, message: String },
+    #[error("Invalid JSONPath expression at location \"{location}\".\n{error}")]
+    InvalidJsonPathExpression {
+        location: String,
+        error: JsonPathParserError,
+    },
 
     #[error("App validation failed: {error}")]
     AppValidationFailed { error: String },

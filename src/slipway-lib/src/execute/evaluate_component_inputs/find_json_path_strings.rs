@@ -95,7 +95,7 @@ fn find_json_path_strings_inner<'a>(
                     let new_path = Cow::Owned(JSON_QUERY_PREFIX.to_string() + rest);
                     Some((new_path, PathType::OptionalValue))
                 } else if let Some(rest) = s.strip_prefix(ARRAY_VALUE_PREFIX) {
-                    // The string uses the $! custom prefix to indicate they require a single value result.
+                    // The string uses the $* custom prefix to indicate they require an array result.
                     let new_path = Cow::Owned(JSON_QUERY_PREFIX.to_string() + rest);
                     Some((new_path, PathType::Array))
                 } else {

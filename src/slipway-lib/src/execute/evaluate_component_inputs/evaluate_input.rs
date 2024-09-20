@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use serde_json::json;
 
-use jsonpath_rust::{JsonPathInst, JsonPtr};
+use jsonpath_rust::{JsonPath, JsonPathValue};
 
 use crate::{errors::AppError, execute::primitives::JsonMetadata, ComponentHandle, ComponentInput};
 
@@ -21,10 +21,10 @@ pub(super) fn evaluate_input(
         Some(input) => {
             let mut evaluated_input = input.clone();
             for found in json_path_strings {
-                let path = JsonPathInst::from_str(&found.path).map_err(|e| {
+                let path = JsonPath::from_str(&found.path).map_err(|e| {
                     AppError::InvalidJsonPathExpression {
                         location: found.path_to.to_json_path_string(),
-                        message: e,
+                        error: e,
                     }
                 })?;
 
@@ -32,27 +32,30 @@ pub(super) fn evaluate_input(
 
                 let extracted_result = match found.path_type {
                     PathType::Array => serde_json::Value::Array(
-                        result.into_iter().map(map_json_ptr_to_value).collect(),
+                        result
+                            .into_iter()
+                            .filter_map(map_json_ptr_to_value)
+                            .collect(),
                     ),
                     PathType::OptionalValue => result
                         .into_iter()
+                        .filter_map(map_json_ptr_to_value)
                         .next()
-                        .map(map_json_ptr_to_value)
                         .unwrap_or_default(),
-                    PathType::RequiredValue => {
-                        result.into_iter().next().map(map_json_ptr_to_value).ok_or(
-                            AppError::ResolveJsonPathFailed {
-                                message: format!(
-                                    r#"The input path "{}" required "{}" to be a value"#,
-                                    found.path_to.to_prefixed_path_string(
-                                        &(component_handle.to_string() + ".input")
-                                    ),
-                                    found.path
+                    PathType::RequiredValue => result
+                        .into_iter()
+                        .filter_map(map_json_ptr_to_value)
+                        .next()
+                        .ok_or(AppError::ResolveJsonPathFailed {
+                            message: format!(
+                                r#"The input path "{}" required "{}" to be a value"#,
+                                found.path_to.to_prefixed_path_string(
+                                    &(component_handle.to_string() + ".input")
                                 ),
-                                state: serialized_app_state.clone(),
-                            },
-                        )?
-                    }
+                                found.path
+                            ),
+                            state: serialized_app_state.clone(),
+                        })?,
                 };
 
                 found
@@ -80,9 +83,10 @@ pub(super) fn evaluate_input(
     Ok(evaluated_input)
 }
 
-fn map_json_ptr_to_value(v: JsonPtr<'_, serde_json::Value>) -> serde_json::Value {
+fn map_json_ptr_to_value(v: JsonPathValue<'_, serde_json::Value>) -> Option<serde_json::Value> {
     match v {
-        JsonPtr::NewValue(v) => v,
-        JsonPtr::Slice(s) => s.clone(),
+        JsonPathValue::NewValue(v) => Some(v),
+        JsonPathValue::Slice(s, _) => Some(s.clone()),
+        JsonPathValue::NoValue => None,
     }
 }
