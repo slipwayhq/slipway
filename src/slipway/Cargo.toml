@@ -5,7 +5,7 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
-anyhow = "1.0.75"
+anyhow = { workspace = true }
 clap = { version = "4.3.22", features = ["derive"] }
 slipway-lib = { path = "../slipway-lib", features = ["unstable-test-utils"] }
 serde = { workspace = true }

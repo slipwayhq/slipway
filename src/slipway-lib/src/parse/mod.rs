@@ -4,7 +4,10 @@ use crate::errors::{AppError, ComponentLoadErrorInner};
 
 use self::types::{App, Component};
 
+mod parse_schema;
 pub(crate) mod types;
+
+pub use parse_schema::parse_schema;
 
 pub fn parse_app(input: &str) -> Result<App, AppError> {
     serde_json::from_str(input).map_err(|error| AppError::AppParseFailed { error })

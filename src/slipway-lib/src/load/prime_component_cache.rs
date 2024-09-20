@@ -3,7 +3,8 @@ use itertools::Itertools;
 use crate::{
     errors::{ComponentLoadError, ComponentLoadErrorInner},
     load::ComponentsLoader,
-    parse_component, parse_schema, App, Component, Schema, SlipwayReference,
+    parse::parse_schema,
+    parse_component, App, Component, Schema, SlipwayReference,
 };
 
 use super::ComponentCache;
@@ -34,12 +35,20 @@ pub(super) fn prime_component_cache(
 
         let input = handle_component_load_error(
             loaded_component.reference,
-            parse_schema("input", parsed_definition.input),
+            parse_schema(
+                "input",
+                parsed_definition.input,
+                loaded_component.json.clone(),
+            ),
         )?;
 
         let output = handle_component_load_error(
             loaded_component.reference,
-            parse_schema("output", parsed_definition.output),
+            parse_schema(
+                "output",
+                parsed_definition.output,
+                loaded_component.json.clone(),
+            ),
         )?;
 
         let definition = Component::<Schema> {

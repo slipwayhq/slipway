@@ -117,7 +117,16 @@ pub fn schema_any() -> Schema {
 }
 
 pub fn schema_valid(schema_name: &str, json: serde_json::Value) -> Schema {
-    crate::parse_schema(schema_name, json).expect("schema should be valid")
+    crate::parse::parse_schema(schema_name, json, Arc::new(MockSchemaResolver {}))
+        .expect("schema should be valid")
+}
+
+pub struct MockSchemaResolver {}
+
+impl ComponentJson for MockSchemaResolver {
+    fn get(&self, _file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
+        Ok(Arc::new(json!({})))
+    }
 }
 
 pub(crate) struct MockComponentsLoader {
@@ -170,8 +179,8 @@ impl ComponentsLoader for MockComponentsLoader {
                                 output_schema.clone(),
                             ))
                             .expect("schema should serialize"),
-                            Box::new(NoComponentWasm {}),
-                            Box::new(NoComponentJson {}),
+                            Arc::new(NoComponentWasm {}),
+                            Arc::new(NoComponentJson {}),
                         )
                     })
                     .ok_or(ComponentLoadError::new(
@@ -210,8 +219,8 @@ impl ComponentsLoader for PermissiveMockComponentsLoader {
                 Ok(LoadedComponent::new(
                     component_reference,
                     definition_string,
-                    Box::new(NoComponentWasm {}),
-                    Box::new(NoComponentJson {}),
+                    Arc::new(NoComponentWasm {}),
+                    Arc::new(NoComponentJson {}),
                 ))
             })
             .collect()
@@ -225,5 +234,66 @@ impl ComponentCache {
 
     pub fn for_test_permissive(app: &App) -> Self {
         ComponentCache::primed(app, &PermissiveMockComponentsLoader::new()).unwrap()
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod http_server {
+    use std::collections::HashMap;
+    use std::sync::mpsc;
+    use std::sync::mpsc::Sender;
+    use std::thread;
+    use tiny_http::Response;
+    use tiny_http::Server;
+
+    // Simple test server used for testing things like schema HTTP resolution
+    // is working as expected.
+    pub(crate) struct TestServer {
+        stop_signal: Sender<char>,
+        server_thread: thread::JoinHandle<()>,
+    }
+
+    impl TestServer {
+        pub fn start(responses: HashMap<String, String>) -> Self {
+            let (tx, rx) = mpsc::channel();
+
+            let server = Server::http("0.0.0.0:8080").unwrap();
+            let server_thread = thread::spawn(move || loop {
+                // Check for stop signal in a non-blocking way
+                if rx.try_recv().is_ok() {
+                    break;
+                }
+
+                // Handle incoming requests
+                if let Ok(Some(request)) =
+                    server.recv_timeout(std::time::Duration::from_millis(100))
+                {
+                    match responses.get(request.url()) {
+                        None => {
+                            println!("Not found: {}", request.url());
+                            request
+                                .respond(Response::from_string("Not found").with_status_code(404))
+                                .unwrap();
+                            continue;
+                        }
+                        Some(response_str) => {
+                            request
+                                .respond(Response::from_string(response_str))
+                                .unwrap();
+                        }
+                    }
+                }
+            });
+
+            TestServer {
+                stop_signal: tx,
+                server_thread,
+            }
+        }
+
+        pub fn stop(self) {
+            self.stop_signal.send('a').unwrap();
+            self.server_thread.join().unwrap();
+        }
     }
 }

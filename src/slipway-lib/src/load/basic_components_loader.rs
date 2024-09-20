@@ -56,13 +56,13 @@ fn load_component(
                     },
                 )
             })?;
-            let component_wasm = Box::new(InMemoryComponentWasm::new(wasm_bytes));
+            let component_wasm = Arc::new(InMemoryComponentWasm::new(wasm_bytes));
 
             let file_path = path.parent().map(|p| p.to_owned()).unwrap_or_else(|| {
                 PathBuf::from_str(".").expect("current directory should be valid path")
             });
 
-            let component_json = Box::new(FolderComponentJson::new(
+            let component_json = Arc::new(FolderComponentJson::new(
                 component_reference.clone(),
                 file_path,
             ));
@@ -112,12 +112,32 @@ impl FolderComponentJson {
 
 impl ComponentJson for FolderComponentJson {
     fn get(&self, file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
+        let file_name = PathBuf::from_str(file_name).map_err(|e| {
+            ComponentLoadError::new(
+                &self.component_reference,
+                ComponentLoadErrorInner::FileLoadFailed {
+                    path: file_name.to_string(),
+                    error: e.to_string(),
+                },
+            )
+        })?;
+
+        if file_name.is_absolute() {
+            return Err(ComponentLoadError::new(
+                &self.component_reference,
+                ComponentLoadErrorInner::FileLoadFailed {
+                    path: file_name.to_string_lossy().to_string(),
+                    error: "Absolute paths to schemas are not allowed.".to_string(),
+                },
+            ));
+        }
+
         let path = self.folder.join(file_name);
         let file_contents = std::fs::read_to_string(path.clone()).map_err(|e| {
             ComponentLoadError::new(
                 &self.component_reference,
                 ComponentLoadErrorInner::FileLoadFailed {
-                    path: path.clone(),
+                    path: path.to_string_lossy().to_string(),
                     error: e.to_string(),
                 },
             )

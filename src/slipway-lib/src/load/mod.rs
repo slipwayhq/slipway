@@ -18,23 +18,23 @@ pub trait ComponentWasm {
     fn get(&self) -> Result<Arc<Vec<u8>>, ComponentLoadError>;
 }
 
-pub trait ComponentJson {
+pub trait ComponentJson: Send + Sync {
     fn get(&self, file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError>;
 }
 
 pub struct LoadedComponent<'app> {
     pub reference: &'app SlipwayReference,
     pub definition: String,
-    pub wasm: Box<dyn ComponentWasm>,
-    pub json: Box<dyn ComponentJson>,
+    pub wasm: Arc<dyn ComponentWasm>,
+    pub json: Arc<dyn ComponentJson>,
 }
 
 impl<'app> LoadedComponent<'app> {
     pub fn new(
         reference: &'app SlipwayReference,
         definition: String,
-        wasm: Box<dyn ComponentWasm>,
-        json: Box<dyn ComponentJson>,
+        wasm: Arc<dyn ComponentWasm>,
+        json: Arc<dyn ComponentJson>,
     ) -> Self {
         Self {
             reference,
@@ -68,8 +68,8 @@ impl ComponentCache {
         &mut self,
         component_reference: &SlipwayReference,
         definition: Component<Schema>,
-        wasm: Box<dyn ComponentWasm>,
-        json: Box<dyn ComponentJson>,
+        wasm: Arc<dyn ComponentWasm>,
+        json: Arc<dyn ComponentJson>,
     ) {
         self.components.insert(
             component_reference.clone(),
@@ -109,6 +109,6 @@ impl ComponentCache {
 
 struct PrimedComponent {
     pub definition: Arc<Component<Schema>>,
-    pub wasm: Box<dyn ComponentWasm>,
-    pub json: Box<dyn ComponentJson>,
+    pub wasm: Arc<dyn ComponentWasm>,
+    pub json: Arc<dyn ComponentJson>,
 }

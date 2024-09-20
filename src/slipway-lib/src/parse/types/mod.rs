@@ -10,13 +10,12 @@
 //! and is what the users will expect based on other toolchains
 //! such as Node's package.json.
 
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
-use jsonschema::JSONSchema;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
-use crate::errors::{AppError, ComponentLoadErrorInner};
+use crate::errors::AppError;
 
 use self::{
     primitives::{ComponentHandle, Description, Name, Publisher},
@@ -109,7 +108,7 @@ pub enum Schema {
         schema: jtd::Schema,
     },
     JsonSchema {
-        schema: jsonschema::JSONSchema,
+        schema: jsonschema::Validator,
         original: serde_json::Value,
     },
 }
@@ -141,49 +140,11 @@ impl Clone for Schema {
                 schema: _,
                 original,
             } => Schema::JsonSchema {
-                schema: jsonschema::JSONSchema::compile(original)
+                schema: jsonschema::Validator::options()
+                    .build(original)
                     .expect("cloned schema should be valid"),
                 original: original.clone(),
             },
         }
     }
-}
-
-pub fn parse_schema(
-    schema_name: &str,
-    schema: serde_json::Value,
-) -> Result<Schema, ComponentLoadErrorInner> {
-    if let Some(serde_json::Value::String(schema_uri)) = schema.get("$schema") {
-        if schema_uri.contains("://json-schema.org/") {
-            // If the schema contains a $schema property, and the domain is json-schema.org, it is a JSON Schema.
-            let compiled_schema = JSONSchema::compile(&schema).map_err(|e| {
-                ComponentLoadErrorInner::JsonSchemaParseFailed {
-                    schema_name: schema_name.to_string(),
-                    error: e.into(),
-                }
-            })?;
-
-            return Ok(Schema::JsonSchema {
-                schema: compiled_schema,
-                original: schema,
-            });
-        }
-    }
-
-    // Otherwise it is JsonTypeDef.
-    let jtd_serde_schema: jtd::SerdeSchema = serde_json::from_value(schema).map_err(|e| {
-        ComponentLoadErrorInner::JsonTypeDefParseFailed {
-            schema_name: schema_name.to_string(),
-            error: Arc::new(e),
-        }
-    })?;
-
-    let jtd_schema = jtd::Schema::from_serde_schema(jtd_serde_schema).map_err(|e| {
-        ComponentLoadErrorInner::JsonTypeDefConversionFailed {
-            schema_name: schema_name.to_string(),
-            error: e,
-        }
-    })?;
-
-    Ok(Schema::JsonTypeDef { schema: jtd_schema })
 }

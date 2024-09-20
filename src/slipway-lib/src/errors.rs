@@ -111,7 +111,7 @@ pub enum ComponentLoadErrorInner {
     WasmLoadFailed { error: String },
 
     #[error("Component file load failed:\n{path}\n{error}")]
-    FileLoadFailed { path: PathBuf, error: String },
+    FileLoadFailed { path: String, error: String },
 
     #[error("Component JSON file parse failed:\n{path}\n{error}")]
     FileJsonParseFailed {
