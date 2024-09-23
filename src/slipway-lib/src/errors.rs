@@ -70,8 +70,8 @@ pub enum SchemaValidationFailures {
 #[derive(Error, Debug, Clone)]
 #[error("component load failed for {reference}: {error}")]
 pub struct ComponentLoadError {
-    reference: Box<SlipwayReference>,
-    error: ComponentLoadErrorInner,
+    pub reference: Box<SlipwayReference>,
+    pub error: ComponentLoadErrorInner,
 }
 
 impl ComponentLoadError {
@@ -107,12 +107,6 @@ pub enum ComponentLoadErrorInner {
         schema_name: String,
         error: JsonSchemaValidationFailure,
     },
-
-    #[error("Component definition load failed:\n{error}")]
-    DefinitionLoadFailed { error: String },
-
-    #[error("Component WASM load failed:\n{error}")]
-    WasmLoadFailed { error: String },
 
     #[error("Component file load failed:\n{path}\n{error}")]
     FileLoadFailed { path: String, error: String },

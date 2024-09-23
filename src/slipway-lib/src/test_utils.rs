@@ -185,8 +185,9 @@ impl ComponentsLoader for MockComponentsLoader {
                     })
                     .ok_or(ComponentLoadError::new(
                         component_reference,
-                        ComponentLoadErrorInner::DefinitionLoadFailed {
-                            error: "Schema not found".to_string(),
+                        ComponentLoadErrorInner::FileLoadFailed {
+                            path: format!("{:?}", component_reference),
+                            error: "Component not found in map".to_string(),
                         },
                     ))
             })
