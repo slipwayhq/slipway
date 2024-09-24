@@ -5,6 +5,7 @@ use crate::{
 };
 
 pub(super) mod basic_components_loader;
+mod is_safe_path;
 mod prime_component_cache;
 
 pub trait ComponentsLoader {

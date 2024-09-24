@@ -6,6 +6,7 @@ use std::{
 
 use crate::{
     errors::{ComponentLoadError, ComponentLoadErrorInner},
+    load::is_safe_path::is_safe_path,
     SlipwayReference,
 };
 
@@ -121,27 +122,46 @@ impl FolderComponentJson {
 
 impl ComponentJson for FolderComponentJson {
     fn get(&self, file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
-        let file_name = PathBuf::from_str(file_name).map_err(|e| {
+        fn map_fs_err(
+            e: impl ToString,
+            path: &str,
+            component_reference: &SlipwayReference,
+        ) -> ComponentLoadError {
             ComponentLoadError::new(
-                &self.component_reference,
+                component_reference,
                 ComponentLoadErrorInner::FileLoadFailed {
-                    path: file_name.to_string(),
+                    path: path.to_string(),
                     error: e.to_string(),
                 },
             )
-        })?;
+        }
+
+        let file_name = PathBuf::from_str(file_name)
+            .map_err(|e| map_fs_err(e, file_name, &self.component_reference))?;
 
         if file_name.is_absolute() {
             return Err(ComponentLoadError::new(
                 &self.component_reference,
                 ComponentLoadErrorInner::FileLoadFailed {
                     path: file_name.to_string_lossy().to_string(),
-                    error: "Absolute paths to schemas are not allowed.".to_string(),
+                    error: "Absolute paths are not allowed.".to_string(),
+                },
+            ));
+        }
+
+        // Check if the resulting path is inside the folder
+        if !is_safe_path(&file_name) {
+            return Err(ComponentLoadError::new(
+                &self.component_reference,
+                ComponentLoadErrorInner::FileLoadFailed {
+                    path: self.folder.join(file_name).to_string_lossy().to_string(),
+                    error: "Only files within the component can be loaded.".to_string(),
                 },
             ));
         }
 
         let path = self.folder.join(file_name);
+
         let file_contents = self
             .file_loader
             .load_text(&path, &self.component_reference)?;
@@ -227,6 +247,7 @@ mod tests {
         bin: HashMap<String, Vec<u8>>,
     }
 
+    /// Mock component file loader that returns the contents of files which have been populated.
     struct MockComponentFileLoader {
         map: HashMap<SlipwayReference, MockComponentFileLoaderInner>,
     }
@@ -328,6 +349,79 @@ mod tests {
                     ..
                 } => {
                     assert_eq!(path, "path/to/file2.json");
+                }
+                e => panic!("Unexpected error: {:?}", e),
+            },
+        }
+    }
+
+    /// Mock component file loader that always returns the same content for any file.
+    struct MockComponentAnyFileLoader {}
+
+    impl ComponentFileLoader for MockComponentAnyFileLoader {
+        fn load_bin(
+            &self,
+            _path: &Path,
+            _component_reference: &SlipwayReference,
+        ) -> Result<Vec<u8>, ComponentLoadError> {
+            Ok(vec![1, 2, 3])
+        }
+
+        fn load_text(
+            &self,
+            _path: &Path,
+            _component_reference: &SlipwayReference,
+        ) -> Result<String, ComponentLoadError> {
+            Ok("{}".to_string())
+        }
+    }
+
+    #[test]
+    fn it_only_allow_file_loading_from_component_directory() {
+        let component_reference = SlipwayReference::Local {
+            path: PathBuf::from_str("path/to/my_component.json").unwrap(),
+        };
+
+        let file_loader = MockComponentAnyFileLoader {};
+
+        let loader = BasicComponentsLoader {
+            file_loader: Arc::new(file_loader),
+        };
+
+        let result = loader.load_components(&[&component_reference]);
+
+        assert_eq!(result.len(), 1);
+
+        let loaded = result.first().unwrap().as_ref().unwrap();
+
+        assert_eq!(
+            *loaded.json.get("file.json").unwrap(),
+            serde_json::Value::Object(serde_json::Map::new())
+        );
+
+        // Test that loading from an absolute path fails
+        match loaded.json.get("/bin/file.json") {
+            Ok(_) => panic!("loading absolute file should fail"),
+            Err(e) => match e {
+                ComponentLoadError {
+                    error: ComponentLoadErrorInner::FileLoadFailed { path, .. },
+                    ..
+                } => {
+                    assert_eq!(path, "/bin/file.json");
+                }
+                e => panic!("Unexpected error: {:?}", e),
+            },
+        }
+
+        // Test that loading from outside the component fails
+        match loaded.json.get("../file.json") {
+            Ok(_) => panic!("loading outside component file should fail"),
+            Err(e) => match e {
+                ComponentLoadError {
+                    error: ComponentLoadErrorInner::FileLoadFailed { path, .. },
+                    ..
+                } => {
+                    assert_eq!(path, "path/to/../file.json");
                 }
                 e => panic!("Unexpected error: {:?}", e),
             },
