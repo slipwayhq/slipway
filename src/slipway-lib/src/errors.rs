@@ -7,9 +7,9 @@ use thiserror::Error;
 use crate::{ComponentHandle, SlipwayReference};
 
 #[derive(Error, Debug)]
-pub enum AppError {
-    #[error("App definition parse failed.\n{error}")]
-    AppParseFailed { error: serde_json::Error },
+pub enum RigError {
+    #[error("Rig definition parse failed.\n{error}")]
+    RigParseFailed { error: serde_json::Error },
 
     #[error("Invalid JSONPath expression at location \"{location}\".\n{error}")]
     InvalidJsonPathExpression {
@@ -17,8 +17,8 @@ pub enum AppError {
         error: JsonPathParserError,
     },
 
-    #[error("App validation failed: {error}")]
-    AppValidationFailed { error: String },
+    #[error("Rig validation failed: {error}")]
+    RigValidationFailed { error: String },
 
     #[error("Step failed: {error}")]
     StepFailed { error: String },
@@ -57,7 +57,7 @@ pub enum AppError {
         validated_data: serde_json::Value,
     },
 
-    #[error("App component load failed.\n{0}")]
+    #[error("Rig component load failed.\n{0}")]
     ComponentLoadFailed(#[from] ComponentLoadError),
 }
 

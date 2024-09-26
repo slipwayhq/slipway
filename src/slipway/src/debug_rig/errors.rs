@@ -1,4 +1,4 @@
-use slipway_lib::errors::AppError;
+use slipway_lib::errors::RigError;
 use thiserror::Error;
 
 use crate::run_component_wasm::errors::WasmExecutionError;
@@ -6,7 +6,7 @@ use crate::run_component_wasm::errors::WasmExecutionError;
 #[derive(Error, Debug)]
 pub enum SlipwayDebugError {
     #[error("Slipway error: {0}")]
-    SlipwayError(#[from] AppError),
+    SlipwayError(#[from] RigError),
 
     #[error("{0}")]
     UserError(String),

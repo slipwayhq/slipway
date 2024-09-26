@@ -2,7 +2,7 @@
   "publisher": "slipway",
   "name": "weather",
   "version": "0.0.1",
-  "description": "A slipway app which displays the weather",
+  "description": "A slipway rig which displays the weather",
   "constants": {
     "weather_provider": "yahoo",
     "weather_location": "london"

@@ -1,20 +1,20 @@
 use std::rc::Rc;
 
 use crate::{
-    errors::AppError,
+    errors::RigError,
     execute::{
         primitives::JsonMetadata,
         validate_component_io::{validate_component_io, ValidationData},
     },
-    AppExecutionState, ComponentInputOverride, ComponentOutput, ComponentOutputOverride,
+    RigExecutionState, ComponentInputOverride, ComponentOutput, ComponentOutputOverride,
 };
 
 use super::Instruction;
 
 pub(super) fn evaluate_instruction(
-    state: AppExecutionState,
+    state: RigExecutionState,
     instruction: Instruction,
-) -> Result<AppExecutionState, AppError> {
+) -> Result<RigExecutionState, RigError> {
     match instruction {
         Instruction::SetInputOverride { handle, value } => {
             let mut state = state;
@@ -58,7 +58,7 @@ pub(super) fn evaluate_instruction(
             let input = component_state
                 .execution_input
                 .as_ref()
-                .ok_or(AppError::StepFailed {
+                .ok_or(RigError::StepFailed {
                     error: format!(
                         "component {} cannot currently be executed, did you intend to override the output?",
                         handle

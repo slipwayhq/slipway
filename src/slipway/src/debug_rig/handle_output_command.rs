@@ -1,13 +1,13 @@
 use serde_json::json;
-use slipway_lib::{AppExecutionState, ComponentHandle, Immutable, Instruction};
+use slipway_lib::{RigExecutionState, ComponentHandle, Immutable, Instruction};
 
 use super::{errors::SlipwayDebugError, json_editor::JsonEditor};
 
-pub(super) fn handle_output_command<'app>(
-    handle: &'app ComponentHandle,
-    state: &AppExecutionState<'app>,
+pub(super) fn handle_output_command<'rig>(
+    handle: &'rig ComponentHandle,
+    state: &RigExecutionState<'rig>,
     json_editor: &impl JsonEditor,
-) -> Result<Immutable<AppExecutionState<'app>>, SlipwayDebugError> {
+) -> Result<Immutable<RigExecutionState<'rig>>, SlipwayDebugError> {
     let component = state
         .component_states
         .get(&handle)

@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::errors::AppError;
+use crate::errors::RigError;
 
 #[derive(Eq, PartialEq, Debug, Clone, PartialOrd, Ord)]
 pub(super) enum SimpleJsonPath<'a> {
@@ -15,7 +15,7 @@ pub(super) trait JsonPathOperations {
 
     fn to_prefixed_path_string(&self, prefix: &str) -> String;
 
-    fn replace(&self, target: &mut Value, new_value: Value) -> Result<(), AppError>;
+    fn replace(&self, target: &mut Value, new_value: Value) -> Result<(), RigError>;
 }
 
 impl<'a> JsonPathOperations for Vec<SimpleJsonPath<'a>> {
@@ -38,7 +38,7 @@ impl<'a> JsonPathOperations for Vec<SimpleJsonPath<'a>> {
         result
     }
 
-    fn replace(&self, target: &mut Value, new_value: Value) -> Result<(), AppError> {
+    fn replace(&self, target: &mut Value, new_value: Value) -> Result<(), RigError> {
         let mut current = target;
         let path_so_far = vec![SimpleJsonPath::Field("$")];
         for path in self {
@@ -46,14 +46,14 @@ impl<'a> JsonPathOperations for Vec<SimpleJsonPath<'a>> {
                 SimpleJsonPath::Field(field) => {
                     current = current
                         .as_object_mut()
-                        .ok_or(AppError::StepFailed {
+                        .ok_or(RigError::StepFailed {
                             error: format!(
                                 "Expected {} to be an object",
                                 path_so_far.to_json_path_string()
                             ),
                         })?
                         .get_mut(*field)
-                        .ok_or(AppError::StepFailed {
+                        .ok_or(RigError::StepFailed {
                             error: format!(
                                 "Expected field {} at {} to exist",
                                 field,
@@ -64,14 +64,14 @@ impl<'a> JsonPathOperations for Vec<SimpleJsonPath<'a>> {
                 SimpleJsonPath::Index(index) => {
                     current = current
                         .as_array_mut()
-                        .ok_or(AppError::StepFailed {
+                        .ok_or(RigError::StepFailed {
                             error: format!(
                                 "Expected {} to be an array",
                                 path_so_far.to_json_path_string()
                             ),
                         })?
                         .get_mut(*index)
-                        .ok_or(AppError::StepFailed {
+                        .ok_or(RigError::StepFailed {
                             error: format!(
                                 "Expected index {} at {} to exist",
                                 index,

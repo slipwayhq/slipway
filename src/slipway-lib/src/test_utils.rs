@@ -3,7 +3,7 @@ use crate::errors::ComponentLoadErrorInner;
 use crate::load::ComponentsLoader;
 use crate::load::LoadedComponent;
 use crate::utils::ch;
-use crate::App;
+use crate::Rig;
 use crate::Component;
 use crate::ComponentCache;
 use crate::ComponentHandle;
@@ -29,9 +29,9 @@ pub fn quote(s: &str) -> String {
     format!(r#""{}""#, s)
 }
 
-impl App {
-    pub fn for_test(rigging: Rigging) -> App {
-        App {
+impl Rig {
+    pub fn for_test(rigging: Rigging) -> Rig {
+        Rig {
             publisher: Publisher::from_str(TEST_PUBLISHER).unwrap(),
             name: Name::from_str("test_name").unwrap(),
             version: Version::from_str("0.1.0").unwrap(),
@@ -161,10 +161,10 @@ impl ComponentJson for NoComponentJson {
 }
 
 impl ComponentsLoader for MockComponentsLoader {
-    fn load_components<'app>(
+    fn load_components<'rig>(
         &self,
-        component_references: &[&'app SlipwayReference],
-    ) -> Vec<Result<LoadedComponent<'app>, ComponentLoadError>> {
+        component_references: &[&'rig SlipwayReference],
+    ) -> Vec<Result<LoadedComponent<'rig>, ComponentLoadError>> {
         component_references
             .iter()
             .map(|&component_reference| {
@@ -204,10 +204,10 @@ impl PermissiveMockComponentsLoader {
 }
 
 impl ComponentsLoader for PermissiveMockComponentsLoader {
-    fn load_components<'app>(
+    fn load_components<'rig>(
         &self,
-        component_references: &[&'app SlipwayReference],
-    ) -> Vec<Result<LoadedComponent<'app>, ComponentLoadError>> {
+        component_references: &[&'rig SlipwayReference],
+    ) -> Vec<Result<LoadedComponent<'rig>, ComponentLoadError>> {
         component_references
             .iter()
             .map(|&component_reference| {
@@ -229,12 +229,12 @@ impl ComponentsLoader for PermissiveMockComponentsLoader {
 }
 
 impl ComponentCache {
-    pub fn for_test_with_schemas(app: &App, schemas: HashMap<String, (Schema, Schema)>) -> Self {
-        ComponentCache::primed(app, &MockComponentsLoader::new(schemas)).unwrap()
+    pub fn for_test_with_schemas(rig: &Rig, schemas: HashMap<String, (Schema, Schema)>) -> Self {
+        ComponentCache::primed(rig, &MockComponentsLoader::new(schemas)).unwrap()
     }
 
-    pub fn for_test_permissive(app: &App) -> Self {
-        ComponentCache::primed(app, &PermissiveMockComponentsLoader::new()).unwrap()
+    pub fn for_test_permissive(rig: &Rig) -> Self {
+        ComponentCache::primed(rig, &PermissiveMockComponentsLoader::new()).unwrap()
     }
 }
 

@@ -1,4 +1,4 @@
-//! `App` and `Component` do not use a `SlipwayId` type
+//! `Rig` and `Component` do not use a `SlipwayId` type
 //! and instead specify `publisher`, `name`, and `version` separately.
 //! This reflects how we want the fields to appear in the JSON.
 //!
@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
-use crate::errors::AppError;
+use crate::errors::RigError;
 
 use self::{
     primitives::{ComponentHandle, Description, Name, Publisher},
@@ -30,8 +30,8 @@ pub(crate) mod slipway_reference;
 pub(crate) const REGISTRY_PUBLISHER_SEPARATOR: char = '.';
 pub(crate) const VERSION_SEPARATOR: char = '.';
 
-fn parse_component_version(version_string: &str) -> Result<Version, AppError> {
-    Version::parse(version_string).map_err(|e| AppError::InvalidSlipwayPrimitive {
+fn parse_component_version(version_string: &str) -> Result<Version, RigError> {
+    Version::parse(version_string).map_err(|e| RigError::InvalidSlipwayPrimitive {
         primitive_type: stringify!(Version).to_string(),
         message: e.to_string(),
     })
@@ -39,7 +39,7 @@ fn parse_component_version(version_string: &str) -> Result<Version, AppError> {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-pub struct App {
+pub struct Rig {
     pub publisher: Publisher,
     pub name: Name,
     pub version: Version,
@@ -48,7 +48,7 @@ pub struct App {
     pub rigging: Rigging,
 }
 
-impl App {
+impl Rig {
     pub fn get_id(&self) -> SlipwayId {
         SlipwayId::new(&self.publisher, &self.name, &self.version)
     }

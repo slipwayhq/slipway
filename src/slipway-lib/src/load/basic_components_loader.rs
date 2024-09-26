@@ -36,10 +36,10 @@ impl Default for BasicComponentsLoader {
 }
 
 impl ComponentsLoader for BasicComponentsLoader {
-    fn load_components<'app>(
+    fn load_components<'rig>(
         &self,
-        component_references: &[&'app SlipwayReference],
-    ) -> Vec<Result<LoadedComponent<'app>, ComponentLoadError>> {
+        component_references: &[&'rig SlipwayReference],
+    ) -> Vec<Result<LoadedComponent<'rig>, ComponentLoadError>> {
         component_references
             .iter()
             .map(|r| self.load_component(r))
@@ -48,10 +48,10 @@ impl ComponentsLoader for BasicComponentsLoader {
 }
 
 impl BasicComponentsLoader {
-    fn load_component<'app>(
+    fn load_component<'rig>(
         &self,
-        component_reference: &'app SlipwayReference,
-    ) -> Result<LoadedComponent<'app>, ComponentLoadError> {
+        component_reference: &'rig SlipwayReference,
+    ) -> Result<LoadedComponent<'rig>, ComponentLoadError> {
         match component_reference {
             SlipwayReference::Local { path } => {
                 let definition_string = self.file_loader.load_text(path, component_reference)?;
@@ -70,7 +70,7 @@ impl BasicComponentsLoader {
                     file_path,
                 ));
 
-                Ok(LoadedComponent::<'app>::new(
+                Ok(LoadedComponent::<'rig>::new(
                     component_reference,
                     definition_string,
                     component_wasm,

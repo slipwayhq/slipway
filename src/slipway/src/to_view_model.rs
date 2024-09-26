@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
-use slipway_lib::{AppExecutionState, ComponentHandle, ComponentState};
+use slipway_lib::{ComponentHandle, ComponentState, RigExecutionState};
 
-pub(super) fn to_view_model<'state, 'app>(
-    state: &'state AppExecutionState<'app>,
-) -> AppExecutionStateViewModel<'app>
+pub(super) fn to_view_model<'state, 'rig>(
+    state: &'state RigExecutionState<'rig>,
+) -> RigExecutionStateViewModel<'rig>
 where
-    'state: 'app,
+    'state: 'rig,
 {
     let mut groups = Vec::new();
 
@@ -80,12 +80,12 @@ where
         }
     }
 
-    AppExecutionStateViewModel { groups }
+    RigExecutionStateViewModel { groups }
 }
 
-pub(super) fn to_shortcuts<'app>(
-    state: &AppExecutionState<'app>,
-) -> HashMap<String, &'app ComponentHandle> {
+pub(super) fn to_shortcuts<'rig>(
+    state: &RigExecutionState<'rig>,
+) -> HashMap<String, &'rig ComponentHandle> {
     let mut shortcuts = HashMap::new();
     for &handle in state.valid_execution_order.iter() {
         to_shortcut(handle, &mut shortcuts);
@@ -93,9 +93,9 @@ pub(super) fn to_shortcuts<'app>(
     shortcuts
 }
 
-fn to_shortcut<'app>(
-    handle: &'app ComponentHandle,
-    used_shortcuts: &mut HashMap<String, &'app ComponentHandle>,
+fn to_shortcut<'rig>(
+    handle: &'rig ComponentHandle,
+    used_shortcuts: &mut HashMap<String, &'rig ComponentHandle>,
 ) -> String {
     let mut s = String::new();
     for c in handle.0.chars() {
@@ -108,17 +108,17 @@ fn to_shortcut<'app>(
     s
 }
 
-pub(super) struct AppExecutionStateViewModel<'app> {
-    pub groups: Vec<ComponentGroupViewModel<'app>>,
+pub(super) struct RigExecutionStateViewModel<'rig> {
+    pub groups: Vec<ComponentGroupViewModel<'rig>>,
 }
 
-pub(super) struct ComponentGroupViewModel<'app> {
-    pub components: Vec<ComponentViewModel<'app>>,
+pub(super) struct ComponentGroupViewModel<'rig> {
+    pub components: Vec<ComponentViewModel<'rig>>,
 }
 
-pub(super) struct ComponentViewModel<'app> {
-    pub handle: &'app ComponentHandle,
-    pub state: &'app ComponentState<'app>,
+pub(super) struct ComponentViewModel<'rig> {
+    pub handle: &'rig ComponentHandle,
+    pub state: &'rig ComponentState<'rig>,
     pub shortcut: String,
     pub group_index: usize,
     pub row_index: usize,
@@ -131,12 +131,12 @@ pub(super) struct ComponentViewModel<'app> {
 mod tests {
     use super::*;
     use serde_json::json;
-    use slipway_lib::{utils::ch, App, AppSession, ComponentCache, ComponentRigging, Rigging};
+    use slipway_lib::{utils::ch, ComponentCache, ComponentRigging, Rig, RigSession, Rigging};
 
-    fn get_component<'app>(
-        view_model: &'app AppExecutionStateViewModel<'app>,
+    fn get_component<'rig>(
+        view_model: &'rig RigExecutionStateViewModel<'rig>,
         handle: ComponentHandle,
-    ) -> &'app ComponentViewModel<'app> {
+    ) -> &'rig ComponentViewModel<'rig> {
         view_model
             .groups
             .iter()
@@ -147,7 +147,7 @@ mod tests {
 
     #[test]
     fn it_should_generate_sensible_shortcuts() {
-        let app = App::for_test(Rigging {
+        let rig = Rig::for_test(Rigging {
             components: [
                 ComponentRigging::for_test("cat", None),
                 ComponentRigging::for_test("coat", Some(json!({"a": "$$.cat"}))),
@@ -159,9 +159,9 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = ComponentCache::for_test_permissive(&app);
-        let app_session = AppSession::new(app, component_cache);
-        let state = app_session.initialize().unwrap();
+        let component_cache = ComponentCache::for_test_permissive(&rig);
+        let rig_session = RigSession::new(rig, component_cache);
+        let state = rig_session.initialize().unwrap();
         let view_model = to_view_model(&state);
 
         assert_eq!(view_model.groups.len(), 1);
@@ -186,7 +186,7 @@ mod tests {
         // e
         //
         // f
-        let app = App::for_test(Rigging {
+        let rig = Rig::for_test(Rigging {
             components: [
                 ComponentRigging::for_test("a", None),
                 ComponentRigging::for_test("b", Some(json!({"a": "$$.a"}))),
@@ -199,9 +199,9 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = ComponentCache::for_test_permissive(&app);
-        let app_session = AppSession::new(app, component_cache);
-        let state = app_session.initialize().unwrap();
+        let component_cache = ComponentCache::for_test_permissive(&rig);
+        let rig_session = RigSession::new(rig, component_cache);
+        let state = rig_session.initialize().unwrap();
         let view_model = to_view_model(&state);
 
         assert_eq!(view_model.groups.len(), 3);
@@ -246,7 +246,7 @@ mod tests {
         // f
         //
         // g
-        let app = App::for_test(Rigging {
+        let rig = Rig::for_test(Rigging {
             components: [
                 ComponentRigging::for_test("a", None),
                 ComponentRigging::for_test("b", Some(json!({"a": "$$.a"}))),
@@ -260,9 +260,9 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = ComponentCache::for_test_permissive(&app);
-        let app_session = AppSession::new(app, component_cache);
-        let state = app_session.initialize().unwrap();
+        let component_cache = ComponentCache::for_test_permissive(&rig);
+        let rig_session = RigSession::new(rig, component_cache);
+        let state = rig_session.initialize().unwrap();
         let view_model = to_view_model(&state);
 
         assert_eq!(view_model.groups.len(), 3);

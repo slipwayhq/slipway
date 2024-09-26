@@ -1,14 +1,14 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::{errors::AppError, parse::types::primitives::ComponentHandle};
+use crate::{errors::RigError, parse::types::primitives::ComponentHandle};
 
-/// When we pull dependencies out of the App JSON we end up with references to handles
-/// in the rigging mapping to component handle values.
+/// When we pull dependencies out of the Rig JSON we end up with references to handles
+/// in the rigging mriging to component handle values.
 /// This function converts the component handle values back to references to handles in the rigging,
 /// so that all the handles in the dependency_map are references with the same lifetime.
-pub(super) fn map_dependencies_to_app_handles(
+pub(super) fn map_dependencies_to_rig_handles(
     dependency_map: HashMap<&ComponentHandle, HashSet<ComponentHandle>>,
-) -> Result<HashMap<&ComponentHandle, HashSet<&ComponentHandle>>, AppError> {
+) -> Result<HashMap<&ComponentHandle, HashSet<&ComponentHandle>>, RigError> {
     let mut result: HashMap<&ComponentHandle, HashSet<&ComponentHandle>> = HashMap::new();
     for (&k, v) in dependency_map.iter() {
         let mut refs = HashSet::with_capacity(v.len());
@@ -17,7 +17,7 @@ pub(super) fn map_dependencies_to_app_handles(
             let kr = match lookup_result {
                 Some((kr, _)) => kr,
                 None => {
-                    return Err(AppError::AppValidationFailed {
+                    return Err(RigError::RigValidationFailed {
                         error: format!("dependency {:?} not found in rigging component keys", d),
                     })
                 }
@@ -56,7 +56,7 @@ mod tests {
 
         dependency_map.insert(&component3, HashSet::new());
 
-        let result = map_dependencies_to_app_handles(dependency_map).unwrap();
+        let result = map_dependencies_to_rig_handles(dependency_map).unwrap();
 
         let expected: HashMap<&ComponentHandle, HashSet<&ComponentHandle>> = [
             (&component1, [&component2].into_iter().collect()),

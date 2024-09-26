@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 
-use crate::{errors::AppError, AppExecutionState, AppSession, ComponentState, Immutable};
+use crate::{errors::RigError, RigExecutionState, RigSession, ComponentState, Immutable};
 
 use super::evaluate_component_inputs::evaluate_component_inputs;
 
-pub(super) fn initialize(session: &AppSession) -> Result<Immutable<AppExecutionState>, AppError> {
+pub(super) fn initialize(session: &RigSession) -> Result<Immutable<RigExecutionState>, RigError> {
     let component_states = session
-        .app
+        .rig
         .rigging
         .components
         .iter()
@@ -26,7 +26,7 @@ pub(super) fn initialize(session: &AppSession) -> Result<Immutable<AppExecutionS
         })
         .collect();
 
-    let state = AppExecutionState {
+    let state = RigExecutionState {
         session,
         component_states,
         valid_execution_order: Vec::new(),

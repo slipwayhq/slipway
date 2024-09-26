@@ -7,12 +7,12 @@ use std::str::FromStr;
 use termion::{color, style};
 
 use slipway_lib::{
-    parse_app, App, AppExecutionState, AppSession, BasicComponentsLoader, ComponentCache,
-    ComponentHandle, ComponentRigging, Name, Publisher, Rigging, SlipwayReference,
+    parse_rig, BasicComponentsLoader, ComponentCache, ComponentHandle, ComponentRigging, Name,
+    Publisher, Rig, RigExecutionState, RigSession, Rigging, SlipwayReference,
 };
 
 use crate::to_view_model::to_view_model;
-use crate::write_app_state;
+use crate::write_rig_state;
 
 mod errors;
 mod handle_clear_input_command;
@@ -99,7 +99,7 @@ impl DebugCli {
     }
 }
 
-pub(crate) fn debug_app_from_component_file<W: Write>(
+pub(crate) fn debug_rig_from_component_file<W: Write>(
     w: &mut W,
     component_path: std::path::PathBuf,
     input_path: Option<std::path::PathBuf>,
@@ -135,10 +135,10 @@ pub(crate) fn debug_app_from_component_file<W: Write>(
     writeln!(w, "...done")?;
     writeln!(w)?;
 
-    let app = App {
-        publisher: Publisher::from_str("test").expect("generated app publisher should be valid"),
-        name: Name::from_str("test").expect("generated app name should be valid"),
-        version: semver::Version::parse("0.0.1").expect("generated app version should be valid"),
+    let rig = Rig {
+        publisher: Publisher::from_str("test").expect("generated rig publisher should be valid"),
+        name: Name::from_str("test").expect("generated rig name should be valid"),
+        version: semver::Version::parse("0.0.1").expect("generated rig version should be valid"),
         description: None,
         constants: None,
         rigging: Rigging {
@@ -155,10 +155,10 @@ pub(crate) fn debug_app_from_component_file<W: Write>(
         },
     };
 
-    debug_app(w, app, json_editor)
+    debug_rig(w, rig, json_editor)
 }
 
-pub(crate) fn debug_app_from_app_file<W: Write>(
+pub(crate) fn debug_rig_from_rig_file<W: Write>(
     w: &mut W,
     input: std::path::PathBuf,
 ) -> anyhow::Result<()> {
@@ -167,11 +167,11 @@ pub(crate) fn debug_app_from_app_file<W: Write>(
 
     let file_contents = std::fs::read_to_string(input.clone())
         .with_context(|| format!("Failed to read component from {}", input.display()))?;
-    let app = parse_app(&file_contents)?;
+    let rig = parse_rig(&file_contents)?;
 
     let json_editor = JsonEditorImpl::new();
 
-    debug_app(w, app, json_editor)
+    debug_rig(w, rig, json_editor)
 }
 
 fn redirect_to_json_if_wasm(input: &std::path::Path) -> std::path::PathBuf {
@@ -184,9 +184,9 @@ fn redirect_to_json_if_wasm(input: &std::path::Path) -> std::path::PathBuf {
     }
 }
 
-fn debug_app<W: Write>(w: &mut W, app: App, json_editor: impl JsonEditor) -> anyhow::Result<()> {
-    let component_cache = ComponentCache::primed(&app, &BasicComponentsLoader::new())?;
-    let session = AppSession::new(app, component_cache);
+fn debug_rig<W: Write>(w: &mut W, rig: Rig, json_editor: impl JsonEditor) -> anyhow::Result<()> {
+    let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::new())?;
+    let session = RigSession::new(rig, component_cache);
     let mut state = session.initialize()?;
 
     print_state(w, &state)?;
@@ -248,14 +248,14 @@ fn debug_app<W: Write>(w: &mut W, app: App, json_editor: impl JsonEditor) -> any
         }
     }
 
-    writeln!(w, "Exiting application...")?;
+    writeln!(w, "Exiting riglication...")?;
 
     Ok(())
 }
 
-fn print_state<W: Write>(w: &mut W, state: &AppExecutionState<'_>) -> Result<(), anyhow::Error> {
+fn print_state<W: Write>(w: &mut W, state: &RigExecutionState<'_>) -> Result<(), anyhow::Error> {
     let view_model = to_view_model(state);
-    write_app_state::write_app_state(w, &view_model)?;
+    write_rig_state::write_rig_state(w, &view_model)?;
     writeln!(w)?;
     Ok(())
 }

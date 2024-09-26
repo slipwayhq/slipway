@@ -4,16 +4,16 @@ use crate::{
     errors::{ComponentLoadError, ComponentLoadErrorInner},
     load::ComponentsLoader,
     parse::parse_schema,
-    parse_component, App, Component, Schema, SlipwayReference,
+    parse_component, Rig, Component, Schema, SlipwayReference,
 };
 
 use super::ComponentCache;
 
 pub(super) fn prime_component_cache(
-    app: &App,
+    rig: &Rig,
     components_loader: &impl ComponentsLoader,
 ) -> Result<ComponentCache, ComponentLoadError> {
-    let distinct_component_references: Vec<_> = app
+    let distinct_component_references: Vec<_> = rig
         .rigging
         .components
         .values()

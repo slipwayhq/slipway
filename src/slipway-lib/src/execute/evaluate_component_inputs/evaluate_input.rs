@@ -4,7 +4,7 @@ use serde_json::json;
 
 use jsonpath_rust::{JsonPath, JsonPathValue};
 
-use crate::{errors::AppError, execute::primitives::JsonMetadata, ComponentHandle, ComponentInput};
+use crate::{errors::RigError, execute::primitives::JsonMetadata, ComponentHandle, ComponentInput};
 
 use super::{
     find_json_path_strings::{FoundJsonPathString, PathType},
@@ -13,22 +13,22 @@ use super::{
 
 pub(super) fn evaluate_input(
     component_handle: &ComponentHandle,
-    serialized_app_state: &serde_json::Value,
+    serialized_rig_state: &serde_json::Value,
     input: Option<&serde_json::Value>,
     json_path_strings: &Vec<FoundJsonPathString>,
-) -> Result<ComponentInput, AppError> {
+) -> Result<ComponentInput, RigError> {
     let evaluated_input = match input {
         Some(input) => {
             let mut evaluated_input = input.clone();
             for found in json_path_strings {
                 let path = JsonPath::from_str(&found.path).map_err(|e| {
-                    AppError::InvalidJsonPathExpression {
+                    RigError::InvalidJsonPathExpression {
                         location: found.path_to.to_json_path_string(),
                         error: e,
                     }
                 })?;
 
-                let result = path.find_slice(serialized_app_state);
+                let result = path.find_slice(serialized_rig_state);
 
                 let extracted_result = match found.path_type {
                     PathType::Array => serde_json::Value::Array(
@@ -46,7 +46,7 @@ pub(super) fn evaluate_input(
                         .into_iter()
                         .filter_map(map_json_ptr_to_value)
                         .next()
-                        .ok_or(AppError::ResolveJsonPathFailed {
+                        .ok_or(RigError::ResolveJsonPathFailed {
                             message: format!(
                                 r#"The input path "{}" required "{}" to be a value"#,
                                 found.path_to.to_prefixed_path_string(
@@ -54,7 +54,7 @@ pub(super) fn evaluate_input(
                                 ),
                                 found.path
                             ),
-                            state: serialized_app_state.clone(),
+                            state: serialized_rig_state.clone(),
                         })?,
                 };
 

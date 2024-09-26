@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use slipway_lib::{AppExecutionState, ComponentHandle, Immutable};
+use slipway_lib::{RigExecutionState, ComponentHandle, Immutable};
 
 use crate::to_view_model::to_shortcuts;
 
@@ -8,12 +8,12 @@ use super::{
     errors::SlipwayDebugError, json_editor::JsonEditor, print_state, DebugCli, DebuggerCommand,
 };
 
-pub(super) fn handle_command<'app, W: Write>(
+pub(super) fn handle_command<'rig, W: Write>(
     w: &mut W,
     debug_cli: DebugCli,
-    state: &AppExecutionState<'app>,
+    state: &RigExecutionState<'rig>,
     json_editor: &impl JsonEditor,
-) -> anyhow::Result<HandleCommandResult<'app>> {
+) -> anyhow::Result<HandleCommandResult<'rig>> {
     let result = match debug_cli.command {
         DebuggerCommand::Print {} => {
             print_state(w, state)?;
@@ -71,15 +71,15 @@ pub(super) fn handle_command<'app, W: Write>(
     Ok(result)
 }
 
-pub(super) enum HandleCommandResult<'app> {
-    Continue(Option<Immutable<AppExecutionState<'app>>>),
+pub(super) enum HandleCommandResult<'rig> {
+    Continue(Option<Immutable<RigExecutionState<'rig>>>),
     Exit,
 }
 
-fn get_handle<'app>(
+fn get_handle<'rig>(
     handle_str: &str,
-    state: &AppExecutionState<'app>,
-) -> Result<&'app ComponentHandle, SlipwayDebugError> {
+    state: &RigExecutionState<'rig>,
+) -> Result<&'rig ComponentHandle, SlipwayDebugError> {
     let shortcuts = to_shortcuts(state);
 
     if let Some(&handle) = shortcuts.get(handle_str) {
@@ -106,7 +106,7 @@ mod tests {
 
     use serde_json::json;
     use slipway_lib::{
-        utils::ch, App, AppSession, BasicComponentsLoader, ComponentCache, ComponentRigging,
+        utils::ch, Rig, RigSession, BasicComponentsLoader, ComponentCache, ComponentRigging,
         ComponentState, Rigging, SlipwayReference,
     };
 
@@ -118,8 +118,8 @@ mod tests {
     fn it_should_run_components_in_sequence() {
         let w = &mut std::io::sink();
         let (ch1, ch2, ch3) = component_handles();
-        let app_session = get_app_session();
-        let mut state = app_session.initialize().unwrap();
+        let rig_session = get_rig_session();
+        let mut state = rig_session.initialize().unwrap();
 
         verify_state(&state, (true, false, false), (false, false, false));
         assert_input_value(&state, &ch1, 1);
@@ -150,8 +150,8 @@ mod tests {
     fn rerunning_component_should_clear_output_override() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
-        let app_session = get_app_session();
-        let mut state = app_session.initialize().unwrap();
+        let rig_session = get_rig_session();
+        let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
         state = handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {});
@@ -176,8 +176,8 @@ mod tests {
     fn running_output_clear_command_should_clear_output_override() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
-        let app_session = get_app_session();
-        let mut state = app_session.initialize().unwrap();
+        let rig_session = get_rig_session();
+        let mut state = rig_session.initialize().unwrap();
 
         verify_state(&state, (true, false, false), (false, false, false));
 
@@ -208,8 +208,8 @@ mod tests {
     fn running_output_command_twice_should_edit_overridden_output() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
-        let app_session = get_app_session();
-        let mut state = app_session.initialize().unwrap();
+        let rig_session = get_rig_session();
+        let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
         state = handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {});
@@ -240,8 +240,8 @@ mod tests {
     fn running_output_command_without_changes_should_not_override_output() {
         let w = &mut std::io::sink();
         let (ch1, ch2, _) = component_handles();
-        let app_session = get_app_session();
-        let mut state = app_session.initialize().unwrap();
+        let rig_session = get_rig_session();
+        let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
         state = handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {});
@@ -267,8 +267,8 @@ mod tests {
     fn it_should_override_inputs() {
         let w = &mut std::io::sink();
         let (_, ch2, ch3) = component_handles();
-        let app_session = get_app_session();
-        let mut state = app_session.initialize().unwrap();
+        let rig_session = get_rig_session();
+        let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
         state = handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {});
@@ -295,8 +295,8 @@ mod tests {
     fn it_should_override_inputs_with_dependencies() {
         let w = &mut std::io::sink();
         let (_, ch2, ch3) = component_handles();
-        let app_session = get_app_session();
-        let mut state = app_session.initialize().unwrap();
+        let rig_session = get_rig_session();
+        let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
         state = handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {});
@@ -323,8 +323,8 @@ mod tests {
     fn running_input_clear_command_should_clear_input_override() {
         let w = &mut std::io::sink();
         let (ch1, _, _) = component_handles();
-        let app_session = get_app_session();
-        let mut state = app_session.initialize().unwrap();
+        let rig_session = get_rig_session();
+        let mut state = rig_session.initialize().unwrap();
 
         assert_input_value(&state, &ch1, 1);
 
@@ -351,8 +351,8 @@ mod tests {
     fn running_input_command_twice_should_edit_overridden_input() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
-        let app_session = get_app_session();
-        let mut state = app_session.initialize().unwrap();
+        let rig_session = get_rig_session();
+        let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
         state = handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {});
@@ -385,8 +385,8 @@ mod tests {
     fn running_input_command_without_changes_should_not_override_input() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
-        let app_session = get_app_session();
-        let mut state = app_session.initialize().unwrap();
+        let rig_session = get_rig_session();
+        let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
         state = handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {});
@@ -412,7 +412,7 @@ mod tests {
     }
 
     fn assert_input_value(
-        state: &Immutable<AppExecutionState>,
+        state: &Immutable<RigExecutionState>,
         ch2: &ComponentHandle,
         expected_value: i32,
     ) {
@@ -427,7 +427,7 @@ mod tests {
         (ch("ch1"), ch("ch2"), ch("ch3"))
     }
 
-    fn get_app_session() -> AppSession {
+    fn get_rig_session() -> RigSession {
         let (ch1, ch2, ch3) = component_handles();
 
         let increment_reference = SlipwayReference::Local {
@@ -435,7 +435,7 @@ mod tests {
         };
 
         // ch1 -> ch2 -> ch3
-        let app = App::for_test(Rigging {
+        let rig = Rig::for_test(Rigging {
             components: [
                 (
                     ch1.clone(),
@@ -466,12 +466,12 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = ComponentCache::primed(&app, &BasicComponentsLoader::new()).unwrap();
-        AppSession::new(app, component_cache)
+        let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::new()).unwrap();
+        RigSession::new(rig, component_cache)
     }
 
     fn verify_state(
-        state: &Immutable<AppExecutionState>,
+        state: &Immutable<RigExecutionState>,
         inputs: (bool, bool, bool),
         outputs: (bool, bool, bool),
     ) {
@@ -490,26 +490,26 @@ mod tests {
         assert_eq!(component(state, &ch3).execution_output.is_some(), outputs.2);
     }
 
-    fn handle_test_command<'app>(
+    fn handle_test_command<'rig>(
         w: &mut std::io::Sink,
         debug_cli: DebugCli,
-        state: &AppExecutionState<'app>,
+        state: &RigExecutionState<'rig>,
         json_editor: &impl JsonEditor,
-    ) -> Immutable<AppExecutionState<'app>> {
+    ) -> Immutable<RigExecutionState<'rig>> {
         match handle_command(w, debug_cli, state, json_editor).unwrap() {
             HandleCommandResult::Continue(Some(state)) => state,
             _ => panic!("Expected Continue"),
         }
     }
 
-    fn component<'app>(
-        state: &'app Immutable<AppExecutionState>,
-        handle: &'app ComponentHandle,
-    ) -> &'app ComponentState<'app> {
+    fn component<'rig>(
+        state: &'rig Immutable<RigExecutionState>,
+        handle: &'rig ComponentHandle,
+    ) -> &'rig ComponentState<'rig> {
         state.component_states.get(handle).unwrap()
     }
 
-    fn run_print(state: &Immutable<AppExecutionState>) {
+    fn run_print(state: &Immutable<RigExecutionState>) {
         let mut v = Vec::new();
         match handle_command(
             &mut v,

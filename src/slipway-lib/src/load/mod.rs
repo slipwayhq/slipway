@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    errors::ComponentLoadError, utils::ExpectWith, App, Component, Schema, SlipwayReference,
+    errors::ComponentLoadError, utils::ExpectWith, Rig, Component, Schema, SlipwayReference,
 };
 
 pub(super) mod basic_components_loader;
@@ -9,10 +9,10 @@ mod is_safe_path;
 mod prime_component_cache;
 
 pub trait ComponentsLoader {
-    fn load_components<'app>(
+    fn load_components<'rig>(
         &self,
-        component_references: &[&'app SlipwayReference],
-    ) -> Vec<Result<LoadedComponent<'app>, ComponentLoadError>>;
+        component_references: &[&'rig SlipwayReference],
+    ) -> Vec<Result<LoadedComponent<'rig>, ComponentLoadError>>;
 }
 
 pub trait ComponentWasm {
@@ -23,16 +23,16 @@ pub trait ComponentJson: Send + Sync {
     fn get(&self, file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError>;
 }
 
-pub struct LoadedComponent<'app> {
-    pub reference: &'app SlipwayReference,
+pub struct LoadedComponent<'rig> {
+    pub reference: &'rig SlipwayReference,
     pub definition: String,
     pub wasm: Arc<dyn ComponentWasm>,
     pub json: Arc<dyn ComponentJson>,
 }
 
-impl<'app> LoadedComponent<'app> {
+impl<'rig> LoadedComponent<'rig> {
     pub fn new(
-        reference: &'app SlipwayReference,
+        reference: &'rig SlipwayReference,
         definition: String,
         wasm: Arc<dyn ComponentWasm>,
         json: Arc<dyn ComponentJson>,
@@ -57,8 +57,8 @@ impl ComponentCache {
         }
     }
 
-    pub fn primed(app: &App, loader: &impl ComponentsLoader) -> Result<Self, ComponentLoadError> {
-        prime_component_cache::prime_component_cache(app, loader)
+    pub fn primed(rig: &Rig, loader: &impl ComponentsLoader) -> Result<Self, ComponentLoadError> {
+        prime_component_cache::prime_component_cache(rig, loader)
     }
 
     pub fn clear(&mut self) {

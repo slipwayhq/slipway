@@ -1,4 +1,4 @@
-use crate::{errors::AppError, AppExecutionState, ComponentHandle, ComponentInput};
+use crate::{errors::RigError, RigExecutionState, ComponentHandle, ComponentInput};
 use std::{
     collections::{HashMap, HashSet},
     rc::Rc,
@@ -17,7 +17,7 @@ use super::{
 mod evaluate_input;
 mod extract_dependencies_from_json_path_strings;
 mod find_json_path_strings;
-mod map_dependencies_to_app_handles;
+mod map_dependencies_to_rig_handles;
 mod simple_json_path;
 
 const RIGGING_KEY: &str = "rigging";
@@ -25,8 +25,8 @@ const INPUT_KEY: &str = "input";
 const OUTPUT_KEY: &str = "output";
 
 pub(super) fn evaluate_component_inputs(
-    state: AppExecutionState,
-) -> Result<AppExecutionState, AppError> {
+    state: RigExecutionState,
+) -> Result<RigExecutionState, RigError> {
     let mut dependency_map: HashMap<&ComponentHandle, HashSet<ComponentHandle>> = HashMap::new();
     let mut component_evaluate_input_params: HashMap<&ComponentHandle, EvaluateInputParams> =
         HashMap::new();
@@ -68,7 +68,7 @@ pub(super) fn evaluate_component_inputs(
     }
 
     let dependency_map_refs =
-        map_dependencies_to_app_handles::map_dependencies_to_app_handles(dependency_map)?;
+        map_dependencies_to_rig_handles::map_dependencies_to_rig_handles(dependency_map)?;
 
     let sorted_and_grouped = sort_and_group(&dependency_map_refs)?;
     let execution_order = sorted_and_grouped.sorted;
@@ -79,9 +79,9 @@ pub(super) fn evaluate_component_inputs(
     // We have to evaluate the inputs in topological order because they may refer to the
     // evaluated inputs of their dependencies.
     if !component_evaluate_input_params.is_empty() {
-        // Serialize the app state to a JSON value.
-        let mut serialized_app_state = serde_json::to_value(&state.session.app)
-            .map_err(|error| AppError::AppParseFailed { error })?;
+        // Serialize the rig state to a JSON value.
+        let mut serialized_rig_state = serde_json::to_value(&state.session.rig)
+            .map_err(|error| RigError::RigParseFailed { error })?;
 
         // For each component handle, in execution order.
         for &component_handle in execution_order.iter() {
@@ -92,19 +92,19 @@ pub(super) fn evaluate_component_inputs(
             // execution_output or None.
             let output = component_state.output();
 
-            // If the component has output, then set it in the serialized app state.
+            // If the component has output, then set it in the serialized rig state.
             if let Some(output) = output {
-                serialized_app_state[RIGGING_KEY][&component_handle.0][OUTPUT_KEY] = output.clone();
+                serialized_rig_state[RIGGING_KEY][&component_handle.0][OUTPUT_KEY] = output.clone();
             }
 
             // If the component can execute...
             if let Some(evaluate_input_params) =
                 component_evaluate_input_params.get(component_handle)
             {
-                // Evaluate the execution input on the latest serialized app state.
+                // Evaluate the execution input on the latest serialized rig state.
                 let execution_input = evaluate_input::evaluate_input(
                     component_handle,
-                    &serialized_app_state,
+                    &serialized_rig_state,
                     evaluate_input_params.input,
                     &evaluate_input_params.json_path_strings,
                 )?;
@@ -115,9 +115,9 @@ pub(super) fn evaluate_component_inputs(
                     ValidationData::Input(&execution_input.value),
                 )?;
 
-                // Set the execution input in the serialized app state (in case
+                // Set the execution input in the serialized rig state (in case
                 // later components reference this component's input).
-                serialized_app_state[RIGGING_KEY][&component_handle.0][INPUT_KEY] =
+                serialized_rig_state[RIGGING_KEY][&component_handle.0][INPUT_KEY] =
                     execution_input.value.clone();
 
                 // Insert the execution input into the execution inputs map.
@@ -135,7 +135,7 @@ pub(super) fn evaluate_component_inputs(
     state.component_groups = component_groups;
 
     // Update the execution input of every component.
-    for key in state.session.app.rigging.components.keys() {
+    for key in state.session.rig.rigging.components.keys() {
         let component_state = state.get_component_state_mut(key)?;
         component_state.execution_input = execution_inputs.remove(key).map(Rc::new);
         component_state.dependencies.clone_from(
@@ -148,7 +148,7 @@ pub(super) fn evaluate_component_inputs(
     Ok(state)
 }
 
-struct EvaluateInputParams<'app> {
-    input: Option<&'app serde_json::Value>,
-    json_path_strings: Vec<FoundJsonPathString<'app>>,
+struct EvaluateInputParams<'rig> {
+    input: Option<&'rig serde_json::Value>,
+    json_path_strings: Vec<FoundJsonPathString<'rig>>,
 }

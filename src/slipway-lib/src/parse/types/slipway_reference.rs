@@ -1,4 +1,4 @@
-use crate::{errors::AppError, parse::types::parse_component_version};
+use crate::{errors::RigError, parse::types::parse_component_version};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use semver::Version;
@@ -50,7 +50,7 @@ pub enum SlipwayReference {
 }
 
 impl FromStr for SlipwayReference {
-    type Err = AppError;
+    type Err = RigError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(caps) = REGISTRY_REGEX.captures(s) {
@@ -83,7 +83,7 @@ impl FromStr for SlipwayReference {
                 "file" => {
                     let file_path =
                         uri.to_file_path()
-                            .map_err(|_| AppError::InvalidSlipwayPrimitive {
+                            .map_err(|_| RigError::InvalidSlipwayPrimitive {
                                 primitive_type: stringify!(SlipwayReference).to_string(),
                                 message: format!("unable to convert file URI to local path: {uri}"),
                             })?;
@@ -91,14 +91,14 @@ impl FromStr for SlipwayReference {
                     Ok(SlipwayReference::Local { path: file_path })
                 }
                 "https" => Ok(SlipwayReference::Url { url: uri }),
-                other => Err(AppError::InvalidSlipwayPrimitive {
+                other => Err(RigError::InvalidSlipwayPrimitive {
                     primitive_type: stringify!(SlipwayReference).to_string(),
                     message: format!("unsupported URI scheme: {other}"),
                 }),
             };
         }
 
-        Err(AppError::InvalidSlipwayPrimitive {
+        Err(RigError::InvalidSlipwayPrimitive {
             primitive_type: stringify!(SlipwayReference).to_string(),
             message: format!("component reference '{}' was not in a valid format", s),
         })
@@ -112,7 +112,7 @@ pub enum GitHubVersion {
 }
 
 impl FromStr for GitHubVersion {
-    type Err = AppError;
+    type Err = RigError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         const SEMVER_PREFIX: &str = "semver:";

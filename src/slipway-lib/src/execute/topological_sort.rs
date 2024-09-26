@@ -2,27 +2,27 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use itertools::Itertools;
 
-use crate::{errors::AppError, parse::types::primitives::ComponentHandle};
+use crate::{errors::RigError, parse::types::primitives::ComponentHandle};
 
 const CYCLE_DETECTED_ERROR: &str = "Cycle detected in the graph";
 
-pub(super) fn sort_and_group<'app>(
-    components_and_dependencies: &HashMap<&'app ComponentHandle, HashSet<&'app ComponentHandle>>,
-) -> Result<SortedAndGrouped<'app>, AppError> {
+pub(super) fn sort_and_group<'rig>(
+    components_and_dependencies: &HashMap<&'rig ComponentHandle, HashSet<&'rig ComponentHandle>>,
+) -> Result<SortedAndGrouped<'rig>, RigError> {
     let graph = build_graph(components_and_dependencies);
     let sorted = graph.topological_sort()?;
     let grouped = graph.get_isolated_groups();
     Ok(SortedAndGrouped { sorted, grouped })
 }
 
-pub(super) struct SortedAndGrouped<'app> {
-    pub sorted: Vec<&'app ComponentHandle>,
-    pub grouped: Vec<HashSet<&'app ComponentHandle>>,
+pub(super) struct SortedAndGrouped<'rig> {
+    pub sorted: Vec<&'rig ComponentHandle>,
+    pub grouped: Vec<HashSet<&'rig ComponentHandle>>,
 }
 
-fn build_graph<'app>(
-    components: &HashMap<&'app ComponentHandle, HashSet<&'app ComponentHandle>>,
-) -> Graph<'app> {
+fn build_graph<'rig>(
+    components: &HashMap<&'rig ComponentHandle, HashSet<&'rig ComponentHandle>>,
+) -> Graph<'rig> {
     let mut graph = Graph::new();
 
     for (&component_handle, input_handles) in components {
@@ -112,14 +112,14 @@ impl<'a> Graph<'a> {
         None
     }
 
-    fn detect_cycle(&self) -> Result<(), AppError> {
+    fn detect_cycle(&self) -> Result<(), RigError> {
         if let Some(path) = self.find_cycle() {
             let cycle = path
                 .iter()
                 .map(|&x| x.to_string())
                 .collect::<Vec<String>>()
                 .join(" -> ");
-            return Err(AppError::AppValidationFailed {
+            return Err(RigError::RigValidationFailed {
                 error: format!("{}: {}", CYCLE_DETECTED_ERROR, cycle),
             });
         }
@@ -127,7 +127,7 @@ impl<'a> Graph<'a> {
         Ok(())
     }
 
-    fn topological_sort(&self) -> Result<Vec<&'a ComponentHandle>, AppError> {
+    fn topological_sort(&self) -> Result<Vec<&'a ComponentHandle>, RigError> {
         self.detect_cycle()?;
 
         let mut in_degree = self.in_degree.clone();
@@ -161,7 +161,7 @@ impl<'a> Graph<'a> {
         }
 
         if order.len() != self.in_degree.len() {
-            panic!("Graph appears to have a cycle which was not detected by detect_cycle()");
+            panic!("Graph rigears to have a cycle which was not detected by detect_cycle()");
         }
 
         Ok(order)
@@ -240,12 +240,12 @@ mod tests {
 
         use super::*;
 
-        fn topological_sort<'app>(
+        fn topological_sort<'rig>(
             components_and_dependencies: &HashMap<
-                &'app ComponentHandle,
-                HashSet<&'app ComponentHandle>,
+                &'rig ComponentHandle,
+                HashSet<&'rig ComponentHandle>,
             >,
-        ) -> Result<Vec<&'app ComponentHandle>, AppError> {
+        ) -> Result<Vec<&'rig ComponentHandle>, RigError> {
             let graph = build_graph(components_and_dependencies);
             graph.topological_sort()
         }
@@ -307,7 +307,7 @@ mod tests {
             assert!(result.is_err());
 
             match result {
-                Err(AppError::AppValidationFailed { error }) => {
+                Err(RigError::RigValidationFailed { error }) => {
                     // There are a few cycles it could report, e.g. C -> B -> A -> C, but
                     // sorting during cycle detection ensures it always reports the same one.
                     assert_eq!(

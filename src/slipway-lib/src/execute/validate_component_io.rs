@@ -1,13 +1,13 @@
 use crate::{
-    errors::{AppError, SchemaValidationFailures, ValidationType},
-    AppSession, ComponentState, Schema,
+    errors::{RigError, SchemaValidationFailures, ValidationType},
+    RigSession, ComponentState, Schema,
 };
 
-pub(super) fn validate_component_io<'app>(
-    session: &'app AppSession,
-    component_state: &ComponentState<'app>,
+pub(super) fn validate_component_io<'rig>(
+    session: &'rig RigSession,
+    component_state: &ComponentState<'rig>,
     validation_data: ValidationData,
-) -> Result<(), AppError> {
+) -> Result<(), RigError> {
     let component_reference = &component_state.rigging.component;
     let component_definition = session.component_cache.get_definition(component_reference);
 
@@ -27,7 +27,7 @@ pub(super) fn validate_component_io<'app>(
         ValidationResult::JsonTypeDef(validation_result) => {
             // The errors returned as part of the Result are fundamental validation errors when trying
             // to validate, rather than errors caused by the JSON not matching the schema.
-            let errors = validation_result.map_err(|e| AppError::ComponentValidationAborted {
+            let errors = validation_result.map_err(|e| RigError::ComponentValidationAborted {
                 component_handle: component_state.handle.clone(),
                 validation_type: validation_type.clone(),
                 validation_error: e,
@@ -54,7 +54,7 @@ pub(super) fn validate_component_io<'app>(
     };
 
     if let Some(validation_failures) = validation_failures {
-        return Err(AppError::ComponentValidationFailed {
+        return Err(RigError::ComponentValidationFailed {
             component_handle: component_state.handle.clone(),
             validation_type: validation_type.clone(),
             validation_failures,
@@ -68,12 +68,12 @@ pub(super) fn validate_component_io<'app>(
     Ok(())
 }
 
-fn validate_json<'app, 'data>(
-    schema: &'app Schema,
+fn validate_json<'rig, 'data>(
+    schema: &'rig Schema,
     data: &'data serde_json::Value,
 ) -> ValidationResult<'data>
 where
-    'app: 'data,
+    'rig: 'data,
 {
     match schema {
         Schema::JsonTypeDef { schema } => {
@@ -111,18 +111,18 @@ mod tests {
         errors::SchemaValidationFailure,
         test_utils::{schema_any, schema_valid},
         utils::ch,
-        App, ComponentCache, ComponentRigging, Instruction, Rigging,
+        Rig, ComponentCache, ComponentRigging, Instruction, Rigging,
     };
 
     use super::*;
 
-    fn create_app() -> App {
-        // Create a fully populated app instance.
+    fn create_rig() -> Rig {
+        // Create a fully populated rig instance.
         // Dependency graph:
         //  A
         //  |
         //  B
-        App::for_test(Rigging {
+        Rig::for_test(Rigging {
             components: [
                 ComponentRigging::for_test("a", None),
                 ComponentRigging::for_test("b", Some(json!({ "a_output": "$$.a" }))),
@@ -134,10 +134,10 @@ mod tests {
 
     #[test]
     fn it_should_validate_component_input() {
-        let app = create_app();
+        let rig = create_rig();
 
         let component_cache = ComponentCache::for_test_with_schemas(
-            &app,
+            &rig,
             [
                 ("a".to_string(), (schema_any(), schema_any())),
                 (
@@ -165,9 +165,9 @@ mod tests {
             .collect(),
         );
 
-        let app_session = AppSession::new(app, component_cache);
+        let rig_session = RigSession::new(rig, component_cache);
 
-        let mut s = app_session.initialize().unwrap();
+        let mut s = rig_session.initialize().unwrap();
 
         s = s
             .step(Instruction::SetOutput {
@@ -186,10 +186,10 @@ mod tests {
 
     #[test]
     fn it_should_fail_to_validate_invalid_component_input() {
-        let app = create_app();
+        let rig = create_rig();
 
         let component_cache = ComponentCache::for_test_with_schemas(
-            &app,
+            &rig,
             [
                 ("a".to_string(), (schema_any(), schema_any())),
                 (
@@ -217,16 +217,16 @@ mod tests {
             .collect(),
         );
 
-        let app_session = AppSession::new(app, component_cache);
+        let rig_session = RigSession::new(rig, component_cache);
 
-        let s = app_session.initialize().unwrap();
+        let s = rig_session.initialize().unwrap();
         let s_result = s.step(Instruction::SetOutput {
             handle: ch("a"),
             value: json!({ "foo": "bar" }),
         });
 
         match s_result {
-            Err(AppError::ComponentValidationFailed {
+            Err(RigError::ComponentValidationFailed {
                 component_handle,
                 validation_type,
                 validation_failures,
@@ -255,10 +255,10 @@ mod tests {
 
     #[test]
     fn it_should_validate_component_output() {
-        let app = create_app();
+        let rig = create_rig();
 
         let component_cache = ComponentCache::for_test_with_schemas(
-            &app,
+            &rig,
             [
                 (
                     "a".to_string(),
@@ -282,9 +282,9 @@ mod tests {
             .collect(),
         );
 
-        let app_session = AppSession::new(app, component_cache);
+        let rig_session = RigSession::new(rig, component_cache);
 
-        let mut s = app_session.initialize().unwrap();
+        let mut s = rig_session.initialize().unwrap();
         s = s
             .step(Instruction::SetOutput {
                 handle: ch("a"),
@@ -302,10 +302,10 @@ mod tests {
 
     #[test]
     fn it_should_fail_to_validate_invalid_component_output() {
-        let app = create_app();
+        let rig = create_rig();
 
         let component_cache = ComponentCache::for_test_with_schemas(
-            &app,
+            &rig,
             [
                 (
                     "a".to_string(),
@@ -329,16 +329,16 @@ mod tests {
             .collect(),
         );
 
-        let app_session = AppSession::new(app, component_cache);
+        let rig_session = RigSession::new(rig, component_cache);
 
-        let s = app_session.initialize().unwrap();
+        let s = rig_session.initialize().unwrap();
         let s_result = s.step(Instruction::SetOutput {
             handle: ch("a"),
             value: json!({ "foo": "bar" }),
         });
 
         match s_result {
-            Err(AppError::ComponentValidationFailed {
+            Err(RigError::ComponentValidationFailed {
                 component_handle,
                 validation_type,
                 validation_failures,
@@ -366,10 +366,10 @@ mod tests {
 
     #[test]
     fn it_should_validate_component_input_with_json_schema() {
-        let app = create_app();
+        let rig = create_rig();
 
         let component_cache = ComponentCache::for_test_with_schemas(
-            &app,
+            &rig,
             [
                 ("a".to_string(), (schema_any(), schema_any())),
                 (
@@ -402,9 +402,9 @@ mod tests {
             .collect(),
         );
 
-        let app_session = AppSession::new(app, component_cache);
+        let rig_session = RigSession::new(rig, component_cache);
 
-        let mut s = app_session.initialize().unwrap();
+        let mut s = rig_session.initialize().unwrap();
 
         s = s
             .step(Instruction::SetOutput {
@@ -423,10 +423,10 @@ mod tests {
 
     #[test]
     fn it_should_fail_to_validate_invalid_component_input_with_json_schema() {
-        let app = create_app();
+        let rig = create_rig();
 
         let component_cache = ComponentCache::for_test_with_schemas(
-            &app,
+            &rig,
             [
                 ("a".to_string(), (schema_any(), schema_any())),
                 (
@@ -459,16 +459,16 @@ mod tests {
             .collect(),
         );
 
-        let app_session = AppSession::new(app, component_cache);
+        let rig_session = RigSession::new(rig, component_cache);
 
-        let s = app_session.initialize().unwrap();
+        let s = rig_session.initialize().unwrap();
         let s_result = s.step(Instruction::SetOutput {
             handle: ch("a"),
             value: json!({ "foo": "bar" }),
         });
 
         match s_result {
-            Err(AppError::ComponentValidationFailed {
+            Err(RigError::ComponentValidationFailed {
                 component_handle,
                 validation_type,
                 validation_failures,

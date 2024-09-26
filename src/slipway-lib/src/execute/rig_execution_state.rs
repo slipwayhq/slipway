@@ -5,46 +5,46 @@ use std::{
 };
 
 use crate::{
-    errors::AppError, AppSession, ComponentHandle, ComponentInput, ComponentPermission, Immutable,
+    errors::RigError, RigSession, ComponentHandle, ComponentInput, ComponentPermission, Immutable,
     Instruction,
 };
 
 use super::{component_state::ComponentState, step::step};
 
 #[derive(Clone)]
-pub struct AppExecutionState<'app> {
-    pub session: &'app AppSession,
-    pub component_states: HashMap<&'app ComponentHandle, ComponentState<'app>>,
-    pub valid_execution_order: Vec<&'app ComponentHandle>,
-    pub component_groups: Vec<HashSet<&'app ComponentHandle>>,
+pub struct RigExecutionState<'rig> {
+    pub session: &'rig RigSession,
+    pub component_states: HashMap<&'rig ComponentHandle, ComponentState<'rig>>,
+    pub valid_execution_order: Vec<&'rig ComponentHandle>,
+    pub component_groups: Vec<HashSet<&'rig ComponentHandle>>,
 }
 
 #[derive(Clone)]
-pub struct ComponentExecutionData<'app> {
+pub struct ComponentExecutionData<'rig> {
     pub wasm_bytes: Arc<Vec<u8>>,
     pub input: Rc<ComponentInput>,
-    pub permissions: Option<&'app Vec<ComponentPermission>>,
+    pub permissions: Option<&'rig Vec<ComponentPermission>>,
 }
 
-impl<'app> AppExecutionState<'app> {
+impl<'rig> RigExecutionState<'rig> {
     pub fn step(
         &self,
         instruction: Instruction,
-    ) -> Result<Immutable<AppExecutionState<'app>>, AppError> {
+    ) -> Result<Immutable<RigExecutionState<'rig>>, RigError> {
         step(self, instruction)
     }
 
     pub fn get_component_execution_data(
         &self,
         handle: &ComponentHandle,
-    ) -> Result<ComponentExecutionData<'app>, AppError> {
+    ) -> Result<ComponentExecutionData<'rig>, RigError> {
         let component_state = self.get_component_state(handle)?;
 
         let execution_input =
             component_state
                 .execution_input
                 .as_ref()
-                .ok_or_else(|| AppError::StepFailed {
+                .ok_or_else(|| RigError::StepFailed {
                     error: format!(
                         "Component {} has no execution input",
                         component_state.handle
@@ -69,11 +69,11 @@ impl<'app> AppExecutionState<'app> {
     pub(super) fn get_component_state_mut(
         &mut self,
         handle: &ComponentHandle,
-    ) -> Result<&mut ComponentState<'app>, AppError> {
+    ) -> Result<&mut ComponentState<'rig>, RigError> {
         let component_state =
             self.component_states
                 .get_mut(handle)
-                .ok_or(AppError::StepFailed {
+                .ok_or(RigError::StepFailed {
                     error: format!("component {:?} does not exist in component states", handle),
                 })?;
 
@@ -85,11 +85,11 @@ impl<'app> AppExecutionState<'app> {
     pub(super) fn get_component_state(
         &self,
         handle: &ComponentHandle,
-    ) -> Result<&ComponentState<'app>, AppError> {
+    ) -> Result<&ComponentState<'rig>, RigError> {
         let component_state = self
             .component_states
             .get(handle)
-            .ok_or(AppError::StepFailed {
+            .ok_or(RigError::StepFailed {
                 error: format!("component {:?} does not exist in component states", handle),
             })?;
 

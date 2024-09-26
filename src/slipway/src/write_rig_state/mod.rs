@@ -3,7 +3,7 @@ use std::io::Write;
 use termion::{color, style};
 
 use crate::{
-    to_view_model::{AppExecutionStateViewModel, ComponentGroupViewModel, ComponentViewModel},
+    to_view_model::{RigExecutionStateViewModel, ComponentGroupViewModel, ComponentViewModel},
     utils::{format_bytes, skip_first_n_chars},
 };
 
@@ -23,9 +23,9 @@ const COLUMN_CHAR: char = '┆';
 //   ╰─┴───┴───────┴─• 10
 // • 3
 
-pub(crate) fn write_app_state<W: Write>(
+pub(crate) fn write_rig_state<W: Write>(
     w: &mut W,
-    view_model: &AppExecutionStateViewModel<'_>,
+    view_model: &RigExecutionStateViewModel<'_>,
 ) -> anyhow::Result<()> {
     let max_component_state_row_length = get_max_component_state_row_length(view_model);
     let max_input_size_string_length = get_max_input_size_string_length(view_model);
@@ -73,7 +73,7 @@ pub(crate) fn write_app_state<W: Write>(
 
 /// Returns the length of the longest component state row, including the tree structure,
 /// excluding metadata like hashes and sizes.
-fn get_max_component_state_row_length(view_model: &AppExecutionStateViewModel<'_>) -> usize {
+fn get_max_component_state_row_length(view_model: &RigExecutionStateViewModel<'_>) -> usize {
     view_model
         .groups
         .iter()
@@ -87,7 +87,7 @@ fn get_max_component_state_row_length(view_model: &AppExecutionStateViewModel<'_
 }
 
 /// Returns the length of the longest input size string.
-fn get_max_input_size_string_length(view_model: &AppExecutionStateViewModel<'_>) -> usize {
+fn get_max_input_size_string_length(view_model: &RigExecutionStateViewModel<'_>) -> usize {
     view_model
         .groups
         .iter()
@@ -105,7 +105,7 @@ fn get_max_input_size_string_length(view_model: &AppExecutionStateViewModel<'_>)
 }
 
 /// Returns the length of the longest output size string.
-fn get_max_output_size_string_length(view_model: &AppExecutionStateViewModel<'_>) -> usize {
+fn get_max_output_size_string_length(view_model: &RigExecutionStateViewModel<'_>) -> usize {
     view_model
         .groups
         .iter()
@@ -400,7 +400,7 @@ impl ComponentColors {
 mod tests {
     use serde_json::json;
     use slipway_lib::{
-        utils::ch, App, AppSession, ComponentCache, ComponentRigging, Instruction, Rigging,
+        utils::ch, Rig, RigSession, ComponentCache, ComponentRigging, Instruction, Rigging,
     };
 
     use crate::to_view_model::to_view_model;
@@ -416,7 +416,7 @@ mod tests {
         // ◩ asp
         // └─◪ bull
         // ◩ assassin_bug
-        let app = App::for_test(Rigging {
+        let rig = Rig::for_test(Rigging {
             components: [
                 ComponentRigging::for_test("ant", None),
                 ComponentRigging::for_test("bird", Some(json!({"a": "$$.ant"}))),
@@ -430,9 +430,9 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = ComponentCache::for_test_permissive(&app);
-        let app_session = AppSession::new(app, component_cache);
-        let mut state = app_session.initialize().unwrap();
+        let component_cache = ComponentCache::for_test_permissive(&rig);
+        let rig_session = RigSession::new(rig, component_cache);
+        let mut state = rig_session.initialize().unwrap();
 
         state = state
             .step(Instruction::SetOutputOverride {
@@ -451,7 +451,7 @@ mod tests {
         let view_model = to_view_model(&state);
 
         let mut buffer = Vec::new();
-        write_app_state(&mut buffer, &view_model).unwrap();
+        write_rig_state(&mut buffer, &view_model).unwrap();
         let buffer_string = String::from_utf8(buffer).unwrap();
         println!("{}", buffer_string);
 
@@ -562,7 +562,7 @@ mod tests {
         //       └─◩ elk       ┆  b852cecd             ┆   7 bytes            ┆
         //         └─◪ fish    ┆           ! eadd1967  ┆           ! 4.88 kb  ┆
         //           └─◩ goat  ┆  10c2cd2c             ┆   4.89 kb            ┆
-        let app = App::for_test(Rigging {
+        let rig = Rig::for_test(Rigging {
             components: [
                 ComponentRigging::for_test("ant", None),
                 ComponentRigging::for_test("bird", Some(json!({"a": "$$.ant"}))),
@@ -576,9 +576,9 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = ComponentCache::for_test_permissive(&app);
-        let app_session = AppSession::new(app, component_cache);
-        let mut state = app_session.initialize().unwrap();
+        let component_cache = ComponentCache::for_test_permissive(&rig);
+        let rig_session = RigSession::new(rig, component_cache);
+        let mut state = rig_session.initialize().unwrap();
 
         state = state
             .step(Instruction::SetOutput {
@@ -639,7 +639,7 @@ mod tests {
         let view_model = to_view_model(&state);
 
         let mut buffer = Vec::new();
-        write_app_state(&mut buffer, &view_model).unwrap();
+        write_rig_state(&mut buffer, &view_model).unwrap();
         let buffer_string = String::from_utf8(buffer).unwrap();
         println!("{}", buffer_string);
 

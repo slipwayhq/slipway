@@ -1,13 +1,13 @@
-use slipway_lib::{AppExecutionState, ComponentHandle, Immutable, Instruction};
+use slipway_lib::{ComponentHandle, Immutable, Instruction, RigExecutionState};
 
 use crate::run_component_wasm::run_component_wasm;
 
 use super::errors::SlipwayDebugError;
 
-pub(super) fn handle_run_command<'app>(
-    handle: &'app ComponentHandle,
-    state: &AppExecutionState<'app>,
-) -> Result<Immutable<AppExecutionState<'app>>, SlipwayDebugError> {
+pub(super) fn handle_run_command<'rig>(
+    handle: &'rig ComponentHandle,
+    state: &RigExecutionState<'rig>,
+) -> Result<Immutable<RigExecutionState<'rig>>, SlipwayDebugError> {
     let execution_data = state.get_component_execution_data(handle)?;
 
     let output = run_component_wasm(execution_data, handle)?;
@@ -26,7 +26,7 @@ mod tests {
 
     use serde_json::json;
     use slipway_lib::{
-        utils::ch, App, AppSession, BasicComponentsLoader, ComponentCache, ComponentRigging,
+        utils::ch, BasicComponentsLoader, ComponentCache, ComponentRigging, Rig, RigSession,
         Rigging, SlipwayReference,
     };
 
@@ -37,8 +37,8 @@ mod tests {
 
     use super::*;
 
-    fn create_app(component_handle: &ComponentHandle, input: serde_json::Value) -> App {
-        App::for_test(Rigging {
+    fn create_rig(component_handle: &ComponentHandle, input: serde_json::Value) -> Rig {
+        Rig::for_test(Rigging {
             components: [(
                 component_handle.clone(),
                 ComponentRigging {
@@ -59,11 +59,11 @@ mod tests {
     #[test]
     fn it_should_run_basic_component() {
         let handle = ch("test_component");
-        let app = create_app(&handle, json!({ "type": "increment", "value": 42}));
+        let rig = create_rig(&handle, json!({ "type": "increment", "value": 42}));
 
-        let component_cache = ComponentCache::primed(&app, &BasicComponentsLoader::new()).unwrap();
-        let app_session = AppSession::new(app, component_cache);
-        let mut state = app_session.initialize().unwrap();
+        let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::new()).unwrap();
+        let rig_session = RigSession::new(rig, component_cache);
+        let mut state = rig_session.initialize().unwrap();
 
         state = handle_run_command(&handle, &state).unwrap();
 
@@ -85,11 +85,11 @@ mod tests {
     #[test]
     fn it_should_handle_component_that_panics() {
         let handle = ch("test_component");
-        let app = create_app(&handle, json!({ "type": "panic" }));
+        let rig = create_rig(&handle, json!({ "type": "panic" }));
 
-        let component_cache = ComponentCache::primed(&app, &BasicComponentsLoader::new()).unwrap();
-        let app_session = AppSession::new(app, component_cache);
-        let state = app_session.initialize().unwrap();
+        let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::new()).unwrap();
+        let rig_session = RigSession::new(rig, component_cache);
+        let state = rig_session.initialize().unwrap();
 
         let maybe_state = handle_run_command(&handle, &state);
 
@@ -107,11 +107,11 @@ mod tests {
     #[test]
     fn it_should_handle_component_that_errors() {
         let handle = ch("test_component");
-        let app = create_app(&handle, json!({ "type": "stderr" }));
+        let rig = create_rig(&handle, json!({ "type": "stderr" }));
 
-        let component_cache = ComponentCache::primed(&app, &BasicComponentsLoader::new()).unwrap();
-        let app_session = AppSession::new(app, component_cache);
-        let state = app_session.initialize().unwrap();
+        let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::new()).unwrap();
+        let rig_session = RigSession::new(rig, component_cache);
+        let state = rig_session.initialize().unwrap();
 
         let maybe_state = handle_run_command(&handle, &state);
 

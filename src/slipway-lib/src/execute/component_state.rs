@@ -4,17 +4,17 @@ use std::{collections::HashSet, rc::Rc};
 use crate::{ComponentHandle, ComponentRigging, JsonMetadata};
 
 #[derive(Clone, Debug)]
-pub struct ComponentState<'app> {
-    pub handle: &'app ComponentHandle,
-    pub rigging: &'app ComponentRigging,
-    pub dependencies: HashSet<&'app ComponentHandle>,
+pub struct ComponentState<'rig> {
+    pub handle: &'rig ComponentHandle,
+    pub rigging: &'rig ComponentRigging,
+    pub dependencies: HashSet<&'rig ComponentHandle>,
     pub input_override: Option<Rc<ComponentInputOverride>>,
     pub output_override: Option<Rc<ComponentOutputOverride>>,
     pub execution_input: Option<Rc<ComponentInput>>,
     pub execution_output: Option<Rc<ComponentOutput>>,
 }
 
-impl<'app> ComponentState<'app> {
+impl<'rig> ComponentState<'rig> {
     /// Get the input of the component, which is either the input_override or
     /// the input or None.
     pub fn input(&self) -> Option<&serde_json::Value> {

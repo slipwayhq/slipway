@@ -1,5 +1,5 @@
-pub(crate) mod app_execution_state;
-pub(crate) mod app_session;
+pub(crate) mod rig_execution_state;
+pub(crate) mod rig_session;
 pub(crate) mod component_state;
 mod evaluate_component_inputs;
 mod initialize;
@@ -13,15 +13,15 @@ mod tests {
     use serde_json::json;
 
     use crate::{
-        parse::types::{App, ComponentRigging, Rigging},
+        parse::types::{Rig, ComponentRigging, Rigging},
         utils::ch,
-        AppExecutionState, ComponentState, Immutable,
+        RigExecutionState, ComponentState, Immutable,
     };
 
     use super::step::Instruction;
 
     fn assert_expected_components_ready(
-        execution_state: &AppExecutionState,
+        execution_state: &RigExecutionState,
         runnable_handles: &[&str],
     ) {
         for (handle, component_state) in execution_state.component_states.iter() {
@@ -51,19 +51,19 @@ mod tests {
         }
     }
 
-    fn get_component_state<'app, 'local>(
-        execution_state: &'local AppExecutionState<'app>,
+    fn get_component_state<'rig, 'local>(
+        execution_state: &'local RigExecutionState<'rig>,
         handle_str: &str,
-    ) -> &'local ComponentState<'app> {
+    ) -> &'local ComponentState<'rig> {
         let handle = ch(handle_str);
         execution_state.component_states.get(&handle).unwrap()
     }
 
     fn set_output_to<'a>(
-        execution_state: Immutable<AppExecutionState<'a>>,
+        execution_state: Immutable<RigExecutionState<'a>>,
         next: &str,
         value: serde_json::Value,
-    ) -> Immutable<AppExecutionState<'a>> {
+    ) -> Immutable<RigExecutionState<'a>> {
         execution_state
             .step(Instruction::SetOutput {
                 handle: ch(next),
@@ -75,19 +75,19 @@ mod tests {
 
     // Set the output of a component with a string of the same value as the component name.
     fn set_output<'a>(
-        execution_state: Immutable<AppExecutionState<'a>>,
+        execution_state: Immutable<RigExecutionState<'a>>,
         next: &str,
-    ) -> Immutable<AppExecutionState<'a>> {
+    ) -> Immutable<RigExecutionState<'a>> {
         set_output_to(execution_state, next, json!(next))
     }
 
     mod step {
-        use crate::{errors::AppError, AppSession, ComponentCache};
+        use crate::{errors::RigError, RigSession, ComponentCache};
 
         use super::*;
 
-        fn create_app() -> App {
-            // Create a fully populated app instance.
+        fn create_rig() -> Rig {
+            // Create a fully populated rig instance.
             // Dependency graph:
             //     C
             //    /|\
@@ -100,12 +100,12 @@ mod tests {
             //  \  G  I J
             //   \ | / /
             //     H -/  K
-            App::for_test(Rigging {
+            Rig::for_test(Rigging {
                 components: [
                     ComponentRigging::for_test("a", Some(json!({"b": "$$.b", "c": "$$.c"}))),
                     // "b" is used to test the chain e.input -> b.input -> c.output
                     ComponentRigging::for_test("b", Some(json!({"c": "$.rigging.c.output"}))),
-                    // "c" is used to test reference to other parts of the app JSON.
+                    // "c" is used to test reference to other parts of the rig JSON.
                     ComponentRigging::for_test(
                         "c",
                         Some(json!({
@@ -147,24 +147,24 @@ mod tests {
 
         #[test]
         fn initialize_should_populate_execution_inputs_of_components_that_can_run_immediately() {
-            let app = create_app();
+            let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&app);
-            let app_session = AppSession::new(app, component_cache);
+            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let rig_session = RigSession::new(rig, component_cache);
 
-            let execution_state = app_session.initialize().unwrap();
+            let execution_state = rig_session.initialize().unwrap();
 
             assert_expected_components_ready(&execution_state, &["c", "i", "j", "k"]);
         }
 
         #[test]
-        fn it_should_populate_references_to_other_parts_of_app() {
-            let app = create_app();
+        fn it_should_populate_references_to_other_parts_of_rig() {
+            let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&app);
-            let app_session = AppSession::new(app, component_cache);
+            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let rig_session = RigSession::new(rig, component_cache);
 
-            let s = app_session.initialize().unwrap();
+            let s = rig_session.initialize().unwrap();
 
             let c = get_component_state(&s, "c");
 
@@ -180,12 +180,12 @@ mod tests {
 
         #[test]
         fn it_should_allow_setting_the_output_on_a_component_which_can_execute() {
-            let app = create_app();
+            let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&app);
-            let app_session = AppSession::new(app, component_cache);
+            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let rig_session = RigSession::new(rig, component_cache);
 
-            let mut s = app_session.initialize().unwrap();
+            let mut s = rig_session.initialize().unwrap();
 
             s = set_output_to(s, "c", json!({ "x": 1, "y": 2, "z": 3 }));
             assert_expected_components_ready(&s, &["f", "b", "i", "j", "k"]);
@@ -200,12 +200,12 @@ mod tests {
 
         #[test]
         fn it_should_not_allow_setting_the_output_on_a_component_which_cannot_execute() {
-            let app = create_app();
+            let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&app);
-            let app_session = AppSession::new(app, component_cache);
+            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let rig_session = RigSession::new(rig, component_cache);
 
-            let s = app_session.initialize().unwrap();
+            let s = rig_session.initialize().unwrap();
 
             let execution_state_result = s.step(Instruction::SetOutput {
                 handle: ch("g"),
@@ -214,7 +214,7 @@ mod tests {
 
             match execution_state_result {
                 Ok(_) => panic!("expected an error"),
-                Err(AppError::StepFailed { error }) => {
+                Err(RigError::StepFailed { error }) => {
                     assert_eq!(
                     error,
                     "component g cannot currently be executed, did you intend to override the output?"
@@ -226,12 +226,12 @@ mod tests {
 
         #[test]
         fn it_should_allow_optional_json_path_references_missing_resolved_values() {
-            let app = create_app();
+            let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&app);
-            let app_session = AppSession::new(app, component_cache);
+            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let rig_session = RigSession::new(rig, component_cache);
 
-            let mut s = app_session.initialize().unwrap();
+            let mut s = rig_session.initialize().unwrap();
 
             s = set_output_to(s, "c", json!({ "z": 3 }));
 
@@ -247,12 +247,12 @@ mod tests {
 
         #[test]
         fn it_should_not_allow_required_json_path_references_missing_resolved_values() {
-            let app = create_app();
+            let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&app);
-            let app_session = AppSession::new(app, component_cache);
+            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let rig_session = RigSession::new(rig, component_cache);
 
-            let s = app_session.initialize().unwrap();
+            let s = rig_session.initialize().unwrap();
 
             let execution_state_result = s.step(Instruction::SetOutput {
                 handle: ch("c"),
@@ -261,7 +261,7 @@ mod tests {
 
             match execution_state_result {
                 Ok(_) => panic!("expected an error"),
-                Err(AppError::ResolveJsonPathFailed { message, state: _ }) => {
+                Err(RigError::ResolveJsonPathFailed { message, state: _ }) => {
                     assert_eq!(
                         message,
                         r#"The input path "f.input.c_z" required "$.rigging.c.output.z" to be a value"#
@@ -273,12 +273,12 @@ mod tests {
 
         #[test]
         fn it_should_resolve_references_to_other_inputs_using_the_resolved_referenced_input() {
-            let app = create_app();
+            let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&app);
-            let app_session = AppSession::new(app, component_cache);
+            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let rig_session = RigSession::new(rig, component_cache);
 
-            let mut s = app_session.initialize().unwrap();
+            let mut s = rig_session.initialize().unwrap();
 
             s = set_output_to(s, "c", json!({ "z": 3 }));
             s = set_output_to(s, "b", json!(null));
@@ -295,12 +295,12 @@ mod tests {
 
         #[test]
         fn it_should_step_though_entire_graph() {
-            let app = create_app();
+            let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&app);
-            let app_session = AppSession::new(app, component_cache);
+            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let rig_session = RigSession::new(rig, component_cache);
 
-            let mut s = app_session.initialize().unwrap();
+            let mut s = rig_session.initialize().unwrap();
 
             assert_expected_components_ready(&s, &["c", "i", "j", "k"]);
 
@@ -343,19 +343,19 @@ mod tests {
     mod input_override {
         use itertools::Itertools;
 
-        use crate::{AppSession, ComponentCache};
+        use crate::{RigSession, ComponentCache};
 
         use super::*;
 
-        fn create_app() -> App {
-            // Create a fully populated app instance.
+        fn create_rig() -> Rig {
+            // Create a fully populated rig instance.
             // Dependency graph:
             //  C   D
             //  |
             //  B
             //  |
             //  A
-            App::for_test(Rigging {
+            Rig::for_test(Rigging {
                 components: [
                     ComponentRigging::for_test("a", Some(json!({ "b": "$$.b" }))),
                     ComponentRigging::for_test("b", Some(json!({ "c": "$$.c" }))),
@@ -368,7 +368,7 @@ mod tests {
         }
 
         fn assert_dependencies(
-            execution_state: &AppExecutionState,
+            execution_state: &RigExecutionState,
             component_handle: &str,
             expected_dependencies: &[&str],
         ) {
@@ -387,7 +387,7 @@ mod tests {
         }
 
         fn assert_group(
-            execution_state: &AppExecutionState,
+            execution_state: &RigExecutionState,
             group_index: usize,
             expected_handles: &[&str],
         ) {
@@ -406,12 +406,12 @@ mod tests {
 
         #[test]
         fn setting_input_override_should_affect_dependencies() {
-            let app = create_app();
+            let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&app);
-            let app_session = AppSession::new(app, component_cache);
+            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let rig_session = RigSession::new(rig, component_cache);
 
-            let mut s = app_session.initialize().unwrap();
+            let mut s = rig_session.initialize().unwrap();
 
             assert_dependencies(&s, "a", &["b"]);
             assert_dependencies(&s, "b", &["c"]);
@@ -462,12 +462,12 @@ mod tests {
 
         #[test]
         fn setting_input_override_should_update_input_hash() {
-            let app = create_app();
+            let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&app);
-            let app_session = AppSession::new(app, component_cache);
+            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let rig_session = RigSession::new(rig, component_cache);
 
-            let mut s = app_session.initialize().unwrap();
+            let mut s = rig_session.initialize().unwrap();
 
             // Set the output on "c".
             s = s
@@ -553,19 +553,19 @@ mod tests {
     }
 
     mod output_override {
-        use crate::{AppSession, ComponentCache};
+        use crate::{RigSession, ComponentCache};
 
         use super::*;
 
-        fn create_app() -> App {
-            // Create a fully populated app instance.
+        fn create_rig() -> Rig {
+            // Create a fully populated rig instance.
             // Dependency graph:
             //  C
             //  |
             //  B
             //  |
             //  A
-            App::for_test(Rigging {
+            Rig::for_test(Rigging {
                 components: [
                     ComponentRigging::for_test("a", Some(json!({ "b": "$$.b" }))),
                     ComponentRigging::for_test("b", Some(json!({ "c": "$$.c" }))),
@@ -578,12 +578,12 @@ mod tests {
 
         #[test]
         fn setting_output_override_should_affect_execution_states() {
-            let app = create_app();
+            let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&app);
-            let app_session = AppSession::new(app, component_cache);
+            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let rig_session = RigSession::new(rig, component_cache);
 
-            let mut s = app_session.initialize().unwrap();
+            let mut s = rig_session.initialize().unwrap();
 
             assert_expected_components_ready(&s, &["c"]);
             assert_eq!(s.valid_execution_order, vec![&ch("c"), &ch("b"), &ch("a")]);
@@ -610,12 +610,12 @@ mod tests {
 
         #[test]
         fn setting_output_should_use_input_hash() {
-            let app = create_app();
+            let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&app);
-            let app_session = AppSession::new(app, component_cache);
+            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let rig_session = RigSession::new(rig, component_cache);
 
-            let mut s = app_session.initialize().unwrap();
+            let mut s = rig_session.initialize().unwrap();
 
             // Set the output on "c"
             s = s
@@ -662,12 +662,12 @@ mod tests {
 
         #[test]
         fn setting_output_should_update_dependent_input_hashes() {
-            let app = create_app();
+            let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&app);
-            let app_session = AppSession::new(app, component_cache);
+            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let rig_session = RigSession::new(rig, component_cache);
 
-            let mut s = app_session.initialize().unwrap();
+            let mut s = rig_session.initialize().unwrap();
 
             assert_expected_components_ready(&s, &["c"]);
             assert_eq!(s.valid_execution_order, vec![&ch("c"), &ch("b"), &ch("a")]);

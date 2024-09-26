@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-mod debug_app;
+mod debug_rig;
 mod run_component_wasm;
 mod to_view_model;
 mod utils;
@@ -8,7 +8,7 @@ mod utils;
 #[cfg(test)]
 mod test_utils;
 
-mod write_app_state;
+mod write_rig_state;
 
 use std::path::PathBuf;
 
@@ -26,7 +26,7 @@ pub(crate) struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
-    /// Run a Slipway app indefinitely.
+    /// Run a Slipway rig indefinitely.
     #[command(arg_required_else_help = true)]
     Launch {
         path: PathBuf,
@@ -35,7 +35,7 @@ pub(crate) enum Commands {
         log_level: Option<String>,
     },
 
-    /// Run a Slipway app once.
+    /// Run a Slipway rig once.
     #[command(arg_required_else_help = true)]
     Run {
         path: PathBuf,
@@ -44,7 +44,7 @@ pub(crate) enum Commands {
         log_level: Option<String>,
     },
 
-    /// Debug a Slipway app.
+    /// Debug a Slipway rig.
     #[command(arg_required_else_help = true)]
     Debug {
         path: PathBuf,
@@ -74,7 +74,7 @@ fn main() -> anyhow::Result<()> {
     match args.command {
         Commands::Debug { path, log_level } => {
             configure_tracing(log_level);
-            debug_app::debug_app_from_app_file(&mut std::io::stdout(), path)?;
+            debug_rig::debug_rig_from_rig_file(&mut std::io::stdout(), path)?;
         }
         Commands::DebugComponent {
             path,
@@ -82,7 +82,7 @@ fn main() -> anyhow::Result<()> {
             log_level,
         } => {
             configure_tracing(log_level);
-            debug_app::debug_app_from_component_file(&mut std::io::stdout(), path, input)?;
+            debug_rig::debug_rig_from_component_file(&mut std::io::stdout(), path, input)?;
         }
         Commands::Launch { path: _, log_level } => {
             configure_tracing(log_level);
