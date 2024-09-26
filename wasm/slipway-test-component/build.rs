@@ -14,7 +14,7 @@ fn main() {
         .expect("Failed to find target directory");
 
     // Define the source file and the destination file
-    let source_file = "slipway_test_component.json";
+    let source_file = "slipway_component.json";
     let dest_file = Path::new(target_dir).join(source_file);
 
     // Copy the file

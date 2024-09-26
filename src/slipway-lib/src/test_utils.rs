@@ -3,7 +3,6 @@ use crate::errors::ComponentLoadErrorInner;
 use crate::load::ComponentsLoader;
 use crate::load::LoadedComponent;
 use crate::utils::ch;
-use crate::Rig;
 use crate::Component;
 use crate::ComponentCache;
 use crate::ComponentHandle;
@@ -12,6 +11,7 @@ use crate::ComponentRigging;
 use crate::ComponentWasm;
 use crate::Name;
 use crate::Publisher;
+use crate::Rig;
 use crate::Rigging;
 use crate::Schema;
 use crate::SlipwayId;
@@ -239,8 +239,9 @@ impl ComponentCache {
 }
 
 #[cfg(test)]
-pub(crate) mod http_server {
+pub(crate) mod internal {
     use std::collections::HashMap;
+    use std::path::Path;
     use std::sync::mpsc;
     use std::sync::mpsc::Sender;
     use std::thread;
@@ -296,5 +297,22 @@ pub(crate) mod http_server {
             self.stop_signal.send('a').unwrap();
             self.server_thread.join().unwrap();
         }
+    }
+
+    pub fn find_files_with_extension(dir: &Path, extension: &str) -> Vec<String> {
+        use walkdir::WalkDir;
+
+        let mut files = Vec::new();
+        for entry in WalkDir::new(dir).into_iter().filter_map(Result::ok) {
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(ext) = path.extension() {
+                    if ext == extension {
+                        files.push(path.to_string_lossy().into_owned());
+                    }
+                }
+            }
+        }
+        files
     }
 }

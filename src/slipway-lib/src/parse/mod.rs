@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use crate::errors::{RigError, ComponentLoadErrorInner};
+use crate::errors::{ComponentLoadErrorInner, RigError};
 
-use self::types::{Rig, Component};
+use self::types::{Component, Rig};
 
 mod parse_schema;
 pub(crate) mod types;
@@ -22,7 +22,9 @@ pub fn parse_component(
 
 #[cfg(test)]
 mod tests {
-    use std::fmt::Debug;
+    use std::{fmt::Debug, path::Path};
+
+    use crate::test_utils::internal::find_files_with_extension;
 
     use super::*;
 
@@ -32,18 +34,16 @@ mod tests {
         TError: Debug,
     {
         let mut parsed_files = 0;
-        for entry in std::fs::read_dir(examples_dir).unwrap() {
-            let entry = entry.unwrap();
-            let path = entry.path();
-            if path.is_file() {
-                let file_contents = std::fs::read_to_string(path.clone()).unwrap();
-                let _rig = parse_method(&file_contents).unwrap_or_else(|error| {
-                    panic!("Failed to parse {}: {:?}", path.display(), error)
-                });
-                parsed_files += 1;
-            }
+        for path in find_files_with_extension(Path::new(examples_dir), "json").iter() {
+            let file_contents = std::fs::read_to_string(path.clone()).unwrap();
+            let _rig = parse_method(&file_contents)
+                .unwrap_or_else(|error| panic!("Failed to parse {}: {:?}", path, error));
+            parsed_files += 1;
         }
-        assert!(parsed_files > 0);
+
+        if parsed_files == 0 {
+            panic!("No files parsed in {}", examples_dir);
+        }
     }
 
     /// This test loads each JSON file from from the examples/rigs directory

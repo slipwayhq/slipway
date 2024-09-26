@@ -120,9 +120,7 @@ mod tests {
     use serde_json::json;
     use std::collections::HashMap;
 
-    use crate::{
-        errors::ComponentLoadError, test_utils::http_server::TestServer, SlipwayReference,
-    };
+    use crate::{errors::ComponentLoadError, test_utils::internal::TestServer, SlipwayReference};
 
     use super::*;
 
