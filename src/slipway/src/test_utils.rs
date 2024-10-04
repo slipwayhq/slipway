@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
-pub(crate) const SLIPWAY_TEST_COMPONENT_PATH: &str =
-    "wasm/target/wasm32-wasi/debug/slipway_test_component.json";
+pub(crate) const SLIPWAY_TEST_COMPONENT_PATH: &str = "./test-components/slipway_test_component";
 
 pub(crate) fn find_ancestor_path(path_to_find: PathBuf) -> PathBuf {
     let mut current_path = std::env::current_dir().unwrap();

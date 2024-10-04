@@ -1,12 +1,15 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    errors::ComponentLoadError, utils::ExpectWith, Rig, Component, Schema, SlipwayReference,
+    errors::ComponentLoadError, utils::ExpectWith, Component, Rig, Schema, SlipwayReference,
 };
 
 pub(super) mod basic_components_loader;
 mod is_safe_path;
 mod prime_component_cache;
+
+const SLIPWAY_COMPONENT_FILE_NAME: &str = "slipway_component.json";
+const SLIPWAY_COMPONENT_WASM_FILE_NAME: &str = "slipway_component.wasm";
 
 pub trait ComponentsLoader {
     fn load_components<'rig>(
