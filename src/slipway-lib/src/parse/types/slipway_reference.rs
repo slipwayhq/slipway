@@ -8,15 +8,8 @@ use url::Url;
 
 use super::{REGISTRY_PUBLISHER_SEPARATOR, VERSION_SEPARATOR};
 
-const SLIPWAY_REFERENCE_GIT_USER_SEPARATOR: char = '/';
-const SLIPWAY_REFERENCE_GITHUB_VERSION_SEPARATOR: char = '#';
-
 pub(crate) static REGISTRY_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(?<publisher>\w+)\.(?<name>\w+)\.(?<version>.+)$").unwrap());
-
-static GITHUB_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^github:(?<user>[\w-]+)/(?<repository>[\w-]+)#(?<version>.+)$").unwrap()
-});
 
 static RELATIVE_FILE_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^file:(?<path>[^/].*)$").unwrap());
@@ -28,13 +21,6 @@ pub enum SlipwayReference {
         publisher: String,
         name: String,
         version: Version,
-    },
-
-    // user/string#1.0
-    GitHub {
-        user: String,
-        repository: String,
-        version: GitHubVersion,
     },
 
     // file://absolute-path
@@ -59,16 +45,6 @@ impl FromStr for SlipwayReference {
             return Ok(SlipwayReference::Registry {
                 publisher: caps["publisher"].to_string(),
                 name: caps["name"].to_string(),
-                version,
-            });
-        }
-
-        if let Some(caps) = GITHUB_REGEX.captures(s) {
-            let version = GitHubVersion::from_str(&caps["version"])?;
-
-            return Ok(SlipwayReference::GitHub {
-                user: caps["user"].to_string(),
-                repository: caps["repository"].to_string(),
                 version,
             });
         }
@@ -146,18 +122,6 @@ impl Display for SlipwayReference {
             } => f.write_fmt(format_args!(
                 "{}{}{}{}{}",
                 publisher, REGISTRY_PUBLISHER_SEPARATOR, name, VERSION_SEPARATOR, version
-            )),
-            SlipwayReference::GitHub {
-                user,
-                repository,
-                version,
-            } => f.write_fmt(format_args!(
-                "github:{}{}{}{}{}",
-                user,
-                SLIPWAY_REFERENCE_GIT_USER_SEPARATOR,
-                repository,
-                SLIPWAY_REFERENCE_GITHUB_VERSION_SEPARATOR,
-                version
             )),
             SlipwayReference::Local { path } => {
                 if path.is_relative() {
@@ -273,49 +237,6 @@ mod tests {
 
             let json_out = serde_json::to_string(&reference).unwrap();
             assert_eq!(json, json_out);
-        }
-
-        #[test]
-        fn it_should_parse_github_from_string() {
-            let s = r"github:test-user/test-repository#semver:1.2.3";
-
-            let reference = SlipwayReference::from_str(s).unwrap();
-
-            let SlipwayReference::GitHub {
-                user,
-                repository,
-                version,
-            } = reference
-            else {
-                panic!("Unexpected reference: {reference:?}");
-            };
-
-            assert_eq!(user, "test-user");
-            assert_eq!(repository, "test-repository");
-            assert_eq!(
-                version,
-                GitHubVersion::Version(Version::parse("1.2.3").unwrap())
-            );
-        }
-
-        #[test]
-        fn it_should_parse_github_with_commitish_from_string() {
-            let s = r"github:test-user/test-repository#blah";
-
-            let reference = SlipwayReference::from_str(s).unwrap();
-
-            let SlipwayReference::GitHub {
-                user,
-                repository,
-                version,
-            } = reference
-            else {
-                panic!("Unexpected reference: {reference:?}");
-            };
-
-            assert_eq!(user, "test-user");
-            assert_eq!(repository, "test-repository");
-            assert_eq!(version, GitHubVersion::Commitish("blah".to_string()));
         }
 
         #[test]
