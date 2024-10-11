@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use component_file_loader::{ComponentFileLoader, ComponentFileLoaderImpl};
+use url::Url;
 
 use crate::{
     errors::{ComponentLoadError, ComponentLoadErrorInner},
@@ -10,8 +11,12 @@ use crate::{
 use super::{ComponentsLoader, LoadedComponent};
 
 mod component_file_loader;
+mod filename_from_url;
 mod load_from_folder;
 mod load_from_tar;
+
+const DEFAULT_REGISTRY_LOOKUP_URL: &str =
+    "https://registry.slipwayhq.com/components/{publisher}/{name}/{version}";
 
 pub enum ComponentLoaderErrorBehavior {
     ErrorAlways,
@@ -19,12 +24,28 @@ pub enum ComponentLoaderErrorBehavior {
 }
 
 pub struct BasicComponentsLoader {
+    registry_lookup_url: Option<String>,
     file_loader: Arc<dyn ComponentFileLoader>,
 }
 
 impl BasicComponentsLoader {
     pub fn new() -> Self {
         Self {
+            registry_lookup_url: Some(DEFAULT_REGISTRY_LOOKUP_URL.to_string()),
+            file_loader: Arc::new(ComponentFileLoaderImpl::new()),
+        }
+    }
+
+    pub fn for_registry(registry_lookup_url: &str) -> Self {
+        Self {
+            registry_lookup_url: Some(registry_lookup_url.to_string()),
+            file_loader: Arc::new(ComponentFileLoaderImpl::new()),
+        }
+    }
+
+    pub fn without_registry() -> Self {
+        Self {
+            registry_lookup_url: None,
             file_loader: Arc::new(ComponentFileLoaderImpl::new()),
         }
     }
@@ -77,7 +98,70 @@ impl BasicComponentsLoader {
                     ));
                 }
             }
-            _ => unimplemented!("Only local components are supported"),
+            SlipwayReference::Url { url } => {
+                let local_path = self
+                    .file_loader
+                    .load_file_from_url(url, component_reference)?;
+
+                let local_reference = &SlipwayReference::Local { path: local_path };
+
+                let result = self.load_component(local_reference);
+
+                match result {
+                    Err(e) => Err(ComponentLoadError::new(component_reference, e.error)),
+                    Ok(c) => Ok(LoadedComponent::new(
+                        component_reference,
+                        c.definition,
+                        c.wasm,
+                        c.json,
+                    )),
+                }
+            }
+            SlipwayReference::Registry {
+                publisher,
+                name,
+                version,
+            } => {
+                let registry_lookup_url =
+                    self.registry_lookup_url
+                        .as_ref()
+                        .ok_or(ComponentLoadError::new(
+                            component_reference,
+                            ComponentLoadErrorInner::FileLoadFailed {
+                                path: component_reference.to_string(),
+                                error: "No registry URL has been set.".to_string(),
+                            },
+                        ))?;
+
+                let resolved_registry_lookup_url = registry_lookup_url
+                    .replace("{publisher}", publisher)
+                    .replace("{name}", name)
+                    .replace("{version}", &version.to_string());
+
+                let component_url = Url::parse(&resolved_registry_lookup_url).map_err(|e| {
+                    ComponentLoadError::new(
+                        component_reference,
+                        ComponentLoadErrorInner::FileLoadFailed {
+                            path: resolved_registry_lookup_url,
+                            error: format!("Failed to create component URL for registry.\n{}", e),
+                        },
+                    )
+                })?;
+
+                let url_reference = &SlipwayReference::Url { url: component_url };
+
+                let result = self.load_component(url_reference);
+
+                match result {
+                    Err(e) => Err(ComponentLoadError::new(component_reference, e.error)),
+                    Ok(c) => Ok(LoadedComponent::new(
+                        component_reference,
+                        c.definition,
+                        c.wasm,
+                        c.json,
+                    )),
+                }
+            }
         }
     }
 }
@@ -154,6 +238,14 @@ mod tests {
             unimplemented!()
         }
 
+        fn load_file_from_url(
+            &self,
+            _url: &Url,
+            _component_reference: &SlipwayReference,
+        ) -> Result<PathBuf, ComponentLoadError> {
+            unimplemented!()
+        }
+
         fn is_dir(&self, path: &Path) -> bool {
             path == self.component_path
         }
@@ -193,6 +285,7 @@ mod tests {
         };
 
         let loader = BasicComponentsLoader {
+            registry_lookup_url: None,
             file_loader: Arc::new(file_loader),
         };
 
@@ -252,6 +345,14 @@ mod tests {
             unimplemented!()
         }
 
+        fn load_file_from_url(
+            &self,
+            _url: &Url,
+            _component_reference: &SlipwayReference,
+        ) -> Result<PathBuf, ComponentLoadError> {
+            unimplemented!()
+        }
+
         fn is_dir(&self, _path: &Path) -> bool {
             true
         }
@@ -266,6 +367,7 @@ mod tests {
         let file_loader = MockComponentAnyFileLoader {};
 
         let loader = BasicComponentsLoader {
+            registry_lookup_url: None,
             file_loader: Arc::new(file_loader),
         };
 

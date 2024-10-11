@@ -225,39 +225,6 @@ mod tests {
         }
     }
 
-    mod github_tests {
-        use super::*;
-
-        #[test]
-        fn it_should_serialize_and_deserialize_github() {
-            let s = r"github:test-user/test-repository#semver:1.2.3";
-            let json = quote(s);
-
-            let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
-
-            let json_out = serde_json::to_string(&reference).unwrap();
-            assert_eq!(json, json_out);
-        }
-
-        #[test]
-        fn it_should_fail_to_parse_github_from_string_if_no_version() {
-            let s = "github:test-user/test-repository";
-
-            let reference_result = SlipwayReference::from_str(s);
-
-            assert!(reference_result.is_err());
-        }
-
-        #[test]
-        fn it_should_fail_to_parse_github_from_string_if_empty_version() {
-            let s = "github:test-user/test-repository#";
-
-            let reference_result = SlipwayReference::from_str(s);
-
-            assert!(reference_result.is_err());
-        }
-    }
-
     mod local_tests {
         use super::*;
 
