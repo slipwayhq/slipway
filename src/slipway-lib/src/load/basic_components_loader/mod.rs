@@ -12,7 +12,7 @@ use super::{ComponentsLoader, LoadedComponent};
 
 mod component_file_loader;
 mod filename_from_url;
-mod load_from_folder;
+mod load_from_directory;
 mod load_from_tar;
 
 const DEFAULT_REGISTRY_LOOKUP_URL: &str =
@@ -77,7 +77,7 @@ impl BasicComponentsLoader {
         match component_reference {
             SlipwayReference::Local { path } => {
                 if self.file_loader.is_dir(path) {
-                    return load_from_folder::load_from_folder(
+                    return load_from_directory::load_from_directory(
                         component_reference,
                         path,
                         self.file_loader.clone(),
@@ -178,236 +178,377 @@ mod tests {
 
     use super::*;
 
-    struct MockComponentFileLoaderInner {
-        text: HashMap<String, String>,
-        bin: HashMap<String, Vec<u8>>,
-    }
+    mod local_directory {
+        use super::*;
 
-    /// Mock component file loader that returns the contents of files which have been populated.
-    struct MockComponentFileLoader {
-        component_path: PathBuf,
-        map: HashMap<SlipwayReference, MockComponentFileLoaderInner>,
-    }
+        struct MockComponentFileLoaderInner {
+            text: HashMap<String, String>,
+            bin: HashMap<String, Vec<u8>>,
+        }
 
-    impl ComponentFileLoader for MockComponentFileLoader {
-        fn load_bin(
-            &self,
-            path: &Path,
-            component_reference: &SlipwayReference,
-        ) -> Result<Vec<u8>, ComponentLoadError> {
-            self.map
-                .get(component_reference)
-                .unwrap()
-                .bin
-                .get(path.to_string_lossy().as_ref())
-                .ok_or(ComponentLoadError::new(
-                    component_reference,
-                    ComponentLoadErrorInner::FileLoadFailed {
-                        path: path.to_string_lossy().to_string(),
-                        error: "Text file not in map".to_string(),
+        /// Mock component file loader that returns the contents of files which have been populated.
+        struct MockComponentFileLoader {
+            component_path: PathBuf,
+            map: HashMap<SlipwayReference, MockComponentFileLoaderInner>,
+            url_to_file: HashMap<String, String>,
+        }
+
+        impl ComponentFileLoader for MockComponentFileLoader {
+            fn load_bin(
+                &self,
+                path: &Path,
+                component_reference: &SlipwayReference,
+            ) -> Result<Vec<u8>, ComponentLoadError> {
+                self.map
+                    .get(component_reference)
+                    .unwrap()
+                    .bin
+                    .get(path.to_string_lossy().as_ref())
+                    .ok_or(ComponentLoadError::new(
+                        component_reference,
+                        ComponentLoadErrorInner::FileLoadFailed {
+                            path: path.to_string_lossy().to_string(),
+                            error: "Text file not in map".to_string(),
+                        },
+                    ))
+                    .cloned()
+            }
+
+            fn load_text(
+                &self,
+                path: &Path,
+                component_reference: &SlipwayReference,
+            ) -> Result<String, ComponentLoadError> {
+                self.map
+                    .get(component_reference)
+                    .unwrap()
+                    .text
+                    .get(path.to_string_lossy().as_ref())
+                    .ok_or(ComponentLoadError::new(
+                        component_reference,
+                        ComponentLoadErrorInner::FileLoadFailed {
+                            path: path.to_string_lossy().to_string(),
+                            error: "Binary file not in map".to_string(),
+                        },
+                    ))
+                    .cloned()
+            }
+
+            fn load_file(
+                &self,
+                _path: &Path,
+                _component_reference: &SlipwayReference,
+            ) -> Result<Box<dyn FileHandle>, ComponentLoadError> {
+                unimplemented!()
+            }
+
+            fn load_file_from_url(
+                &self,
+                url: &Url,
+                _component_reference: &SlipwayReference,
+            ) -> Result<PathBuf, ComponentLoadError> {
+                let file_path_str = self.url_to_file.get(url.as_str()).unwrap();
+                Ok(PathBuf::from_str(file_path_str).unwrap())
+            }
+
+            fn is_dir(&self, path: &Path) -> bool {
+                path == self.component_path
+            }
+        }
+
+        #[test]
+        fn it_should_load_all_component_files_from_local_directory() {
+            let component_reference = SlipwayReference::Local {
+                path: PathBuf::from_str("path/to/my_component").unwrap(),
+            };
+
+            let definition_content = r#"{ "definition": "1" }"#;
+            let file1_content = r#"{ "file": "1" }"#;
+            let wasm_content = vec![1, 2, 3];
+
+            let file_loader = MockComponentFileLoader {
+                component_path: PathBuf::from_str("path/to/my_component").unwrap(),
+                url_to_file: HashMap::new(),
+                map: HashMap::from([(
+                    component_reference.clone(),
+                    MockComponentFileLoaderInner {
+                        text: HashMap::from([
+                            (
+                                "path/to/my_component/slipway_component.json".to_string(),
+                                definition_content.to_string(),
+                            ),
+                            (
+                                "path/to/my_component/file1.json".to_string(),
+                                file1_content.to_string(),
+                            ),
+                        ]),
+                        bin: HashMap::from([(
+                            "path/to/my_component/slipway_component.wasm".to_string(),
+                            wasm_content.clone(),
+                        )]),
                     },
-                ))
-                .cloned()
-        }
+                )]),
+            };
 
-        fn load_text(
-            &self,
-            path: &Path,
-            component_reference: &SlipwayReference,
-        ) -> Result<String, ComponentLoadError> {
-            self.map
-                .get(component_reference)
-                .unwrap()
-                .text
-                .get(path.to_string_lossy().as_ref())
-                .ok_or(ComponentLoadError::new(
-                    component_reference,
-                    ComponentLoadErrorInner::FileLoadFailed {
-                        path: path.to_string_lossy().to_string(),
-                        error: "Binary file not in map".to_string(),
-                    },
-                ))
-                .cloned()
-        }
+            let loader = BasicComponentsLoader {
+                registry_lookup_url: None,
+                file_loader: Arc::new(file_loader),
+            };
 
-        fn load_file(
-            &self,
-            _path: &Path,
-            _component_reference: &SlipwayReference,
-        ) -> Result<Box<dyn FileHandle>, ComponentLoadError> {
-            unimplemented!()
-        }
+            let result = loader.load_components(&[&component_reference]);
 
-        fn load_file_from_url(
-            &self,
-            _url: &Url,
-            _component_reference: &SlipwayReference,
-        ) -> Result<PathBuf, ComponentLoadError> {
-            unimplemented!()
-        }
+            assert_eq!(result.len(), 1);
 
-        fn is_dir(&self, path: &Path) -> bool {
-            path == self.component_path
-        }
-    }
+            let loaded = result.first().unwrap().as_ref().unwrap();
 
-    #[test]
-    fn it_should_load_all_component_files_from_local() {
-        let component_reference = SlipwayReference::Local {
-            path: PathBuf::from_str("path/to/my_component").unwrap(),
-        };
+            assert_eq!(loaded.definition.clone(), definition_content);
+            assert_eq!(
+                *loaded.json.get("file1.json").unwrap(),
+                serde_json::from_str::<serde_json::Value>(file1_content).unwrap()
+            );
+            assert_eq!(*loaded.wasm.get().unwrap(), wasm_content);
 
-        let definition_content = r#"{ "definition": "1" }"#;
-        let file1_content = r#"{ "file": "1" }"#;
-        let wasm_content = vec![1, 2, 3];
-
-        let file_loader = MockComponentFileLoader {
-            component_path: PathBuf::from_str("path/to/my_component").unwrap(),
-            map: HashMap::from([(
-                component_reference.clone(),
-                MockComponentFileLoaderInner {
-                    text: HashMap::from([
-                        (
-                            "path/to/my_component/slipway_component.json".to_string(),
-                            definition_content.to_string(),
-                        ),
-                        (
-                            "path/to/my_component/file1.json".to_string(),
-                            file1_content.to_string(),
-                        ),
-                    ]),
-                    bin: HashMap::from([(
-                        "path/to/my_component/slipway_component.wasm".to_string(),
-                        wasm_content.clone(),
-                    )]),
+            // Test that loading asking for `file2.json` fails:
+            match loaded.json.get("file2.json") {
+                Ok(_) => panic!("file2.json should not be found"),
+                Err(e) => match e {
+                    ComponentLoadError {
+                        error: ComponentLoadErrorInner::FileLoadFailed { path, .. },
+                        ..
+                    } => {
+                        assert_eq!(path, "path/to/my_component/file2.json");
+                    }
+                    e => panic!("Unexpected error: {:?}", e),
                 },
-            )]),
-        };
+            }
+        }
 
-        let loader = BasicComponentsLoader {
-            registry_lookup_url: None,
-            file_loader: Arc::new(file_loader),
-        };
+        /// Mock component file loader that always returns the same content for any file.
+        struct MockComponentAnyFileLoader {}
 
-        let result = loader.load_components(&[&component_reference]);
+        impl ComponentFileLoader for MockComponentAnyFileLoader {
+            fn load_bin(
+                &self,
+                _path: &Path,
+                _component_reference: &SlipwayReference,
+            ) -> Result<Vec<u8>, ComponentLoadError> {
+                Ok(vec![1, 2, 3])
+            }
 
-        assert_eq!(result.len(), 1);
+            fn load_text(
+                &self,
+                _path: &Path,
+                _component_reference: &SlipwayReference,
+            ) -> Result<String, ComponentLoadError> {
+                Ok("{}".to_string())
+            }
 
-        let loaded = result.first().unwrap().as_ref().unwrap();
+            fn load_file(
+                &self,
+                _path: &Path,
+                _component_reference: &SlipwayReference,
+            ) -> Result<Box<dyn FileHandle>, ComponentLoadError> {
+                unimplemented!()
+            }
 
-        assert_eq!(loaded.definition.clone(), definition_content);
-        assert_eq!(
-            *loaded.json.get("file1.json").unwrap(),
-            serde_json::from_str::<serde_json::Value>(file1_content).unwrap()
-        );
-        assert_eq!(*loaded.wasm.get().unwrap(), wasm_content);
+            fn load_file_from_url(
+                &self,
+                _url: &Url,
+                _component_reference: &SlipwayReference,
+            ) -> Result<PathBuf, ComponentLoadError> {
+                unimplemented!()
+            }
 
-        // Test that loading asking for `file2.json` fails:
-        match loaded.json.get("file2.json") {
-            Ok(_) => panic!("file2.json should not be found"),
-            Err(e) => match e {
-                ComponentLoadError {
-                    error: ComponentLoadErrorInner::FileLoadFailed { path, .. },
-                    ..
-                } => {
-                    assert_eq!(path, "path/to/my_component/file2.json");
-                }
-                e => panic!("Unexpected error: {:?}", e),
-            },
+            fn is_dir(&self, _path: &Path) -> bool {
+                true
+            }
+        }
+
+        #[test]
+        fn it_only_allow_file_loading_from_component_directory() {
+            let component_reference = SlipwayReference::Local {
+                path: PathBuf::from_str("path/to/my_component").unwrap(),
+            };
+
+            let file_loader = MockComponentAnyFileLoader {};
+
+            let loader = BasicComponentsLoader {
+                registry_lookup_url: None,
+                file_loader: Arc::new(file_loader),
+            };
+
+            let result = loader.load_components(&[&component_reference]);
+
+            assert_eq!(result.len(), 1);
+
+            let loaded = result.first().unwrap().as_ref().unwrap();
+
+            assert_eq!(
+                *loaded.json.get("file.json").unwrap(),
+                serde_json::Value::Object(serde_json::Map::new())
+            );
+
+            // Test that loading from an absolute path fails
+            match loaded.json.get("/bin/file.json") {
+                Ok(_) => panic!("loading absolute file should fail"),
+                Err(e) => match e {
+                    ComponentLoadError {
+                        error: ComponentLoadErrorInner::FileLoadFailed { path, .. },
+                        ..
+                    } => {
+                        assert_eq!(path, "/bin/file.json");
+                    }
+                    e => panic!("Unexpected error: {:?}", e),
+                },
+            }
+
+            // Test that loading from outside the component fails
+            match loaded.json.get("../file.json") {
+                Ok(_) => panic!("loading outside component file should fail"),
+                Err(e) => match e {
+                    ComponentLoadError {
+                        error: ComponentLoadErrorInner::FileLoadFailed { path, .. },
+                        ..
+                    } => {
+                        assert_eq!(path, "path/to/my_component/../file.json");
+                    }
+                    e => panic!("Unexpected error: {:?}", e),
+                },
+            }
         }
     }
 
-    /// Mock component file loader that always returns the same content for any file.
-    struct MockComponentAnyFileLoader {}
+    mod local_tar {
+        use std::io::Cursor;
 
-    impl ComponentFileLoader for MockComponentAnyFileLoader {
-        fn load_bin(
-            &self,
-            _path: &Path,
-            _component_reference: &SlipwayReference,
-        ) -> Result<Vec<u8>, ComponentLoadError> {
-            Ok(vec![1, 2, 3])
+        use tar::{Builder, Header};
+
+        use super::*;
+
+        struct MockComponentFileLoader {
+            files: HashMap<String, Vec<u8>>,
         }
 
-        fn load_text(
-            &self,
-            _path: &Path,
-            _component_reference: &SlipwayReference,
-        ) -> Result<String, ComponentLoadError> {
-            Ok("{}".to_string())
+        impl FileHandle for Cursor<Vec<u8>> {}
+
+        impl ComponentFileLoader for MockComponentFileLoader {
+            fn load_text(
+                &self,
+                _path: &Path,
+                _component_reference: &SlipwayReference,
+            ) -> Result<String, ComponentLoadError> {
+                unimplemented!();
+            }
+
+            fn load_bin(
+                &self,
+                _path: &Path,
+                _component_reference: &SlipwayReference,
+            ) -> Result<Vec<u8>, ComponentLoadError> {
+                unimplemented!();
+            }
+
+            fn load_file(
+                &self,
+                path: &Path,
+                _component_reference: &SlipwayReference,
+            ) -> Result<Box<dyn FileHandle>, ComponentLoadError> {
+                let data = self.files.get(path.to_string_lossy().as_ref()).unwrap();
+                Ok(Box::new(Cursor::new(data.clone())))
+            }
+
+            fn load_file_from_url(
+                &self,
+                _url: &Url,
+                _component_reference: &SlipwayReference,
+            ) -> Result<PathBuf, ComponentLoadError> {
+                unimplemented!();
+            }
+
+            fn is_dir(&self, path: &Path) -> bool {
+                self.files.iter().all(|(p, _)| p != &path.to_string_lossy())
+            }
         }
 
-        fn load_file(
-            &self,
-            _path: &Path,
-            _component_reference: &SlipwayReference,
-        ) -> Result<Box<dyn FileHandle>, ComponentLoadError> {
-            unimplemented!()
+        fn add_text_to_tar(path: &str, data: &str, builder: &mut Builder<&mut Cursor<Vec<u8>>>) {
+            let mut buffer = Cursor::new(data);
+            let mut header = Header::new_gnu();
+            header.set_size(buffer.get_ref().len() as u64);
+            header.set_mode(0o644);
+            header.set_cksum();
+            builder.append_data(&mut header, path, &mut buffer).unwrap();
         }
 
-        fn load_file_from_url(
-            &self,
-            _url: &Url,
-            _component_reference: &SlipwayReference,
-        ) -> Result<PathBuf, ComponentLoadError> {
-            unimplemented!()
+        fn add_bin_to_tar(path: &str, data: &[u8], builder: &mut Builder<&mut Cursor<Vec<u8>>>) {
+            let mut buffer = Cursor::new(data);
+            let mut header = Header::new_gnu();
+            header.set_size(buffer.get_ref().len() as u64);
+            header.set_mode(0o644);
+            header.set_cksum();
+            builder.append_data(&mut header, path, &mut buffer).unwrap();
         }
 
-        fn is_dir(&self, _path: &Path) -> bool {
-            true
-        }
-    }
+        #[test]
+        fn it_should_load_all_component_files_from_local_tar() {
+            let component_reference = SlipwayReference::Local {
+                path: PathBuf::from_str("path/to/my_component.tar").unwrap(),
+            };
 
-    #[test]
-    fn it_only_allow_file_loading_from_component_directory() {
-        let component_reference = SlipwayReference::Local {
-            path: PathBuf::from_str("path/to/my_component").unwrap(),
-        };
+            let definition_content = r#"{ "definition": "1" }"#;
+            let file1_content = r#"{ "file": "1" }"#;
+            let wasm_content = vec![1, 2, 3];
 
-        let file_loader = MockComponentAnyFileLoader {};
+            // Create a tar file in memory
+            let mut buffer = Cursor::new(Vec::new());
+            {
+                let mut builder = Builder::new(&mut buffer);
 
-        let loader = BasicComponentsLoader {
-            registry_lookup_url: None,
-            file_loader: Arc::new(file_loader),
-        };
+                add_text_to_tar("slipway_component.json", definition_content, &mut builder);
+                add_text_to_tar("file1.json", file1_content, &mut builder);
+                add_bin_to_tar("slipway_component.wasm", &wasm_content, &mut builder);
 
-        let result = loader.load_components(&[&component_reference]);
+                // Finish writing to the buffer
+                builder.finish().unwrap();
+            }
 
-        assert_eq!(result.len(), 1);
+            // Now `buffer` contains the entire tar file in memory
+            let tar_data = buffer.into_inner();
 
-        let loaded = result.first().unwrap().as_ref().unwrap();
+            let file_loader = MockComponentFileLoader {
+                files: HashMap::from([("path/to/my_component.tar".to_string(), tar_data.clone())]),
+            };
 
-        assert_eq!(
-            *loaded.json.get("file.json").unwrap(),
-            serde_json::Value::Object(serde_json::Map::new())
-        );
+            let loader = BasicComponentsLoader {
+                registry_lookup_url: None,
+                file_loader: Arc::new(file_loader),
+            };
 
-        // Test that loading from an absolute path fails
-        match loaded.json.get("/bin/file.json") {
-            Ok(_) => panic!("loading absolute file should fail"),
-            Err(e) => match e {
-                ComponentLoadError {
-                    error: ComponentLoadErrorInner::FileLoadFailed { path, .. },
-                    ..
-                } => {
-                    assert_eq!(path, "/bin/file.json");
-                }
-                e => panic!("Unexpected error: {:?}", e),
-            },
-        }
+            let result = loader.load_components(&[&component_reference]);
 
-        // Test that loading from outside the component fails
-        match loaded.json.get("../file.json") {
-            Ok(_) => panic!("loading outside component file should fail"),
-            Err(e) => match e {
-                ComponentLoadError {
-                    error: ComponentLoadErrorInner::FileLoadFailed { path, .. },
-                    ..
-                } => {
-                    assert_eq!(path, "path/to/my_component/../file.json");
-                }
-                e => panic!("Unexpected error: {:?}", e),
-            },
+            assert_eq!(result.len(), 1);
+
+            let loaded = result.first().unwrap().as_ref().unwrap();
+
+            assert_eq!(loaded.definition.clone(), definition_content);
+            assert_eq!(
+                *loaded.json.get("file1.json").unwrap(),
+                serde_json::from_str::<serde_json::Value>(file1_content).unwrap()
+            );
+            assert_eq!(*loaded.wasm.get().unwrap(), wasm_content);
+
+            // Test that loading asking for `file2.json` fails:
+            match loaded.json.get("file2.json") {
+                Ok(_) => panic!("file2.json should not be found"),
+                Err(e) => match e {
+                    ComponentLoadError {
+                        error: ComponentLoadErrorInner::FileLoadFailed { path, .. },
+                        ..
+                    } => {
+                        assert_eq!(path, "path/to/my_component.tar:file2.json");
+                    }
+                    e => panic!("Unexpected error: {:?}", e),
+                },
+            }
         }
     }
 }

@@ -14,7 +14,7 @@ use crate::{
     ComponentJson, ComponentWasm, LoadedComponent, SlipwayReference,
 };
 
-pub(super) fn load_from_folder<'rig>(
+pub(super) fn load_from_directory<'rig>(
     component_reference: &'rig SlipwayReference,
     path: &Path,
     file_loader: Arc<dyn ComponentFileLoader>,
@@ -26,7 +26,7 @@ pub(super) fn load_from_folder<'rig>(
     let wasm_bytes = file_loader.load_bin(&wasm_path, component_reference)?;
     let component_wasm = Arc::new(InMemoryComponentWasm::new(wasm_bytes));
 
-    let component_json = Arc::new(FolderComponentJson::new(
+    let component_json = Arc::new(DirectoryComponentJson::new(
         file_loader.clone(),
         component_reference.clone(),
         path.to_owned(),
@@ -58,27 +58,27 @@ impl ComponentWasm for InMemoryComponentWasm {
     }
 }
 
-struct FolderComponentJson {
+struct DirectoryComponentJson {
     file_loader: Arc<dyn ComponentFileLoader>,
     component_reference: SlipwayReference,
-    folder: PathBuf,
+    directory: PathBuf,
 }
 
-impl FolderComponentJson {
+impl DirectoryComponentJson {
     pub fn new(
         file_loader: Arc<dyn ComponentFileLoader>,
         component_reference: SlipwayReference,
-        folder: PathBuf,
+        directory: PathBuf,
     ) -> Self {
         Self {
             file_loader,
             component_reference,
-            folder,
+            directory,
         }
     }
 }
 
-impl ComponentJson for FolderComponentJson {
+impl ComponentJson for DirectoryComponentJson {
     fn get(&self, file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
         fn map_fs_err(
             e: impl ToString,
@@ -107,18 +107,18 @@ impl ComponentJson for FolderComponentJson {
             ));
         }
 
-        // Check if the resulting path is inside the folder
+        // Check if the resulting path is inside the directory
         if !is_safe_path(&file_name) {
             return Err(ComponentLoadError::new(
                 &self.component_reference,
                 ComponentLoadErrorInner::FileLoadFailed {
-                    path: self.folder.join(file_name).to_string_lossy().to_string(),
+                    path: self.directory.join(file_name).to_string_lossy().to_string(),
                     error: "Only files within the component can be loaded.".to_string(),
                 },
             ));
         }
 
-        let path = self.folder.join(file_name);
+        let path = self.directory.join(file_name);
 
         let file_contents = self
             .file_loader

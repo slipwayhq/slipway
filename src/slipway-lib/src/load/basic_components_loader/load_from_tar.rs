@@ -30,7 +30,7 @@ pub(super) fn load_from_tar<'rig>(
         return Err(ComponentLoadError::new(
             component_reference,
             crate::errors::ComponentLoadErrorInner::FileLoadFailed {
-                path: path.to_string_lossy().to_string(),
+                path: format!("{}:{}", path.to_string_lossy(), SLIPWAY_COMPONENT_FILE_NAME),
                 error: format!(
                     "Component TAR file does not contain the definition file \"{}\"",
                     SLIPWAY_COMPONENT_FILE_NAME
@@ -85,7 +85,11 @@ impl ComponentWasm for TarComponentWasm {
             return Err(ComponentLoadError::new(
                 &self.data.component_reference,
                 crate::errors::ComponentLoadErrorInner::FileLoadFailed {
-                    path: self.data.path.to_string_lossy().to_string(),
+                    path: format!(
+                        "{}:{}",
+                        self.data.path.to_string_lossy(),
+                        SLIPWAY_COMPONENT_WASM_FILE_NAME
+                    ),
                     error: format!(
                         "Component TAR file does not contain the WASM file \"{}\"",
                         SLIPWAY_COMPONENT_WASM_FILE_NAME
@@ -120,7 +124,7 @@ impl ComponentJson for TarComponentJson {
             return Err(ComponentLoadError::new(
                 &self.data.component_reference,
                 crate::errors::ComponentLoadErrorInner::FileLoadFailed {
-                    path: self.data.path.to_string_lossy().to_string(),
+                    path: format!("{}:{}", self.data.path.to_string_lossy(), file_name),
                     error: format!(
                         "Component TAR file does not contain the file \"{}\"",
                         file_name

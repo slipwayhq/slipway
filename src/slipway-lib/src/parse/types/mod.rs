@@ -78,7 +78,7 @@ pub enum ComponentPermission {
     UrlRegex { regex: String },
 
     File { path: String },
-    Folder { path: String },
+    Directory { path: String },
     FileRegex { regex: String },
 
     Env { value: String },

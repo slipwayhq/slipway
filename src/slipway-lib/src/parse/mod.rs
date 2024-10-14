@@ -28,8 +28,10 @@ mod tests {
 
     use super::*;
 
-    fn it_should_parse_examples_folder<T, TParse, TError>(examples_dir: &str, parse_method: TParse)
-    where
+    fn it_should_parse_examples_directory<T, TParse, TError>(
+        examples_dir: &str,
+        parse_method: TParse,
+    ) where
         TParse: Fn(&str) -> Result<T, TError>,
         TError: Debug,
     {
@@ -54,12 +56,12 @@ mod tests {
         let examples_root_dir =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples");
 
-        it_should_parse_examples_folder(
+        it_should_parse_examples_directory(
             examples_root_dir.join("rigs").to_str().unwrap(),
             parse_rig,
         );
 
-        it_should_parse_examples_folder(
+        it_should_parse_examples_directory(
             examples_root_dir.join("components").to_str().unwrap(),
             parse_component,
         );
