@@ -94,7 +94,7 @@ impl SlipwayReference {
         SlipwayReference::Registry {
             publisher: TEST_PUBLISHER.to_string(),
             name: id.to_string(),
-            version: Version::parse(version).expect("Invalid version"),
+            version: Version::parse(version).expect("Version should be valid"),
         }
     }
 
@@ -102,7 +102,7 @@ impl SlipwayReference {
         SlipwayReference::Registry {
             publisher: TEST_PUBLISHER.to_string(),
             name: id.to_string(),
-            version: Version::parse("0.1.0").expect("Invalid version"),
+            version: Version::parse("0.1.0").expect("Version should be valid"),
         }
     }
 }

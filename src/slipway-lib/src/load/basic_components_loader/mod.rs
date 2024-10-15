@@ -418,15 +418,17 @@ mod tests {
         }
     }
 
-    mod local_tar {
+    mod local_and_remote_tar {
         use std::io::Cursor;
 
+        use semver::Version;
         use tar::{Builder, Header};
 
         use super::*;
 
         struct MockComponentFileLoader {
             files: HashMap<String, Vec<u8>>,
+            url_to_file_map: HashMap<String, String>,
         }
 
         impl FileHandle for Cursor<Vec<u8>> {}
@@ -462,7 +464,11 @@ mod tests {
                 _url: &Url,
                 _component_reference: &SlipwayReference,
             ) -> Result<PathBuf, ComponentLoadError> {
-                unimplemented!();
+                Ok(self
+                    .url_to_file_map
+                    .get(_url.as_str())
+                    .map(|s| PathBuf::from_str(s).unwrap())
+                    .unwrap())
             }
 
             fn is_dir(&self, path: &Path) -> bool {
@@ -488,53 +494,61 @@ mod tests {
             builder.append_data(&mut header, path, &mut buffer).unwrap();
         }
 
-        #[test]
-        fn it_should_load_all_component_files_from_local_tar() {
-            let component_reference = SlipwayReference::Local {
-                path: PathBuf::from_str("path/to/my_component.tar").unwrap(),
-            };
+        struct MockData {
+            definition_content: &'static str,
+            file1_content: &'static str,
+            wasm_content: Vec<u8>,
+        }
 
-            let definition_content = r#"{ "definition": "1" }"#;
-            let file1_content = r#"{ "file": "1" }"#;
-            let wasm_content = vec![1, 2, 3];
+        impl MockData {
+            fn new() -> Self {
+                Self {
+                    definition_content: r#"{ "definition": "1" }"#,
+                    file1_content: r#"{ "file": "1" }"#,
+                    wasm_content: vec![1, 2, 3],
+                }
+            }
+        }
 
+        fn create_tar(data: &MockData) -> Vec<u8> {
             // Create a tar file in memory
             let mut buffer = Cursor::new(Vec::new());
             {
                 let mut builder = Builder::new(&mut buffer);
 
-                add_text_to_tar("slipway_component.json", definition_content, &mut builder);
-                add_text_to_tar("file1.json", file1_content, &mut builder);
-                add_bin_to_tar("slipway_component.wasm", &wasm_content, &mut builder);
+                add_text_to_tar(
+                    "slipway_component.json",
+                    data.definition_content,
+                    &mut builder,
+                );
+                add_text_to_tar("file1.json", data.file1_content, &mut builder);
+                add_bin_to_tar("slipway_component.wasm", &data.wasm_content, &mut builder);
 
                 // Finish writing to the buffer
                 builder.finish().unwrap();
             }
 
             // Now `buffer` contains the entire tar file in memory
-            let tar_data = buffer.into_inner();
+            buffer.into_inner()
+        }
 
-            let file_loader = MockComponentFileLoader {
-                files: HashMap::from([("path/to/my_component.tar".to_string(), tar_data.clone())]),
-            };
-
-            let loader = BasicComponentsLoader {
-                registry_lookup_url: None,
-                file_loader: Arc::new(file_loader),
-            };
-
+        fn assert_result(
+            loader: BasicComponentsLoader,
+            component_reference: SlipwayReference,
+            data: MockData,
+        ) {
             let result = loader.load_components(&[&component_reference]);
 
             assert_eq!(result.len(), 1);
 
             let loaded = result.first().unwrap().as_ref().unwrap();
 
-            assert_eq!(loaded.definition.clone(), definition_content);
+            assert_eq!(loaded.definition.clone(), data.definition_content);
             assert_eq!(
                 *loaded.json.get("file1.json").unwrap(),
-                serde_json::from_str::<serde_json::Value>(file1_content).unwrap()
+                serde_json::from_str::<serde_json::Value>(data.file1_content).unwrap()
             );
-            assert_eq!(*loaded.wasm.get().unwrap(), wasm_content);
+            assert_eq!(*loaded.wasm.get().unwrap(), data.wasm_content);
 
             // Test that loading asking for `file2.json` fails:
             match loaded.json.get("file2.json") {
@@ -549,6 +563,86 @@ mod tests {
                     e => panic!("Unexpected error: {:?}", e),
                 },
             }
+        }
+
+        #[test]
+        fn it_should_load_all_component_files_from_local_tar() {
+            let component_reference = SlipwayReference::Local {
+                path: PathBuf::from_str("path/to/my_component.tar").unwrap(),
+            };
+
+            let data = MockData::new();
+            let tar_data = create_tar(&data);
+
+            let file_loader = MockComponentFileLoader {
+                files: HashMap::from([("path/to/my_component.tar".to_string(), tar_data.clone())]),
+                url_to_file_map: HashMap::new(),
+            };
+
+            let loader = BasicComponentsLoader {
+                registry_lookup_url: None,
+                file_loader: Arc::new(file_loader),
+            };
+
+            assert_result(loader, component_reference, data);
+        }
+
+        #[test]
+        fn it_should_load_from_url() {
+            // This test does not test the actual downloading of the file, but rather the loading
+            // of the tar file once it has been downloaded.
+            const URL: &str = "http://example.com/path/to/my_component.tar";
+            let component_reference = SlipwayReference::Url {
+                url: Url::parse(URL).unwrap(),
+            };
+
+            let data = MockData::new();
+            let tar_data = create_tar(&data);
+
+            let file_loader = MockComponentFileLoader {
+                files: HashMap::from([("path/to/my_component.tar".to_string(), tar_data.clone())]),
+                url_to_file_map: HashMap::from([(
+                    URL.to_string(),
+                    "path/to/my_component.tar".to_string(),
+                )]),
+            };
+
+            let loader = BasicComponentsLoader {
+                registry_lookup_url: None,
+                file_loader: Arc::new(file_loader),
+            };
+
+            assert_result(loader, component_reference, data);
+        }
+
+        #[test]
+        fn it_should_load_from_registry() {
+            // This test does not test the actual downloading of the file, but rather the loading
+            // of the tar file once it has been downloaded.
+            const URL: &str = "http://example.com/path/to/{publisher}.{name}.{version}.tar";
+            let component_reference = SlipwayReference::Registry {
+                publisher: "p1".to_string(),
+                name: "n1".to_string(),
+                version: Version::parse("1.2.3").expect("Invalid version"),
+            };
+
+            let data = MockData::new();
+            let tar_data = create_tar(&data);
+
+            let file_loader = MockComponentFileLoader {
+                files: HashMap::from([("path/to/my_component.tar".to_string(), tar_data.clone())]),
+                url_to_file_map: HashMap::from([(
+                    "http://example.com/path/to/p1.n1.1.2.3.tar".to_string(),
+                    "path/to/my_component.tar".to_string(),
+                )]),
+            };
+
+            let loader = BasicComponentsLoader {
+                registry_lookup_url: Some(URL.to_string()),
+                file_loader: Arc::new(file_loader),
+            };
+
+            assert_result(loader, component_reference, data);
         }
     }
 }
