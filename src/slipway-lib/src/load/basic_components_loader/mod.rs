@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use component_file_loader::{ComponentFileLoader, ComponentFileLoaderImpl};
 use url::Url;
@@ -18,6 +21,11 @@ mod load_from_tar;
 const DEFAULT_REGISTRY_LOOKUP_URL: &str =
     "https://registry.slipwayhq.com/components/{publisher}/{name}/{version}";
 
+fn get_default_slipway_components_cache_dir() -> PathBuf {
+    let home_dir = dirs::home_dir().expect("Home directory required for caching components");
+    home_dir.join(".slipway/components")
+}
+
 pub enum ComponentLoaderErrorBehavior {
     ErrorAlways,
     ErrorIfComponentNotLoaded,
@@ -28,25 +36,62 @@ pub struct BasicComponentsLoader {
     file_loader: Arc<dyn ComponentFileLoader>,
 }
 
+// TODO: Use builder pattern.
 impl BasicComponentsLoader {
     pub fn new() -> Self {
         Self {
             registry_lookup_url: Some(DEFAULT_REGISTRY_LOOKUP_URL.to_string()),
-            file_loader: Arc::new(ComponentFileLoaderImpl::new()),
+            file_loader: Arc::new(ComponentFileLoaderImpl::new(
+                get_default_slipway_components_cache_dir(),
+            )),
         }
     }
 
-    pub fn for_registry(registry_lookup_url: &str) -> Self {
+    pub fn with_registry(registry_lookup_url: &str) -> Self {
         Self {
             registry_lookup_url: Some(registry_lookup_url.to_string()),
-            file_loader: Arc::new(ComponentFileLoaderImpl::new()),
+            file_loader: Arc::new(ComponentFileLoaderImpl::new(
+                get_default_slipway_components_cache_dir(),
+            )),
         }
     }
 
     pub fn without_registry() -> Self {
         Self {
             registry_lookup_url: None,
-            file_loader: Arc::new(ComponentFileLoaderImpl::new()),
+            file_loader: Arc::new(ComponentFileLoaderImpl::new(
+                get_default_slipway_components_cache_dir(),
+            )),
+        }
+    }
+
+    pub fn with_cache_path(components_cache_path: &Path) -> Self {
+        Self {
+            registry_lookup_url: Some(DEFAULT_REGISTRY_LOOKUP_URL.to_string()),
+            file_loader: Arc::new(ComponentFileLoaderImpl::new(
+                components_cache_path.to_owned(),
+            )),
+        }
+    }
+
+    pub fn with_registry_with_cache_path(
+        registry_lookup_url: &str,
+        components_cache_path: &Path,
+    ) -> Self {
+        Self {
+            registry_lookup_url: Some(registry_lookup_url.to_string()),
+            file_loader: Arc::new(ComponentFileLoaderImpl::new(
+                components_cache_path.to_owned(),
+            )),
+        }
+    }
+
+    pub fn without_registry_with_cache_path(components_cache_path: &Path) -> Self {
+        Self {
+            registry_lookup_url: None,
+            file_loader: Arc::new(ComponentFileLoaderImpl::new(
+                components_cache_path.to_owned(),
+            )),
         }
     }
 }

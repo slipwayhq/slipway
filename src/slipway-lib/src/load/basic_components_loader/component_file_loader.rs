@@ -12,8 +12,6 @@ use std::io::Seek;
 use std::path::Path;
 use std::path::PathBuf;
 
-const SLIPWAY_COMPONENTS_DIR: &str = "~/.slipway/components";
-
 pub(super) trait FileHandle: Read + Seek + Send {}
 
 impl FileHandle for File {}
@@ -47,11 +45,15 @@ pub(super) trait ComponentFileLoader: Send + Sync {
 }
 
 #[derive(Clone)]
-pub(super) struct ComponentFileLoaderImpl {}
+pub(super) struct ComponentFileLoaderImpl {
+    local_component_cache_path: PathBuf,
+}
 
 impl ComponentFileLoaderImpl {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(local_component_cache_path: PathBuf) -> Self {
+        Self {
+            local_component_cache_path,
+        }
     }
 }
 
@@ -110,7 +112,7 @@ impl ComponentFileLoader for ComponentFileLoaderImpl {
         component_reference: &SlipwayReference,
     ) -> Result<PathBuf, ComponentLoadError> {
         let file_name = super::filename_from_url::filename_from_url(url);
-        let file_path = PathBuf::from(format!("{}/{}", SLIPWAY_COMPONENTS_DIR, file_name));
+        let file_path = self.local_component_cache_path.join(file_name);
 
         if file_path.exists() {
             return Ok(file_path);
@@ -125,7 +127,8 @@ impl ComponentFileLoader for ComponentFileLoaderImpl {
                         path: file_path.to_string_lossy().to_string(),
                         error: format!(
                             "Error creating local components directory at {}.\n{}",
-                            SLIPWAY_COMPONENTS_DIR, e
+                            self.local_component_cache_path.to_string_lossy(),
+                            e
                         ),
                     },
                 )

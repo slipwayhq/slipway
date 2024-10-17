@@ -1,35 +1,81 @@
+use semver::Version;
 use serde_json::json;
 
+use common_test_utils::{
+    get_slipway_test_component_path, get_slipway_test_components_path, test_server::TestServer,
+    SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_NAME, SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_TAR_NAME,
+    SLIPWAY_TEST_COMPONENT_NAME,
+};
 use slipway_lib::{
     errors::{RigError, ValidationType},
-    test_utils::{
-        get_slipway_test_component_path, SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_NAME,
-        SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_TAR_NAME, SLIPWAY_TEST_COMPONENT_NAME,
-    },
     utils::ch,
     BasicComponentsLoader, ComponentCache, ComponentHandle, ComponentRigging, Instruction, Rig,
     RigSession, Rigging, SlipwayReference,
 };
+use url::Url;
 
 #[test]
 fn load_component_from_folder() {
-    test_component(SlipwayReference::Local {
-        path: get_slipway_test_component_path(SLIPWAY_TEST_COMPONENT_NAME),
-    });
+    test_component(
+        None,
+        SlipwayReference::Local {
+            path: get_slipway_test_component_path(SLIPWAY_TEST_COMPONENT_NAME),
+        },
+    );
 }
 
 #[test]
 fn load_component_from_folder_with_json_schema_refs() {
-    test_component(SlipwayReference::Local {
-        path: get_slipway_test_component_path(SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_NAME),
-    });
+    test_component(
+        None,
+        SlipwayReference::Local {
+            path: get_slipway_test_component_path(SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_NAME),
+        },
+    );
 }
 
 #[test]
 fn load_component_from_tar_with_json_schema_refs() {
-    test_component(SlipwayReference::Local {
-        path: get_slipway_test_component_path(SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_TAR_NAME),
-    });
+    test_component(
+        None,
+        SlipwayReference::Local {
+            path: get_slipway_test_component_path(SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_TAR_NAME),
+        },
+    );
+}
+
+#[test]
+fn load_component_from_url_with_json_schema_refs() {
+    let test_server = TestServer::start_from_folder(get_slipway_test_components_path());
+
+    test_component(
+        Some(&test_server.localhost_url),
+        SlipwayReference::Url {
+            url: Url::parse(&format!(
+                "{}{}",
+                test_server.localhost_url, SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_TAR_NAME
+            ))
+            .unwrap(),
+        },
+    );
+
+    test_server.stop();
+}
+
+#[test]
+fn load_component_from_registry_with_json_schema_refs() {
+    let test_server = TestServer::start_from_folder(get_slipway_test_components_path());
+
+    test_component(
+        Some(&test_server.localhost_url),
+        SlipwayReference::Registry {
+            publisher: "slipway".to_string(),
+            name: "test_component".to_string(),
+            version: Version::parse("0.1.2").unwrap(),
+        },
+    );
+
+    test_server.stop();
 }
 
 fn create_rig(component_reference: SlipwayReference) -> (Rig, ComponentHandle) {
@@ -53,10 +99,23 @@ fn create_rig(component_reference: SlipwayReference) -> (Rig, ComponentHandle) {
     (rig, handle)
 }
 
-fn test_component(component_reference: SlipwayReference) {
+fn test_component(localhost_url: Option<&str>, component_reference: SlipwayReference) {
     let (rig, handle) = create_rig(component_reference);
 
-    let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::new()).unwrap();
+    // Create a random cache directory.
+    let temp_dir = tempfile::tempdir().unwrap();
+    let component_cache = ComponentCache::primed(
+        &rig,
+        &BasicComponentsLoader::with_registry_with_cache_path(
+            &format!(
+                "{}/{{publisher}}.{{name}}.{{version}}.tar",
+                localhost_url.unwrap_or("http://localhost")
+            ),
+            temp_dir.path(),
+        ),
+    )
+    .unwrap();
+
     let rig_session = RigSession::new(rig, component_cache);
     let mut state = rig_session.initialize().unwrap();
 

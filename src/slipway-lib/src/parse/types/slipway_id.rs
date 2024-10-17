@@ -79,7 +79,7 @@ impl Serialize for SlipwayId {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::quote;
+    use common_test_utils::quote;
 
     #[test]
     fn it_should_serialize_and_deserialize_slipway_id() {

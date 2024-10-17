@@ -62,7 +62,7 @@ mod tests {
     }
 
     mod publisher_tests {
-        use crate::test_utils::quote;
+        use common_test_utils::quote;
 
         use super::*;
 
@@ -113,7 +113,7 @@ mod tests {
     }
 
     mod name_tests {
-        use crate::test_utils::quote;
+        use common_test_utils::quote;
 
         use super::*;
 
@@ -158,7 +158,7 @@ mod tests {
     }
 
     mod description_tests {
-        use crate::test_utils::quote;
+        use common_test_utils::quote;
 
         use super::*;
 
@@ -198,7 +198,7 @@ mod tests {
     }
 
     mod component_handle_tests {
-        use crate::test_utils::quote;
+        use common_test_utils::quote;
 
         use super::*;
 

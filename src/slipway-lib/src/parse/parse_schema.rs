@@ -115,12 +115,13 @@ impl SchemaResolver for ComponentJsonSchemaResolver {
 
 #[cfg(test)]
 mod tests {
+    use common_test_utils::test_server::TestServer;
     use jsonschema::{error::ValidationErrorKind, ValidationError};
     use jtd::ValidationErrorIndicator;
     use serde_json::json;
     use std::collections::HashMap;
 
-    use crate::{errors::ComponentLoadError, test_utils::internal::TestServer, SlipwayReference};
+    use crate::{errors::ComponentLoadError, SlipwayReference};
 
     use super::*;
 
@@ -241,7 +242,7 @@ mod tests {
     #[test]
     fn it_should_parse_json_schema_with_https_references() {
         // Start a server to return the schema.
-        let test_server = TestServer::start(HashMap::from([(
+        let test_server = TestServer::start_from_string_map(HashMap::from([(
             "/name.json".to_string(),
             r#"{ "type": "string" }"#.to_string(),
         )]));
@@ -249,7 +250,7 @@ mod tests {
         let schema = serde_json::json!({
             "$schema": "http://json-schema.org/draft-07/schema#",
             "properties": {
-                "name": { "$ref": "http://localhost:8080/name.json" },
+                "name": { "$ref": format!("{}name.json", test_server.localhost_url)},
                 "age": { "type": "number" },
                 "phones": {
                     "type": "array",

@@ -24,7 +24,7 @@ pub fn parse_component(
 mod tests {
     use std::{fmt::Debug, path::Path};
 
-    use crate::test_utils::internal::find_files_with_extension;
+    use common_test_utils::find_files_with_extension;
 
     use super::*;
 

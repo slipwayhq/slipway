@@ -108,7 +108,7 @@ mod tests {
         RigSession, Rigging, SlipwayReference,
     };
 
-    use slipway_lib::test_utils::{get_slipway_test_component_path, SLIPWAY_TEST_COMPONENT_NAME};
+    use common_test_utils::{get_slipway_test_component_path, SLIPWAY_TEST_COMPONENT_NAME};
 
     use super::*;
 

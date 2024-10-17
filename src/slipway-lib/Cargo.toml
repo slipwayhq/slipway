@@ -23,6 +23,7 @@ jsonschema = { version = "0.20.0", default-features = false }
 ureq = { version = "2.10.1", features = ["json"] }
 anyhow = { workspace = true }
 tar = "0.4.42"
+dirs = "5.0.1"
 
 [features]
 unstable-test-utils = []
@@ -30,3 +31,5 @@ unstable-test-utils = []
 [dev-dependencies]
 tiny_http = "0.12.0"
 walkdir = "2.5.0"
+common-test-utils = { path = "../common-test-utils" }
+tempfile = "3.13.0"

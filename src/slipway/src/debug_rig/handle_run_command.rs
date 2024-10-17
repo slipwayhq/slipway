@@ -24,11 +24,11 @@ pub(super) fn handle_run_command<'rig>(
 mod tests {
     use serde_json::json;
     use slipway_lib::{
-        test_utils::{get_slipway_test_component_path, SLIPWAY_TEST_COMPONENT_NAME},
-        utils::ch,
-        BasicComponentsLoader, ComponentCache, ComponentRigging, Rig, RigSession, Rigging,
-        SlipwayReference,
+        utils::ch, BasicComponentsLoader, ComponentCache, ComponentRigging, Rig, RigSession,
+        Rigging, SlipwayReference,
     };
+
+    use common_test_utils::{get_slipway_test_component_path, SLIPWAY_TEST_COMPONENT_NAME};
 
     use crate::run_component_wasm::errors::WasmExecutionError;
 

@@ -39,7 +39,7 @@ pub(super) fn filename_from_url(url: &Url) -> String {
 }
 
 fn sanitize_filename(filename: &str) -> String {
-    let is_char_allowed = |c: char| c.is_alphanumeric() || c == '.' || c == '-' || c == '_';
+    let is_char_allowed = |c: char| c.is_alphanumeric() || c == '-' || c == '_';
 
     let mut sanitized = String::with_capacity(filename.len());
 
@@ -88,14 +88,14 @@ mod tests {
     fn filename_from_url_simple() {
         let url = Url::parse("http://example.com/path/to/resource").unwrap();
         let filename = filename_from_url(&url);
-        assert_filename(&filename, "example.com_path_to_resource");
+        assert_filename(&filename, "example_com_path_to_resource");
     }
 
     #[test]
     fn filename_from_url_special_chars() {
         let url = Url::parse("https://example.com/path/with%20space/and#fragment").unwrap();
         let filename = filename_from_url(&url);
-        assert_filename(&filename, "example.com_path_with_20space_and");
+        assert_filename(&filename, "example_com_path_with_20space_and");
     }
 
     #[test]
@@ -109,7 +109,7 @@ mod tests {
         let truncated_path =
             long_path[..MAX_FILENAME_BASE_LENGTH - "example.com/".len()].to_string();
 
-        let expected_prefix = "example.com_".to_string() + &truncated_path;
+        let expected_prefix = "example_com_".to_string() + &truncated_path;
 
         assert_filename(&filename, &expected_prefix);
     }
