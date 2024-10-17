@@ -22,18 +22,15 @@ pub(super) fn handle_run_command<'rig>(
 
 #[cfg(test)]
 mod tests {
-    use std::{path::PathBuf, str::FromStr};
-
     use serde_json::json;
     use slipway_lib::{
-        utils::ch, BasicComponentsLoader, ComponentCache, ComponentRigging, Rig, RigSession,
-        Rigging, SlipwayReference,
+        test_utils::{get_slipway_test_component_path, SLIPWAY_TEST_COMPONENT_NAME},
+        utils::ch,
+        BasicComponentsLoader, ComponentCache, ComponentRigging, Rig, RigSession, Rigging,
+        SlipwayReference,
     };
 
-    use crate::{
-        run_component_wasm::errors::WasmExecutionError,
-        test_utils::{find_ancestor_path, SLIPWAY_TEST_COMPONENT_PATH},
-    };
+    use crate::run_component_wasm::errors::WasmExecutionError;
 
     use super::*;
 
@@ -43,9 +40,7 @@ mod tests {
                 component_handle.clone(),
                 ComponentRigging {
                     component: SlipwayReference::Local {
-                        path: find_ancestor_path(
-                            PathBuf::from_str(SLIPWAY_TEST_COMPONENT_PATH).unwrap(),
-                        ),
+                        path: get_slipway_test_component_path(SLIPWAY_TEST_COMPONENT_NAME),
                     },
                     input: Some(input),
                     permissions: None,

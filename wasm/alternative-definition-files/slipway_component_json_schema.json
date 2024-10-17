@@ -1,0 +1,14 @@
+{
+  "publisher": "slipway",
+  "name": "slipway_test_component",
+  "description": "Does a simple JSON modification.",
+  "version": "0.0.1",
+  "input": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$ref": "input-schema.json"
+  },
+  "output": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$ref": "output-schema.json"
+  }
+}

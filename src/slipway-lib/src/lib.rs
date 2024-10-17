@@ -3,18 +3,18 @@
 
 use std::ops::Deref;
 
-pub use execute::rig_execution_state::{RigExecutionState, ComponentExecutionData};
-pub use execute::rig_session::*;
 pub use execute::component_state::{
     ComponentInput, ComponentInputOverride, ComponentOutput, ComponentOutputOverride,
     ComponentState,
 };
 pub use execute::primitives::*;
+pub use execute::rig_execution_state::{ComponentExecutionData, RigExecutionState};
+pub use execute::rig_session::*;
 pub use execute::step::Instruction;
 pub use load::basic_components_loader::BasicComponentsLoader;
 pub use load::*;
-pub use parse::parse_rig;
 pub use parse::parse_component;
+pub use parse::parse_rig;
 pub use parse::types::primitives::*;
 pub use parse::types::slipway_id::*;
 pub use parse::types::slipway_reference::*;
@@ -26,7 +26,7 @@ mod parse;
 pub mod utils;
 
 #[cfg(any(feature = "unstable-test-utils", test))]
-mod test_utils;
+pub mod test_utils;
 
 pub struct Immutable<T> {
     value: T,

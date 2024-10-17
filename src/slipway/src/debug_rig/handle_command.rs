@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use slipway_lib::{RigExecutionState, ComponentHandle, Immutable};
+use slipway_lib::{ComponentHandle, Immutable, RigExecutionState};
 
 use crate::to_view_model::to_shortcuts;
 
@@ -102,15 +102,13 @@ fn get_handle<'rig>(
 
 #[cfg(test)]
 mod tests {
-    use std::{path::PathBuf, str::FromStr};
-
     use serde_json::json;
     use slipway_lib::{
-        utils::ch, Rig, RigSession, BasicComponentsLoader, ComponentCache, ComponentRigging,
-        ComponentState, Rigging, SlipwayReference,
+        utils::ch, BasicComponentsLoader, ComponentCache, ComponentRigging, ComponentState, Rig,
+        RigSession, Rigging, SlipwayReference,
     };
 
-    use crate::test_utils::{find_ancestor_path, SLIPWAY_TEST_COMPONENT_PATH};
+    use slipway_lib::test_utils::{get_slipway_test_component_path, SLIPWAY_TEST_COMPONENT_NAME};
 
     use super::*;
 
@@ -431,7 +429,7 @@ mod tests {
         let (ch1, ch2, ch3) = component_handles();
 
         let increment_reference = SlipwayReference::Local {
-            path: find_ancestor_path(PathBuf::from_str(SLIPWAY_TEST_COMPONENT_PATH).unwrap()),
+            path: get_slipway_test_component_path(SLIPWAY_TEST_COMPONENT_NAME),
         };
 
         // ch1 -> ch2 -> ch3

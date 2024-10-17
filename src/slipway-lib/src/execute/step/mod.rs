@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{errors::RigError, RigExecutionState, ComponentHandle, Immutable};
+use crate::{errors::RigError, ComponentHandle, Immutable, RigExecutionState};
 
 use super::evaluate_component_inputs::evaluate_component_inputs;
 
@@ -12,20 +12,30 @@ use evaluate_instruction::evaluate_instruction;
 #[serde(tag = "operation")]
 #[serde(rename_all = "snake_case")]
 pub enum Instruction {
+    // Overrides the input of a component. The overridden input is validated against against the component's input schema.
     SetInputOverride {
         handle: ComponentHandle,
         value: serde_json::Value,
     },
+
+    // Clears the input override of a component.
     ClearInputOverride {
         handle: ComponentHandle,
     },
+
+    // Overrides the output of a component. The overridden output is not validated against
+    // the component's output schema, but it is validated against any subsequent component's input schema.
     SetOutputOverride {
         handle: ComponentHandle,
         value: serde_json::Value,
     },
+
+    // Clears the output override of a component.
     ClearOutputOverride {
         handle: ComponentHandle,
     },
+
+    // Sets the output of a component.
     SetOutput {
         handle: ComponentHandle,
         value: serde_json::Value,

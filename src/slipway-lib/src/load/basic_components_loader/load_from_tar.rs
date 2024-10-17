@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    io::{Read, SeekFrom},
+    io::SeekFrom,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
@@ -39,10 +39,12 @@ pub(super) fn load_from_tar<'rig>(
         ));
     };
 
-    let definition_string = map_io_error(
+    let definition_string = map_tar_io_error(
         read_file_string_entry(definition_entry, &mut *file),
         component_reference,
         path,
+        SLIPWAY_COMPONENT_FILE_NAME,
+        "Failed to read component definition file",
     )?;
 
     let loader_data = Arc::new(TarComponentFileLoaderData {
@@ -104,10 +106,12 @@ impl ComponentWasm for TarComponentWasm {
             .lock()
             .expect("should be able to acquire lock on tar file");
 
-        let wasm = map_io_error(
+        let wasm = map_tar_io_error(
             read_file_entry(wasm_entry, &mut **file),
             &self.data.component_reference,
             &self.data.path,
+            SLIPWAY_COMPONENT_WASM_FILE_NAME,
+            "Failed to read component WASM file",
         )?;
 
         Ok(Arc::new(wasm))
@@ -120,11 +124,12 @@ struct TarComponentJson {
 
 impl ComponentJson for TarComponentJson {
     fn get(&self, file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
+        let full_file_name = format!("{}:{}", self.data.path.to_string_lossy(), file_name);
         let Some(entry) = self.data.entries.get(file_name) else {
             return Err(ComponentLoadError::new(
                 &self.data.component_reference,
                 crate::errors::ComponentLoadErrorInner::FileLoadFailed {
-                    path: format!("{}:{}", self.data.path.to_string_lossy(), file_name),
+                    path: full_file_name,
                     error: format!(
                         "Component TAR file does not contain the file \"{}\"",
                         file_name
@@ -143,6 +148,7 @@ impl ComponentJson for TarComponentJson {
             read_file_entry(entry, &mut **file),
             &self.data.component_reference,
             &self.data.path,
+            "Failed to read component JSON file",
         )?;
 
         let json = serde_json::from_slice(&buffer).map_err(|e| {
@@ -166,23 +172,49 @@ fn get_all_file_entries(
 ) -> Result<FileEntriesResult, ComponentLoadError> {
     let mut a = Archive::new(file);
     let mut all_files = HashMap::new();
-    for file in map_io_error(a.entries(), component_reference, path)? {
+    for file in map_io_error(
+        a.entries(),
+        component_reference,
+        path,
+        "Failed to get TAR file entries",
+    )? {
         // Make sure there wasn't an I/O error
-        let mut file = map_io_error(file, component_reference, path)?;
+        let file = map_io_error(
+            file,
+            component_reference,
+            path,
+            "Failed to get file handle within TAR file",
+        )?;
 
         // Inspect metadata about the file
-        let entry_path = map_io_error(file.header().path(), component_reference, path)?;
-        let length = map_io_error(file.header().entry_size(), component_reference, path)?;
+        let entry_path = map_io_error(
+            file.header().path(),
+            component_reference,
+            path,
+            "Failed to get file entry path",
+        )?;
+
+        // Remove the leading "./" from the path if it exists.
+        let file_path_raw = entry_path.to_string_lossy().to_string();
+        let file_path = match file_path_raw.strip_prefix("./") {
+            Some(stripped) => stripped,
+            None => &file_path_raw,
+        }
+        .to_string();
+
+        println!("File path: {}", file_path);
+        let length = map_tar_io_error(
+            file.header().entry_size(),
+            component_reference,
+            path,
+            &file_path,
+            "Failed to get file length",
+        )?;
         let offset = file.raw_file_position();
 
         let file_entry = FileEntry { offset, length };
 
-        all_files.insert(entry_path.to_string_lossy().to_string(), file_entry);
-
-        // files implement the Read trait
-        let mut s = String::new();
-        map_io_error(file.read_to_string(&mut s), component_reference, path)?;
-        println!("{}", s);
+        all_files.insert(file_path, file_entry);
     }
 
     let file = a.into_inner();
@@ -193,13 +225,32 @@ fn map_io_error<T>(
     result: Result<T, std::io::Error>,
     reference: &SlipwayReference,
     path: &Path,
+    context: &str,
 ) -> Result<T, ComponentLoadError> {
     result.map_err(|e| {
         ComponentLoadError::new(
             reference,
             crate::errors::ComponentLoadErrorInner::FileLoadFailed {
                 path: path.to_string_lossy().to_string(),
-                error: e.to_string(),
+                error: format!("{}: {}", context, e),
+            },
+        )
+    })
+}
+
+fn map_tar_io_error<T>(
+    result: Result<T, std::io::Error>,
+    reference: &SlipwayReference,
+    tar_path: &Path,
+    inner_path: &str,
+    context: &str,
+) -> Result<T, ComponentLoadError> {
+    result.map_err(|e| {
+        ComponentLoadError::new(
+            reference,
+            crate::errors::ComponentLoadErrorInner::FileLoadFailed {
+                path: format!("{}:{}", tar_path.to_string_lossy(), inner_path),
+                error: format!("{}: {}", context, e),
             },
         )
     })
