@@ -248,7 +248,7 @@ fn debug_rig<W: Write>(w: &mut W, rig: Rig, json_editor: impl JsonEditor) -> any
         }
     }
 
-    writeln!(w, "Exiting riglication...")?;
+    writeln!(w, "Exiting...")?;
 
     Ok(())
 }

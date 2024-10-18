@@ -83,7 +83,7 @@ impl SchemaResolver for ComponentJsonSchemaResolver {
         &self,
         _root_schema: &serde_json::Value,
         url: &Url,
-        original_reference: &str,
+        _original_reference: &str,
     ) -> Result<Arc<serde_json::Value>, SchemaResolverError> {
         match url.scheme() {
             "http" | "https" => {
@@ -94,8 +94,10 @@ impl SchemaResolver for ComponentJsonSchemaResolver {
                 Ok(Arc::new(document))
             }
             "file" => {
-                if let Ok(_path) = url.to_file_path() {
-                    Ok(self.component_json_loader.get(original_reference)?)
+                if let Ok(path) = url.to_file_path() {
+                    Ok(self
+                        .component_json_loader
+                        .get(path.to_string_lossy().trim_start_matches('/'))?)
                 } else {
                     Err(anyhow::anyhow!(format!(
                         "Invalid absolute file path: {}",

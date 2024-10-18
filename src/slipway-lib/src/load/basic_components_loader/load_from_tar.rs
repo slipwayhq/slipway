@@ -202,7 +202,6 @@ fn get_all_file_entries(
         }
         .to_string();
 
-        println!("File path: {}", file_path);
         let length = map_tar_io_error(
             file.header().entry_size(),
             component_reference,
