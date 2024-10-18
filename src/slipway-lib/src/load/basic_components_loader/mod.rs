@@ -36,69 +36,75 @@ pub struct BasicComponentsLoader {
     file_loader: Arc<dyn ComponentFileLoader>,
 }
 
-// TODO: Use builder pattern.
-impl BasicComponentsLoader {
+enum RegistrySelection {
+    None,
+    Default,
+    Custom(String),
+}
+
+pub struct BasicComponentsLoaderBuilder {
+    registry_lookup_url: RegistrySelection,
+    components_cache_path: Option<PathBuf>,
+}
+
+impl BasicComponentsLoaderBuilder {
     pub fn new() -> Self {
         Self {
-            registry_lookup_url: Some(DEFAULT_REGISTRY_LOOKUP_URL.to_string()),
-            file_loader: Arc::new(ComponentFileLoaderImpl::new(
-                get_default_slipway_components_cache_dir(),
-            )),
+            registry_lookup_url: RegistrySelection::Default,
+            components_cache_path: None,
         }
     }
 
-    pub fn with_registry(registry_lookup_url: &str) -> Self {
-        Self {
-            registry_lookup_url: Some(registry_lookup_url.to_string()),
-            file_loader: Arc::new(ComponentFileLoaderImpl::new(
-                get_default_slipway_components_cache_dir(),
-            )),
-        }
+    pub fn registry_lookup_url(mut self, url: &str) -> Self {
+        self.registry_lookup_url = RegistrySelection::Custom(url.to_string());
+        self
     }
 
-    pub fn without_registry() -> Self {
-        Self {
-            registry_lookup_url: None,
-            file_loader: Arc::new(ComponentFileLoaderImpl::new(
-                get_default_slipway_components_cache_dir(),
-            )),
-        }
+    pub fn without_registry(mut self) -> Self {
+        self.registry_lookup_url = RegistrySelection::None;
+        self
     }
 
-    pub fn with_cache_path(components_cache_path: &Path) -> Self {
-        Self {
-            registry_lookup_url: Some(DEFAULT_REGISTRY_LOOKUP_URL.to_string()),
-            file_loader: Arc::new(ComponentFileLoaderImpl::new(
-                components_cache_path.to_owned(),
-            )),
-        }
+    pub fn components_cache_path(mut self, path: &Path) -> Self {
+        self.components_cache_path = Some(path.to_owned());
+        self
     }
 
-    pub fn with_registry_with_cache_path(
-        registry_lookup_url: &str,
-        components_cache_path: &Path,
-    ) -> Self {
-        Self {
-            registry_lookup_url: Some(registry_lookup_url.to_string()),
-            file_loader: Arc::new(ComponentFileLoaderImpl::new(
-                components_cache_path.to_owned(),
-            )),
+    pub fn build(self) -> BasicComponentsLoader {
+        let registry_lookup_url = match self.registry_lookup_url {
+            RegistrySelection::None => None,
+            RegistrySelection::Default => Some(DEFAULT_REGISTRY_LOOKUP_URL.to_string()),
+            RegistrySelection::Custom(url) => Some(url),
+        };
+
+        let components_cache_path = self
+            .components_cache_path
+            .unwrap_or_else(get_default_slipway_components_cache_dir);
+
+        let file_loader = Arc::new(ComponentFileLoaderImpl::new(components_cache_path));
+
+        BasicComponentsLoader {
+            registry_lookup_url,
+            file_loader,
         }
     }
+}
 
-    pub fn without_registry_with_cache_path(components_cache_path: &Path) -> Self {
-        Self {
-            registry_lookup_url: None,
-            file_loader: Arc::new(ComponentFileLoaderImpl::new(
-                components_cache_path.to_owned(),
-            )),
-        }
+impl Default for BasicComponentsLoaderBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl BasicComponentsLoader {
+    pub fn builder() -> BasicComponentsLoaderBuilder {
+        BasicComponentsLoaderBuilder::new()
     }
 }
 
 impl Default for BasicComponentsLoader {
     fn default() -> Self {
-        Self::new()
+        BasicComponentsLoaderBuilder::new().build()
     }
 }
 

@@ -70,7 +70,7 @@ fn load_component_from_registry_with_json_schema_refs() {
         Some(&test_server.localhost_url),
         SlipwayReference::Registry {
             publisher: "slipway".to_string(),
-            name: "test_component".to_string(),
+            name: "test_component_json_schema".to_string(),
             version: Version::parse("0.1.2").unwrap(),
         },
     );
@@ -102,20 +102,21 @@ fn create_rig(component_reference: SlipwayReference) -> (Rig, ComponentHandle) {
 fn test_component(localhost_url: Option<&str>, component_reference: SlipwayReference) {
     let (rig, handle) = create_rig(component_reference);
 
-    // Create a random cache directory.
+    // Use a random cache directory, and local registry URL.
     let temp_dir = tempfile::tempdir().unwrap();
     let component_cache = ComponentCache::primed(
         &rig,
-        &BasicComponentsLoader::with_registry_with_cache_path(
-            &format!(
-                "{}/{{publisher}}.{{name}}.{{version}}.tar",
-                localhost_url.unwrap_or("http://localhost")
-            ),
-            temp_dir.path(),
-        ),
+        &BasicComponentsLoader::builder()
+            .registry_lookup_url(&format!(
+                "{}{{publisher}}.{{name}}.{{version}}.tar",
+                localhost_url.unwrap_or("http://localhost/")
+            ))
+            .components_cache_path(temp_dir.path())
+            .build(),
     )
     .unwrap();
 
+    // Initialize the rig session.
     let rig_session = RigSession::new(rig, component_cache);
     let mut state = rig_session.initialize().unwrap();
 
@@ -124,7 +125,7 @@ fn test_component(localhost_url: Option<&str>, component_reference: SlipwayRefer
     let good_output = json!({ "value": 45});
     let bad_output = json!({ "value": "bad"});
 
-    // Test invalid input
+    // Test invalid input.
     let maybe_state = state.step(Instruction::SetInputOverride {
         handle: handle.clone(),
         value: bad_input.clone(),
@@ -146,6 +147,7 @@ fn test_component(localhost_url: Option<&str>, component_reference: SlipwayRefer
         }
     }
 
+    // Test valid input.
     state = state
         .step(Instruction::SetInputOverride {
             handle: handle.clone(),
@@ -153,6 +155,7 @@ fn test_component(localhost_url: Option<&str>, component_reference: SlipwayRefer
         })
         .unwrap();
 
+    // Test invalid output.
     let maybe_state = state.step(Instruction::SetOutput {
         handle: handle.clone(),
         value: bad_output.clone(),
@@ -174,6 +177,7 @@ fn test_component(localhost_url: Option<&str>, component_reference: SlipwayRefer
         }
     }
 
+    // Test valid output.
     state
         .step(Instruction::SetOutput {
             handle: handle.clone(),

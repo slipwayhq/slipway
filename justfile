@@ -34,4 +34,4 @@ assemble-test-components:
   cp wasm/alternative-definition-files/output-schema.json test-components/slipway_test_component_json_schema/output-schema.json
 
   tar -cf test-components/slipway_test_component_json_schema.tar -C test-components/slipway_test_component_json_schema .
-  cp test-components/slipway_test_component_json_schema.tar test-components/slipway.test_component.0.1.2.tar 
+  cp test-components/slipway_test_component_json_schema.tar test-components/slipway.test_component_json_schema.0.1.2.tar 

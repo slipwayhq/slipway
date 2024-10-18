@@ -56,7 +56,8 @@ mod tests {
         let handle = ch("test_component");
         let rig = create_rig(&handle, json!({ "type": "increment", "value": 42}));
 
-        let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::new()).unwrap();
+        let component_cache =
+            ComponentCache::primed(&rig, &BasicComponentsLoader::default()).unwrap();
         let rig_session = RigSession::new(rig, component_cache);
         let mut state = rig_session.initialize().unwrap();
 
@@ -82,7 +83,8 @@ mod tests {
         let handle = ch("test_component");
         let rig = create_rig(&handle, json!({ "type": "panic" }));
 
-        let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::new()).unwrap();
+        let component_cache =
+            ComponentCache::primed(&rig, &BasicComponentsLoader::default()).unwrap();
         let rig_session = RigSession::new(rig, component_cache);
         let state = rig_session.initialize().unwrap();
 
@@ -104,7 +106,8 @@ mod tests {
         let handle = ch("test_component");
         let rig = create_rig(&handle, json!({ "type": "stderr" }));
 
-        let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::new()).unwrap();
+        let component_cache =
+            ComponentCache::primed(&rig, &BasicComponentsLoader::default()).unwrap();
         let rig_session = RigSession::new(rig, component_cache);
         let state = rig_session.initialize().unwrap();
 

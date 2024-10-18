@@ -464,7 +464,8 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::new()).unwrap();
+        let component_cache =
+            ComponentCache::primed(&rig, &BasicComponentsLoader::default()).unwrap();
         RigSession::new(rig, component_cache)
     }
 

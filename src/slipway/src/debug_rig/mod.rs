@@ -185,7 +185,7 @@ fn redirect_to_json_if_wasm(input: &std::path::Path) -> std::path::PathBuf {
 }
 
 fn debug_rig<W: Write>(w: &mut W, rig: Rig, json_editor: impl JsonEditor) -> anyhow::Result<()> {
-    let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::new())?;
+    let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::default())?;
     let session = RigSession::new(rig, component_cache);
     let mut state = session.initialize()?;
 
