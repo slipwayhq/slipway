@@ -20,6 +20,7 @@ mod handle_clear_output_command;
 mod handle_command;
 mod handle_input_command;
 mod handle_output_command;
+mod handle_render_command;
 mod handle_run_command;
 mod json_editor;
 
@@ -64,7 +65,7 @@ enum DebuggerCommand {
         handle: String,
     },
 
-    /// Override the input of a component
+    /// Override or view the input of a component
     Input {
         /// The component to update
         #[arg(required = true)]
@@ -75,7 +76,7 @@ enum DebuggerCommand {
         clear: bool,
     },
 
-    /// Override the output of a component
+    /// Override or view the output of a component
     Output {
         /// The component to update
         #[arg(required = true)]
@@ -84,6 +85,13 @@ enum DebuggerCommand {
         /// Clear the output override
         #[arg(short, long, default_value = "false")]
         clear: bool,
+    },
+
+    /// Render the output of a component
+    Render {
+        /// The component to render
+        #[arg(required = true)]
+        handle: String,
     },
 
     /// Exit the debugger

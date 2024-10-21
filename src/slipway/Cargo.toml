@@ -21,6 +21,9 @@ wasmtime = "21.0.1"
 wasi-common = "21.0.1"
 tracing = { workspace = true }
 tracing-subscriber = "0.3.18"
+viuer = "0.8.1"
+base64 = "0.22.1"
+image = "0.25.2"
 
 [dev-dependencies]
 common-test-utils = { path = "../common-test-utils" }

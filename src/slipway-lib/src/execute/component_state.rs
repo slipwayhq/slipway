@@ -8,9 +8,18 @@ pub struct ComponentState<'rig> {
     pub handle: &'rig ComponentHandle,
     pub rigging: &'rig ComponentRigging,
     pub dependencies: HashSet<&'rig ComponentHandle>,
+
+    /// The overridden input, with references unresolved. This overrides the input defined
+    /// in the rigging.
     pub input_override: Option<Rc<ComponentInputOverride>>,
+
+    /// The overridden output. This overrides the `execution_output`.
     pub output_override: Option<Rc<ComponentOutputOverride>>,
+
+    /// When a component is ready to be executed, this will contain the input with all references resolved.
     pub execution_input: Option<Rc<ComponentInput>>,
+
+    /// The output of the component after it has been executed.
     pub execution_output: Option<Rc<ComponentOutput>>,
 }
 

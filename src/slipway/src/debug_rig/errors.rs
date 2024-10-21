@@ -11,6 +11,9 @@ pub enum SlipwayDebugError {
     #[error("{0}")]
     UserError(String),
 
+    #[error("{0}")]
+    ComponentError(String),
+
     #[error("Parsing JSON from text editor failed.\n{0}")]
     ParseFailed(#[from] serde_json::Error),
 
