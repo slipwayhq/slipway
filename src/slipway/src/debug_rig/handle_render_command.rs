@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use base64::{prelude::BASE64_STANDARD, Engine};
 use image::{DynamicImage, ImageBuffer, RgbaImage};
 use slipway_lib::{ComponentHandle, RigExecutionState};
@@ -7,6 +9,7 @@ use super::errors::SlipwayDebugError;
 pub(super) fn handle_render_command<'rig>(
     handle: &'rig ComponentHandle,
     state: &RigExecutionState<'rig>,
+    save_path: Option<PathBuf>,
 ) -> Result<(), SlipwayDebugError> {
     let component_state = state
         .component_states
@@ -33,14 +36,44 @@ pub(super) fn handle_render_command<'rig>(
             ))
         })?;
 
-    let dynamic_image = DynamicImage::ImageRgba8(image);
+    if let Some(save_path) = save_path {
+        save_image(handle, image, save_path)?;
+    } else {
+        print_image(handle, image)?;
+    }
 
+    Ok(())
+}
+
+fn save_image(
+    handle: &ComponentHandle,
+    image: RgbaImage,
+    save_path: PathBuf,
+) -> Result<(), SlipwayDebugError> {
+    image.save(save_path.clone()).map_err(|e| {
+        SlipwayDebugError::ComponentError(format!(
+            "Component {} canvas output image could not be saved to {}\n{}",
+            handle,
+            save_path.display(),
+            e
+        ))
+    })?;
+
+    Ok(())
+}
+
+fn print_image(handle: &ComponentHandle, image: RgbaImage) -> Result<(), SlipwayDebugError> {
     let conf = viuer::Config {
         absolute_offset: false,
         ..Default::default()
     };
 
-    viuer::print(&dynamic_image, &conf).unwrap();
+    viuer::print(&DynamicImage::ImageRgba8(image), &conf).map_err(|e| {
+        SlipwayDebugError::ComponentError(format!(
+            "Component {} canvas output image could not be printed\n{}",
+            handle, e
+        ))
+    })?;
 
     Ok(())
 }

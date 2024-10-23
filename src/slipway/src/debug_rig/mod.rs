@@ -92,6 +92,10 @@ enum DebuggerCommand {
         /// The component to render
         #[arg(required = true)]
         handle: String,
+
+        /// The optional file path to save the rendered output
+        #[arg(short, long)]
+        save: Option<std::path::PathBuf>,
     },
 
     /// Exit the debugger

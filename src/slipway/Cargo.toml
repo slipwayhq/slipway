@@ -21,7 +21,7 @@ wasmtime = "21.0.1"
 wasi-common = "21.0.1"
 tracing = { workspace = true }
 tracing-subscriber = "0.3.18"
-viuer = "0.8.1"
+viuer = { version = "0.8.1", features = ["sixel"] }
 base64 = "0.22.1"
 image = "0.25.2"
 
