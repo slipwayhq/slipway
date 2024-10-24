@@ -1,7 +1,7 @@
 use slipway_lib::errors::RigError;
 use thiserror::Error;
 
-use crate::run_component_wasm::errors::WasmExecutionError;
+use crate::{canvas::CanvasError, run_component_wasm::errors::WasmExecutionError};
 
 #[derive(Error, Debug)]
 pub enum SlipwayDebugError {
@@ -19,4 +19,7 @@ pub enum SlipwayDebugError {
 
     #[error("Failed to execute WASM.\n{0}")]
     WasmExecutionFailed(#[from] WasmExecutionError),
+
+    #[error("{0}")]
+    CanvasError(CanvasError),
 }

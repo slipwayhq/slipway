@@ -1,14 +1,15 @@
 #![allow(dead_code)]
 
+mod canvas;
 mod debug_rig;
+mod launch_rig;
+mod render_state;
 mod run_component_wasm;
 mod to_view_model;
 mod utils;
 
 #[cfg(test)]
 mod test_utils;
-
-mod write_rig_state;
 
 use std::path::PathBuf;
 
@@ -26,18 +27,9 @@ pub(crate) struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
-    /// Run a Slipway rig indefinitely.
+    /// Launch a Slipway rig.
     #[command(arg_required_else_help = true)]
     Launch {
-        path: PathBuf,
-
-        #[arg(short, long)]
-        log_level: Option<String>,
-    },
-
-    /// Run a Slipway rig once.
-    #[command(arg_required_else_help = true)]
-    Run {
         path: PathBuf,
 
         #[arg(short, long)]
@@ -84,13 +76,9 @@ fn main() -> anyhow::Result<()> {
             configure_tracing(log_level);
             debug_rig::debug_rig_from_component_file(&mut std::io::stdout(), path, input)?;
         }
-        Commands::Launch { path: _, log_level } => {
+        Commands::Launch { path, log_level } => {
             configure_tracing(log_level);
-            todo!();
-        }
-        Commands::Run { path: _, log_level } => {
-            configure_tracing(log_level);
-            todo!();
+            launch_rig::launch_rig(&mut std::io::stdout(), path)?;
         }
     }
 

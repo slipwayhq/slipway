@@ -8,11 +8,10 @@ use termion::{color, style};
 
 use slipway_lib::{
     parse_rig, BasicComponentsLoader, ComponentCache, ComponentHandle, ComponentRigging, Name,
-    Publisher, Rig, RigExecutionState, RigSession, Rigging, SlipwayReference,
+    Publisher, Rig, RigSession, Rigging, SlipwayReference,
 };
 
-use crate::to_view_model::to_view_model;
-use crate::write_rig_state;
+use crate::render_state::write_state;
 
 mod errors;
 mod handle_clear_input_command;
@@ -201,7 +200,7 @@ fn debug_rig<W: Write>(w: &mut W, rig: Rig, json_editor: impl JsonEditor) -> any
     let session = RigSession::new(rig, component_cache);
     let mut state = session.initialize()?;
 
-    print_state(w, &state)?;
+    write_state(w, &state)?;
 
     let help_color = color::Fg(color::Yellow);
     writeln!(
@@ -237,7 +236,7 @@ fn debug_rig<W: Write>(w: &mut W, rig: Rig, json_editor: impl JsonEditor) -> any
                     Ok(HandleCommandResult::Continue(Some(s))) => {
                         state = s;
                         writeln!(w)?;
-                        print_state(w, &state)?;
+                        write_state(w, &state)?;
                     }
                     Ok(HandleCommandResult::Continue(None)) => {}
                     Ok(HandleCommandResult::Exit) => break,
@@ -250,7 +249,7 @@ fn debug_rig<W: Write>(w: &mut W, rig: Rig, json_editor: impl JsonEditor) -> any
                             color::Fg(color::Reset)
                         )?;
                         writeln!(w)?;
-                        print_state(w, &state)?;
+                        write_state(w, &state)?;
                     }
                 },
                 Err(e) => e.print().expect("Parsing errors should be printed"),
@@ -262,12 +261,5 @@ fn debug_rig<W: Write>(w: &mut W, rig: Rig, json_editor: impl JsonEditor) -> any
 
     writeln!(w, "Exiting...")?;
 
-    Ok(())
-}
-
-fn print_state<W: Write>(w: &mut W, state: &RigExecutionState<'_>) -> Result<(), anyhow::Error> {
-    let view_model = to_view_model(state);
-    write_rig_state::write_rig_state(w, &view_model)?;
-    writeln!(w)?;
     Ok(())
 }

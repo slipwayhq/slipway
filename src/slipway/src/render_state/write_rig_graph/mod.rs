@@ -3,7 +3,7 @@ use std::io::Write;
 use termion::{color, style};
 
 use crate::{
-    to_view_model::{RigExecutionStateViewModel, ComponentGroupViewModel, ComponentViewModel},
+    to_view_model::{ComponentGroupViewModel, ComponentViewModel, RigExecutionStateViewModel},
     utils::{format_bytes, skip_first_n_chars},
 };
 
@@ -23,7 +23,7 @@ const COLUMN_CHAR: char = '┆';
 //   ╰─┴───┴───────┴─• 10
 // • 3
 
-pub(crate) fn write_rig_state<W: Write>(
+pub(crate) fn write_rig_graph<W: Write>(
     w: &mut W,
     view_model: &RigExecutionStateViewModel<'_>,
 ) -> anyhow::Result<()> {
@@ -400,7 +400,7 @@ impl ComponentColors {
 mod tests {
     use serde_json::json;
     use slipway_lib::{
-        utils::ch, Rig, RigSession, ComponentCache, ComponentRigging, Instruction, Rigging,
+        utils::ch, ComponentCache, ComponentRigging, Instruction, Rig, RigSession, Rigging,
     };
 
     use crate::to_view_model::to_view_model;
@@ -451,7 +451,7 @@ mod tests {
         let view_model = to_view_model(&state);
 
         let mut buffer = Vec::new();
-        write_rig_state(&mut buffer, &view_model).unwrap();
+        write_rig_graph(&mut buffer, &view_model).unwrap();
         let buffer_string = String::from_utf8(buffer).unwrap();
         println!("{}", buffer_string);
 
@@ -639,7 +639,7 @@ mod tests {
         let view_model = to_view_model(&state);
 
         let mut buffer = Vec::new();
-        write_rig_state(&mut buffer, &view_model).unwrap();
+        write_rig_graph(&mut buffer, &view_model).unwrap();
         let buffer_string = String::from_utf8(buffer).unwrap();
         println!("{}", buffer_string);
 

@@ -5,7 +5,7 @@ use slipway_lib::{ComponentHandle, Immutable, RigExecutionState};
 use crate::to_view_model::to_shortcuts;
 
 use super::{
-    errors::SlipwayDebugError, json_editor::JsonEditor, print_state, DebugCli, DebuggerCommand,
+    errors::SlipwayDebugError, json_editor::JsonEditor, write_state, DebugCli, DebuggerCommand,
 };
 
 pub(super) fn handle_command<'rig, W: Write>(
@@ -16,7 +16,7 @@ pub(super) fn handle_command<'rig, W: Write>(
 ) -> anyhow::Result<HandleCommandResult<'rig>> {
     let result = match debug_cli.command {
         DebuggerCommand::Print {} => {
-            print_state(w, state)?;
+            write_state(w, state)?;
             HandleCommandResult::Continue(None)
         }
         DebuggerCommand::Run { handle } => {
