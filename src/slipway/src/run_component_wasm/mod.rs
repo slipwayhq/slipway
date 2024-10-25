@@ -1,4 +1,6 @@
-use slipway_lib::{ComponentExecutionData, ComponentHandle};
+use std::time::Instant;
+
+use slipway_lib::{ComponentExecutionData, ComponentHandle, RunMetadata};
 use tracing::{debug, error, info, trace, warn};
 use wasi_common::{
     pipe::{ReadPipe, WritePipe},
@@ -10,16 +12,27 @@ use self::errors::WasmExecutionError;
 
 pub(super) mod errors;
 
+pub(super) struct RunComponentWasmResult {
+    pub output: serde_json::Value,
+    pub metadata: RunMetadata,
+}
+
 pub(super) fn run_component_wasm(
     execution_data: ComponentExecutionData,
     handle: &ComponentHandle,
-) -> Result<serde_json::Value, WasmExecutionError> {
+) -> Result<RunComponentWasmResult, WasmExecutionError> {
+    let prepare_input_start = Instant::now();
+
     // Serialize the input JSON to a vector of bytes
     let input_bytes = serde_json::to_vec(&execution_data.input.value)
         .map_err(|source| WasmExecutionError::SerializeInputFailed { source })?;
 
     // Create a pipe for stdin and stdout
     let stdin = ReadPipe::from(input_bytes);
+
+    let prepare_input_duration = prepare_input_start.elapsed();
+    let prepare_component_start = Instant::now();
+
     let stdout = WritePipe::new_in_memory();
     let stderr = WritePipe::new_in_memory();
 
@@ -55,8 +68,14 @@ pub(super) fn run_component_wasm(
         .typed::<(), ()>(&store)
         .map_err(|source| WasmExecutionError::StepFunctionUnexpectedSignature { source })?;
 
+    let prepare_component_duration = prepare_component_start.elapsed();
+
     // Call the function
+    let call_start = Instant::now();
     let call_result = wasm_func.call(&mut store, ());
+    let call_duration = call_start.elapsed();
+
+    let process_output_start = Instant::now();
 
     // Drop the store so we can read from the stdout pipe
     drop(store);
@@ -99,7 +118,17 @@ pub(super) fn run_component_wasm(
     let output = serde_json::from_slice(json_buffer)
         .map_err(|source| WasmExecutionError::DeserializeOutputFailed { source })?;
 
-    Ok(output)
+    let process_output_duration = process_output_start.elapsed();
+
+    Ok(RunComponentWasmResult {
+        output,
+        metadata: RunMetadata {
+            prepare_input_duration,
+            prepare_component_duration,
+            call_duration,
+            process_output_duration,
+        },
+    })
 }
 
 /// Write all lines from the input until a JSON object is found at the start of a line.

@@ -1,4 +1,4 @@
-use std::{io::Write, time::Instant};
+use std::io::Write;
 
 use anyhow::Context;
 use slipway_lib::{
@@ -65,18 +65,14 @@ fn run<'rig, W: Write>(
 
             let execution_data = state.get_component_execution_data(handle)?;
 
-            let start = Instant::now();
+            let result = run_component_wasm(execution_data, handle)?;
 
-            let output = run_component_wasm(execution_data, handle)?;
-
-            let duration = start.elapsed();
-
-            writeln!(w, " ...completed in {:.2?}", duration)?;
             writeln!(w)?;
 
             state = state.step(Instruction::SetOutput {
                 handle: handle.clone(),
-                value: output,
+                value: result.output,
+                metadata: result.metadata,
             })?;
         }
     }

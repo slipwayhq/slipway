@@ -159,6 +159,7 @@ fn test_component(localhost_url: Option<&str>, component_reference: SlipwayRefer
     let maybe_state = state.step(Instruction::SetOutput {
         handle: handle.clone(),
         value: bad_output.clone(),
+        metadata: Default::default(),
     });
 
     match maybe_state {
@@ -182,6 +183,7 @@ fn test_component(localhost_url: Option<&str>, component_reference: SlipwayRefer
         .step(Instruction::SetOutput {
             handle: handle.clone(),
             value: good_output,
+            metadata: Default::default(),
         })
         .unwrap();
 }

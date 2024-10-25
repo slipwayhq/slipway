@@ -1,7 +1,7 @@
 use super::primitives::Hash;
 use std::{collections::HashSet, rc::Rc};
 
-use crate::{ComponentHandle, ComponentRigging, JsonMetadata};
+use crate::{ComponentHandle, ComponentRigging, JsonMetadata, RunMetadata};
 
 #[derive(Clone, Debug)]
 pub struct ComponentState<'rig> {
@@ -46,7 +46,7 @@ impl<'rig> ComponentState<'rig> {
 #[derive(Debug)]
 pub struct ComponentInput {
     pub value: serde_json::Value,
-    pub metadata: JsonMetadata,
+    pub json_metadata: JsonMetadata,
 }
 
 #[derive(Debug)]
@@ -58,11 +58,12 @@ pub struct ComponentInputOverride {
 pub struct ComponentOutput {
     pub value: serde_json::Value,
     pub input_hash_used: Hash,
-    pub metadata: JsonMetadata,
+    pub json_metadata: JsonMetadata,
+    pub run_metadata: RunMetadata,
 }
 
 #[derive(Debug)]
 pub struct ComponentOutputOverride {
     pub value: serde_json::Value,
-    pub metadata: JsonMetadata,
+    pub json_metadata: JsonMetadata,
 }

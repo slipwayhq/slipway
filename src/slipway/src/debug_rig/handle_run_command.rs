@@ -1,4 +1,5 @@
 use slipway_lib::{ComponentHandle, Immutable, Instruction, RigExecutionState};
+use tracing::debug;
 
 use crate::run_component_wasm::run_component_wasm;
 
@@ -10,11 +11,26 @@ pub(super) fn handle_run_command<'rig>(
 ) -> Result<Immutable<RigExecutionState<'rig>>, SlipwayDebugError> {
     let execution_data = state.get_component_execution_data(handle)?;
 
-    let output = run_component_wasm(execution_data, handle)?;
+    let result = run_component_wasm(execution_data, handle)?;
+
+    debug!(
+        "Prepare input: {:.2?}",
+        result.metadata.prepare_input_duration
+    );
+    debug!(
+        "Prepare component: {:.2?}",
+        result.metadata.prepare_component_duration
+    );
+    debug!("Call component: {:.2?}", result.metadata.call_duration);
+    debug!(
+        "Process output: {:.2?}",
+        result.metadata.process_output_duration
+    );
 
     let new_state = state.step(Instruction::SetOutput {
         handle: handle.clone(),
-        value: output,
+        value: result.output,
+        metadata: result.metadata,
     })?;
 
     Ok(new_state)

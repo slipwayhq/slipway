@@ -216,7 +216,7 @@ fn debug_rig<W: Write>(w: &mut W, rig: Rig, json_editor: impl JsonEditor) -> any
     loop {
         write!(
             w,
-            "{}>> {}",
+            "{}⛵️ >> {}",
             color::Fg(color::Green),
             color::Fg(color::Reset)
         )?;

@@ -1,9 +1,9 @@
-pub(crate) mod rig_execution_state;
-pub(crate) mod rig_session;
 pub(crate) mod component_state;
 mod evaluate_component_inputs;
 mod initialize;
 pub(crate) mod primitives;
+pub(crate) mod rig_execution_state;
+pub(crate) mod rig_session;
 pub(crate) mod step;
 mod topological_sort;
 mod validate_component_io;
@@ -13,9 +13,9 @@ mod tests {
     use serde_json::json;
 
     use crate::{
-        parse::types::{Rig, ComponentRigging, Rigging},
+        parse::types::{ComponentRigging, Rig, Rigging},
         utils::ch,
-        RigExecutionState, ComponentState, Immutable,
+        ComponentState, Immutable, RigExecutionState,
     };
 
     use super::step::Instruction;
@@ -68,6 +68,7 @@ mod tests {
             .step(Instruction::SetOutput {
                 handle: ch(next),
                 value,
+                metadata: Default::default(),
             })
             .inspect_err(|e| println!("error: {:#}", e))
             .unwrap()
@@ -82,7 +83,7 @@ mod tests {
     }
 
     mod step {
-        use crate::{errors::RigError, RigSession, ComponentCache};
+        use crate::{errors::RigError, ComponentCache, RigSession};
 
         use super::*;
 
@@ -210,6 +211,7 @@ mod tests {
             let execution_state_result = s.step(Instruction::SetOutput {
                 handle: ch("g"),
                 value: json!({ "foo": "bar" }),
+                metadata: Default::default(),
             });
 
             match execution_state_result {
@@ -257,6 +259,7 @@ mod tests {
             let execution_state_result = s.step(Instruction::SetOutput {
                 handle: ch("c"),
                 value: json!({ "x": 1, "y": 2 }),
+                metadata: Default::default(),
             });
 
             match execution_state_result {
@@ -343,7 +346,7 @@ mod tests {
     mod input_override {
         use itertools::Itertools;
 
-        use crate::{RigSession, ComponentCache};
+        use crate::{ComponentCache, RigSession};
 
         use super::*;
 
@@ -474,6 +477,7 @@ mod tests {
                 .step(Instruction::SetOutput {
                     handle: ch("c"),
                     value: json!({ "foo": "bar" }),
+                    metadata: Default::default(),
                 })
                 .unwrap();
 
@@ -481,7 +485,12 @@ mod tests {
             let b_input_hash = {
                 let b = s.get_component_state(&ch("b")).unwrap();
                 assert!(b.execution_output.is_none());
-                b.execution_input.as_ref().unwrap().metadata.hash.clone()
+                b.execution_input
+                    .as_ref()
+                    .unwrap()
+                    .json_metadata
+                    .hash
+                    .clone()
             };
 
             // Set "b" output.
@@ -489,6 +498,7 @@ mod tests {
                 .step(Instruction::SetOutput {
                     handle: ch("b"),
                     value: json!({ "baz": "bat" }),
+                    metadata: Default::default(),
                 })
                 .unwrap();
 
@@ -496,11 +506,11 @@ mod tests {
                 // Check input and output hashes match.
                 let b = s.get_component_state(&ch("b")).unwrap();
                 assert_eq!(
-                    b.execution_input.as_ref().unwrap().metadata.hash,
+                    b.execution_input.as_ref().unwrap().json_metadata.hash,
                     b_input_hash
                 );
                 assert_eq!(
-                    b.execution_input.as_ref().unwrap().metadata.hash,
+                    b.execution_input.as_ref().unwrap().json_metadata.hash,
                     b.execution_output.as_ref().unwrap().input_hash_used
                 );
             }
@@ -518,11 +528,16 @@ mod tests {
 
                 // Input and output hash should no longer match.
                 assert_ne!(
-                    b.execution_input.as_ref().unwrap().metadata.hash,
+                    b.execution_input.as_ref().unwrap().json_metadata.hash,
                     b.execution_output.as_ref().unwrap().input_hash_used
                 );
 
-                b.execution_input.as_ref().unwrap().metadata.hash.clone()
+                b.execution_input
+                    .as_ref()
+                    .unwrap()
+                    .json_metadata
+                    .hash
+                    .clone()
             };
 
             // Input hash should have changed.
@@ -533,6 +548,7 @@ mod tests {
                 .step(Instruction::SetOutput {
                     handle: ch("b"),
                     value: json!({ "baz": "cat" }),
+                    metadata: Default::default(),
                 })
                 .unwrap();
 
@@ -541,11 +557,11 @@ mod tests {
                 let b = s.get_component_state(&ch("b")).unwrap();
                 assert!(b.execution_output.is_some());
                 assert_eq!(
-                    b.execution_input.as_ref().unwrap().metadata.hash,
+                    b.execution_input.as_ref().unwrap().json_metadata.hash,
                     b_input_hash_2
                 );
                 assert_eq!(
-                    b.execution_input.as_ref().unwrap().metadata.hash,
+                    b.execution_input.as_ref().unwrap().json_metadata.hash,
                     b.execution_output.as_ref().unwrap().input_hash_used
                 );
             }
@@ -553,7 +569,7 @@ mod tests {
     }
 
     mod output_override {
-        use crate::{RigSession, ComponentCache};
+        use crate::{ComponentCache, RigSession};
 
         use super::*;
 
@@ -622,20 +638,26 @@ mod tests {
                 .step(Instruction::SetOutput {
                     handle: ch("c"),
                     value: json!({ "foo": "bar" }),
+                    metadata: Default::default(),
                 })
                 .unwrap();
 
             // Verify the input and output hashes match for "c".
             let c = s.get_component_state(&ch("c")).unwrap();
             assert_eq!(
-                c.execution_input.as_ref().unwrap().metadata.hash,
+                c.execution_input.as_ref().unwrap().json_metadata.hash,
                 c.execution_output.as_ref().unwrap().input_hash_used
             );
 
             // Save "b" input hash to compare against later.
             let b_input_hash = {
                 let b = s.get_component_state(&ch("b")).unwrap();
-                b.execution_input.as_ref().unwrap().metadata.hash.clone()
+                b.execution_input
+                    .as_ref()
+                    .unwrap()
+                    .json_metadata
+                    .hash
+                    .clone()
             };
 
             // Set "b" output.
@@ -643,6 +665,7 @@ mod tests {
                 .step(Instruction::SetOutput {
                     handle: ch("b"),
                     value: json!({ "baz": "bat" }),
+                    metadata: Default::default(),
                 })
                 .unwrap();
 
@@ -650,11 +673,11 @@ mod tests {
                 // Check input and output hashes match.
                 let b = s.get_component_state(&ch("b")).unwrap();
                 assert_eq!(
-                    b.execution_input.as_ref().unwrap().metadata.hash,
+                    b.execution_input.as_ref().unwrap().json_metadata.hash,
                     b_input_hash
                 );
                 assert_eq!(
-                    b.execution_input.as_ref().unwrap().metadata.hash,
+                    b.execution_input.as_ref().unwrap().json_metadata.hash,
                     b.execution_output.as_ref().unwrap().input_hash_used
                 );
             }
@@ -677,6 +700,7 @@ mod tests {
                 .step(Instruction::SetOutput {
                     handle: ch("c"),
                     value: json!({ "foo": "bar" }),
+                    metadata: Default::default(),
                 })
                 .unwrap();
 
@@ -685,7 +709,12 @@ mod tests {
             // Save "b" input hash to compare against later.
             let b_input_hash = {
                 let b = s.get_component_state(&ch("b")).unwrap();
-                b.execution_input.as_ref().unwrap().metadata.hash.clone()
+                b.execution_input
+                    .as_ref()
+                    .unwrap()
+                    .json_metadata
+                    .hash
+                    .clone()
             };
 
             // Set "b" output.
@@ -693,6 +722,7 @@ mod tests {
                 .step(Instruction::SetOutput {
                     handle: ch("b"),
                     value: json!({ "baz": "bat" }),
+                    metadata: Default::default(),
                 })
                 .unwrap();
 
@@ -700,11 +730,11 @@ mod tests {
                 // Check input and output hashes match.
                 let b = s.get_component_state(&ch("b")).unwrap();
                 assert_eq!(
-                    b.execution_input.as_ref().unwrap().metadata.hash,
+                    b.execution_input.as_ref().unwrap().json_metadata.hash,
                     b_input_hash
                 );
                 assert_eq!(
-                    b.execution_input.as_ref().unwrap().metadata.hash,
+                    b.execution_input.as_ref().unwrap().json_metadata.hash,
                     b.execution_output.as_ref().unwrap().input_hash_used
                 );
             }
@@ -714,12 +744,18 @@ mod tests {
                 .step(Instruction::SetOutput {
                     handle: ch("c"),
                     value: json!({ "foo": "baz" }),
+                    metadata: Default::default(),
                 })
                 .unwrap();
 
             let b_input_hash_2 = {
                 let b = s.get_component_state(&ch("b")).unwrap();
-                b.execution_input.as_ref().unwrap().metadata.hash.clone()
+                b.execution_input
+                    .as_ref()
+                    .unwrap()
+                    .json_metadata
+                    .hash
+                    .clone()
             };
 
             // Hashes should be different.
@@ -735,7 +771,12 @@ mod tests {
 
             let b_input_hash_3 = {
                 let b = s.get_component_state(&ch("b")).unwrap();
-                b.execution_input.as_ref().unwrap().metadata.hash.clone()
+                b.execution_input
+                    .as_ref()
+                    .unwrap()
+                    .json_metadata
+                    .hash
+                    .clone()
             };
 
             assert_ne!(b_input_hash_3, b_input_hash_2);

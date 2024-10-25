@@ -63,19 +63,19 @@ pub(super) fn evaluate_input(
                     .replace(&mut evaluated_input, extracted_result)?;
             }
 
-            let metadata = JsonMetadata::from_value(&evaluated_input);
+            let json_metadata = JsonMetadata::from_value(&evaluated_input);
 
             ComponentInput {
                 value: evaluated_input,
-                metadata,
+                json_metadata,
             }
         }
         None => {
             let input_value = json!({});
-            let metadata = JsonMetadata::from_value(&input_value);
+            let json_metadata = JsonMetadata::from_value(&input_value);
             ComponentInput {
                 value: input_value,
-                metadata,
+                json_metadata,
             }
         }
     };

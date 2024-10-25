@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{errors::RigError, ComponentHandle, Immutable, RigExecutionState};
@@ -39,7 +41,26 @@ pub enum Instruction {
     SetOutput {
         handle: ComponentHandle,
         value: serde_json::Value,
+        metadata: RunMetadata,
     },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
+pub struct RunMetadata {
+    pub prepare_input_duration: Duration,
+    pub prepare_component_duration: Duration,
+    pub call_duration: Duration,
+    pub process_output_duration: Duration,
+}
+
+impl RunMetadata {
+    pub fn overall_duration(&self) -> Duration {
+        self.prepare_input_duration
+            .checked_add(self.prepare_component_duration)
+            .and_then(|d| d.checked_add(self.call_duration))
+            .and_then(|d| d.checked_add(self.process_output_duration))
+            .expect("Duration overflow")
+    }
 }
 
 pub(super) fn step<'rig>(

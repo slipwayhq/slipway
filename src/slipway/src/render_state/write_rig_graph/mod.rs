@@ -30,6 +30,7 @@ pub(crate) fn write_rig_graph<W: Write>(
     let max_component_state_row_length = get_max_component_state_row_length(view_model);
     let max_input_size_string_length = get_max_input_size_string_length(view_model);
     let max_output_size_string_length = get_max_output_size_string_length(view_model);
+    let max_call_duration_string_length = get_max_call_duration_string_length(view_model);
 
     for group in view_model.groups.iter() {
         for component in group.components.iter() {
@@ -62,8 +63,7 @@ pub(crate) fn write_rig_graph<W: Write>(
                 },
             )?;
 
-            // write!(f, "{}", COLUMN_PADDING)?;
-            // write!(f, "{}", COLUMN_CHAR)?;
+            write_durations(w, component, max_call_duration_string_length)?;
 
             writeln!(w)?;
         }
@@ -80,7 +80,7 @@ fn get_max_component_state_row_length(view_model: &RigExecutionStateViewModel<'_
         .flat_map(|g| {
             g.components
                 .iter()
-                .map(|c| c.row_index * 2 + c.handle.0.len())
+                .map(|c| c.row_index * 2 + c.handle.0.chars().count())
         })
         .max()
         .unwrap_or(0)
@@ -96,7 +96,11 @@ fn get_max_input_size_string_length(view_model: &RigExecutionStateViewModel<'_>)
                 c.state
                     .execution_input
                     .as_ref()
-                    .map(|i| format_bytes(i.metadata.serialized.len()).len())
+                    .map(|i| {
+                        format_bytes(i.json_metadata.serialized.len())
+                            .chars()
+                            .count()
+                    })
                     .unwrap_or_default()
             })
         })
@@ -114,14 +118,44 @@ fn get_max_output_size_string_length(view_model: &RigExecutionStateViewModel<'_>
                 c.state
                     .output_override
                     .as_ref()
-                    .map(|i| format_bytes(i.metadata.serialized.len()).len())
+                    .map(|i| {
+                        format_bytes(i.json_metadata.serialized.len())
+                            .chars()
+                            .count()
+                    })
                     .unwrap_or(
                         c.state
                             .execution_output
                             .as_ref()
-                            .map(|i| format_bytes(i.metadata.serialized.len()).len())
+                            .map(|i| {
+                                format_bytes(i.json_metadata.serialized.len())
+                                    .chars()
+                                    .count()
+                            })
                             .unwrap_or_default(),
                     )
+            })
+        })
+        .max()
+        .unwrap_or(0)
+}
+
+/// Returns the length of the longest call duration string.
+fn get_max_call_duration_string_length(view_model: &RigExecutionStateViewModel<'_>) -> usize {
+    view_model
+        .groups
+        .iter()
+        .flat_map(|g| {
+            g.components.iter().map(|c| {
+                c.state
+                    .execution_output
+                    .as_ref()
+                    .map(|i| {
+                        format!("{:.0?}", i.run_metadata.call_duration)
+                            .chars()
+                            .count()
+                    })
+                    .unwrap_or_default()
             })
         })
         .max()
@@ -238,7 +272,7 @@ fn write_metadata<F: Write>(
         match metadata_type {
             MetadataType::Hashes => {
                 let input_hash_string =
-                    format!("{}", input.metadata.hash)[..HASH_RENDER_CHAR_COUNT].to_string();
+                    format!("{}", input.json_metadata.hash)[..HASH_RENDER_CHAR_COUNT].to_string();
 
                 if should_underline {
                     write!(
@@ -256,7 +290,7 @@ fn write_metadata<F: Write>(
                 max_input_size_string_length,
                 max_output_size_string_length: _,
             } => {
-                let input_size_string = format_bytes(input.metadata.serialized.len());
+                let input_size_string = format_bytes(input.json_metadata.serialized.len());
                 let padding_required = max_input_size_string_length - input_size_string.len();
                 write!(f, "{:padding_required$}", "")?;
                 if should_underline {
@@ -291,8 +325,8 @@ fn write_metadata<F: Write>(
             if let Some(output_override) = &component.state.output_override {
                 (
                     ComponentColors::HashesIgnored,
-                    &output_override.metadata.hash,
-                    output_override.metadata.serialized.len(),
+                    &output_override.json_metadata.hash,
+                    output_override.json_metadata.serialized.len(),
                 )
             } else {
                 let execution_output = &component
@@ -300,10 +334,10 @@ fn write_metadata<F: Write>(
                     .execution_output
                     .as_ref()
                     .expect("Either execution_output or output_override should exist");
-                let output_hash = &execution_output.metadata.hash;
-                let output_size = execution_output.metadata.serialized.len();
+                let output_hash = &execution_output.json_metadata.hash;
+                let output_size = execution_output.json_metadata.serialized.len();
                 if let Some(execution_input) = &component.state.execution_input {
-                    if execution_input.metadata.hash == execution_output.input_hash_used {
+                    if execution_input.json_metadata.hash == execution_output.input_hash_used {
                         (ComponentColors::HashesMatch, output_hash, output_size)
                     } else {
                         (ComponentColors::HashesDiffer, output_hash, output_size)
@@ -371,6 +405,31 @@ fn write_metadata<F: Write>(
     Ok(())
 }
 
+fn write_durations<F: Write>(
+    f: &mut F,
+    component: &ComponentViewModel<'_>,
+    max_call_duration_string_length: usize,
+) -> Result<(), anyhow::Error> {
+    if let Some(output) = component.state.execution_output.as_ref() {
+        let call_duration_string = format!("{:.0?}", output.run_metadata.call_duration);
+        let overall_duration_string = format!("{:.0?}", output.run_metadata.overall_duration());
+        write!(f, "{}", COLUMN_PADDING)?;
+        write!(f, "{}", COLUMN_CHAR)?;
+        write!(f, "{}", COLUMN_PADDING)?;
+        write!(f, "{}", color::Fg(color::LightBlack))?;
+        write!(
+            f,
+            "{}{} of {}",
+            call_duration_string,
+            " ".repeat(max_call_duration_string_length - call_duration_string.chars().count()),
+            overall_duration_string
+        )?;
+        write!(f, "{}", color::Fg(color::Reset))?;
+    };
+
+    Ok(())
+}
+
 #[derive(Debug)]
 enum ComponentColors {
     Default,
@@ -398,9 +457,12 @@ impl ComponentColors {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use serde_json::json;
     use slipway_lib::{
         utils::ch, ComponentCache, ComponentRigging, Instruction, Rig, RigSession, Rigging,
+        RunMetadata,
     };
 
     use crate::to_view_model::to_view_model;
@@ -555,13 +617,13 @@ mod tests {
 
     #[test]
     fn it_should_indicate_hash_states() {
-        // ■ ant               ┆  44136fa3 ➜ 6b86b273  ┆   2 bytes ➜ 1 byte   ┆
-        // ├─■ bird            ┆  015abd7f ! 5feceb66  ┆   7 bytes ! 1 byte   ┆
-        // └─│─■ cat           ┆  015abd7f ! 5feceb66  ┆   7 bytes ! 1 byte   ┆
-        //   └─┴─■ duck        ┆  53779b51 ➜ 5feceb66  ┆  13 bytes ➜ 1 byte   ┆
-        //       └─◩ elk       ┆  b852cecd             ┆   7 bytes            ┆
-        //         └─◪ fish    ┆           ! eadd1967  ┆           ! 4.88 kb  ┆
-        //           └─◩ goat  ┆  10c2cd2c             ┆   4.89 kb            ┆
+        // ■ ant               ┆  44136fa3 ➜ 6b86b273  ┆   2 bytes ➜ 1 byte   ┆  3s  of 10s
+        // ├─■ bird            ┆  015abd7f ! 5feceb66  ┆   7 bytes ! 1 byte   ┆  3s  of 10s
+        // └─│─■ cat           ┆  015abd7f ! 5feceb66  ┆   7 bytes ! 1 byte
+        //   └─┴─■ duck        ┆  53779b51 ➜ 5feceb66  ┆  13 bytes ➜ 1 byte   ┆  30s of 100s
+        //       └─◩ elk       ┆  b852cecd             ┆   7 bytes
+        //         └─◪ fish    ┆           ! eadd1967  ┆           ! 4.88 kb
+        //           └─◩ goat  ┆  10c2cd2c             ┆   4.89 kb
         let rig = Rig::for_test(Rigging {
             components: [
                 ComponentRigging::for_test("ant", None),
@@ -580,10 +642,24 @@ mod tests {
         let rig_session = RigSession::new(rig, component_cache);
         let mut state = rig_session.initialize().unwrap();
 
+        let metadata = RunMetadata {
+            prepare_input_duration: Duration::from_secs(1),
+            prepare_component_duration: Duration::from_secs(2),
+            call_duration: Duration::from_secs(3),
+            process_output_duration: Duration::from_secs(4),
+        };
+        let metadata_long = RunMetadata {
+            prepare_input_duration: Duration::from_secs(10),
+            prepare_component_duration: Duration::from_secs(20),
+            call_duration: Duration::from_secs(30),
+            process_output_duration: Duration::from_secs(40),
+        };
+
         state = state
             .step(Instruction::SetOutput {
                 handle: ch("ant"),
                 value: json!(0),
+                metadata: metadata.clone(),
             })
             .unwrap();
 
@@ -591,6 +667,7 @@ mod tests {
             .step(Instruction::SetOutput {
                 handle: ch("bird"),
                 value: json!(0),
+                metadata: metadata.clone(),
             })
             .unwrap();
 
@@ -598,6 +675,7 @@ mod tests {
             .step(Instruction::SetOutput {
                 handle: ch("ant"),
                 value: json!(1),
+                metadata: metadata.clone(),
             })
             .unwrap();
 
@@ -619,6 +697,7 @@ mod tests {
             .step(Instruction::SetOutput {
                 handle: ch("duck"),
                 value: json!(0),
+                metadata: metadata_long.clone(),
             })
             .unwrap();
 
@@ -670,7 +749,7 @@ mod tests {
         assert_eq!(
             get_next_line(&mut lines),
             format!(
-                "{}44136fa3{} ➜ {}6b86b273{}  ┆  {} 2 bytes{} ➜ {} 1 byte{}",
+                "{}44136fa3{} ➜ {}6b86b273{}  ┆  {} 2 bytes{} ➜ {} 1 byte{}  ┆  {}3s  of 10s{}",
                 color::Fg(color::Blue),
                 color::Fg(color::Reset),
                 color::Fg(color::Green),
@@ -678,6 +757,8 @@ mod tests {
                 color::Fg(color::Blue),
                 color::Fg(color::Reset),
                 color::Fg(color::Green),
+                color::Fg(color::Reset),
+                color::Fg(color::LightBlack),
                 color::Fg(color::Reset),
             ),
         );
@@ -686,7 +767,7 @@ mod tests {
         assert_eq!(
             get_next_line(&mut lines),
             format!(
-                "{}015abd7f{} ! {}5feceb66{}  ┆  {} 7 bytes{} ! {} 1 byte{}",
+                "{}015abd7f{} ! {}5feceb66{}  ┆  {} 7 bytes{} ! {} 1 byte{}  ┆  {}3s  of 10s{}",
                 color::Fg(color::Blue),
                 color::Fg(color::Reset),
                 color::Fg(color::Red),
@@ -694,6 +775,8 @@ mod tests {
                 color::Fg(color::Blue),
                 color::Fg(color::Reset),
                 color::Fg(color::Red),
+                color::Fg(color::Reset),
+                color::Fg(color::LightBlack),
                 color::Fg(color::Reset),
             ),
         );
@@ -722,7 +805,7 @@ mod tests {
         assert_eq!(
             get_next_line(&mut lines),
             format!(
-                "{}{}53779b51{}{} ➜ {}5feceb66{}  ┆  {}{}13 bytes{}{} ➜ {} 1 byte{}",
+                "{}{}53779b51{}{} ➜ {}5feceb66{}  ┆  {}{}13 bytes{}{} ➜ {} 1 byte{}  ┆  {}30s of 100s{}",
                 color::Fg(color::Blue),
                 style::Underline,
                 style::Reset,
@@ -734,6 +817,8 @@ mod tests {
                 style::Reset,
                 color::Fg(color::Reset),
                 color::Fg(color::Green),
+                color::Fg(color::Reset),
+                color::Fg(color::LightBlack),
                 color::Fg(color::Reset),
             ),
         );

@@ -69,6 +69,7 @@ pub(super) fn handle_command<'rig, W: Write>(
         DebuggerCommand::Render { handle, save } => {
             let handle = get_handle(&handle, state)?;
             super::handle_render_command::handle_render_command(handle, state, save)?;
+            writeln!(w)?;
             HandleCommandResult::Continue(None)
         }
         DebuggerCommand::Exit => HandleCommandResult::Exit,

@@ -1,6 +1,6 @@
 use crate::{
     errors::{RigError, SchemaValidationFailures, ValidationType},
-    RigSession, ComponentState, Schema,
+    ComponentState, RigSession, Schema,
 };
 
 pub(super) fn validate_component_io<'rig>(
@@ -111,7 +111,7 @@ mod tests {
         errors::SchemaValidationFailure,
         test_utils::{schema_any, schema_valid},
         utils::ch,
-        Rig, ComponentCache, ComponentRigging, Instruction, Rigging,
+        ComponentCache, ComponentRigging, Instruction, Rig, Rigging,
     };
 
     use super::*;
@@ -173,6 +173,7 @@ mod tests {
             .step(Instruction::SetOutput {
                 handle: ch("a"),
                 value: json!({ "foo": "bar" }),
+                metadata: Default::default(),
             })
             .unwrap();
 
@@ -223,6 +224,7 @@ mod tests {
         let s_result = s.step(Instruction::SetOutput {
             handle: ch("a"),
             value: json!({ "foo": "bar" }),
+            metadata: Default::default(),
         });
 
         match s_result {
@@ -289,6 +291,7 @@ mod tests {
             .step(Instruction::SetOutput {
                 handle: ch("a"),
                 value: json!({ "foo": "bar" }),
+                metadata: Default::default(),
             })
             .unwrap();
 
@@ -335,6 +338,7 @@ mod tests {
         let s_result = s.step(Instruction::SetOutput {
             handle: ch("a"),
             value: json!({ "foo": "bar" }),
+            metadata: Default::default(),
         });
 
         match s_result {
@@ -410,6 +414,7 @@ mod tests {
             .step(Instruction::SetOutput {
                 handle: ch("a"),
                 value: json!({ "foo": "bar" }),
+                metadata: Default::default(),
             })
             .unwrap();
 
@@ -465,6 +470,7 @@ mod tests {
         let s_result = s.step(Instruction::SetOutput {
             handle: ch("a"),
             value: json!({ "foo": "bar" }),
+            metadata: Default::default(),
         });
 
         match s_result {
