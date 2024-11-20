@@ -1,15 +1,25 @@
 [package]
 name = "slipway-test-component"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 authors.workspace = true
-build = "build.rs"
+
+[dependencies]
+wit-bindgen-rt = { version = "0.35.0", features = ["bitflags"] }
+serde_json = "1.0.104"
+serde = { version = "1.0.180", features = ["derive"] }
 
 [lib]
 crate-type = ["cdylib"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[profile.release]
+codegen-units = 1
+opt-level = "s"
+debug = false
+strip = true
+lto = true
 
-[dependencies]
-serde_json = "1.0.104"
-serde = { version = "1.0.180", features = ["derive"] }
+[package.metadata.component]
+package = "component:slipway-test-component"
+
+[package.metadata.component.dependencies]

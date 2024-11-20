@@ -1,4 +1,4 @@
-use crate::{errors::RigError, RigExecutionState, ComponentHandle, ComponentInput};
+use crate::{errors::RigError, ComponentHandle, ComponentInput, RigExecutionState};
 use std::{
     collections::{HashMap, HashSet},
     rc::Rc,

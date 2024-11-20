@@ -17,8 +17,9 @@ edit = "0.1.5"
 thiserror = { workspace = true }
 semver = { workspace = true }
 jtd = { workspace = true }
-wasmtime = "21.0.1"
-wasi-common = "21.0.1"
+wasmtime = { version = "27.0.0", features = ["component-model"] }
+wasmtime-wasi = { version = "27.0.0" }
+wasi-common = "27.0.0"
 tracing = { workspace = true }
 tracing-subscriber = "0.3.18"
 viuer = { version = "0.8.1", features = ["sixel"] }

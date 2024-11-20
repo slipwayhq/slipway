@@ -1,0 +1,22 @@
+package slipway:core@0.1.0;
+
+world slipway-component {
+    import font: interface {
+        resolve: func(names: list<string>) -> list<u8>;
+        try-resolve: func(names: list<string>) -> option<list<u8>>;
+    }
+
+    import component: interface {
+        run: func(handle: string, input: string) -> result<string, string>;
+    }
+
+    import log: interface {
+        trace: func(message: string);
+        debug: func(message: string);
+        info: func(message: string);
+        warn: func(message: string);
+        error: func(message: string);
+    }
+
+    export step: func(input: string) -> result<string, string>;
+}
