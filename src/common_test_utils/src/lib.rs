@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 pub mod test_server;
 
-pub const SLIPWAY_TEST_COMPONENTS_PATH: &str = "./test-components";
+pub const SLIPWAY_TEST_COMPONENTS_PATH: &str = "./test_components";
 pub const SLIPWAY_TEST_COMPONENT_NAME: &str = "slipway_test_component";
 pub const SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_NAME: &str = "slipway_test_component_json_schema";
 pub const SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_TAR_NAME: &str =

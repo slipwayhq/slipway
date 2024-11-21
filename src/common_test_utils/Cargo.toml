@@ -1,5 +1,5 @@
 [package]
-name = "common-test-utils"
+name = "common_test_utils"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

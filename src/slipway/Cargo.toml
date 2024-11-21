@@ -6,8 +6,8 @@ authors.workspace = true
 
 [dependencies]
 clap = { version = "4.3.22", features = ["derive"] }
-slipway-lib = { path = "../slipway-lib", features = ["unstable-test-utils"] }
-slipway-wasmtime = { path = "../slipway-wasmtime" }
+slipway_lib = { path = "../slipway_lib", features = ["unstable-test-utils"] }
+slipway_wasmtime = { path = "../slipway_wasmtime" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 termion = "4.0.0"
@@ -24,4 +24,4 @@ base64 = "0.22.1"
 image = "0.25.2"
 
 [dev-dependencies]
-common-test-utils = { path = "../common-test-utils" }
+common_test_utils = { path = "../common_test_utils" }

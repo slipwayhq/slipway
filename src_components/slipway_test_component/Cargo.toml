@@ -1,5 +1,5 @@
 [package]
-name = "slipway-test-component"
+name = "slipway_test_component"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

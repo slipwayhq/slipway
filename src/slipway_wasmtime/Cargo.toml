@@ -1,5 +1,5 @@
 [package]
-name = "slipway-wasmtime"
+name = "slipway_wasmtime"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -10,7 +10,7 @@ wasmtime-wasi = { version = "27.0.0" }
 wasi-common = "27.0.0"
 bytes = "1.8.0"
 async-trait = "0.1.83"
-slipway-lib = { path = "../slipway-lib", features = [] }
+slipway_lib = { path = "../slipway_lib", features = [] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }

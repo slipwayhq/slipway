@@ -128,11 +128,9 @@ impl OutputObserver {
     fn log_line(&self, line: String) {
         match self.observer_type {
             OutputObserverType::Stdout => {
-                println!("info: {}", line);
                 info!(component = self.component_handle.to_string(), line);
             }
             OutputObserverType::Stderr => {
-                println!("stderr: {}", line);
                 error!(component = self.component_handle.to_string(), line);
             }
         }

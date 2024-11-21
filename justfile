@@ -7,34 +7,34 @@ test *FLAGS: build
   cd src && cargo nextest run {{FLAGS}}
 
 clean: clean-src clean-components
-  rm -rf test-components
+  rm -rf test_components
 
 build-src configuration="debug":
   cd src && cargo build {{ if configuration == "release" { "--release" } else { "" } }}
 
 build-components configuration="debug": && (assemble-test-components configuration)
-  cp wit/0.1.0/slipway_core.wit src-components/slipway-test-component/wit/world.wit
-  cd src-components && \
-    cargo component build -p slipway-test-component {{ if configuration == "release" { "--release" } else { "" } }}
+  cp wit/0.1.0/slipway_core.wit src_components/slipway_test_component/wit/world.wit
+  cd src_components && \
+    cargo component build -p slipway_test_component {{ if configuration == "release" { "--release" } else { "" } }}
   
 clean-src:
   cd src && cargo clean
 
 clean-components:
-  cd src-components && cargo clean
+  cd src_components && cargo clean
 
 assemble-test-components configuration="debug":
-  rm -rf test-components
+  rm -rf test_components
 
-  mkdir -p test-components/slipway_test_component
-  cp src-components/target/wasm32-wasi/{{configuration}}/slipway_test_component.wasm test-components/slipway_test_component/slipway_component.wasm
-  cp src-components/slipway-test-component/slipway_component.json test-components/slipway_test_component/slipway_component.json
+  mkdir -p test_components/slipway_test_component
+  cp src_components/target/wasm32-wasip1/{{configuration}}/slipway_test_component.wasm test_components/slipway_test_component/slipway_component.wasm
+  cp src_components/slipway_test_component/slipway_component.json test_components/slipway_test_component/slipway_component.json
 
-  mkdir -p test-components/slipway_test_component_json_schema
-  cp src-components/target/wasm32-wasi/{{configuration}}/slipway_test_component.wasm test-components/slipway_test_component_json_schema/slipway_component.wasm
-  cp src-components/alternative-definition-files/slipway_component_json_schema.json test-components/slipway_test_component_json_schema/slipway_component.json
-  cp src-components/alternative-definition-files/input-schema.json test-components/slipway_test_component_json_schema/input-schema.json
-  cp src-components/alternative-definition-files/output-schema.json test-components/slipway_test_component_json_schema/output-schema.json
+  mkdir -p test_components/slipway_test_component_json_schema
+  cp src_components/target/wasm32-wasip1/{{configuration}}/slipway_test_component.wasm test_components/slipway_test_component_json_schema/slipway_component.wasm
+  cp src_components/alternative_definition_files/slipway_component_json_schema.json test_components/slipway_test_component_json_schema/slipway_component.json
+  cp src_components/alternative_definition_files/input_schema.json test_components/slipway_test_component_json_schema/input_schema.json
+  cp src_components/alternative_definition_files/output_schema.json test_components/slipway_test_component_json_schema/output_schema.json
 
-  tar -cf test-components/slipway_test_component_json_schema.tar -C test-components/slipway_test_component_json_schema .
-  cp test-components/slipway_test_component_json_schema.tar test-components/slipway.test_component_json_schema.0.1.2.tar 
+  tar -cf test_components/slipway_test_component_json_schema.tar -C test_components/slipway_test_component_json_schema .
+  cp test_components/slipway_test_component_json_schema.tar test_components/slipway.test_component_json_schema.0.1.2.tar 
