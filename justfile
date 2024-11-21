@@ -14,7 +14,6 @@ build-src configuration="debug":
 
 build-components configuration="debug": && (assemble-test-components configuration)
   cd src-components && \
-    cargo build -p slipway-test-module {{ if configuration == "release" { "--release" } else { "" } }} && \
     cargo component build -p slipway-test-component {{ if configuration == "release" { "--release" } else { "" } }}
   
 clean-src:
@@ -38,16 +37,3 @@ assemble-test-components configuration="debug":
 
   tar -cf test-components/slipway_test_component_json_schema.tar -C test-components/slipway_test_component_json_schema .
   cp test-components/slipway_test_component_json_schema.tar test-components/slipway.test_component_json_schema.0.1.2.tar 
-
-  mkdir -p test-components/slipway_test_module
-  cp src-components/target/wasm32-wasi/{{configuration}}/slipway_test_module.wasm test-components/slipway_test_module/slipway_module.wasm
-  cp src-components/slipway-test-module/slipway_component.json test-components/slipway_test_module/slipway_component.json
-
-  mkdir -p test-components/slipway_test_module_json_schema
-  cp src-components/target/wasm32-wasi/{{configuration}}/slipway_test_module.wasm test-components/slipway_test_module_json_schema/slipway_module.wasm
-  cp src-components/alternative-definition-files/slipway_component_json_schema.json test-components/slipway_test_module_json_schema/slipway_component.json
-  cp src-components/alternative-definition-files/input-schema.json test-components/slipway_test_module_json_schema/input-schema.json
-  cp src-components/alternative-definition-files/output-schema.json test-components/slipway_test_module_json_schema/output-schema.json
-
-  tar -cf test-components/slipway_test_module_json_schema.tar -C test-components/slipway_test_module_json_schema .
-  cp test-components/slipway_test_module_json_schema.tar test-components/slipway.test_module_json_schema.0.1.2.tar 

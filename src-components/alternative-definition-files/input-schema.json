@@ -19,7 +19,7 @@
     },
     {
       "properties": {
-        "type": { "const": "stderr" }
+        "type": { "const": "error" }
       },
       "required": ["type"],
       "additionalProperties": false

@@ -108,12 +108,8 @@ mod tests {
 
         match maybe_state {
             Err(SlipwayDebugError::WasmExecutionFailed(WasmExecutionError::RunCallFailed {
-                message: error_string,
                 source: Some(_),
-            })) => {
-                println!("error_string: {}", error_string);
-                assert!(error_string.contains("slipway-test-component-panic"));
-            }
+            })) => {}
             Err(x) => panic!("Expected WasmExecutionFailed/RunCallFailed, got {:?}", x),
             Ok(_) => panic!("Expected WasmExecutionFailed/RunCallFailed, got result"),
         }

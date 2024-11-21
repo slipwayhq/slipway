@@ -3,7 +3,6 @@ use slipway_lib::{ComponentExecutionData, ComponentHandle, RunMetadata};
 use self::errors::WasmExecutionError;
 
 mod run_as_wasm_component;
-mod run_as_wasm_module;
 
 pub(super) mod errors;
 

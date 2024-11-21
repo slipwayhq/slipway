@@ -1,5 +1,5 @@
 [workspace]
-members = [ "slipway-test-component","slipway-test-module"]
+members = ["slipway-test-component"]
 resolver = "2"
 
 [workspace.package]

@@ -217,10 +217,7 @@ pub(super) fn run_component_wasm(
 
     // Process the result.
     match call_result {
-        Err(e) => Err(WasmExecutionError::RunCallFailed {
-            message: "component step call failed".to_string(),
-            source: Some(e),
-        }),
+        Err(e) => Err(WasmExecutionError::RunCallFailed { source: Some(e) }),
         Ok(r) => match r {
             // The WASM component returned an error from it's `run` function.
             Err(error) => Err(WasmExecutionError::RunCallReturnedError { error }),
