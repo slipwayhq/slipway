@@ -18,5 +18,5 @@ world slipway-component {
         error: func(message: string);
     }
 
-    export step: func(input: string) -> result<string, string>;
+    export run: func(input: string) -> result<string, string>;
 }

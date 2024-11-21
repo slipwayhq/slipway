@@ -1,10 +1,10 @@
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn _export_step_cabi<T: Guest>(arg0: *mut u8, arg1: usize) -> *mut u8 {
+pub unsafe fn _export_run_cabi<T: Guest>(arg0: *mut u8, arg1: usize) -> *mut u8 {
     #[cfg(target_arch = "wasm32")] _rt::run_ctors_once();
     let len0 = arg1;
     let bytes0 = _rt::Vec::from_raw_parts(arg0.cast(), len0, len0);
-    let result1 = T::step(_rt::string_lift(bytes0));
+    let result1 = T::run(_rt::string_lift(bytes0));
     let ptr2 = _RET_AREA.0.as_mut_ptr().cast::<u8>();
     match result1 {
         Ok(e) => {
@@ -30,7 +30,7 @@ pub unsafe fn _export_step_cabi<T: Guest>(arg0: *mut u8, arg1: usize) -> *mut u8
 }
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub unsafe fn __post_return_step<T: Guest>(arg0: *mut u8) {
+pub unsafe fn __post_return_run<T: Guest>(arg0: *mut u8) {
     let l0 = i32::from(*arg0.add(0).cast::<u8>());
     match l0 {
         0 => {
@@ -46,16 +46,16 @@ pub unsafe fn __post_return_step<T: Guest>(arg0: *mut u8) {
     }
 }
 pub trait Guest {
-    fn step(input: _rt::String) -> Result<_rt::String, _rt::String>;
+    fn run(input: _rt::String) -> Result<_rt::String, _rt::String>;
 }
 #[doc(hidden)]
 macro_rules! __export_world_slipway_component_cabi {
     ($ty:ident with_types_in $($path_to_types:tt)*) => {
-        const _ : () = { #[export_name = "step"] unsafe extern "C" fn export_step(arg0 :
-        * mut u8, arg1 : usize,) -> * mut u8 { $($path_to_types)*::
-        _export_step_cabi::<$ty > (arg0, arg1) } #[export_name = "cabi_post_step"] unsafe
-        extern "C" fn _post_return_step(arg0 : * mut u8,) { $($path_to_types)*::
-        __post_return_step::<$ty > (arg0) } };
+        const _ : () = { #[export_name = "run"] unsafe extern "C" fn export_run(arg0 : *
+        mut u8, arg1 : usize,) -> * mut u8 { $($path_to_types)*:: _export_run_cabi::<$ty
+        > (arg0, arg1) } #[export_name = "cabi_post_run"] unsafe extern "C" fn
+        _post_return_run(arg0 : * mut u8,) { $($path_to_types)*:: __post_return_run::<$ty
+        > (arg0) } };
     };
 }
 #[doc(hidden)]
@@ -405,14 +405,14 @@ pub(crate) use __export_slipway_component_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:wit-bindgen:0.35.0:slipway:core@0.1.0:slipway-component:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 407] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x8f\x02\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 406] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x8e\x02\x01A\x02\x01\
 A\x09\x01B\x07\x01ps\x01p}\x01@\x01\x05names\0\0\x01\x04\0\x07resolve\x01\x02\x01\
 k\x01\x01@\x01\x05names\0\0\x03\x04\0\x0btry-resolve\x01\x04\x03\0\x04font\x05\0\
 \x01B\x03\x01j\x01s\x01s\x01@\x02\x06handles\x05inputs\0\0\x04\0\x03run\x01\x01\x03\
 \0\x09component\x05\x01\x01B\x06\x01@\x01\x07messages\x01\0\x04\0\x05trace\x01\0\
 \x04\0\x05debug\x01\0\x04\0\x04info\x01\0\x04\0\x04warn\x01\0\x04\0\x05error\x01\
-\0\x03\0\x03log\x05\x02\x01j\x01s\x01s\x01@\x01\x05inputs\0\x03\x04\0\x04step\x01\
+\0\x03\0\x03log\x05\x02\x01j\x01s\x01s\x01@\x01\x05inputs\0\x03\x04\0\x03run\x01\
 \x04\x04\0$slipway:core/slipway-component@0.1.0\x04\0\x0b\x17\x01\0\x11slipway-c\
 omponent\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.2\
 20.0\x10wit-bindgen-rust\x060.35.0";

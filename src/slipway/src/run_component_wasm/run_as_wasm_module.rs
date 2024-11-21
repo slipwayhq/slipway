@@ -57,9 +57,9 @@ pub(super) fn run_component_wasm(
     // Get the WASM function
     let wasm_func = instance
         .get_func(&mut store, "step")
-        .ok_or(WasmExecutionError::StepFunctionNotFound())?
+        .ok_or(WasmExecutionError::RunFunctionNotFound())?
         .typed::<(), ()>(&store)
-        .map_err(|source| WasmExecutionError::StepFunctionUnexpectedSignature { source })?;
+        .map_err(|source| WasmExecutionError::RunFunctionUnexpectedSignature { source })?;
 
     let prepare_component_duration = prepare_component_start.elapsed();
 
@@ -98,7 +98,7 @@ pub(super) fn run_component_wasm(
             .trim()
             .to_string();
 
-        return Err(WasmExecutionError::StepCallFailed {
+        return Err(WasmExecutionError::RunCallFailed {
             message: match stderr_string.is_empty() {
                 true => "component step call failed".to_string(),
                 false => stderr_string,

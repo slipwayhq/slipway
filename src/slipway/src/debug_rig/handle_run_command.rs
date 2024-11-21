@@ -107,20 +107,22 @@ mod tests {
         let maybe_state = handle_run_command(&handle, &state);
 
         match maybe_state {
-            Err(SlipwayDebugError::WasmExecutionFailed(WasmExecutionError::StepCallFailed {
-                message: stderr_string,
+            Err(SlipwayDebugError::WasmExecutionFailed(WasmExecutionError::RunCallFailed {
+                message: error_string,
                 source: Some(_),
             })) => {
-                assert!(stderr_string.contains("slipway-test-component-panic"));
+                println!("error_string: {}", error_string);
+                assert!(error_string.contains("slipway-test-component-panic"));
             }
-            _ => panic!("Expected WasmExecutionError/StepCallFailed"),
+            Err(x) => panic!("Expected WasmExecutionFailed/RunCallFailed, got {:?}", x),
+            Ok(_) => panic!("Expected WasmExecutionFailed/RunCallFailed, got result"),
         }
     }
 
     #[test]
     fn it_should_handle_component_that_errors() {
         let handle = ch("test_component");
-        let rig = create_rig(&handle, json!({ "type": "stderr" }));
+        let rig = create_rig(&handle, json!({ "type": "error" }));
 
         let component_cache =
             ComponentCache::primed(&rig, &BasicComponentsLoader::default()).unwrap();
@@ -130,13 +132,13 @@ mod tests {
         let maybe_state = handle_run_command(&handle, &state);
 
         match maybe_state {
-            Err(SlipwayDebugError::WasmExecutionFailed(WasmExecutionError::StepCallFailed {
-                message: stderr_string,
-                source: None,
-            })) => {
-                assert_eq!(stderr_string, "slipway-test-component-stderr");
+            Err(SlipwayDebugError::WasmExecutionFailed(
+                WasmExecutionError::RunCallReturnedError { error },
+            )) => {
+                assert_eq!(error, "slipway-test-component-error");
             }
-            _ => panic!("Expected WasmExecutionError/StepCallFailed"),
+            Err(x) => panic!("Expected WasmExecutionFailed/RunCallFailed, got {:?}", x),
+            Ok(_) => panic!("Expected WasmExecutionFailed/RunCallFailed, got result"),
         }
     }
 }

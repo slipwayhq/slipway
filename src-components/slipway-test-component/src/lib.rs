@@ -9,7 +9,7 @@ struct Component;
 
 impl Guest for Component {
     /// Say hello!
-    fn step(input: String) -> Result<String, String> {
+    fn run(input: String) -> Result<String, String> {
         let input: Input = serde_json::from_str(&input).expect("should parse JSON from stdin");
 
         match input {

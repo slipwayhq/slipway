@@ -20,11 +20,13 @@ jtd = { workspace = true }
 wasmtime = { version = "27.0.0", features = ["component-model"] }
 wasmtime-wasi = { version = "27.0.0" }
 wasi-common = "27.0.0"
+bytes = "1.8.0"
 tracing = { workspace = true }
 tracing-subscriber = "0.3.18"
 viuer = { version = "0.8.1", features = ["sixel"] }
 base64 = "0.22.1"
 image = "0.25.2"
+async-trait = "0.1.83"
 
 [dev-dependencies]
 common-test-utils = { path = "../common-test-utils" }
