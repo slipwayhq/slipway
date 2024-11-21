@@ -1,15 +1,10 @@
-use std::time::Instant;
-
 use bytes::Bytes;
-use slipway_lib::{ComponentExecutionData, ComponentHandle, RunMetadata};
+use slipway_lib::ComponentHandle;
 use tracing::{debug, error, info, trace, warn};
 use wasmtime::*;
 use wasmtime_wasi::{
-    HostOutputStream, ResourceTable, StdoutStream, StreamResult, Subscribe, WasiCtx,
-    WasiCtxBuilder, WasiView,
+    HostOutputStream, ResourceTable, StdoutStream, StreamResult, Subscribe, WasiCtx, WasiView,
 };
-
-use super::{errors::WasmExecutionError, RunComponentWasmResult};
 
 // https://docs.wasmtime.dev/api/wasmtime/component/bindgen_examples/index.html
 // https://component-model.bytecodealliance.org/design/wit.html
@@ -19,10 +14,20 @@ wasmtime::component::bindgen!({
     path: "../../wit/0.1.0"
 });
 
-struct SlipwayHost<'a> {
+pub struct SlipwayHost<'a> {
     component_handle: &'a ComponentHandle,
     wasi_ctx: WasiCtx,
     wasi_table: ResourceTable,
+}
+
+impl<'a> SlipwayHost<'a> {
+    pub fn new(component_handle: &'a ComponentHandle, wasi_ctx: WasiCtx) -> Self {
+        Self {
+            component_handle,
+            wasi_ctx,
+            wasi_table: ResourceTable::default(),
+        }
+    }
 }
 
 impl<'a> WasiView for SlipwayHost<'a> {
@@ -73,7 +78,7 @@ impl<'a> log::Host for SlipwayHost<'a> {
 }
 
 #[derive(Copy, Clone, Debug)]
-enum OutputObserverType {
+pub enum OutputObserverType {
     Stdout,
     Stderr,
 }
@@ -134,9 +139,18 @@ impl OutputObserver {
     }
 }
 
-struct OutputObserverStream {
+pub struct OutputObserverStream {
     component_handle: ComponentHandle,
     observer_type: OutputObserverType,
+}
+
+impl OutputObserverStream {
+    pub fn new(component_handle: &ComponentHandle, observer_type: OutputObserverType) -> Self {
+        Self {
+            component_handle: component_handle.clone(),
+            observer_type,
+        }
+    }
 }
 
 impl StdoutStream for OutputObserverStream {
@@ -150,94 +164,5 @@ impl StdoutStream for OutputObserverStream {
 
     fn isatty(&self) -> bool {
         false
-    }
-}
-
-pub(super) fn run_component_wasm(
-    execution_data: ComponentExecutionData,
-    handle: &ComponentHandle,
-) -> Result<RunComponentWasmResult, WasmExecutionError> {
-    let prepare_input_start = Instant::now();
-
-    // Serialize the input JSON to a vector of bytes
-    let input_string = serde_json::to_string(&execution_data.input.value)
-        .map_err(|source| WasmExecutionError::SerializeInputFailed { source })?;
-
-    let prepare_input_duration = prepare_input_start.elapsed();
-    let prepare_component_start = Instant::now();
-
-    let stdout = OutputObserverStream {
-        component_handle: handle.clone(),
-        observer_type: OutputObserverType::Stdout,
-    };
-    let stderr = OutputObserverStream {
-        component_handle: handle.clone(),
-        observer_type: OutputObserverType::Stderr,
-    };
-
-    // Create an engine and store
-    let engine = Engine::default();
-    let mut linker = wasmtime::component::Linker::new(&engine);
-
-    // Add WASI to linker
-    SlipwayComponent::add_to_linker(&mut linker, |state: &mut SlipwayHost| state)?;
-    wasmtime_wasi::add_to_linker_sync(&mut linker)?;
-
-    // Create a WASI context, including stdin and stdout pipes
-    let wasi_ctx = WasiCtxBuilder::new()
-        // .inherit_env()
-        // .expect("temp")
-        // .stdin(Box::new(WritePipe::new_in_memory()))
-        .stdout(stdout)
-        .stderr(stderr)
-        .build();
-
-    // Create a store
-    let mut store = Store::new(
-        &engine,
-        SlipwayHost {
-            component_handle: handle,
-            wasi_ctx,
-            wasi_table: ResourceTable::new(),
-        },
-    );
-
-    let component = wasmtime::component::Component::new(&engine, &*execution_data.wasm_bytes)?;
-
-    let instance = SlipwayComponent::instantiate(&mut store, &component, &linker)?;
-
-    let prepare_component_duration = prepare_component_start.elapsed();
-
-    // Call the function
-    let call_start = Instant::now();
-    let call_result = instance.call_run(&mut store, &input_string);
-    let call_duration = call_start.elapsed();
-
-    let process_output_start = Instant::now();
-
-    // Process the result.
-    match call_result {
-        Err(e) => Err(WasmExecutionError::RunCallFailed { source: Some(e) }),
-        Ok(r) => match r {
-            // The WASM component returned an error from it's `run` function.
-            Err(error) => Err(WasmExecutionError::RunCallReturnedError { error }),
-            Ok(json_string) => {
-                // Deserialize the output JSON
-                let output = serde_json::from_str(&json_string)
-                    .map_err(|source| WasmExecutionError::DeserializeOutputFailed { source })?;
-
-                let process_output_duration = process_output_start.elapsed();
-
-                Ok(RunComponentWasmResult {
-                    output,
-                    metadata: RunMetadata {
-                        prepare_input_duration,
-                        prepare_component_duration,
-                        call_duration,
-                        process_output_duration,
-                    },
-                })
-            }
-        },
     }
 }

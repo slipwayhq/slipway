@@ -12,13 +12,6 @@ serde = { version = "1.0.180", features = ["derive"] }
 [lib]
 crate-type = ["cdylib"]
 
-[profile.release]
-codegen-units = 1
-opt-level = "s"
-debug = false
-strip = true
-lto = true
-
 [package.metadata.component]
 package = "component:slipway-test-component"
 

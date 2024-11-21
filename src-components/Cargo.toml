@@ -8,3 +8,10 @@ edition = "2021"
 authors = ["James Thurley"]
 
 [workspace.dependencies]
+
+[profile.release]
+codegen-units = 1
+opt-level = "s"
+debug = false
+strip = true
+lto = true
