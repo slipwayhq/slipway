@@ -1,7 +1,8 @@
 use slipway_lib::errors::RigError;
+use slipway_wasmtime::WasmExecutionError;
 use thiserror::Error;
 
-use crate::{canvas::CanvasError, run_component_wasm::errors::WasmExecutionError};
+use crate::canvas::CanvasError;
 
 #[derive(Error, Debug)]
 pub enum SlipwayDebugError {

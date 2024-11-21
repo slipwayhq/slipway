@@ -4,7 +4,6 @@ mod canvas;
 mod debug_rig;
 mod launch_rig;
 mod render_state;
-mod run_component_wasm;
 mod to_view_model;
 mod utils;
 

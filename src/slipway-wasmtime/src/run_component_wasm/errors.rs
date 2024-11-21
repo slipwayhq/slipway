@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub(crate) enum WasmExecutionError {
+pub enum WasmExecutionError {
     #[error("WASM execution error.\n{0}")]
     GenericError(#[from] anyhow::Error),
 

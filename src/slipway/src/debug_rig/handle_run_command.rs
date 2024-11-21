@@ -1,7 +1,6 @@
 use slipway_lib::{ComponentHandle, Immutable, Instruction, RigExecutionState};
+use slipway_wasmtime::run_component_wasm;
 use tracing::debug;
-
-use crate::run_component_wasm::run_component_wasm;
 
 use super::errors::SlipwayDebugError;
 
@@ -45,8 +44,7 @@ mod tests {
     };
 
     use common_test_utils::{get_slipway_test_component_path, SLIPWAY_TEST_COMPONENT_NAME};
-
-    use crate::run_component_wasm::errors::WasmExecutionError;
+    use slipway_wasmtime::WasmExecutionError;
 
     use super::*;
 

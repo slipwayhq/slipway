@@ -11,12 +11,12 @@ mod slipway_host;
 
 pub(super) mod errors;
 
-pub(super) struct RunComponentWasmResult {
+pub struct RunComponentWasmResult {
     pub output: serde_json::Value,
     pub metadata: RunMetadata,
 }
 
-pub(super) fn run_component_wasm(
+pub fn run_component_wasm(
     execution_data: ComponentExecutionData,
     handle: &ComponentHandle,
 ) -> Result<RunComponentWasmResult, WasmExecutionError> {
