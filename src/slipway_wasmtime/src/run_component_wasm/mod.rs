@@ -1,13 +1,13 @@
 use std::time::Instant;
 
-use slipway_host::{OutputObserverStream, OutputObserverType, SlipwayComponent, SlipwayHost};
+use host::{OutputObserverStream, OutputObserverType, SlipwayComponent, SlipwayHost};
 use slipway_lib::{ComponentExecutionData, ComponentHandle, RunMetadata};
 use wasmtime::*;
 use wasmtime_wasi::WasiCtxBuilder;
 
 use self::errors::WasmExecutionError;
 
-mod slipway_host;
+mod host;
 
 pub(super) mod errors;
 

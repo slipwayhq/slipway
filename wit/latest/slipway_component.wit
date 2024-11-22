@@ -2,8 +2,7 @@ package slipway:component@0.1.0;
 
 world slipway-component {
     import font: interface {
-        resolve: func(names: list<string>) -> list<u8>;
-        try-resolve: func(names: list<string>) -> option<list<u8>>;
+        try-resolve: func(family: string) -> option<list<u8>>;
     }
 
     import component: interface {

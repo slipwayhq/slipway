@@ -1,0 +1,8 @@
+[package]
+name = "slipway_host"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+fontique = "0.2.0"

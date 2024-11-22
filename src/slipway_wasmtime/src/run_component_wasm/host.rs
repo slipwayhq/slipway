@@ -40,12 +40,8 @@ impl<'a> WasiView for SlipwayHost<'a> {
 }
 
 impl<'a> font::Host for SlipwayHost<'a> {
-    fn resolve(&mut self, _names: Vec<String>) -> Vec<u8> {
-        unimplemented!("font resolve not implemented");
-    }
-
-    fn try_resolve(&mut self, _names: Vec<String>) -> Option<Vec<u8>> {
-        unimplemented!("font try-resolve not implemented");
+    fn try_resolve(&mut self, family: String) -> Option<Vec<u8>> {
+        slipway_host::fonts::try_resolve(family)
     }
 }
 

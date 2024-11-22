@@ -1,5 +1,11 @@
 [workspace]
-members = ["slipway_lib", "slipway", "common_test_utils", "slipway_wasmtime"]
+members = [
+    "slipway_lib",
+    "slipway",
+    "common_test_utils",
+    "slipway_wasmtime",
+    "slipway_host",
+]
 resolver = "2"
 
 [workspace.package]

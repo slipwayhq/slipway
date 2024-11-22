@@ -70,89 +70,15 @@ pub mod font {
     static __FORCE_SECTION_REF: fn() = super::__link_custom_section_describing_imports;
     use super::_rt;
     #[allow(unused_unsafe, clippy::all)]
-    pub fn resolve(names: &[_rt::String]) -> _rt::Vec<u8> {
-        unsafe {
-            #[repr(align(4))]
-            struct RetArea([::core::mem::MaybeUninit<u8>; 8]);
-            let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 8]);
-            let vec1 = names;
-            let len1 = vec1.len();
-            let layout1 = _rt::alloc::Layout::from_size_align_unchecked(
-                vec1.len() * 8,
-                4,
-            );
-            let result1 = if layout1.size() != 0 {
-                let ptr = _rt::alloc::alloc(layout1).cast::<u8>();
-                if ptr.is_null() {
-                    _rt::alloc::handle_alloc_error(layout1);
-                }
-                ptr
-            } else {
-                ::core::ptr::null_mut()
-            };
-            for (i, e) in vec1.into_iter().enumerate() {
-                let base = result1.add(i * 8);
-                {
-                    let vec0 = e;
-                    let ptr0 = vec0.as_ptr().cast::<u8>();
-                    let len0 = vec0.len();
-                    *base.add(4).cast::<usize>() = len0;
-                    *base.add(0).cast::<*mut u8>() = ptr0.cast_mut();
-                }
-            }
-            let ptr2 = ret_area.0.as_mut_ptr().cast::<u8>();
-            #[cfg(target_arch = "wasm32")]
-            #[link(wasm_import_module = "font")]
-            extern "C" {
-                #[link_name = "resolve"]
-                fn wit_import(_: *mut u8, _: usize, _: *mut u8);
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            fn wit_import(_: *mut u8, _: usize, _: *mut u8) {
-                unreachable!()
-            }
-            wit_import(result1, len1, ptr2);
-            let l3 = *ptr2.add(0).cast::<*mut u8>();
-            let l4 = *ptr2.add(4).cast::<usize>();
-            let len5 = l4;
-            if layout1.size() != 0 {
-                _rt::alloc::dealloc(result1.cast(), layout1);
-            }
-            _rt::Vec::from_raw_parts(l3.cast(), len5, len5)
-        }
-    }
-    #[allow(unused_unsafe, clippy::all)]
-    pub fn try_resolve(names: &[_rt::String]) -> Option<_rt::Vec<u8>> {
+    pub fn try_resolve(family: &str) -> Option<_rt::Vec<u8>> {
         unsafe {
             #[repr(align(4))]
             struct RetArea([::core::mem::MaybeUninit<u8>; 12]);
             let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 12]);
-            let vec1 = names;
-            let len1 = vec1.len();
-            let layout1 = _rt::alloc::Layout::from_size_align_unchecked(
-                vec1.len() * 8,
-                4,
-            );
-            let result1 = if layout1.size() != 0 {
-                let ptr = _rt::alloc::alloc(layout1).cast::<u8>();
-                if ptr.is_null() {
-                    _rt::alloc::handle_alloc_error(layout1);
-                }
-                ptr
-            } else {
-                ::core::ptr::null_mut()
-            };
-            for (i, e) in vec1.into_iter().enumerate() {
-                let base = result1.add(i * 8);
-                {
-                    let vec0 = e;
-                    let ptr0 = vec0.as_ptr().cast::<u8>();
-                    let len0 = vec0.len();
-                    *base.add(4).cast::<usize>() = len0;
-                    *base.add(0).cast::<*mut u8>() = ptr0.cast_mut();
-                }
-            }
-            let ptr2 = ret_area.0.as_mut_ptr().cast::<u8>();
+            let vec0 = family;
+            let ptr0 = vec0.as_ptr().cast::<u8>();
+            let len0 = vec0.len();
+            let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
             #[cfg(target_arch = "wasm32")]
             #[link(wasm_import_module = "font")]
             extern "C" {
@@ -163,19 +89,16 @@ pub mod font {
             fn wit_import(_: *mut u8, _: usize, _: *mut u8) {
                 unreachable!()
             }
-            wit_import(result1, len1, ptr2);
-            let l3 = i32::from(*ptr2.add(0).cast::<u8>());
-            if layout1.size() != 0 {
-                _rt::alloc::dealloc(result1.cast(), layout1);
-            }
-            match l3 {
+            wit_import(ptr0.cast_mut(), len0, ptr1);
+            let l2 = i32::from(*ptr1.add(0).cast::<u8>());
+            match l2 {
                 0 => None,
                 1 => {
                     let e = {
-                        let l4 = *ptr2.add(4).cast::<*mut u8>();
-                        let l5 = *ptr2.add(8).cast::<usize>();
-                        let len6 = l5;
-                        _rt::Vec::from_raw_parts(l4.cast(), len6, len6)
+                        let l3 = *ptr1.add(4).cast::<*mut u8>();
+                        let l4 = *ptr1.add(8).cast::<usize>();
+                        let len5 = l4;
+                        _rt::Vec::from_raw_parts(l3.cast(), len5, len5)
                     };
                     Some(e)
                 }
@@ -343,9 +266,7 @@ pub mod log {
     }
 }
 mod _rt {
-    pub use alloc_crate::string::String;
     pub use alloc_crate::vec::Vec;
-    pub use alloc_crate::alloc;
     pub unsafe fn invalid_enum_discriminant<T>() -> T {
         if cfg!(debug_assertions) {
             panic!("invalid enum discriminant")
@@ -353,6 +274,7 @@ mod _rt {
             core::hint::unreachable_unchecked()
         }
     }
+    pub use alloc_crate::string::String;
     pub unsafe fn string_lift(bytes: Vec<u8>) -> String {
         if cfg!(debug_assertions) {
             String::from_utf8(bytes).unwrap()
@@ -372,6 +294,7 @@ mod _rt {
         alloc::dealloc(ptr, layout);
     }
     extern crate alloc as alloc_crate;
+    pub use alloc_crate::alloc;
 }
 /// Generates `#[no_mangle]` functions to export the specified type as the
 /// root implementation of all generated traits.
@@ -403,19 +326,18 @@ macro_rules! __export_slipway_component_impl {
 #[doc(inline)]
 pub(crate) use __export_slipway_component_impl as export;
 #[cfg(target_arch = "wasm32")]
-#[link_section = "component-type:wit-bindgen:0.35.0:slipway:core@0.1.0:slipway-component:encoded world"]
+#[link_section = "component-type:wit-bindgen:0.35.0:slipway:component@0.1.0:slipway-component:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 406] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x8e\x02\x01A\x02\x01\
-A\x09\x01B\x07\x01ps\x01p}\x01@\x01\x05names\0\0\x01\x04\0\x07resolve\x01\x02\x01\
-k\x01\x01@\x01\x05names\0\0\x03\x04\0\x0btry-resolve\x01\x04\x03\0\x04font\x05\0\
-\x01B\x03\x01j\x01s\x01s\x01@\x02\x06handles\x05inputs\0\0\x04\0\x03run\x01\x01\x03\
-\0\x09component\x05\x01\x01B\x06\x01@\x01\x07messages\x01\0\x04\0\x05trace\x01\0\
-\x04\0\x05debug\x01\0\x04\0\x04info\x01\0\x04\0\x04warn\x01\0\x04\0\x05error\x01\
-\0\x03\0\x03log\x05\x02\x01j\x01s\x01s\x01@\x01\x05inputs\0\x03\x04\0\x03run\x01\
-\x04\x04\0$slipway:core/slipway-component@0.1.0\x04\0\x0b\x17\x01\0\x11slipway-c\
-omponent\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.2\
-20.0\x10wit-bindgen-rust\x060.35.0";
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 385] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xf9\x01\x01A\x02\x01\
+A\x09\x01B\x04\x01p}\x01k\0\x01@\x01\x06familys\0\x01\x04\0\x0btry-resolve\x01\x02\
+\x03\0\x04font\x05\0\x01B\x03\x01j\x01s\x01s\x01@\x02\x06handles\x05inputs\0\0\x04\
+\0\x03run\x01\x01\x03\0\x09component\x05\x01\x01B\x06\x01@\x01\x07messages\x01\0\
+\x04\0\x05trace\x01\0\x04\0\x05debug\x01\0\x04\0\x04info\x01\0\x04\0\x04warn\x01\
+\0\x04\0\x05error\x01\0\x03\0\x03log\x05\x02\x01j\x01s\x01s\x01@\x01\x05inputs\0\
+\x03\x04\0\x03run\x01\x04\x04\0)slipway:component/slipway-component@0.1.0\x04\0\x0b\
+\x17\x01\0\x11slipway-component\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0d\
+wit-component\x070.220.0\x10wit-bindgen-rust\x060.35.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {
