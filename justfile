@@ -13,7 +13,7 @@ build-src configuration="debug":
   cd src && cargo build {{ if configuration == "release" { "--release" } else { "" } }}
 
 build-components configuration="debug": && (assemble-test-components configuration)
-  cp wit/0.1.0/slipway_core.wit src_components/slipway_test_component/wit/world.wit
+  cp wit/latest/slipway_component.wit src_components/slipway_test_component/wit/world.wit
   cd src_components && \
     cargo component build -p slipway_test_component {{ if configuration == "release" { "--release" } else { "" } }}
   

@@ -16,6 +16,8 @@ use clap::{Parser, Subcommand};
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
+const WASM_INTERFACE_TYPE_STR: &str = include_str!("../../../wit/latest/slipway_component.wit");
+
 #[derive(Debug, Parser)]
 #[command(name = "slipway")]
 #[command(about = "Slipway CLI", long_about = None)]
@@ -55,6 +57,10 @@ pub(crate) enum Commands {
         #[arg(short, long)]
         log_level: Option<String>,
     },
+
+    /// Output the WIT (WASM Interface Type) definition, for building Slipway components.
+    #[command()]
+    Wit,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -78,6 +84,9 @@ fn main() -> anyhow::Result<()> {
         Commands::Launch { path, log_level } => {
             configure_tracing(log_level);
             launch_rig::launch_rig(&mut std::io::stdout(), path)?;
+        }
+        Commands::Wit => {
+            println!("{}", WASM_INTERFACE_TYPE_STR);
         }
     }
 

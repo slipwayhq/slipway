@@ -11,7 +11,7 @@ use wasmtime_wasi::{
 // https://component-model.bytecodealliance.org/language-support/rust.html
 // https://lib.rs/crates/wasmtime-wasi
 wasmtime::component::bindgen!({
-    path: "../../wit/0.1.0"
+    path: "../../wit/latest"
 });
 
 pub struct SlipwayHost<'a> {

@@ -1,4 +1,4 @@
-package slipway:core@0.1.0;
+package slipway:component@0.1.0;
 
 world slipway-component {
     import font: interface {
