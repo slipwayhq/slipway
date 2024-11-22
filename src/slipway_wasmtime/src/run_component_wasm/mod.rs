@@ -37,24 +37,25 @@ pub fn run_component_wasm(
     SlipwayComponent::add_to_linker(&mut linker, |state: &mut SlipwayHost| state)?;
     wasmtime_wasi::add_to_linker_sync(&mut linker)?;
 
+    // Create a WASI context, including stdin and stdout pipes
     let stdout = OutputObserverStream::new(handle, OutputObserverType::Stdout);
     let stderr = OutputObserverStream::new(handle, OutputObserverType::Stderr);
-
-    // Create a WASI context, including stdin and stdout pipes
     let wasi_ctx = WasiCtxBuilder::new().stdout(stdout).stderr(stderr).build();
 
     // Create a store
     let mut store = Store::new(&engine, SlipwayHost::new(handle, wasi_ctx));
 
+    // Create the component from raw bytes.
     let component = wasmtime::component::Component::new(&engine, &*execution_data.wasm_bytes)?;
 
-    let instance = SlipwayComponent::instantiate(&mut store, &component, &linker)?;
+    // Create the SlipwayComponent instance.
+    let slipway_component = SlipwayComponent::instantiate(&mut store, &component, &linker)?;
 
     let prepare_component_duration = prepare_component_start.elapsed();
 
     // Call the function
     let call_start = Instant::now();
-    let call_result = instance.call_run(&mut store, &input_string);
+    let call_result = slipway_component.call_run(&mut store, &input_string);
     let call_duration = call_start.elapsed();
 
     let process_output_start = Instant::now();
