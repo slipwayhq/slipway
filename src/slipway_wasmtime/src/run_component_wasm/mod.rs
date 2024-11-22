@@ -41,13 +41,7 @@ pub fn run_component_wasm(
     let stderr = OutputObserverStream::new(handle, OutputObserverType::Stderr);
 
     // Create a WASI context, including stdin and stdout pipes
-    let wasi_ctx = WasiCtxBuilder::new()
-        // .inherit_env()
-        // .expect("temp")
-        // .stdin(Box::new(WritePipe::new_in_memory()))
-        .stdout(stdout)
-        .stderr(stderr)
-        .build();
+    let wasi_ctx = WasiCtxBuilder::new().stdout(stdout).stderr(stderr).build();
 
     // Create a store
     let mut store = Store::new(&engine, SlipwayHost::new(handle, wasi_ctx));
