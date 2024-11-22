@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 struct Component;
 
 impl Guest for Component {
-    /// Say hello!
     fn run(input: String) -> Result<String, String> {
         let input: Input = serde_json::from_str(&input).expect("should parse JSON from stdin");
 
