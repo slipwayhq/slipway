@@ -1,20 +1,49 @@
 use std::sync::{Mutex, OnceLock};
 
 use fontique::{
-    Collection, CollectionOptions, GenericFamily, QueryFamily, QueryStatus, SourceCache,
+    Collection, CollectionOptions, FamilyId, GenericFamily, QueryFamily, QueryStatus, SourceCache,
     SourceCacheOptions,
 };
 
 static CONTEXT: OnceLock<Mutex<FontContext>> = OnceLock::new();
 
-pub fn try_resolve(family: String) -> Option<Vec<u8>> {
-    let names: Vec<String> = family.split(",").map(|s| s.trim().to_string()).collect();
+// We can't use the Wasmtime/WIT generated ResolvedFont here, as this crate is host independent,
+// so use our own struct.
+pub struct ResolvedFont {
+    pub family: String,
+    pub data: Vec<u8>,
+}
+
+pub fn try_resolve(font_stack: String) -> Option<ResolvedFont> {
+    let families: Vec<String> = font_stack
+        .split(",")
+        .map(|s| s.trim().to_string())
+        .collect();
 
     let context_mutex = get_context();
     let mut context = context_mutex
         .lock()
         .expect("should be able to acquire lock on font context");
 
+    let result = try_resolve_inner(&mut context, families);
+
+    match result {
+        None => None,
+        Some(resolved) => {
+            let font_info = context
+                .collection
+                .family(resolved.0)
+                .expect("resolved font family should exist");
+
+            Some(ResolvedFont {
+                family: font_info.name().to_string(),
+                data: resolved.1,
+            })
+        }
+    }
+}
+
+fn try_resolve_inner(context: &mut FontContext, names: Vec<String>) -> Option<(FamilyId, Vec<u8>)> {
     let (collection, source_cache) = context.spread();
 
     let mut query = collection.query(source_cache);
@@ -32,9 +61,9 @@ pub fn try_resolve(family: String) -> Option<Vec<u8>> {
 
     query.set_families(families);
 
-    let mut result: Option<Vec<u8>> = None;
+    let mut result: Option<(FamilyId, Vec<u8>)> = None;
     query.matches_with(|font| {
-        result = Some(Vec::from(font.blob.data()));
+        result = Some((font.family.0, Vec::from(font.blob.data())));
         QueryStatus::Stop
     });
 

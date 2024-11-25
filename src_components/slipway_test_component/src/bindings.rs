@@ -69,13 +69,26 @@ pub mod font {
     #[doc(hidden)]
     static __FORCE_SECTION_REF: fn() = super::__link_custom_section_describing_imports;
     use super::_rt;
+    #[derive(Clone)]
+    pub struct ResolvedFont {
+        pub family: _rt::String,
+        pub data: _rt::Vec<u8>,
+    }
+    impl ::core::fmt::Debug for ResolvedFont {
+        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+            f.debug_struct("ResolvedFont")
+                .field("family", &self.family)
+                .field("data", &self.data)
+                .finish()
+        }
+    }
     #[allow(unused_unsafe, clippy::all)]
-    pub fn try_resolve(family: &str) -> Option<_rt::Vec<u8>> {
+    pub fn try_resolve(font_stack: &str) -> Option<ResolvedFont> {
         unsafe {
             #[repr(align(4))]
-            struct RetArea([::core::mem::MaybeUninit<u8>; 12]);
-            let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 12]);
-            let vec0 = family;
+            struct RetArea([::core::mem::MaybeUninit<u8>; 20]);
+            let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 20]);
+            let vec0 = font_stack;
             let ptr0 = vec0.as_ptr().cast::<u8>();
             let len0 = vec0.len();
             let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
@@ -98,7 +111,14 @@ pub mod font {
                         let l3 = *ptr1.add(4).cast::<*mut u8>();
                         let l4 = *ptr1.add(8).cast::<usize>();
                         let len5 = l4;
-                        _rt::Vec::from_raw_parts(l3.cast(), len5, len5)
+                        let bytes5 = _rt::Vec::from_raw_parts(l3.cast(), len5, len5);
+                        let l6 = *ptr1.add(12).cast::<*mut u8>();
+                        let l7 = *ptr1.add(16).cast::<usize>();
+                        let len8 = l7;
+                        ResolvedFont {
+                            family: _rt::string_lift(bytes5),
+                            data: _rt::Vec::from_raw_parts(l6.cast(), len8, len8),
+                        }
                     };
                     Some(e)
                 }
@@ -266,20 +286,20 @@ pub mod log {
     }
 }
 mod _rt {
-    pub use alloc_crate::vec::Vec;
-    pub unsafe fn invalid_enum_discriminant<T>() -> T {
-        if cfg!(debug_assertions) {
-            panic!("invalid enum discriminant")
-        } else {
-            core::hint::unreachable_unchecked()
-        }
-    }
     pub use alloc_crate::string::String;
+    pub use alloc_crate::vec::Vec;
     pub unsafe fn string_lift(bytes: Vec<u8>) -> String {
         if cfg!(debug_assertions) {
             String::from_utf8(bytes).unwrap()
         } else {
             String::from_utf8_unchecked(bytes)
+        }
+    }
+    pub unsafe fn invalid_enum_discriminant<T>() -> T {
+        if cfg!(debug_assertions) {
+            panic!("invalid enum discriminant")
+        } else {
+            core::hint::unreachable_unchecked()
         }
     }
     #[cfg(target_arch = "wasm32")]
@@ -328,16 +348,17 @@ pub(crate) use __export_slipway_component_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:wit-bindgen:0.35.0:slipway:component@0.1.0:slipway-component:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 385] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xf9\x01\x01A\x02\x01\
-A\x09\x01B\x04\x01p}\x01k\0\x01@\x01\x06familys\0\x01\x04\0\x0btry-resolve\x01\x02\
-\x03\0\x04font\x05\0\x01B\x03\x01j\x01s\x01s\x01@\x02\x06handles\x05inputs\0\0\x04\
-\0\x03run\x01\x01\x03\0\x09component\x05\x01\x01B\x06\x01@\x01\x07messages\x01\0\
-\x04\0\x05trace\x01\0\x04\0\x05debug\x01\0\x04\0\x04info\x01\0\x04\0\x04warn\x01\
-\0\x04\0\x05error\x01\0\x03\0\x03log\x05\x02\x01j\x01s\x01s\x01@\x01\x05inputs\0\
-\x03\x04\0\x03run\x01\x04\x04\0)slipway:component/slipway-component@0.1.0\x04\0\x0b\
-\x17\x01\0\x11slipway-component\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0d\
-wit-component\x070.220.0\x10wit-bindgen-rust\x060.35.0";
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 425] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xa1\x02\x01A\x02\x01\
+A\x09\x01B\x06\x01p}\x01r\x02\x06familys\x04data\0\x04\0\x0dresolved-font\x03\0\x01\
+\x01k\x02\x01@\x01\x0afont-stacks\0\x03\x04\0\x0btry-resolve\x01\x04\x03\0\x04fo\
+nt\x05\0\x01B\x03\x01j\x01s\x01s\x01@\x02\x06handles\x05inputs\0\0\x04\0\x03run\x01\
+\x01\x03\0\x09component\x05\x01\x01B\x06\x01@\x01\x07messages\x01\0\x04\0\x05tra\
+ce\x01\0\x04\0\x05debug\x01\0\x04\0\x04info\x01\0\x04\0\x04warn\x01\0\x04\0\x05e\
+rror\x01\0\x03\0\x03log\x05\x02\x01j\x01s\x01s\x01@\x01\x05inputs\0\x03\x04\0\x03\
+run\x01\x04\x04\0)slipway:component/slipway-component@0.1.0\x04\0\x0b\x17\x01\0\x11\
+slipway-component\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-compone\
+nt\x070.220.0\x10wit-bindgen-rust\x060.35.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {
