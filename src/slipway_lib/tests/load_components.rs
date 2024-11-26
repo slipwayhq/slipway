@@ -90,6 +90,7 @@ fn create_rig(component_reference: SlipwayReference) -> (Rig, ComponentHandle) {
                     "value": 42
                 }}),
                 permissions: None,
+                callouts: None,
             },
         )]
         .into_iter()

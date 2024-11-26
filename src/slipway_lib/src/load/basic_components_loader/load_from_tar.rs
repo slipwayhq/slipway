@@ -17,11 +17,11 @@ use super::component_file_loader::{ComponentFileLoader, FileHandle};
 
 type FileEntriesResult = (Box<dyn FileHandle>, HashMap<String, FileEntry>);
 
-pub(super) fn load_from_tar<'rig>(
-    component_reference: &'rig SlipwayReference,
+pub(super) fn load_from_tar(
+    component_reference: &SlipwayReference,
     path: &Path,
     file_loader: Arc<dyn ComponentFileLoader>,
-) -> Result<LoadedComponent<'rig>, ComponentLoadError> {
+) -> Result<LoadedComponent, ComponentLoadError> {
     let file: Box<dyn FileHandle> = file_loader.load_file(path, component_reference)?;
 
     let (mut file, all_files) = get_all_file_entries(file, component_reference, path)?;
@@ -62,8 +62,8 @@ pub(super) fn load_from_tar<'rig>(
         data: loader_data.clone(),
     });
 
-    Ok(LoadedComponent::<'rig>::new(
-        component_reference,
+    Ok(LoadedComponent::new(
+        component_reference.clone(),
         definition_string,
         component_wasm,
         component_json,

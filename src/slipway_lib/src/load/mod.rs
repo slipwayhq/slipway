@@ -12,10 +12,10 @@ const SLIPWAY_COMPONENT_FILE_NAME: &str = "slipway_component.json";
 const SLIPWAY_COMPONENT_WASM_FILE_NAME: &str = "slipway_component.wasm";
 
 pub trait ComponentsLoader {
-    fn load_components<'rig>(
+    fn load_components(
         &self,
-        component_references: &[&'rig SlipwayReference],
-    ) -> Vec<Result<LoadedComponent<'rig>, ComponentLoadError>>;
+        component_references: &[SlipwayReference],
+    ) -> Vec<Result<LoadedComponent, ComponentLoadError>>;
 }
 
 pub trait ComponentWasm {
@@ -26,16 +26,16 @@ pub trait ComponentJson: Send + Sync {
     fn get(&self, file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError>;
 }
 
-pub struct LoadedComponent<'rig> {
-    pub reference: &'rig SlipwayReference,
+pub struct LoadedComponent {
+    pub reference: SlipwayReference,
     pub definition: String,
     pub wasm: Arc<dyn ComponentWasm>,
     pub json: Arc<dyn ComponentJson>,
 }
 
-impl<'rig> LoadedComponent<'rig> {
+impl LoadedComponent {
     pub fn new(
-        reference: &'rig SlipwayReference,
+        reference: SlipwayReference,
         definition: String,
         wasm: Arc<dyn ComponentWasm>,
         json: Arc<dyn ComponentJson>,

@@ -14,11 +14,11 @@ use crate::{
     ComponentJson, ComponentWasm, LoadedComponent, SlipwayReference,
 };
 
-pub(super) fn load_from_directory<'rig>(
-    component_reference: &'rig SlipwayReference,
+pub(super) fn load_from_directory(
+    component_reference: &SlipwayReference,
     path: &Path,
     file_loader: Arc<dyn ComponentFileLoader>,
-) -> Result<LoadedComponent<'rig>, ComponentLoadError> {
+) -> Result<LoadedComponent, ComponentLoadError> {
     let definition_path = path.join(SLIPWAY_COMPONENT_FILE_NAME);
     let definition_string = file_loader.load_text(&definition_path, component_reference)?;
 
@@ -32,8 +32,8 @@ pub(super) fn load_from_directory<'rig>(
         path.to_owned(),
     ));
 
-    Ok(LoadedComponent::<'rig>::new(
-        component_reference,
+    Ok(LoadedComponent::new(
+        component_reference.clone(),
         definition_string,
         component_wasm,
         component_json,

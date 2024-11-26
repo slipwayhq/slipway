@@ -42,12 +42,20 @@ impl ComponentRigging {
     pub fn for_test(name: &str, input: Option<Value>) -> (ComponentHandle, ComponentRigging) {
         (
             ch(name),
-            ComponentRigging {
-                component: SlipwayReference::for_test(name),
-                input,
-                permissions: None,
-            },
+            ComponentRigging::for_test_with_reference(SlipwayReference::for_test(name), input),
         )
+    }
+
+    pub fn for_test_with_reference(
+        reference: SlipwayReference,
+        input: Option<Value>,
+    ) -> ComponentRigging {
+        ComponentRigging {
+            component: reference,
+            input,
+            permissions: None,
+            callouts: None,
+        }
     }
 }
 
@@ -69,6 +77,9 @@ impl<TSchema> Component<TSchema> {
                 description: None,
                 input,
                 output,
+                constants: None,
+                rigging: None,
+                callouts: None,
             },
             _ => unimplemented!("Only registry references are currently supported in this method"),
         }
@@ -157,18 +168,18 @@ impl ComponentJson for NoComponentJson {
 }
 
 impl ComponentsLoader for MockComponentsLoader {
-    fn load_components<'rig>(
+    fn load_components(
         &self,
-        component_references: &[&'rig SlipwayReference],
-    ) -> Vec<Result<LoadedComponent<'rig>, ComponentLoadError>> {
+        component_references: &[SlipwayReference],
+    ) -> Vec<Result<LoadedComponent, ComponentLoadError>> {
         component_references
             .iter()
-            .map(|&component_reference| {
+            .map(|component_reference| {
                 self.schemas
                     .get(component_reference)
                     .map(|(input_schema, output_schema)| {
                         LoadedComponent::new(
-                            component_reference,
+                            component_reference.clone(),
                             serde_json::to_string(&Component::<Schema>::for_test(
                                 component_reference,
                                 input_schema.clone(),
@@ -200,13 +211,13 @@ impl PermissiveMockComponentsLoader {
 }
 
 impl ComponentsLoader for PermissiveMockComponentsLoader {
-    fn load_components<'rig>(
+    fn load_components(
         &self,
-        component_references: &[&'rig SlipwayReference],
-    ) -> Vec<Result<LoadedComponent<'rig>, ComponentLoadError>> {
+        component_references: &[SlipwayReference],
+    ) -> Vec<Result<LoadedComponent, ComponentLoadError>> {
         component_references
             .iter()
-            .map(|&component_reference| {
+            .map(|component_reference| {
                 let component_definition =
                     Component::<Schema>::for_test(component_reference, schema_any(), schema_any());
 
@@ -214,7 +225,7 @@ impl ComponentsLoader for PermissiveMockComponentsLoader {
                     serde_json::to_string(&component_definition).expect("schema should serialize");
 
                 Ok(LoadedComponent::new(
-                    component_reference,
+                    component_reference.clone(),
                     definition_string,
                     Arc::new(NoComponentWasm {}),
                     Arc::new(NoComponentJson {}),

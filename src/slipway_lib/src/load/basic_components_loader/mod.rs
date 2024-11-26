@@ -109,10 +109,10 @@ impl Default for BasicComponentsLoader {
 }
 
 impl ComponentsLoader for BasicComponentsLoader {
-    fn load_components<'rig>(
+    fn load_components(
         &self,
-        component_references: &[&'rig SlipwayReference],
-    ) -> Vec<Result<LoadedComponent<'rig>, ComponentLoadError>> {
+        component_references: &[SlipwayReference],
+    ) -> Vec<Result<LoadedComponent, ComponentLoadError>> {
         component_references
             .iter()
             .map(|r| self.load_component(r))
@@ -121,32 +121,32 @@ impl ComponentsLoader for BasicComponentsLoader {
 }
 
 impl BasicComponentsLoader {
-    fn load_component<'rig>(
+    fn load_component(
         &self,
-        component_reference: &'rig SlipwayReference,
-    ) -> Result<LoadedComponent<'rig>, ComponentLoadError> {
+        component_reference: &SlipwayReference,
+    ) -> Result<LoadedComponent, ComponentLoadError> {
         match component_reference {
             SlipwayReference::Local { path } => {
                 if self.file_loader.is_dir(path) {
-                    return load_from_directory::load_from_directory(
+                    load_from_directory::load_from_directory(
                         component_reference,
                         path,
                         self.file_loader.clone(),
-                    );
+                    )
                 } else if path.extension() == Some("tar".as_ref()) {
-                    return load_from_tar::load_from_tar(
+                    load_from_tar::load_from_tar(
                         component_reference,
                         path,
                         self.file_loader.clone(),
-                    );
+                    )
                 } else {
-                    return Err(ComponentLoadError::new(
+                    Err(ComponentLoadError::new(
                         component_reference,
                         ComponentLoadErrorInner::FileLoadFailed {
                             path: path.to_string_lossy().to_string(),
                             error: "Only directories and tar files are supported".to_string(),
                         },
-                    ));
+                    ))
                 }
             }
             SlipwayReference::Url { url } => {
@@ -154,14 +154,14 @@ impl BasicComponentsLoader {
                     .file_loader
                     .load_file_from_url(url, component_reference)?;
 
-                let local_reference = &SlipwayReference::Local { path: local_path };
+                let local_reference = SlipwayReference::Local { path: local_path };
 
-                let result = self.load_component(local_reference);
+                let result = self.load_component(&local_reference);
 
                 match result {
                     Err(e) => Err(ComponentLoadError::new(component_reference, e.error)),
                     Ok(c) => Ok(LoadedComponent::new(
-                        component_reference,
+                        component_reference.clone(),
                         c.definition,
                         c.wasm,
                         c.json,
@@ -199,14 +199,14 @@ impl BasicComponentsLoader {
                     )
                 })?;
 
-                let url_reference = &SlipwayReference::Url { url: component_url };
+                let url_reference = SlipwayReference::Url { url: component_url };
 
-                let result = self.load_component(url_reference);
+                let result = self.load_component(&url_reference);
 
                 match result {
                     Err(e) => Err(ComponentLoadError::new(component_reference, e.error)),
                     Ok(c) => Ok(LoadedComponent::new(
-                        component_reference,
+                        component_reference.clone(),
                         c.definition,
                         c.wasm,
                         c.json,
@@ -346,7 +346,7 @@ mod tests {
                 file_loader: Arc::new(file_loader),
             };
 
-            let result = loader.load_components(&[&component_reference]);
+            let result = loader.load_components(&[component_reference]);
 
             assert_eq!(result.len(), 1);
 
@@ -428,7 +428,7 @@ mod tests {
                 file_loader: Arc::new(file_loader),
             };
 
-            let result = loader.load_components(&[&component_reference]);
+            let result = loader.load_components(&[component_reference]);
 
             assert_eq!(result.len(), 1);
 
@@ -588,7 +588,7 @@ mod tests {
             component_reference: SlipwayReference,
             data: MockData,
         ) {
-            let result = loader.load_components(&[&component_reference]);
+            let result = loader.load_components(&[component_reference]);
 
             assert_eq!(result.len(), 1);
 

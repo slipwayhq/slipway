@@ -52,13 +52,12 @@ mod tests {
         Rig::for_test(Rigging {
             components: [(
                 component_handle.clone(),
-                ComponentRigging {
-                    component: SlipwayReference::Local {
+                ComponentRigging::for_test_with_reference(
+                    SlipwayReference::Local {
                         path: get_slipway_test_component_path(SLIPWAY_TEST_COMPONENT_NAME),
                     },
-                    input: Some(input),
-                    permissions: None,
-                },
+                    Some(input),
+                ),
             )]
             .into_iter()
             .collect(),

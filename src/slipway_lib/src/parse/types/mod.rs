@@ -67,6 +67,7 @@ pub struct ComponentRigging {
     pub component: SlipwayReference,
     pub input: Option<serde_json::Value>,
     pub permissions: Option<Vec<ComponentPermission>>,
+    pub callouts: Option<HashMap<ComponentHandle, ComponentCallout>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -85,6 +86,13 @@ pub enum ComponentPermission {
     EnvRegex { regex: String },
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ComponentCallout {
+    pub component: SlipwayReference,
+    pub callouts: Option<HashMap<ComponentHandle, ComponentCallout>>,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Component<TSchema> {
@@ -94,6 +102,9 @@ pub struct Component<TSchema> {
     pub description: Option<Description>,
     pub input: TSchema,
     pub output: TSchema,
+    pub constants: Option<serde_json::Value>,
+    pub rigging: Option<Rigging>,
+    pub callouts: Option<HashMap<ComponentHandle, ComponentCallout>>,
 }
 
 impl<TSchema> Component<TSchema> {

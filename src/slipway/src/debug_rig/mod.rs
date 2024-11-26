@@ -159,6 +159,7 @@ pub(crate) fn debug_rig_from_component_file<W: Write>(
                     component: component_reference,
                     input: Some(initial_input),
                     permissions: None,
+                    callouts: None,
                 },
             )]
             .into_iter()

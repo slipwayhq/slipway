@@ -444,27 +444,24 @@ mod tests {
             components: [
                 (
                     ch1.clone(),
-                    ComponentRigging {
-                        component: increment_reference.clone(),
-                        input: Some(json!({ "type": "increment", "value": 1 })),
-                        permissions: None,
-                    },
+                    ComponentRigging::for_test_with_reference(
+                        increment_reference.clone(),
+                        Some(json!({ "type": "increment", "value": 1 })),
+                    ),
                 ),
                 (
                     ch2.clone(),
-                    ComponentRigging {
-                        component: increment_reference.clone(),
-                        input: Some(json!({ "type": "increment", "value": "$$.ch1.value" })),
-                        permissions: None,
-                    },
+                    ComponentRigging::for_test_with_reference(
+                        increment_reference.clone(),
+                        Some(json!({ "type": "increment", "value": "$$.ch1.value" })),
+                    ),
                 ),
                 (
                     ch3.clone(),
-                    ComponentRigging {
-                        component: increment_reference.clone(),
-                        input: Some(json!({ "type": "increment", "value": "$$.ch2.value" })),
-                        permissions: None,
-                    },
+                    ComponentRigging::for_test_with_reference(
+                        increment_reference.clone(),
+                        Some(json!({ "type": "increment", "value": "$$.ch2.value" })),
+                    ),
                 ),
             ]
             .into_iter()
