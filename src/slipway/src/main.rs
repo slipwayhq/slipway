@@ -2,8 +2,8 @@
 
 mod canvas;
 mod debug_rig;
-mod launch_rig;
 mod render_state;
+mod run_rig;
 mod to_view_model;
 mod utils;
 
@@ -28,9 +28,9 @@ pub(crate) struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
-    /// Launch a Slipway rig.
+    /// Run a Slipway rig.
     #[command(arg_required_else_help = true)]
-    Launch {
+    Run {
         path: PathBuf,
 
         #[arg(short, long)]
@@ -81,9 +81,9 @@ fn main() -> anyhow::Result<()> {
             configure_tracing(log_level);
             debug_rig::debug_rig_from_component_file(&mut std::io::stdout(), path, input)?;
         }
-        Commands::Launch { path, log_level } => {
+        Commands::Run { path, log_level } => {
             configure_tracing(log_level);
-            launch_rig::launch_rig(&mut std::io::stdout(), path)?;
+            run_rig::run_rig(&mut std::io::stdout(), path)?;
         }
         Commands::Wit => {
             println!("{}", WASM_INTERFACE_TYPE_STR);

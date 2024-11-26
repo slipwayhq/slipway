@@ -9,7 +9,7 @@ use slipway_wasmtime::run_component_wasm;
 
 use crate::render_state::{write_state, write_state_with_outputs};
 
-pub(super) fn launch_rig<W: Write>(w: &mut W, input: std::path::PathBuf) -> anyhow::Result<()> {
+pub(super) fn run_rig<W: Write>(w: &mut W, input: std::path::PathBuf) -> anyhow::Result<()> {
     writeln!(w, "Launching {}", input.display())?;
     writeln!(w)?;
 
