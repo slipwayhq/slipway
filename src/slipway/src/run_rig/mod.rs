@@ -7,7 +7,10 @@ use slipway_lib::{
 };
 use slipway_wasmtime::run_component_wasm;
 
-use crate::render_state::{write_state, write_state_with_outputs};
+use crate::{
+    render_state::{write_state, write_state_with_outputs},
+    SLIPWAY_COMPONENT_WASM_FILE_NAME,
+};
 
 pub(super) fn run_rig<W: Write>(w: &mut W, input: std::path::PathBuf) -> anyhow::Result<()> {
     writeln!(w, "Launching {}", input.display())?;
@@ -62,8 +65,12 @@ fn run<'rig, W: Write>(
             writeln!(w, r#"Running "{}"..."#, handle)?;
 
             let execution_data = state.get_component_execution_data(handle)?;
+            let input = &execution_data.input.value;
+            let wasm_bytes = execution_data
+                .files
+                .get_bin(SLIPWAY_COMPONENT_WASM_FILE_NAME)?;
 
-            let result = run_component_wasm(execution_data, handle)?;
+            let result = run_component_wasm(handle, input, wasm_bytes)?;
 
             writeln!(w)?;
 

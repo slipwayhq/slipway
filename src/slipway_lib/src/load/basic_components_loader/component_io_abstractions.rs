@@ -16,7 +16,7 @@ pub(super) trait FileHandle: Read + Seek + Send {}
 
 impl FileHandle for File {}
 
-pub(super) trait ComponentFileLoader: Send + Sync {
+pub(super) trait ComponentIOAbstractions: Send + Sync {
     fn load_text(
         &self,
         path: &Path,
@@ -41,15 +41,17 @@ pub(super) trait ComponentFileLoader: Send + Sync {
         component_reference: &SlipwayReference,
     ) -> Result<PathBuf, ComponentLoadError>;
 
+    fn exists(&self, path: &Path) -> bool;
+
     fn is_dir(&self, path: &Path) -> bool;
 }
 
 #[derive(Clone)]
-pub(super) struct ComponentFileLoaderImpl {
+pub(super) struct ComponentIOAbstractionsImpl {
     local_component_cache_path: PathBuf,
 }
 
-impl ComponentFileLoaderImpl {
+impl ComponentIOAbstractionsImpl {
     pub fn new(local_component_cache_path: PathBuf) -> Self {
         Self {
             local_component_cache_path,
@@ -57,7 +59,7 @@ impl ComponentFileLoaderImpl {
     }
 }
 
-impl ComponentFileLoader for ComponentFileLoaderImpl {
+impl ComponentIOAbstractions for ComponentIOAbstractionsImpl {
     fn load_bin(
         &self,
         path: &Path,
@@ -185,6 +187,10 @@ impl ComponentFileLoader for ComponentFileLoaderImpl {
         })?;
 
         Ok(file_path)
+    }
+
+    fn exists(&self, path: &Path) -> bool {
+        path.exists()
     }
 
     fn is_dir(&self, path: &Path) -> bool {

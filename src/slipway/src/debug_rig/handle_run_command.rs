@@ -1,6 +1,8 @@
-use slipway_lib::{ComponentHandle, Immutable, Instruction, RigExecutionState};
+use slipway_lib::{errors::RigError, ComponentHandle, Immutable, Instruction, RigExecutionState};
 use slipway_wasmtime::run_component_wasm;
 use tracing::debug;
+
+use crate::SLIPWAY_COMPONENT_WASM_FILE_NAME;
 
 use super::errors::SlipwayDebugError;
 
@@ -10,7 +12,13 @@ pub(super) fn handle_run_command<'rig>(
 ) -> Result<Immutable<RigExecutionState<'rig>>, SlipwayDebugError> {
     let execution_data = state.get_component_execution_data(handle)?;
 
-    let result = run_component_wasm(execution_data, handle)?;
+    let input = &execution_data.input.value;
+    let wasm_bytes = execution_data
+        .files
+        .get_bin(SLIPWAY_COMPONENT_WASM_FILE_NAME)
+        .map_err(|e| SlipwayDebugError::SlipwayError(RigError::ComponentLoadFailed(e)))?;
+
+    let result = run_component_wasm(handle, input, wasm_bytes)?;
 
     debug!(
         "Prepare input: {:.2?}",

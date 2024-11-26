@@ -8,21 +8,20 @@ use std::{
 use tar::Archive;
 
 use crate::{
-    errors::{ComponentLoadError, ComponentLoadErrorInner},
-    load::{SLIPWAY_COMPONENT_FILE_NAME, SLIPWAY_COMPONENT_WASM_FILE_NAME},
-    ComponentJson, ComponentWasm, LoadedComponent, SlipwayReference,
+    errors::ComponentLoadError, load::SLIPWAY_COMPONENT_FILE_NAME, ComponentFiles, LoadedComponent,
+    SlipwayReference,
 };
 
-use super::component_file_loader::{ComponentFileLoader, FileHandle};
+use super::component_io_abstractions::{ComponentIOAbstractions, FileHandle};
 
 type FileEntriesResult = (Box<dyn FileHandle>, HashMap<String, FileEntry>);
 
 pub(super) fn load_from_tar(
     component_reference: &SlipwayReference,
     path: &Path,
-    file_loader: Arc<dyn ComponentFileLoader>,
+    io_abstractions: Arc<dyn ComponentIOAbstractions>,
 ) -> Result<LoadedComponent, ComponentLoadError> {
-    let file: Box<dyn FileHandle> = file_loader.load_file(path, component_reference)?;
+    let file: Box<dyn FileHandle> = io_abstractions.load_file(path, component_reference)?;
 
     let (mut file, all_files) = get_all_file_entries(file, component_reference, path)?;
 
@@ -54,19 +53,14 @@ pub(super) fn load_from_tar(
         path: path.to_owned(),
     });
 
-    let component_wasm = Arc::new(TarComponentWasm {
-        data: loader_data.clone(),
-    });
-
-    let component_json = Arc::new(TarComponentJson {
+    let component_files = Arc::new(TarComponentFiles {
         data: loader_data.clone(),
     });
 
     Ok(LoadedComponent::new(
         component_reference.clone(),
         definition_string,
-        component_wasm,
-        component_json,
+        component_files,
     ))
 }
 
@@ -77,65 +71,26 @@ struct TarComponentFileLoaderData {
     path: PathBuf,
 }
 
-struct TarComponentWasm {
+struct TarComponentFiles {
     data: Arc<TarComponentFileLoaderData>,
 }
 
-impl ComponentWasm for TarComponentWasm {
-    fn get(&self) -> Result<Arc<Vec<u8>>, ComponentLoadError> {
-        let Some(wasm_entry) = self.data.entries.get(SLIPWAY_COMPONENT_WASM_FILE_NAME) else {
-            return Err(ComponentLoadError::new(
-                &self.data.component_reference,
-                crate::errors::ComponentLoadErrorInner::FileLoadFailed {
-                    path: format!(
-                        "{}:{}",
-                        self.data.path.to_string_lossy(),
-                        SLIPWAY_COMPONENT_WASM_FILE_NAME
-                    ),
-                    error: format!(
-                        "Component TAR file does not contain the WASM file \"{}\"",
-                        SLIPWAY_COMPONENT_WASM_FILE_NAME
-                    ),
-                },
-            ));
-        };
-
-        let mut file = self
-            .data
-            .file
-            .lock()
-            .expect("should be able to acquire lock on tar file");
-
-        let wasm = map_tar_io_error(
-            read_file_entry(wasm_entry, &mut **file),
-            &self.data.component_reference,
-            &self.data.path,
-            SLIPWAY_COMPONENT_WASM_FILE_NAME,
-            "Failed to read component WASM file",
-        )?;
-
-        Ok(Arc::new(wasm))
+impl ComponentFiles for TarComponentFiles {
+    fn get_component_reference(&self) -> &SlipwayReference {
+        &self.data.component_reference
     }
-}
 
-struct TarComponentJson {
-    data: Arc<TarComponentFileLoaderData>,
-}
+    fn get_component_path(&self) -> &Path {
+        &self.data.path
+    }
 
-impl ComponentJson for TarComponentJson {
-    fn get(&self, file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
-        let full_file_name = format!("{}:{}", self.data.path.to_string_lossy(), file_name);
+    fn get_component_file_separator(&self) -> &str {
+        ":"
+    }
+
+    fn try_get_bin(&self, file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
         let Some(entry) = self.data.entries.get(file_name) else {
-            return Err(ComponentLoadError::new(
-                &self.data.component_reference,
-                crate::errors::ComponentLoadErrorInner::FileLoadFailed {
-                    path: full_file_name,
-                    error: format!(
-                        "Component TAR file does not contain the file \"{}\"",
-                        file_name
-                    ),
-                },
-            ));
+            return Ok(None);
         };
 
         let mut file = self
@@ -144,24 +99,37 @@ impl ComponentJson for TarComponentJson {
             .lock()
             .expect("should be able to acquire lock on tar file");
 
-        let buffer = map_io_error(
+        let data = map_tar_io_error(
             read_file_entry(entry, &mut **file),
             &self.data.component_reference,
             &self.data.path,
-            "Failed to read component JSON file",
+            file_name,
+            "Failed to read component binary file",
         )?;
 
-        let json = serde_json::from_slice(&buffer).map_err(|e| {
-            ComponentLoadError::new(
-                &self.data.component_reference,
-                ComponentLoadErrorInner::FileJsonParseFailed {
-                    path: self.data.path.clone(),
-                    error: Arc::new(e),
-                },
-            )
-        })?;
+        Ok(Some(Arc::new(data)))
+    }
 
-        Ok(Arc::new(json))
+    fn try_get_text(&self, file_name: &str) -> Result<Option<Arc<String>>, ComponentLoadError> {
+        let Some(entry) = self.data.entries.get(file_name) else {
+            return Ok(None);
+        };
+
+        let mut file = self
+            .data
+            .file
+            .lock()
+            .expect("should be able to acquire lock on tar file");
+
+        let data = map_tar_io_error(
+            read_file_string_entry(entry, &mut **file),
+            &self.data.component_reference,
+            &self.data.path,
+            file_name,
+            "Failed to read component binary file",
+        )?;
+
+        Ok(Some(Arc::new(data)))
     }
 }
 

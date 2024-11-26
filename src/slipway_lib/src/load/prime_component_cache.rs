@@ -37,7 +37,7 @@ pub(super) fn prime_component_cache(
                 parse_schema(
                     "input",
                     parsed_definition.input,
-                    loaded_component.json.clone(),
+                    loaded_component.files.clone(),
                 ),
             )?;
 
@@ -46,7 +46,7 @@ pub(super) fn prime_component_cache(
                 parse_schema(
                     "output",
                     parsed_definition.output,
-                    loaded_component.json.clone(),
+                    loaded_component.files.clone(),
                 ),
             )?;
 
@@ -73,8 +73,7 @@ pub(super) fn prime_component_cache(
             component_cache.add(
                 &loaded_component.reference,
                 definition,
-                loaded_component.wasm,
-                loaded_component.json,
+                loaded_component.files,
             );
         }
     }

@@ -4,7 +4,7 @@ use anyhow::Context;
 use jsonschema::{SchemaResolver, SchemaResolverError, Validator};
 use url::Url;
 
-use crate::{errors::ComponentLoadErrorInner, ComponentJson};
+use crate::{errors::ComponentLoadErrorInner, ComponentFiles};
 
 use super::types::Schema;
 
@@ -13,7 +13,7 @@ const DEFAULT_BASE_URL_PREFIX: &str = "file:///";
 pub fn parse_schema(
     schema_name: &str,
     schema: serde_json::Value,
-    component_json_loader: Arc<dyn ComponentJson>,
+    component_json_loader: Arc<dyn ComponentFiles>,
 ) -> Result<Schema, ComponentLoadErrorInner> {
     if let Some(serde_json::Value::String(schema_uri)) = schema.get("$schema") {
         if schema_uri.contains("://json-schema.org/") {
@@ -51,7 +51,7 @@ fn parse_json_typedef_schema(
 fn parse_json_schema(
     mut schema: serde_json::Value,
     schema_name: &str,
-    component_json_loader: Arc<dyn ComponentJson>,
+    component_json_loader: Arc<dyn ComponentFiles>,
 ) -> Result<Schema, ComponentLoadErrorInner> {
     if schema.get("$id").is_none() {
         schema["$id"] =
@@ -75,7 +75,7 @@ fn parse_json_schema(
 }
 
 struct ComponentJsonSchemaResolver {
-    component_json_loader: Arc<dyn ComponentJson>,
+    component_json_loader: Arc<dyn ComponentFiles>,
 }
 
 impl SchemaResolver for ComponentJsonSchemaResolver {
@@ -97,7 +97,7 @@ impl SchemaResolver for ComponentJsonSchemaResolver {
                 if let Ok(path) = url.to_file_path() {
                     Ok(self
                         .component_json_loader
-                        .get(path.to_string_lossy().trim_start_matches('/'))?)
+                        .get_json(path.to_string_lossy().trim_start_matches('/'))?)
                 } else {
                     Err(anyhow::anyhow!(format!(
                         "Invalid absolute file path: {}",
@@ -131,8 +131,8 @@ mod tests {
         map: HashMap<String, serde_json::Value>,
     }
 
-    impl ComponentJson for MockComponentJson {
-        fn get(&self, file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
+    impl ComponentFiles for MockComponentJson {
+        fn get_json(&self, file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
             self.map
                 .get(file_name)
                 .map(|value| Arc::new(value.clone()))
@@ -143,6 +143,28 @@ mod tests {
                         error: "file not found in map".to_string(),
                     },
                 ))
+        }
+
+        fn get_component_reference(&self) -> &SlipwayReference {
+            unimplemented!();
+        }
+
+        fn get_component_path(&self) -> &std::path::Path {
+            unimplemented!()
+        }
+
+        fn try_get_bin(
+            &self,
+            _file_name: &str,
+        ) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
+            unimplemented!()
+        }
+
+        fn try_get_text(
+            &self,
+            _file_name: &str,
+        ) -> Result<Option<Arc<String>>, ComponentLoadError> {
+            unimplemented!()
         }
     }
 

@@ -5,10 +5,9 @@ use crate::load::LoadedComponent;
 use crate::utils::ch;
 use crate::Component;
 use crate::ComponentCache;
+use crate::ComponentFiles;
 use crate::ComponentHandle;
-use crate::ComponentJson;
 use crate::ComponentRigging;
-use crate::ComponentWasm;
 use crate::Name;
 use crate::Publisher;
 use crate::Rig;
@@ -130,9 +129,25 @@ pub fn schema_valid(schema_name: &str, json: serde_json::Value) -> Schema {
 
 pub struct MockSchemaResolver {}
 
-impl ComponentJson for MockSchemaResolver {
-    fn get(&self, _file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
+impl ComponentFiles for MockSchemaResolver {
+    fn get_json(&self, _file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
         Ok(Arc::new(json!({})))
+    }
+
+    fn get_component_reference(&self) -> &SlipwayReference {
+        unimplemented!();
+    }
+
+    fn get_component_path(&self) -> &std::path::Path {
+        unimplemented!()
+    }
+
+    fn try_get_bin(&self, _file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
+        unimplemented!()
+    }
+
+    fn try_get_text(&self, _file_name: &str) -> Result<Option<Arc<String>>, ComponentLoadError> {
+        unimplemented!()
     }
 }
 
@@ -151,19 +166,23 @@ impl MockComponentsLoader {
     }
 }
 
-struct NoComponentWasm {}
+struct NoComponentFiles {}
 
-impl ComponentWasm for NoComponentWasm {
-    fn get(&self) -> Result<Arc<Vec<u8>>, ComponentLoadError> {
-        panic!("NoComponentWasm should not be executed");
+impl ComponentFiles for NoComponentFiles {
+    fn get_component_reference(&self) -> &SlipwayReference {
+        unimplemented!();
     }
-}
 
-struct NoComponentJson {}
+    fn get_component_path(&self) -> &std::path::Path {
+        unimplemented!()
+    }
 
-impl ComponentJson for NoComponentJson {
-    fn get(&self, _file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
-        panic!("NoComponentJson should not be executed");
+    fn try_get_bin(&self, _file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
+        unimplemented!()
+    }
+
+    fn try_get_text(&self, _file_name: &str) -> Result<Option<Arc<String>>, ComponentLoadError> {
+        unimplemented!()
     }
 }
 
@@ -186,8 +205,7 @@ impl ComponentsLoader for MockComponentsLoader {
                                 output_schema.clone(),
                             ))
                             .expect("schema should serialize"),
-                            Arc::new(NoComponentWasm {}),
-                            Arc::new(NoComponentJson {}),
+                            Arc::new(NoComponentFiles {}),
                         )
                     })
                     .ok_or(ComponentLoadError::new(
@@ -227,8 +245,7 @@ impl ComponentsLoader for PermissiveMockComponentsLoader {
                 Ok(LoadedComponent::new(
                     component_reference.clone(),
                     definition_string,
-                    Arc::new(NoComponentWasm {}),
-                    Arc::new(NoComponentJson {}),
+                    Arc::new(NoComponentFiles {}),
                 ))
             })
             .collect()

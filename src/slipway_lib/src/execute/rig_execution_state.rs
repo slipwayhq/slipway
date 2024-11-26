@@ -5,8 +5,8 @@ use std::{
 };
 
 use crate::{
-    errors::RigError, RigSession, ComponentHandle, ComponentInput, ComponentPermission, Immutable,
-    Instruction,
+    errors::RigError, ComponentFiles, ComponentHandle, ComponentInput, ComponentPermission,
+    Immutable, Instruction, RigSession,
 };
 
 use super::{component_state::ComponentState, step::step};
@@ -21,9 +21,9 @@ pub struct RigExecutionState<'rig> {
 
 #[derive(Clone)]
 pub struct ComponentExecutionData<'rig> {
-    pub wasm_bytes: Arc<Vec<u8>>,
     pub input: Rc<ComponentInput>,
     pub permissions: Option<&'rig Vec<ComponentPermission>>,
+    pub files: Arc<dyn ComponentFiles>,
 }
 
 impl<'rig> RigExecutionState<'rig> {
@@ -52,13 +52,12 @@ impl<'rig> RigExecutionState<'rig> {
                 })?;
 
         let component_reference = &component_state.rigging.component;
-        let wasm_bytes = self.session.component_cache.get_wasm(component_reference)?;
+        let files = self.session.component_cache.get_files(component_reference);
 
-        let wasm_bytes = Arc::clone(&wasm_bytes);
         let input = Rc::clone(execution_input);
         let permissions = component_state.rigging.permissions.as_ref();
         Ok(ComponentExecutionData {
-            wasm_bytes,
+            files,
             input,
             permissions,
         })

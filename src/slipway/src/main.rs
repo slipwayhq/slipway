@@ -17,6 +17,7 @@ use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
 const WASM_INTERFACE_TYPE_STR: &str = include_str!("../../../wit/latest/slipway_component.wit");
+const SLIPWAY_COMPONENT_WASM_FILE_NAME: &str = "slipway_component.wasm";
 
 #[derive(Debug, Parser)]
 #[command(name = "slipway")]

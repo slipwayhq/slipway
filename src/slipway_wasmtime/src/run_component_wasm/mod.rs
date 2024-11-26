@@ -1,7 +1,7 @@
-use std::time::Instant;
+use std::{sync::Arc, time::Instant};
 
 use host::{OutputObserverStream, OutputObserverType, SlipwayComponent, SlipwayHost};
-use slipway_lib::{ComponentExecutionData, ComponentHandle, RunMetadata};
+use slipway_lib::{ComponentHandle, RunMetadata};
 use wasmtime::*;
 use wasmtime_wasi::WasiCtxBuilder;
 
@@ -17,13 +17,14 @@ pub struct RunComponentWasmResult {
 }
 
 pub fn run_component_wasm(
-    execution_data: ComponentExecutionData,
     handle: &ComponentHandle,
+    input: &serde_json::Value,
+    wasm_bytes: Arc<Vec<u8>>,
 ) -> Result<RunComponentWasmResult, WasmExecutionError> {
     let prepare_input_start = Instant::now();
 
     // Serialize the input JSON to a vector of bytes
-    let input_string = serde_json::to_string(&execution_data.input.value)
+    let input_string = serde_json::to_string(input)
         .map_err(|source| WasmExecutionError::SerializeInputFailed { source })?;
 
     let prepare_input_duration = prepare_input_start.elapsed();
@@ -46,7 +47,7 @@ pub fn run_component_wasm(
     let mut store = Store::new(&engine, SlipwayHost::new(handle, wasi_ctx));
 
     // Create the component from raw bytes.
-    let component = wasmtime::component::Component::new(&engine, &*execution_data.wasm_bytes)?;
+    let component = wasmtime::component::Component::new(&engine, &*wasm_bytes)?;
 
     // Create the SlipwayComponent instance.
     let slipway_component = SlipwayComponent::instantiate(&mut store, &component, &linker)?;

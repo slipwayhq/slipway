@@ -1,7 +1,9 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, path::Path, sync::Arc};
 
 use crate::{
-    errors::ComponentLoadError, utils::ExpectWith, Component, Rig, Schema, SlipwayReference,
+    errors::{ComponentLoadError, ComponentLoadErrorInner},
+    utils::ExpectWith,
+    Component, Rig, Schema, SlipwayReference,
 };
 
 pub(super) mod basic_components_loader;
@@ -9,7 +11,6 @@ mod is_safe_path;
 mod prime_component_cache;
 
 const SLIPWAY_COMPONENT_FILE_NAME: &str = "slipway_component.json";
-const SLIPWAY_COMPONENT_WASM_FILE_NAME: &str = "slipway_component.wasm";
 
 pub trait ComponentsLoader {
     fn load_components(
@@ -18,33 +19,93 @@ pub trait ComponentsLoader {
     ) -> Vec<Result<LoadedComponent, ComponentLoadError>>;
 }
 
-pub trait ComponentWasm {
-    fn get(&self) -> Result<Arc<Vec<u8>>, ComponentLoadError>;
-}
+// We return Arcs here so that the implementors can cache files in memory if they want to.
+// This was originally the case with the WebAssembly files, but currently we don't do any caching.
+pub trait ComponentFiles: Send + Sync {
+    fn get_component_reference(&self) -> &SlipwayReference;
+    fn get_component_path(&self) -> &Path;
+    fn try_get_bin(&self, file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError>;
+    fn try_get_text(&self, file_name: &str) -> Result<Option<Arc<String>>, ComponentLoadError>;
 
-pub trait ComponentJson: Send + Sync {
-    fn get(&self, file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError>;
-}
+    fn try_get_json(
+        &self,
+        file_name: &str,
+    ) -> Result<Option<Arc<serde_json::Value>>, ComponentLoadError> {
+        let buffer = self.try_get_bin(file_name)?;
 
+        match buffer {
+            None => Ok(None),
+            Some(buffer) => {
+                let slice = buffer.as_slice();
+                let json = serde_json::from_slice(slice).map_err(|e| {
+                    ComponentLoadError::new(
+                        self.get_component_reference(),
+                        ComponentLoadErrorInner::FileJsonParseFailed {
+                            path: format!(
+                                "{}{}{}",
+                                self.get_component_path().to_string_lossy(),
+                                self.get_component_file_separator(),
+                                file_name
+                            ),
+                            error: Arc::new(e),
+                        },
+                    )
+                })?;
+                Ok(Some(Arc::new(json)))
+            }
+        }
+    }
+
+    fn get_json(&self, file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
+        self.try_get_json(file_name)?
+            .ok_or_else(|| self.get_file_not_found_error(file_name))
+    }
+
+    fn get_bin(&self, file_name: &str) -> Result<Arc<Vec<u8>>, ComponentLoadError> {
+        self.try_get_bin(file_name)?
+            .ok_or_else(|| self.get_file_not_found_error(file_name))
+    }
+
+    fn get_text(&self, file_name: &str) -> Result<Arc<String>, ComponentLoadError> {
+        self.try_get_text(file_name)?
+            .ok_or_else(|| self.get_file_not_found_error(file_name))
+    }
+
+    fn get_component_file_separator(&self) -> &str {
+        "/"
+    }
+
+    fn get_file_not_found_error(&self, file_name: &str) -> ComponentLoadError {
+        ComponentLoadError::new(
+            self.get_component_reference(),
+            ComponentLoadErrorInner::FileLoadFailed {
+                path: format!(
+                    "{}{}{}",
+                    self.get_component_path().to_string_lossy(),
+                    self.get_component_file_separator(),
+                    file_name
+                ),
+                error: format!("Component does not contain the file \"{}\"", file_name),
+            },
+        )
+    }
+}
 pub struct LoadedComponent {
     pub reference: SlipwayReference,
     pub definition: String,
-    pub wasm: Arc<dyn ComponentWasm>,
-    pub json: Arc<dyn ComponentJson>,
+    pub files: Arc<dyn ComponentFiles>,
 }
 
 impl LoadedComponent {
     pub fn new(
         reference: SlipwayReference,
         definition: String,
-        wasm: Arc<dyn ComponentWasm>,
-        json: Arc<dyn ComponentJson>,
+        files: Arc<dyn ComponentFiles>,
     ) -> Self {
         Self {
             reference,
             definition,
-            wasm,
-            json,
+            files,
         }
     }
 }
@@ -72,15 +133,13 @@ impl ComponentCache {
         &mut self,
         component_reference: &SlipwayReference,
         definition: Component<Schema>,
-        wasm: Arc<dyn ComponentWasm>,
-        json: Arc<dyn ComponentJson>,
+        files: Arc<dyn ComponentFiles>,
     ) {
         self.components.insert(
             component_reference.clone(),
             PrimedComponent {
                 definition: Arc::new(definition),
-                wasm,
-                json,
+                files,
             },
         );
     }
@@ -89,19 +148,8 @@ impl ComponentCache {
         self.get(component_reference).definition.clone()
     }
 
-    pub fn get_wasm(
-        &self,
-        component_reference: &SlipwayReference,
-    ) -> Result<Arc<Vec<u8>>, ComponentLoadError> {
-        self.get(component_reference).wasm.get()
-    }
-
-    pub fn get_json(
-        &self,
-        component_reference: &SlipwayReference,
-        file_name: &str,
-    ) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
-        self.get(component_reference).json.get(file_name)
+    pub fn get_files(&self, component_reference: &SlipwayReference) -> Arc<dyn ComponentFiles> {
+        self.get(component_reference).files.clone()
     }
 
     fn get(&self, component_reference: &SlipwayReference) -> &PrimedComponent {
@@ -113,6 +161,5 @@ impl ComponentCache {
 
 struct PrimedComponent {
     pub definition: Arc<Component<Schema>>,
-    pub wasm: Arc<dyn ComponentWasm>,
-    pub json: Arc<dyn ComponentJson>,
+    pub files: Arc<dyn ComponentFiles>,
 }

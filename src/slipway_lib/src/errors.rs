@@ -1,4 +1,4 @@
-use std::{fmt, path::PathBuf, sync::Arc};
+use std::{fmt, sync::Arc};
 
 use jsonpath_rust::parser::JsonPathParserError;
 use jsonschema::error::ValidationErrorKind;
@@ -113,7 +113,7 @@ pub enum ComponentLoadErrorInner {
 
     #[error("Component JSON file parse failed:\n{path}\n{error}")]
     FileJsonParseFailed {
-        path: PathBuf,
+        path: String,
         error: Arc<serde_json::Error>, // We're using Arc here so that ComponentError can be cloned.
     },
 
