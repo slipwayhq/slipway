@@ -1,5 +1,5 @@
 [package]
-name = "slipway_lib"
+name = "slipway_engine"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

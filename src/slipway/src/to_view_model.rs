@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use slipway_lib::{ComponentHandle, ComponentState, RigExecutionState};
+use slipway_engine::{ComponentHandle, ComponentState, RigExecutionState};
 
 pub(super) fn to_view_model<'state, 'rig>(
     state: &'state RigExecutionState<'rig>,
@@ -131,7 +131,7 @@ pub(super) struct ComponentViewModel<'rig> {
 mod tests {
     use super::*;
     use serde_json::json;
-    use slipway_lib::{utils::ch, ComponentCache, ComponentRigging, Rig, RigSession, Rigging};
+    use slipway_engine::{utils::ch, ComponentCache, ComponentRigging, Rig, RigSession, Rigging};
 
     fn get_component<'rig>(
         view_model: &'rig RigExecutionStateViewModel<'rig>,

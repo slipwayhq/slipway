@@ -6,7 +6,7 @@ authors.workspace = true
 
 [dependencies]
 fontique = "0.2.0"
-slipway_lib = { path = "../slipway_lib", features = [] }
+slipway_engine = { path = "../slipway_engine", features = [] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

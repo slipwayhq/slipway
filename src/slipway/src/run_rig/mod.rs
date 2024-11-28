@@ -1,8 +1,8 @@
 use std::io::Write;
 
 use anyhow::Context;
+use slipway_engine::{parse_rig, BasicComponentsLoader, ComponentCache, RigSession};
 use slipway_host::run::RunEventHandler;
-use slipway_lib::{parse_rig, BasicComponentsLoader, ComponentCache, RigSession};
 
 use crate::{
     component_runners::get_component_runners,

@@ -2,7 +2,7 @@ mod write_rig_graph;
 
 use std::io::Write;
 
-use slipway_lib::RigExecutionState;
+use slipway_engine::RigExecutionState;
 
 use crate::{
     canvas::render_canvas_if_exists,

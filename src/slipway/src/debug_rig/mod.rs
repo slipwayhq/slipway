@@ -6,7 +6,7 @@ use std::io::{self, Write};
 use std::str::FromStr;
 use termion::{color, style};
 
-use slipway_lib::{
+use slipway_engine::{
     parse_rig, BasicComponentsLoader, ComponentCache, ComponentHandle, ComponentRigging, Name,
     Publisher, Rig, RigSession, Rigging, SlipwayReference,
 };

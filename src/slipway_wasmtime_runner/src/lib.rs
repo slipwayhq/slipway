@@ -5,7 +5,7 @@ use slipway_host::{
     run::{errors::RunComponentError, ComponentRunner},
     RunComponentResult, SLIPWAY_COMPONENT_WASM_FILE_NAME,
 };
-use slipway_lib::{errors::ComponentLoadError, ComponentExecutionData, ComponentHandle};
+use slipway_engine::{errors::ComponentLoadError, ComponentExecutionData, ComponentHandle};
 
 pub const WASMTIME_COMPONENT_RUNNER_IDENTIFIER: &str = "Wasmtime";
 pub struct WasmComponentRunner {}

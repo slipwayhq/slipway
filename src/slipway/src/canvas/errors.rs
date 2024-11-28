@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use image::ImageError;
-use slipway_lib::ComponentHandle;
+use slipway_engine::ComponentHandle;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

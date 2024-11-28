@@ -1,5 +1,5 @@
 use bytes::Bytes;
-use slipway_lib::ComponentHandle;
+use slipway_engine::ComponentHandle;
 use tracing::{debug, error, info, trace, warn};
 use wasmtime::*;
 use wasmtime_wasi::{

@@ -1,9 +1,9 @@
 [workspace]
 members = [
-    "slipway_lib",
+    "slipway_engine",
     "slipway",
     "common_test_utils",
-    "slipway_wasmtime",
+    "slipway_wasmtime_runner",
     "slipway_host",
 ]
 resolver = "2"

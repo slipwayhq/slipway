@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use slipway_lib::{ComponentHandle, RigExecutionState};
+use slipway_engine::{ComponentHandle, RigExecutionState};
 
 use crate::canvas::render_canvas;
 

@@ -1,4 +1,4 @@
-use slipway_lib::errors::ComponentLoadError;
+use slipway_engine::errors::ComponentLoadError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

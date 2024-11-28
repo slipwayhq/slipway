@@ -6,7 +6,7 @@ use common_test_utils::{
     SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_NAME, SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_TAR_NAME,
     SLIPWAY_TEST_COMPONENT_NAME,
 };
-use slipway_lib::{
+use slipway_engine::{
     errors::{RigError, ValidationType},
     utils::ch,
     BasicComponentsLoader, ComponentCache, ComponentHandle, ComponentRigging, Instruction, Rig,

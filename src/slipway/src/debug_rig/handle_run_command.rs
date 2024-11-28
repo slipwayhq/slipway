@@ -1,5 +1,5 @@
 use slipway_host::run::ComponentRunner;
-use slipway_lib::{ComponentHandle, Immutable, Instruction, RigExecutionState};
+use slipway_engine::{ComponentHandle, Immutable, Instruction, RigExecutionState};
 use tracing::debug;
 
 use super::errors::SlipwayDebugError;
@@ -38,13 +38,13 @@ pub(super) fn handle_run_command<'rig>(
 mod tests {
     use serde_json::json;
     use slipway_host::run::{errors::RunComponentError, RunError};
-    use slipway_lib::{
+    use slipway_engine::{
         utils::ch, BasicComponentsLoader, ComponentCache, ComponentRigging, Rig, RigSession,
         Rigging, SlipwayReference,
     };
 
     use common_test_utils::{get_slipway_test_component_path, SLIPWAY_TEST_COMPONENT_NAME};
-    use slipway_wasmtime::WASMTIME_COMPONENT_RUNNER_IDENTIFIER;
+    use slipway_wasmtime_runner::WASMTIME_COMPONENT_RUNNER_IDENTIFIER;
 
     use crate::{component_runners::get_component_runners, host_error::HostError};
 

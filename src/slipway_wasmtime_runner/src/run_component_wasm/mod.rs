@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Instant};
 
 use host::{OutputObserverStream, OutputObserverType, SlipwayComponent, SlipwayHost};
 use slipway_host::{run::errors::RunComponentError, RunComponentResult};
-use slipway_lib::{ComponentHandle, RunMetadata};
+use slipway_engine::{ComponentHandle, RunMetadata};
 use wasmtime::*;
 use wasmtime_wasi::WasiCtxBuilder;
 

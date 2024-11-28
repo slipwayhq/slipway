@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use slipway_host::run::ComponentRunner;
-use slipway_lib::{ComponentHandle, Immutable, RigExecutionState};
+use slipway_engine::{ComponentHandle, Immutable, RigExecutionState};
 
 use crate::to_view_model::to_shortcuts;
 
@@ -113,7 +113,7 @@ fn get_handle<'rig>(
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use slipway_lib::{
+    use slipway_engine::{
         utils::ch, BasicComponentsLoader, ComponentCache, ComponentRigging, ComponentState, Rig,
         RigSession, Rigging, SlipwayReference,
     };

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use base64::{prelude::BASE64_STANDARD, Engine};
 use image::{DynamicImage, ImageBuffer, RgbaImage};
-use slipway_lib::ComponentHandle;
+use slipway_engine::ComponentHandle;
 
 pub use errors::CanvasError;
 

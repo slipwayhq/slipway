@@ -1,5 +1,5 @@
 use slipway_host::run::{errors::RunComponentError, RunError};
-use slipway_lib::errors::RigError;
+use slipway_engine::errors::RigError;
 use thiserror::Error;
 
 use crate::{canvas::CanvasError, host_error::HostError};

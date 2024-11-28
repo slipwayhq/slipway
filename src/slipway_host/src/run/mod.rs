@@ -1,7 +1,7 @@
 use errors::RunComponentError;
 use thiserror::Error;
 
-use slipway_lib::{
+use slipway_engine::{
     errors::{ComponentLoadError, RigError},
     ComponentExecutionData, ComponentHandle, Immutable, Instruction, RigExecutionState, RigSession,
 };

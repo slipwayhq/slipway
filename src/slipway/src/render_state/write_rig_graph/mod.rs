@@ -322,7 +322,7 @@ fn write_metadata<F: Write>(
     }
 
     if component.state.output().is_some() {
-        let (color, hash, size): (ComponentColors, &slipway_lib::Hash, usize) = {
+        let (color, hash, size): (ComponentColors, &slipway_engine::Hash, usize) = {
             if let Some(output_override) = &component.state.output_override {
                 (
                     ComponentColors::HashesIgnored,
@@ -461,7 +461,7 @@ mod tests {
     use std::time::Duration;
 
     use serde_json::json;
-    use slipway_lib::{
+    use slipway_engine::{
         utils::ch, ComponentCache, ComponentRigging, Instruction, Rig, RigSession, Rigging,
         RunMetadata,
     };

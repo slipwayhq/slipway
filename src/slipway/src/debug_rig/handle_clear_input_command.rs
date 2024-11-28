@@ -1,4 +1,4 @@
-use slipway_lib::{RigExecutionState, ComponentHandle, Immutable, Instruction};
+use slipway_engine::{RigExecutionState, ComponentHandle, Immutable, Instruction};
 
 use super::errors::SlipwayDebugError;
 

@@ -1,4 +1,4 @@
-use slipway_lib::RunMetadata;
+use slipway_engine::RunMetadata;
 
 pub mod fonts;
 

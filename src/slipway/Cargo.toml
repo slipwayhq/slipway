@@ -6,9 +6,11 @@ authors.workspace = true
 
 [dependencies]
 clap = { version = "4.3.22", features = ["derive"] }
-slipway_lib = { path = "../slipway_lib", features = ["unstable-test-utils"] }
+slipway_engine = { path = "../slipway_engine", features = [
+    "unstable-test-utils",
+] }
 slipway_host = { path = "../slipway_host" }
-slipway_wasmtime = { path = "../slipway_wasmtime" }
+slipway_wasmtime_runner = { path = "../slipway_wasmtime_runner" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 termion = "4.0.0"
