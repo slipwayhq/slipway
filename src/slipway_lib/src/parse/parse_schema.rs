@@ -153,6 +153,10 @@ mod tests {
             unimplemented!()
         }
 
+        fn exists(&self, _file_name: &str) -> Result<bool, ComponentLoadError> {
+            unimplemented!()
+        }
+
         fn try_get_bin(
             &self,
             _file_name: &str,

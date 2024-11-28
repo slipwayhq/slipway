@@ -1,15 +1,13 @@
 use std::io::Write;
 
 use anyhow::Context;
-use slipway_lib::{
-    parse_rig, BasicComponentsLoader, ComponentCache, ComponentHandle, Immutable, Instruction,
-    RigExecutionState, RigSession,
-};
-use slipway_wasmtime::run_component_wasm;
+use slipway_host::run::RunEventHandler;
+use slipway_lib::{parse_rig, BasicComponentsLoader, ComponentCache, RigSession};
 
 use crate::{
+    component_runners::get_component_runners,
+    host_error::HostError,
     render_state::{write_state, write_state_with_outputs},
-    SLIPWAY_COMPONENT_WASM_FILE_NAME,
 };
 
 pub(super) fn run_rig<W: Write>(w: &mut W, input: std::path::PathBuf) -> anyhow::Result<()> {
@@ -22,65 +20,52 @@ pub(super) fn run_rig<W: Write>(w: &mut W, input: std::path::PathBuf) -> anyhow:
 
     let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::default())?;
     let session = RigSession::new(rig, component_cache);
-    let state = session.initialize()?;
 
-    run(w, &session, state)?;
+    let mut event_handler = SlipwayRunEventHandler { w };
+    let component_runners = get_component_runners();
+
+    slipway_host::run::run_rig(&session, &mut event_handler, &component_runners)?;
 
     Ok(())
 }
 
-fn run<'rig, W: Write>(
-    w: &mut W,
-    _session: &'rig RigSession,
-    mut state: Immutable<RigExecutionState<'rig>>,
-) -> anyhow::Result<()> {
-    loop {
-        let ready_components: Vec<&ComponentHandle> = state
-            .component_states
-            .iter()
-            .filter_map(|(&handle, component_state)| {
-                if component_state.execution_input.is_some() && component_state.output().is_none() {
-                    Some(handle)
-                } else {
-                    None
-                }
-            })
-            .collect();
+struct SlipwayRunEventHandler<'w, W: Write> {
+    w: &'w mut W,
+}
 
-        if ready_components.is_empty() {
-            writeln!(w, "No more components to run.")?;
-            writeln!(w)?;
-            write_state_with_outputs(
-                w,
-                &state,
-                crate::render_state::PrintComponentOutputsType::LeafComponents,
-            )?;
-
-            break;
-        }
-
-        write_state(w, &state)?;
-
-        for handle in ready_components {
-            writeln!(w, r#"Running "{}"..."#, handle)?;
-
-            let execution_data = state.get_component_execution_data(handle)?;
-            let input = &execution_data.input.value;
-            let wasm_bytes = execution_data
-                .files
-                .get_bin(SLIPWAY_COMPONENT_WASM_FILE_NAME)?;
-
-            let result = run_component_wasm(handle, input, wasm_bytes)?;
-
-            writeln!(w)?;
-
-            state = state.step(Instruction::SetOutput {
-                handle: handle.clone(),
-                value: result.output,
-                metadata: result.metadata,
-            })?;
-        }
+impl<'rig, 'w, W: Write> RunEventHandler<'rig, HostError> for SlipwayRunEventHandler<'w, W> {
+    fn handle_component_run_start(
+        &mut self,
+        event: slipway_host::run::ComponentRunStartEvent<'rig>,
+    ) -> Result<(), HostError> {
+        writeln!(self.w, r#"Running "{}"..."#, event.component_handle)?;
+        Ok(())
     }
 
-    Ok(())
+    fn handle_component_run_end(
+        &mut self,
+        _event: slipway_host::run::ComponentRunEndEvent<'rig>,
+    ) -> Result<(), HostError> {
+        writeln!(self.w)?;
+        Ok(())
+    }
+
+    fn handle_state_changed<'state>(
+        &mut self,
+        event: slipway_host::run::StateChangeEvent<'rig, 'state>,
+    ) -> Result<(), HostError> {
+        if event.is_complete {
+            writeln!(self.w, "No more components to run.")?;
+            writeln!(self.w)?;
+            write_state_with_outputs(
+                self.w,
+                event.state,
+                crate::render_state::PrintComponentOutputsType::LeafComponents,
+            )?;
+        } else {
+            write_state(self.w, event.state)?;
+        }
+
+        Ok(())
+    }
 }

@@ -142,6 +142,10 @@ impl ComponentFiles for MockSchemaResolver {
         unimplemented!()
     }
 
+    fn exists(&self, _file_name: &str) -> Result<bool, ComponentLoadError> {
+        unimplemented!()
+    }
+
     fn try_get_bin(&self, _file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
         unimplemented!()
     }
@@ -174,6 +178,10 @@ impl ComponentFiles for NoComponentFiles {
     }
 
     fn get_component_path(&self) -> &std::path::Path {
+        unimplemented!()
+    }
+
+    fn exists(&self, _file_name: &str) -> Result<bool, ComponentLoadError> {
         unimplemented!()
     }
 

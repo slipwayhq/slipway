@@ -1,24 +1,15 @@
-use slipway_lib::{errors::RigError, ComponentHandle, Immutable, Instruction, RigExecutionState};
-use slipway_wasmtime::run_component_wasm;
+use slipway_host::run::ComponentRunner;
+use slipway_lib::{ComponentHandle, Immutable, Instruction, RigExecutionState};
 use tracing::debug;
-
-use crate::SLIPWAY_COMPONENT_WASM_FILE_NAME;
 
 use super::errors::SlipwayDebugError;
 
 pub(super) fn handle_run_command<'rig>(
     handle: &'rig ComponentHandle,
     state: &RigExecutionState<'rig>,
+    component_runners: &[Box<dyn ComponentRunner<'rig>>],
 ) -> Result<Immutable<RigExecutionState<'rig>>, SlipwayDebugError> {
-    let execution_data = state.get_component_execution_data(handle)?;
-
-    let input = &execution_data.input.value;
-    let wasm_bytes = execution_data
-        .files
-        .get_bin(SLIPWAY_COMPONENT_WASM_FILE_NAME)
-        .map_err(|e| SlipwayDebugError::SlipwayError(RigError::ComponentLoadFailed(e)))?;
-
-    let result = run_component_wasm(handle, input, wasm_bytes)?;
+    let result = slipway_host::run::run_component(handle, state, component_runners)?;
 
     debug!(
         "Prepare input: {:.2?}",
@@ -46,13 +37,16 @@ pub(super) fn handle_run_command<'rig>(
 #[cfg(test)]
 mod tests {
     use serde_json::json;
+    use slipway_host::run::{errors::RunComponentError, RunError};
     use slipway_lib::{
         utils::ch, BasicComponentsLoader, ComponentCache, ComponentRigging, Rig, RigSession,
         Rigging, SlipwayReference,
     };
 
     use common_test_utils::{get_slipway_test_component_path, SLIPWAY_TEST_COMPONENT_NAME};
-    use slipway_wasmtime::WasmExecutionError;
+    use slipway_wasmtime::WASMTIME_COMPONENT_RUNNER_IDENTIFIER;
+
+    use crate::{component_runners::get_component_runners, host_error::HostError};
 
     use super::*;
 
@@ -81,8 +75,9 @@ mod tests {
             ComponentCache::primed(&rig, &BasicComponentsLoader::default()).unwrap();
         let rig_session = RigSession::new(rig, component_cache);
         let mut state = rig_session.initialize().unwrap();
+        let component_runners = get_component_runners();
 
-        state = handle_run_command(&handle, &state).unwrap();
+        state = handle_run_command(&handle, &state, &component_runners).unwrap();
 
         let component_state = state
             .component_states
@@ -108,12 +103,15 @@ mod tests {
             ComponentCache::primed(&rig, &BasicComponentsLoader::default()).unwrap();
         let rig_session = RigSession::new(rig, component_cache);
         let state = rig_session.initialize().unwrap();
+        let component_runners = get_component_runners();
 
-        let maybe_state = handle_run_command(&handle, &state);
+        let maybe_state = handle_run_command(&handle, &state, &component_runners);
 
         match maybe_state {
-            Err(SlipwayDebugError::WasmExecutionFailed(WasmExecutionError::RunCallFailed {
-                source: Some(_),
+            Err(SlipwayDebugError::RunError(RunError::<HostError>::RunComponentFailed {
+                component_handle: _,
+                component_runner: _,
+                error: RunComponentError::RunCallFailed { source: Some(_) },
             })) => {}
             Err(x) => panic!("Expected WasmExecutionFailed/RunCallFailed, got {:?}", x),
             Ok(_) => panic!("Expected WasmExecutionFailed/RunCallFailed, got result"),
@@ -129,13 +127,18 @@ mod tests {
             ComponentCache::primed(&rig, &BasicComponentsLoader::default()).unwrap();
         let rig_session = RigSession::new(rig, component_cache);
         let state = rig_session.initialize().unwrap();
+        let component_runners = get_component_runners();
 
-        let maybe_state = handle_run_command(&handle, &state);
+        let maybe_state = handle_run_command(&handle, &state, &component_runners);
 
         match maybe_state {
-            Err(SlipwayDebugError::WasmExecutionFailed(
-                WasmExecutionError::RunCallReturnedError { error },
-            )) => {
+            Err(SlipwayDebugError::RunError(RunError::<HostError>::RunComponentFailed {
+                component_handle,
+                component_runner,
+                error: RunComponentError::RunCallReturnedError { error },
+            })) => {
+                assert_eq!(component_handle, handle);
+                assert_eq!(component_runner, WASMTIME_COMPONENT_RUNNER_IDENTIFIER);
                 assert_eq!(error, "slipway-test-component-error");
             }
             Err(x) => panic!("Expected WasmExecutionFailed/RunCallFailed, got {:?}", x),

@@ -1,5 +1,6 @@
 use std::io::Write;
 
+use slipway_host::run::ComponentRunner;
 use slipway_lib::{ComponentHandle, Immutable, RigExecutionState};
 
 use crate::to_view_model::to_shortcuts;
@@ -13,6 +14,7 @@ pub(super) fn handle_command<'rig, W: Write>(
     debug_cli: DebugCli,
     state: &RigExecutionState<'rig>,
     json_editor: &impl JsonEditor,
+    component_runners: &[Box<dyn ComponentRunner<'rig>>],
 ) -> anyhow::Result<HandleCommandResult<'rig>> {
     let result = match debug_cli.command {
         DebuggerCommand::Print {} => {
@@ -21,7 +23,8 @@ pub(super) fn handle_command<'rig, W: Write>(
         }
         DebuggerCommand::Run { handle } => {
             let handle = get_handle(&handle, state)?;
-            let new_state = super::handle_run_command::handle_run_command(handle, state)?;
+            let new_state =
+                super::handle_run_command::handle_run_command(handle, state, component_runners)?;
             HandleCommandResult::Continue(Some(new_state))
         }
         DebuggerCommand::Input { handle, clear } => {
@@ -116,6 +119,8 @@ mod tests {
     };
 
     use common_test_utils::{get_slipway_test_component_path, SLIPWAY_TEST_COMPONENT_NAME};
+
+    use crate::component_runners::get_component_runners;
 
     use super::*;
 
@@ -499,7 +504,8 @@ mod tests {
         state: &RigExecutionState<'rig>,
         json_editor: &impl JsonEditor,
     ) -> Immutable<RigExecutionState<'rig>> {
-        match handle_command(w, debug_cli, state, json_editor).unwrap() {
+        let component_runners = get_component_runners();
+        match handle_command(w, debug_cli, state, json_editor, &component_runners).unwrap() {
             HandleCommandResult::Continue(Some(state)) => state,
             _ => panic!("Expected Continue"),
         }
@@ -521,6 +527,7 @@ mod tests {
             },
             state,
             &NoJsonEditor {},
+            &[],
         )
         .unwrap()
         {

@@ -88,6 +88,10 @@ impl ComponentFiles for TarComponentFiles {
         ":"
     }
 
+    fn exists(&self, file_name: &str) -> Result<bool, ComponentLoadError> {
+        Ok(self.data.entries.contains_key(file_name))
+    }
+
     fn try_get_bin(&self, file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
         let Some(entry) = self.data.entries.get(file_name) else {
             return Ok(None);

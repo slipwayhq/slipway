@@ -6,13 +6,14 @@ use slipway_lib::RigExecutionState;
 
 use crate::{
     canvas::render_canvas_if_exists,
+    host_error::HostError,
     to_view_model::{to_view_model, ComponentViewModel},
 };
 
 pub(super) fn write_state<W: Write>(
     w: &mut W,
     state: &RigExecutionState<'_>,
-) -> Result<(), anyhow::Error> {
+) -> Result<(), HostError> {
     write_state_with_outputs(w, state, PrintComponentOutputsType::None)
 }
 
@@ -20,7 +21,7 @@ pub(super) fn write_state_with_outputs<W: Write>(
     w: &mut W,
     state: &RigExecutionState<'_>,
     outputs_type: PrintComponentOutputsType,
-) -> Result<(), anyhow::Error> {
+) -> Result<(), HostError> {
     let view_model = to_view_model(state);
     write_rig_graph::write_rig_graph(w, &view_model)?;
     writeln!(w)?;
@@ -53,7 +54,7 @@ pub(super) fn write_state_with_outputs<W: Write>(
 fn write_component_output<W: Write>(
     w: &mut W,
     component: &ComponentViewModel,
-) -> Result<(), anyhow::Error> {
+) -> Result<(), HostError> {
     if let Some(output) = component.state.output() {
         writeln!(w, r#"Component "{}" output:"#, component.handle)?;
 

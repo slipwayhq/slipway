@@ -40,7 +40,7 @@ impl<'rig> RigExecutionState<'rig> {
     ) -> Result<ComponentExecutionData<'rig>, RigError> {
         let component_state = self.get_component_state(handle)?;
 
-        let execution_input =
+        let input =
             component_state
                 .execution_input
                 .as_ref()
@@ -51,10 +51,26 @@ impl<'rig> RigExecutionState<'rig> {
                     ),
                 })?;
 
+        self.get_component_execution_data_inner(component_state, input.clone())
+    }
+
+    pub fn get_component_execution_data_for_input(
+        &self,
+        handle: &ComponentHandle,
+        input: Rc<ComponentInput>,
+    ) -> Result<ComponentExecutionData<'rig>, RigError> {
+        let component_state = self.get_component_state(handle)?;
+        self.get_component_execution_data_inner(component_state, input)
+    }
+
+    fn get_component_execution_data_inner(
+        &self,
+        component_state: &ComponentState<'rig>,
+        input: Rc<ComponentInput>,
+    ) -> Result<ComponentExecutionData<'rig>, RigError> {
         let component_reference = &component_state.rigging.component;
         let files = self.session.component_cache.get_files(component_reference);
 
-        let input = Rc::clone(execution_input);
         let permissions = component_state.rigging.permissions.as_ref();
         Ok(ComponentExecutionData {
             files,

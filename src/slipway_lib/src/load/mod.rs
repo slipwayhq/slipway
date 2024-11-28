@@ -24,6 +24,7 @@ pub trait ComponentsLoader {
 pub trait ComponentFiles: Send + Sync {
     fn get_component_reference(&self) -> &SlipwayReference;
     fn get_component_path(&self) -> &Path;
+    fn exists(&self, file_name: &str) -> Result<bool, ComponentLoadError>;
     fn try_get_bin(&self, file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError>;
     fn try_get_text(&self, file_name: &str) -> Result<Option<Arc<String>>, ComponentLoadError>;
 

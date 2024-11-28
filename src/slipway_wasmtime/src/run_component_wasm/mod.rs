@@ -1,31 +1,23 @@
 use std::{sync::Arc, time::Instant};
 
 use host::{OutputObserverStream, OutputObserverType, SlipwayComponent, SlipwayHost};
+use slipway_host::{run::errors::RunComponentError, RunComponentResult};
 use slipway_lib::{ComponentHandle, RunMetadata};
 use wasmtime::*;
 use wasmtime_wasi::WasiCtxBuilder;
 
-use self::errors::WasmExecutionError;
-
 mod host;
-
-pub(super) mod errors;
-
-pub struct RunComponentWasmResult {
-    pub output: serde_json::Value,
-    pub metadata: RunMetadata,
-}
 
 pub fn run_component_wasm(
     handle: &ComponentHandle,
     input: &serde_json::Value,
     wasm_bytes: Arc<Vec<u8>>,
-) -> Result<RunComponentWasmResult, WasmExecutionError> {
+) -> Result<RunComponentResult, RunComponentError> {
     let prepare_input_start = Instant::now();
 
     // Serialize the input JSON to a vector of bytes
     let input_string = serde_json::to_string(input)
-        .map_err(|source| WasmExecutionError::SerializeInputFailed { source })?;
+        .map_err(|source| RunComponentError::SerializeInputFailed { source })?;
 
     let prepare_input_duration = prepare_input_start.elapsed();
     let prepare_component_start = Instant::now();
@@ -63,18 +55,18 @@ pub fn run_component_wasm(
 
     // Process the result.
     match call_result {
-        Err(e) => Err(WasmExecutionError::RunCallFailed { source: Some(e) }),
+        Err(e) => Err(RunComponentError::RunCallFailed { source: Some(e) }),
         Ok(r) => match r {
             // The WASM component returned an error from it's `run` function.
-            Err(error) => Err(WasmExecutionError::RunCallReturnedError { error }),
+            Err(error) => Err(RunComponentError::RunCallReturnedError { error }),
             Ok(json_string) => {
                 // Deserialize the output JSON
                 let output = serde_json::from_str(&json_string)
-                    .map_err(|source| WasmExecutionError::DeserializeOutputFailed { source })?;
+                    .map_err(|source| RunComponentError::DeserializeOutputFailed { source })?;
 
                 let process_output_duration = process_output_start.elapsed();
 
-                Ok(RunComponentWasmResult {
+                Ok(RunComponentResult {
                     output,
                     metadata: RunMetadata {
                         prepare_input_duration,

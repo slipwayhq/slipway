@@ -1,8 +1,8 @@
+use slipway_host::run::{errors::RunComponentError, RunError};
 use slipway_lib::errors::RigError;
-use slipway_wasmtime::WasmExecutionError;
 use thiserror::Error;
 
-use crate::canvas::CanvasError;
+use crate::{canvas::CanvasError, host_error::HostError};
 
 #[derive(Error, Debug)]
 pub enum SlipwayDebugError {
@@ -18,9 +18,12 @@ pub enum SlipwayDebugError {
     #[error("Parsing JSON from text editor failed.\n{0}")]
     ParseFailed(#[from] serde_json::Error),
 
-    #[error("Failed to execute WASM.\n{0}")]
-    WasmExecutionFailed(#[from] WasmExecutionError),
+    #[error("Failed to execute component.\n{0}")]
+    ComponentExecutionFailed(#[from] RunComponentError),
 
     #[error("{0}")]
     CanvasError(CanvasError),
+
+    #[error("{0}")]
+    RunError(#[from] RunError<HostError>),
 }

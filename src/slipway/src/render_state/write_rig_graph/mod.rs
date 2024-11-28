@@ -3,6 +3,7 @@ use std::io::Write;
 use termion::{color, style};
 
 use crate::{
+    host_error::HostError,
     to_view_model::{ComponentGroupViewModel, ComponentViewModel, RigExecutionStateViewModel},
     utils::{format_bytes, skip_first_n_chars},
 };
@@ -26,7 +27,7 @@ const COLUMN_CHAR: char = '┆';
 pub(crate) fn write_rig_graph<W: Write>(
     w: &mut W,
     view_model: &RigExecutionStateViewModel<'_>,
-) -> anyhow::Result<()> {
+) -> Result<(), HostError> {
     let max_component_state_row_length = get_max_component_state_row_length(view_model);
     let max_input_size_string_length = get_max_input_size_string_length(view_model);
     let max_output_size_string_length = get_max_output_size_string_length(view_model);
@@ -166,7 +167,7 @@ fn write_component_state<F: Write>(
     f: &mut F,
     component: &ComponentViewModel<'_>,
     group: &ComponentGroupViewModel<'_>,
-) -> anyhow::Result<()> {
+) -> Result<(), HostError> {
     const NO_INPUT_NO_OUTPUT: char = '□';
     const INPUT_NO_OUTPUT: char = '◩';
     const NO_INPUT_OUTPUT: char = '◪';
@@ -260,7 +261,7 @@ fn write_metadata<F: Write>(
     f: &mut F,
     component: &ComponentViewModel<'_>,
     metadata_type: MetadataType,
-) -> anyhow::Result<()> {
+) -> Result<(), HostError> {
     const OUTPUT_FROM_INPUT: char = '➜';
     const OUTPUT_NOT_FROM_INPUT: char = '!';
     const NO_OUTPUT: char = ' ';
@@ -409,7 +410,7 @@ fn write_durations<F: Write>(
     f: &mut F,
     component: &ComponentViewModel<'_>,
     max_call_duration_string_length: usize,
-) -> Result<(), anyhow::Error> {
+) -> Result<(), HostError> {
     if let Some(output) = component.state.execution_output.as_ref() {
         let call_duration_string = format!("{:.0?}", output.run_metadata.call_duration);
         let overall_duration_string = format!("{:.0?}", output.run_metadata.overall_duration());

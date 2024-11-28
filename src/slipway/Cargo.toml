@@ -7,6 +7,7 @@ authors.workspace = true
 [dependencies]
 clap = { version = "4.3.22", features = ["derive"] }
 slipway_lib = { path = "../slipway_lib", features = ["unstable-test-utils"] }
+slipway_host = { path = "../slipway_host" }
 slipway_wasmtime = { path = "../slipway_wasmtime" }
 serde = { workspace = true }
 serde_json = { workspace = true }

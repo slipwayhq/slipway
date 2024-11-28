@@ -11,6 +11,7 @@ use slipway_lib::{
     Publisher, Rig, RigSession, Rigging, SlipwayReference,
 };
 
+use crate::component_runners::get_component_runners;
 use crate::render_state::write_state;
 
 mod errors;
@@ -201,6 +202,8 @@ fn debug_rig<W: Write>(w: &mut W, rig: Rig, json_editor: impl JsonEditor) -> any
     let session = RigSession::new(rig, component_cache);
     let mut state = session.initialize()?;
 
+    let component_runners = get_component_runners();
+
     write_state(w, &state)?;
 
     let help_color = color::Fg(color::Yellow);
@@ -233,26 +236,28 @@ fn debug_rig<W: Write>(w: &mut W, rig: Rig, json_editor: impl JsonEditor) -> any
             args.insert(0, "slipway");
 
             match DebugCli::try_parse_from(args) {
-                Ok(result) => match handle_command(w, result, &state, &json_editor) {
-                    Ok(HandleCommandResult::Continue(Some(s))) => {
-                        state = s;
-                        writeln!(w)?;
-                        write_state(w, &state)?;
+                Ok(result) => {
+                    match handle_command(w, result, &state, &json_editor, &component_runners) {
+                        Ok(HandleCommandResult::Continue(Some(s))) => {
+                            state = s;
+                            writeln!(w)?;
+                            write_state(w, &state)?;
+                        }
+                        Ok(HandleCommandResult::Continue(None)) => {}
+                        Ok(HandleCommandResult::Exit) => break,
+                        Err(e) => {
+                            writeln!(
+                                w,
+                                "{}{}{}",
+                                color::Fg(color::Red),
+                                e,
+                                color::Fg(color::Reset)
+                            )?;
+                            writeln!(w)?;
+                            write_state(w, &state)?;
+                        }
                     }
-                    Ok(HandleCommandResult::Continue(None)) => {}
-                    Ok(HandleCommandResult::Exit) => break,
-                    Err(e) => {
-                        writeln!(
-                            w,
-                            "{}{}{}",
-                            color::Fg(color::Red),
-                            e,
-                            color::Fg(color::Reset)
-                        )?;
-                        writeln!(w)?;
-                        write_state(w, &state)?;
-                    }
-                },
+                }
                 Err(e) => e.print().expect("Parsing errors should be printed"),
             }
         } else {

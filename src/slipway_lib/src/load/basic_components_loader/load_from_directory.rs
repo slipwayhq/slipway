@@ -91,6 +91,11 @@ impl ComponentFiles for DirectoryComponentFiles {
         &self.directory
     }
 
+    fn exists(&self, file_name: &str) -> Result<bool, ComponentLoadError> {
+        let path = self.get_valid_file_path(file_name)?;
+        Ok(self.io_abstractions.exists(&path))
+    }
+
     fn try_get_bin(&self, file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
         let path = self.get_valid_file_path(file_name)?;
 
