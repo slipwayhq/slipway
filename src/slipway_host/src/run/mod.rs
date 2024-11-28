@@ -64,20 +64,19 @@ pub trait RunEventHandler<'rig, THostError> {
     ) -> Result<(), THostError>;
 }
 
+pub enum ComponentRunnerResult {
+    CannotRun,
+    Ran { result: RunComponentResult },
+}
+
 pub trait ComponentRunner<'rig> {
     fn identifier(&self) -> String;
 
-    fn can_run_component(
+    fn run(
         &self,
         handle: &ComponentHandle,
         execution_data: ComponentExecutionData<'rig>,
-    ) -> Result<bool, ComponentLoadError>;
-
-    fn run_component(
-        &self,
-        handle: &ComponentHandle,
-        execution_data: ComponentExecutionData<'rig>,
-    ) -> Result<RunComponentResult, RunComponentError>;
+    ) -> Result<ComponentRunnerResult, RunComponentError>;
 }
 
 pub fn run_rig<'rig, THostError>(
@@ -145,26 +144,18 @@ pub fn run_component<'rig, THostError>(
 ) -> Result<RunComponentResult, RunError<THostError>> {
     let execution_data = state.get_component_execution_data(handle)?;
 
-    let runner = get_component_runner(handle, execution_data.clone(), component_runners)?;
-
-    runner
-        .run_component(handle, execution_data)
-        .map_err(|e| RunError::RunComponentFailed {
-            component_handle: handle.clone(),
-            component_runner: runner.identifier(),
-            error: e,
-        })
-}
-
-fn get_component_runner<'rig, 'r, THostError>(
-    handle: &ComponentHandle,
-    execution_data: ComponentExecutionData<'rig>,
-    component_runners: &'r [Box<dyn ComponentRunner<'rig>>],
-) -> Result<&'r dyn ComponentRunner<'rig>, RunError<THostError>> {
     for runner in component_runners {
-        let can_run = runner.can_run_component(handle, execution_data.clone())?;
-        if can_run {
-            return Ok(runner.as_ref());
+        let result = runner.run(handle, execution_data.clone()).map_err(|e| {
+            RunError::RunComponentFailed {
+                component_handle: handle.clone(),
+                component_runner: runner.identifier(),
+                error: e,
+            }
+        })?;
+
+        match result {
+            ComponentRunnerResult::Ran { result } => return Ok(result),
+            ComponentRunnerResult::CannotRun => {}
         }
     }
 
