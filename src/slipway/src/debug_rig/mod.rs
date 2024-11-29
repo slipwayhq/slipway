@@ -7,8 +7,8 @@ use std::str::FromStr;
 use termion::{color, style};
 
 use slipway_engine::{
-    parse_rig, BasicComponentsLoader, ComponentCache, ComponentHandle, ComponentRigging, Name,
-    Publisher, Rig, RigSession, Rigging, SlipwayReference,
+    parse_rig, BasicComponentsLoader, ComponentCache, ComponentHandle, ComponentPermission,
+    ComponentRigging, Name, PermissionChain, Publisher, Rig, RigSession, Rigging, SlipwayReference,
 };
 
 use crate::component_runners::get_component_runners;
@@ -115,6 +115,7 @@ pub(crate) fn debug_rig_from_component_file<W: Write>(
     w: &mut W,
     component_path: std::path::PathBuf,
     input_path: Option<std::path::PathBuf>,
+    engine_permissions: Vec<ComponentPermission>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Debugging {}", component_path.display())?;
     writeln!(w)?;
@@ -168,12 +169,13 @@ pub(crate) fn debug_rig_from_component_file<W: Write>(
         },
     };
 
-    debug_rig(w, rig, json_editor)
+    debug_rig(w, rig, json_editor, engine_permissions)
 }
 
 pub(crate) fn debug_rig_from_rig_file<W: Write>(
     w: &mut W,
     input: std::path::PathBuf,
+    engine_permissions: Vec<ComponentPermission>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Debugging {}", input.display())?;
     writeln!(w)?;
@@ -184,7 +186,7 @@ pub(crate) fn debug_rig_from_rig_file<W: Write>(
 
     let json_editor = JsonEditorImpl::new();
 
-    debug_rig(w, rig, json_editor)
+    debug_rig(w, rig, json_editor, engine_permissions)
 }
 
 fn redirect_to_json_if_wasm(input: &std::path::Path) -> std::path::PathBuf {
@@ -197,7 +199,12 @@ fn redirect_to_json_if_wasm(input: &std::path::Path) -> std::path::PathBuf {
     }
 }
 
-fn debug_rig<W: Write>(w: &mut W, rig: Rig, json_editor: impl JsonEditor) -> anyhow::Result<()> {
+fn debug_rig<W: Write>(
+    w: &mut W,
+    rig: Rig,
+    json_editor: impl JsonEditor,
+    engine_permissions: Vec<ComponentPermission>,
+) -> anyhow::Result<()> {
     let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::default())?;
     let session = RigSession::new(rig, component_cache);
     let mut state = session.initialize()?;
@@ -216,6 +223,8 @@ fn debug_rig<W: Write>(w: &mut W, rig: Rig, json_editor: impl JsonEditor) -> any
         help_color,
         color::Fg(color::Reset)
     )?;
+
+    let permissions_chain = PermissionChain::new(&engine_permissions);
 
     loop {
         write!(
@@ -237,7 +246,14 @@ fn debug_rig<W: Write>(w: &mut W, rig: Rig, json_editor: impl JsonEditor) -> any
 
             match DebugCli::try_parse_from(args) {
                 Ok(result) => {
-                    match handle_command(w, result, &state, &json_editor, &component_runners) {
+                    match handle_command(
+                        w,
+                        result,
+                        &state,
+                        &json_editor,
+                        &component_runners,
+                        permissions_chain,
+                    ) {
                         Ok(HandleCommandResult::Continue(Some(s))) => {
                             state = s;
                             writeln!(w)?;

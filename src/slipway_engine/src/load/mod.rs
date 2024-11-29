@@ -153,14 +153,14 @@ impl ComponentCache {
         self.get(component_reference).files.clone()
     }
 
-    fn get(&self, component_reference: &SlipwayReference) -> &PrimedComponent {
+    pub(crate) fn get(&self, component_reference: &SlipwayReference) -> &PrimedComponent {
         self.components
             .get(component_reference)
             .expect_with(|| format!("component {} not found in cache", component_reference))
     }
 }
 
-struct PrimedComponent {
+pub struct PrimedComponent {
     pub definition: Arc<Component<Schema>>,
     pub files: Arc<dyn ComponentFiles>,
 }

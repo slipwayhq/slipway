@@ -1,9 +1,12 @@
+use std::sync::Arc;
+
 use errors::RunComponentError;
 use thiserror::Error;
 
 use slipway_engine::{
     errors::{ComponentLoadError, RigError},
-    ComponentExecutionData, ComponentHandle, Immutable, Instruction, RigExecutionState, RigSession,
+    ComponentExecutionData, ComponentHandle, Immutable, Instruction, PermissionChain,
+    RigExecutionState, RigSession,
 };
 
 use crate::RunComponentResult;
@@ -75,7 +78,8 @@ pub trait ComponentRunner<'rig> {
     fn run(
         &self,
         handle: &ComponentHandle,
-        execution_data: ComponentExecutionData<'rig>,
+        state: &RigExecutionState<'rig>,
+        execution_data: &ComponentExecutionData<'rig>,
     ) -> Result<ComponentRunnerResult, RunComponentError>;
 }
 
@@ -83,6 +87,7 @@ pub fn run_rig<'rig, THostError>(
     rig_session: &'rig RigSession,
     event_handler: &mut impl RunEventHandler<'rig, THostError>,
     component_runners: &[Box<dyn ComponentRunner<'rig>>],
+    permission_chain: Arc<PermissionChain<'rig>>,
 ) -> Result<Immutable<RigExecutionState<'rig>>, RunError<THostError>> {
     let mut state = rig_session.initialize()?;
 
@@ -118,7 +123,12 @@ pub fn run_rig<'rig, THostError>(
                 })
                 .map_err(|e| RunError::HostError(e))?;
 
-            let result = run_component(handle, &state, component_runners)?;
+            let result = run_component(
+                handle,
+                &state,
+                component_runners,
+                Arc::clone(&permission_chain),
+            )?;
 
             event_handler
                 .handle_component_run_end(ComponentRunEndEvent {
@@ -141,11 +151,47 @@ pub fn run_component<'rig, THostError>(
     handle: &ComponentHandle,
     state: &RigExecutionState<'rig>,
     component_runners: &[Box<dyn ComponentRunner<'rig>>],
+    permission_chain: Arc<PermissionChain<'rig>>,
 ) -> Result<RunComponentResult, RunError<THostError>> {
-    let execution_data = state.get_component_execution_data(handle)?;
+    let execution_data = state.get_component_execution_data(handle, permission_chain)?;
 
     for runner in component_runners {
-        let result = runner.run(handle, execution_data.clone()).map_err(|e| {
+        let result = runner.run(handle, state, &execution_data).map_err(|e| {
+            RunError::RunComponentFailed {
+                component_handle: handle.clone(),
+                component_runner: runner.identifier(),
+                error: e,
+            }
+        })?;
+
+        match result {
+            ComponentRunnerResult::Ran { result } => return Ok(result),
+            ComponentRunnerResult::CannotRun => {}
+        }
+    }
+
+    Err(RunError::ComponentRunnerNotFound {
+        component_handle: handle.clone(),
+    })
+}
+
+pub fn run_component_callout<'rig, THostError>(
+    handle: &ComponentHandle,
+    execution_data: &ComponentExecutionData<'rig>,
+    component_runners: &[Box<dyn ComponentRunner<'rig>>],
+    permission_chain: Arc<PermissionChain<'rig>>,
+) -> Result<RunComponentResult, RunError<THostError>> {
+    run_component_inner(handle, execution_data, component_runners, permission_chain)
+}
+
+fn run_component_inner<'rig, THostError>(
+    handle: &ComponentHandle,
+    execution_data: &ComponentExecutionData<'rig>,
+    component_runners: &[Box<dyn ComponentRunner<'rig>>],
+    permission_chain: Arc<PermissionChain<'rig>>,
+) -> Result<RunComponentResult, RunError<THostError>> {
+    for runner in component_runners {
+        let result = runner.run(handle, state, &execution_data).map_err(|e| {
             RunError::RunComponentFailed {
                 component_handle: handle.clone(),
                 component_runner: runner.identifier(),

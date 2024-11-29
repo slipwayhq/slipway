@@ -1,7 +1,7 @@
 mod run_component_wasm;
 
 pub use run_component_wasm::run_component_wasm;
-use slipway_engine::{ComponentExecutionData, ComponentHandle};
+use slipway_engine::{ComponentExecutionData, ComponentHandle, RigExecutionState};
 use slipway_host::{
     run::{errors::RunComponentError, ComponentRunner, ComponentRunnerResult},
     SLIPWAY_COMPONENT_WASM_FILE_NAME,
@@ -19,9 +19,11 @@ impl<'rig> ComponentRunner<'rig> for WasmComponentRunner {
     fn run(
         &self,
         handle: &ComponentHandle,
-        execution_data: ComponentExecutionData<'rig>,
+        _state: &RigExecutionState<'rig>,
+        execution_data: &ComponentExecutionData<'rig>,
     ) -> Result<ComponentRunnerResult, RunComponentError> {
         let maybe_wasm_bytes = execution_data
+            .context
             .files
             .try_get_bin(SLIPWAY_COMPONENT_WASM_FILE_NAME)?;
 
@@ -31,7 +33,7 @@ impl<'rig> ComponentRunner<'rig> for WasmComponentRunner {
 
         let input = &execution_data.input.value;
 
-        let run_result = run_component_wasm(handle, input, wasm_bytes)?;
+        let run_result = run_component_wasm(handle, input, wasm_bytes, &execution_data.context)?;
 
         Ok(ComponentRunnerResult::Ran { result: run_result })
     }

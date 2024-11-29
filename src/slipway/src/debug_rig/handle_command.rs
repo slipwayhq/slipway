@@ -1,7 +1,7 @@
-use std::io::Write;
+use std::{io::Write, sync::Arc};
 
+use slipway_engine::{ComponentHandle, Immutable, PermissionChain, RigExecutionState};
 use slipway_host::run::ComponentRunner;
-use slipway_engine::{ComponentHandle, Immutable, RigExecutionState};
 
 use crate::to_view_model::to_shortcuts;
 
@@ -15,6 +15,7 @@ pub(super) fn handle_command<'rig, W: Write>(
     state: &RigExecutionState<'rig>,
     json_editor: &impl JsonEditor,
     component_runners: &[Box<dyn ComponentRunner<'rig>>],
+    permission_chain: Arc<PermissionChain<'rig>>,
 ) -> anyhow::Result<HandleCommandResult<'rig>> {
     let result = match debug_cli.command {
         DebuggerCommand::Print {} => {
@@ -23,8 +24,12 @@ pub(super) fn handle_command<'rig, W: Write>(
         }
         DebuggerCommand::Run { handle } => {
             let handle = get_handle(&handle, state)?;
-            let new_state =
-                super::handle_run_command::handle_run_command(handle, state, component_runners)?;
+            let new_state = super::handle_run_command::handle_run_command(
+                handle,
+                state,
+                component_runners,
+                permission_chain,
+            )?;
             HandleCommandResult::Continue(Some(new_state))
         }
         DebuggerCommand::Input { handle, clear } => {
@@ -505,7 +510,16 @@ mod tests {
         json_editor: &impl JsonEditor,
     ) -> Immutable<RigExecutionState<'rig>> {
         let component_runners = get_component_runners();
-        match handle_command(w, debug_cli, state, json_editor, &component_runners).unwrap() {
+        match handle_command(
+            w,
+            debug_cli,
+            state,
+            json_editor,
+            &component_runners,
+            PermissionChain::full_trust_arc(),
+        )
+        .unwrap()
+        {
             HandleCommandResult::Continue(Some(state)) => state,
             _ => panic!("Expected Continue"),
         }
@@ -528,6 +542,7 @@ mod tests {
             state,
             &NoJsonEditor {},
             &[],
+            PermissionChain::full_trust_arc(),
         )
         .unwrap()
         {

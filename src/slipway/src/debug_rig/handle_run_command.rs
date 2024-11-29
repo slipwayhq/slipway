@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
+use slipway_engine::{ComponentHandle, Immutable, Instruction, PermissionChain, RigExecutionState};
 use slipway_host::run::ComponentRunner;
-use slipway_engine::{ComponentHandle, Immutable, Instruction, RigExecutionState};
 use tracing::debug;
 
 use super::errors::SlipwayDebugError;
@@ -8,8 +10,10 @@ pub(super) fn handle_run_command<'rig>(
     handle: &'rig ComponentHandle,
     state: &RigExecutionState<'rig>,
     component_runners: &[Box<dyn ComponentRunner<'rig>>],
+    permission_chain: Arc<PermissionChain<'rig>>,
 ) -> Result<Immutable<RigExecutionState<'rig>>, SlipwayDebugError> {
-    let result = slipway_host::run::run_component(handle, state, component_runners)?;
+    let result =
+        slipway_host::run::run_component(handle, state, component_runners, permission_chain)?;
 
     debug!(
         "Prepare input: {:.2?}",
@@ -37,11 +41,11 @@ pub(super) fn handle_run_command<'rig>(
 #[cfg(test)]
 mod tests {
     use serde_json::json;
-    use slipway_host::run::{errors::RunComponentError, RunError};
     use slipway_engine::{
         utils::ch, BasicComponentsLoader, ComponentCache, ComponentRigging, Rig, RigSession,
         Rigging, SlipwayReference,
     };
+    use slipway_host::run::{errors::RunComponentError, RunError};
 
     use common_test_utils::{get_slipway_test_component_path, SLIPWAY_TEST_COMPONENT_NAME};
     use slipway_wasmtime_runner::WASMTIME_COMPONENT_RUNNER_IDENTIFIER;
@@ -77,7 +81,13 @@ mod tests {
         let mut state = rig_session.initialize().unwrap();
         let component_runners = get_component_runners();
 
-        state = handle_run_command(&handle, &state, &component_runners).unwrap();
+        state = handle_run_command(
+            &handle,
+            &state,
+            &component_runners,
+            PermissionChain::full_trust_arc(),
+        )
+        .unwrap();
 
         let component_state = state
             .component_states
@@ -105,7 +115,12 @@ mod tests {
         let state = rig_session.initialize().unwrap();
         let component_runners = get_component_runners();
 
-        let maybe_state = handle_run_command(&handle, &state, &component_runners);
+        let maybe_state = handle_run_command(
+            &handle,
+            &state,
+            &component_runners,
+            PermissionChain::full_trust_arc(),
+        );
 
         match maybe_state {
             Err(SlipwayDebugError::RunError(RunError::<HostError>::RunComponentFailed {
@@ -129,7 +144,12 @@ mod tests {
         let state = rig_session.initialize().unwrap();
         let component_runners = get_component_runners();
 
-        let maybe_state = handle_run_command(&handle, &state, &component_runners);
+        let maybe_state = handle_run_command(
+            &handle,
+            &state,
+            &component_runners,
+            PermissionChain::full_trust_arc(),
+        );
 
         match maybe_state {
             Err(SlipwayDebugError::RunError(RunError::<HostError>::RunComponentFailed {

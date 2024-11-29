@@ -15,6 +15,7 @@ mod test_utils;
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
+use slipway_engine::ComponentPermission;
 use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
@@ -73,7 +74,11 @@ fn main() -> anyhow::Result<()> {
     match args.command {
         Commands::Debug { path, log_level } => {
             configure_tracing(log_level);
-            debug_rig::debug_rig_from_rig_file(&mut std::io::stdout(), path)?;
+            debug_rig::debug_rig_from_rig_file(
+                &mut std::io::stdout(),
+                path,
+                ComponentPermission::full_trust(),
+            )?;
         }
         Commands::DebugComponent {
             path,
@@ -81,11 +86,20 @@ fn main() -> anyhow::Result<()> {
             log_level,
         } => {
             configure_tracing(log_level);
-            debug_rig::debug_rig_from_component_file(&mut std::io::stdout(), path, input)?;
+            debug_rig::debug_rig_from_component_file(
+                &mut std::io::stdout(),
+                path,
+                input,
+                ComponentPermission::full_trust(),
+            )?;
         }
         Commands::Run { path, log_level } => {
             configure_tracing(log_level);
-            run_rig::run_rig(&mut std::io::stdout(), path)?;
+            run_rig::run_rig(
+                &mut std::io::stdout(),
+                path,
+                ComponentPermission::full_trust(),
+            )?;
         }
         Commands::Wit => {
             println!("{}", WASM_INTERFACE_TYPE_STR);

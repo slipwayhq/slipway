@@ -1,8 +1,8 @@
 use std::{sync::Arc, time::Instant};
 
 use host::{OutputObserverStream, OutputObserverType, SlipwayComponent, SlipwayHost};
+use slipway_engine::{ComponentExecutionContext, ComponentHandle, RunMetadata};
 use slipway_host::{run::errors::RunComponentError, RunComponentResult};
-use slipway_engine::{ComponentHandle, RunMetadata};
 use wasmtime::*;
 use wasmtime_wasi::WasiCtxBuilder;
 
@@ -12,6 +12,7 @@ pub fn run_component_wasm(
     handle: &ComponentHandle,
     input: &serde_json::Value,
     wasm_bytes: Arc<Vec<u8>>,
+    execution_context: &ComponentExecutionContext,
 ) -> Result<RunComponentResult, RunComponentError> {
     let prepare_input_start = Instant::now();
 
@@ -36,7 +37,10 @@ pub fn run_component_wasm(
     let wasi_ctx = WasiCtxBuilder::new().stdout(stdout).stderr(stderr).build();
 
     // Create a store
-    let mut store = Store::new(&engine, SlipwayHost::new(handle, wasi_ctx));
+    let mut store = Store::new(
+        &engine,
+        SlipwayHost::new(handle, execution_context, wasi_ctx),
+    );
 
     // Create the component from raw bytes.
     let component = wasmtime::component::Component::new(&engine, &*wasm_bytes)?;

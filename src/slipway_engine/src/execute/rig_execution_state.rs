@@ -5,8 +5,9 @@ use std::{
 };
 
 use crate::{
-    errors::RigError, ComponentFiles, ComponentHandle, ComponentInput, ComponentPermission,
-    Immutable, Instruction, RigSession,
+    errors::RigError, utils::ExpectWith, Callouts, ComponentCache, ComponentFiles, ComponentHandle,
+    ComponentInput, ComponentPermission, ComponentRigging, Immutable, Instruction, PrimedComponent,
+    RigSession, SlipwayReference, PERMISSIONS_FULL_TRUST_VEC, PERMISSIONS_NONE_VEC,
 };
 
 use super::{component_state::ComponentState, step::step};
@@ -22,8 +23,60 @@ pub struct RigExecutionState<'rig> {
 #[derive(Clone)]
 pub struct ComponentExecutionData<'rig> {
     pub input: Rc<ComponentInput>,
-    pub permissions: Option<&'rig Vec<ComponentPermission>>,
+    pub context: ComponentExecutionContext<'rig>,
+}
+
+#[derive(Clone)]
+pub struct ComponentExecutionContext<'rig> {
+    pub permission_chain: Arc<PermissionChain<'rig>>,
     pub files: Arc<dyn ComponentFiles>,
+    pub callout_context: CalloutContext<'rig>,
+}
+
+#[derive(Clone)]
+pub struct PermissionChain<'rig> {
+    current: &'rig Vec<ComponentPermission>,
+    previous: Option<Arc<PermissionChain<'rig>>>,
+}
+
+impl<'rig> PermissionChain<'rig> {
+    pub fn new(permissions: &'rig Vec<ComponentPermission>) -> PermissionChain<'rig> {
+        PermissionChain {
+            current: permissions,
+            previous: None,
+        }
+    }
+
+    pub fn full_trust() -> PermissionChain<'rig> {
+        PermissionChain {
+            current: &PERMISSIONS_FULL_TRUST_VEC,
+            previous: None,
+        }
+    }
+
+    pub fn full_trust_arc() -> Arc<PermissionChain<'rig>> {
+        Arc::new(PermissionChain {
+            current: &PERMISSIONS_FULL_TRUST_VEC,
+            previous: None,
+        })
+    }
+}
+
+#[derive(Clone)]
+pub struct CalloutContext<'rig> {
+    callout_handle_to_reference: HashMap<&'rig ComponentHandle, &'rig SlipwayReference>,
+    pub component_cache: &'rig ComponentCache,
+}
+
+impl<'rig> CalloutContext<'rig> {
+    pub fn get_component_reference_for_handle(
+        &self,
+        handle: &ComponentHandle,
+    ) -> &SlipwayReference {
+        self.callout_handle_to_reference
+            .get(handle)
+            .expect_with(|| format!("Callout reference not found for handle {:?}", handle))
+    }
 }
 
 impl<'rig> RigExecutionState<'rig> {
@@ -37,6 +90,7 @@ impl<'rig> RigExecutionState<'rig> {
     pub fn get_component_execution_data(
         &self,
         handle: &ComponentHandle,
+        permission_chain: Arc<PermissionChain<'rig>>,
     ) -> Result<ComponentExecutionData<'rig>, RigError> {
         let component_state = self.get_component_state(handle)?;
 
@@ -51,32 +105,28 @@ impl<'rig> RigExecutionState<'rig> {
                     ),
                 })?;
 
-        self.get_component_execution_data_inner(component_state, input.clone())
-    }
+        let permissions = component_state
+            .rigging
+            .permissions
+            .as_ref()
+            .unwrap_or(&PERMISSIONS_NONE_VEC);
 
-    pub fn get_component_execution_data_for_input(
-        &self,
-        handle: &ComponentHandle,
-        input: Rc<ComponentInput>,
-    ) -> Result<ComponentExecutionData<'rig>, RigError> {
-        let component_state = self.get_component_state(handle)?;
-        self.get_component_execution_data_inner(component_state, input)
-    }
+        let permission_chain = Arc::new(PermissionChain {
+            current: permissions,
+            previous: Some(permission_chain),
+        });
 
-    fn get_component_execution_data_inner(
-        &self,
-        component_state: &ComponentState<'rig>,
-        input: Rc<ComponentInput>,
-    ) -> Result<ComponentExecutionData<'rig>, RigError> {
         let component_reference = &component_state.rigging.component;
-        let files = self.session.component_cache.get_files(component_reference);
 
-        let permissions = component_state.rigging.permissions.as_ref();
-        Ok(ComponentExecutionData {
-            files,
-            input,
-            permissions,
-        })
+        let outer_callouts = &component_state.rigging.callouts;
+
+        get_component_execution_data(
+            component_reference,
+            &self.session.component_cache,
+            permission_chain,
+            outer_callouts,
+            Rc::clone(input),
+        )
     }
 
     /// Internal because it returns a StepFailed error if the component does not exist,
@@ -110,4 +160,50 @@ impl<'rig> RigExecutionState<'rig> {
 
         Ok(component_state)
     }
+}
+
+pub fn get_component_execution_data<'rig>(
+    component_reference: &'rig SlipwayReference,
+    component_cache: &'rig ComponentCache,
+    permission_chain: Arc<PermissionChain<'rig>>,
+    outer_callouts: &'rig Option<Callouts>,
+    input: Rc<ComponentInput>,
+) -> Result<ComponentExecutionData<'rig>, RigError> {
+    let primed_component = component_cache.get(component_reference);
+    let files = Arc::clone(&primed_component.files);
+    let component_callouts = &primed_component.definition.callouts;
+
+    let callouts = get_callout_handle_to_reference_map(outer_callouts, component_callouts);
+
+    let callout_state = CalloutContext {
+        callout_handle_to_reference: callouts,
+        component_cache,
+    };
+
+    Ok(ComponentExecutionData {
+        input,
+        context: ComponentExecutionContext {
+            permission_chain,
+            files,
+            callout_context: callout_state,
+        },
+    })
+}
+
+fn get_callout_handle_to_reference_map<'rig>(
+    outer_callouts: &'rig Option<Callouts>,
+    component_callouts: &'rig Option<Callouts>,
+) -> HashMap<&'rig ComponentHandle, &'rig SlipwayReference> {
+    let mut callouts = HashMap::new();
+    if let Some(callout_overrides) = &outer_callouts {
+        for (handle, reference) in callout_overrides.iter() {
+            callouts.insert(handle, reference);
+        }
+    }
+    if let Some(component_callouts) = component_callouts {
+        for (handle, reference) in component_callouts.iter() {
+            callouts.entry(handle).or_insert(reference);
+        }
+    }
+    callouts
 }

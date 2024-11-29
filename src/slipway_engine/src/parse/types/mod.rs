@@ -12,6 +12,7 @@
 
 use std::collections::HashMap;
 
+use once_cell::sync::Lazy;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
@@ -61,19 +62,23 @@ pub struct Rigging {
     pub components: HashMap<ComponentHandle, ComponentRigging>,
 }
 
+pub type Callouts = HashMap<ComponentHandle, SlipwayReference>;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct ComponentRigging {
     pub component: SlipwayReference,
     pub input: Option<serde_json::Value>,
     pub permissions: Option<Vec<ComponentPermission>>,
-    pub callouts: Option<HashMap<ComponentHandle, ComponentCallout>>,
+    pub callouts: Option<Callouts>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum ComponentPermission {
+    FullTrust,
+
     Url { url: String },
     Domain { domain: String },
     UrlRegex { regex: String },
@@ -86,12 +91,16 @@ pub enum ComponentPermission {
     EnvRegex { regex: String },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
-pub struct ComponentCallout {
-    pub component: SlipwayReference,
-    pub callouts: Option<HashMap<ComponentHandle, ComponentCallout>>,
+impl ComponentPermission {
+    pub fn full_trust() -> Vec<ComponentPermission> {
+        vec![ComponentPermission::FullTrust]
+    }
 }
+
+pub(crate) static PERMISSIONS_FULL_TRUST_VEC: Lazy<Vec<ComponentPermission>> =
+    Lazy::new(|| vec![ComponentPermission::FullTrust]);
+
+pub(crate) static PERMISSIONS_NONE_VEC: Lazy<Vec<ComponentPermission>> = Lazy::new(Vec::new);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -104,7 +113,7 @@ pub struct Component<TSchema> {
     pub output: TSchema,
     pub constants: Option<serde_json::Value>,
     pub rigging: Option<Rigging>,
-    pub callouts: Option<HashMap<ComponentHandle, ComponentCallout>>,
+    pub callouts: Option<Callouts>,
 }
 
 impl<TSchema> Component<TSchema> {

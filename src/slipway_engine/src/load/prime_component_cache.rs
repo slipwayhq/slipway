@@ -6,7 +6,7 @@ use crate::{
     errors::{ComponentLoadError, ComponentLoadErrorInner},
     load::ComponentsLoader,
     parse::parse_schema,
-    parse_component, Component, ComponentCallout, ComponentHandle, Rig, Schema, SlipwayReference,
+    parse_component, Component, ComponentHandle, Rig, Schema, SlipwayReference,
 };
 
 use super::ComponentCache;
@@ -116,12 +116,10 @@ fn get_component_distinct_references<T>(component: &Component<T>) -> HashSet<Sli
 }
 
 fn get_callouts_references<'a>(
-    callouts: &'a Option<HashMap<ComponentHandle, ComponentCallout>>,
+    callouts: &'a Option<HashMap<ComponentHandle, SlipwayReference>>,
 ) -> Box<dyn Iterator<Item = &'a SlipwayReference> + 'a> {
     match callouts {
-        Some(callouts) => Box::new(callouts.values().flat_map(|v| {
-            std::iter::once(&v.component).chain(get_callouts_references(&v.callouts))
-        })),
+        Some(callouts) => Box::new(callouts.values()),
         None => Box::new(std::iter::empty()),
     }
 }

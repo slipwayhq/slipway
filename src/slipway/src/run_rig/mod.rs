@@ -1,7 +1,10 @@
-use std::io::Write;
+use std::{io::Write, sync::Arc};
 
 use anyhow::Context;
-use slipway_engine::{parse_rig, BasicComponentsLoader, ComponentCache, RigSession};
+use slipway_engine::{
+    parse_rig, BasicComponentsLoader, ComponentCache, ComponentPermission, PermissionChain,
+    RigSession,
+};
 use slipway_host::run::RunEventHandler;
 
 use crate::{
@@ -10,7 +13,11 @@ use crate::{
     render_state::{write_state, write_state_with_outputs},
 };
 
-pub(super) fn run_rig<W: Write>(w: &mut W, input: std::path::PathBuf) -> anyhow::Result<()> {
+pub(super) fn run_rig<W: Write>(
+    w: &mut W,
+    input: std::path::PathBuf,
+    engine_permissions: Vec<ComponentPermission>,
+) -> anyhow::Result<()> {
     writeln!(w, "Launching {}", input.display())?;
     writeln!(w)?;
 
@@ -24,7 +31,14 @@ pub(super) fn run_rig<W: Write>(w: &mut W, input: std::path::PathBuf) -> anyhow:
     let mut event_handler = SlipwayRunEventHandler { w };
     let component_runners = get_component_runners();
 
-    slipway_host::run::run_rig(&session, &mut event_handler, &component_runners)?;
+    let permission_chain = Arc::new(PermissionChain::new(&engine_permissions));
+
+    slipway_host::run::run_rig(
+        &session,
+        &mut event_handler,
+        &component_runners,
+        permission_chain,
+    )?;
 
     Ok(())
 }

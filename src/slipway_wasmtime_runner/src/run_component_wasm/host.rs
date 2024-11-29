@@ -1,5 +1,8 @@
+use std::{str::FromStr, sync::Arc};
+
 use bytes::Bytes;
-use slipway_engine::ComponentHandle;
+use slipway_engine::{get_component_execution_data, ComponentExecutionContext, ComponentHandle};
+use slipway_host::run::run_component;
 use tracing::{debug, error, info, trace, warn};
 use wasmtime::*;
 use wasmtime_wasi::{
@@ -14,23 +17,29 @@ wasmtime::component::bindgen!({
     path: "../../wit/latest"
 });
 
-pub struct SlipwayHost<'a> {
-    component_handle: &'a ComponentHandle,
+pub struct SlipwayHost<'rig, 'step> {
+    component_handle: &'rig ComponentHandle,
+    execution_context: &'step ComponentExecutionContext<'rig>,
     wasi_ctx: WasiCtx,
     wasi_table: ResourceTable,
 }
 
-impl<'a> SlipwayHost<'a> {
-    pub fn new(component_handle: &'a ComponentHandle, wasi_ctx: WasiCtx) -> Self {
+impl<'rig, 'step> SlipwayHost<'rig, 'step> {
+    pub fn new(
+        component_handle: &'rig ComponentHandle,
+        execution_data: &'step ComponentExecutionContext<'rig>,
+        wasi_ctx: WasiCtx,
+    ) -> Self {
         Self {
             component_handle,
+            execution_context: execution_data,
             wasi_ctx,
             wasi_table: ResourceTable::default(),
         }
     }
 }
 
-impl<'a> WasiView for SlipwayHost<'a> {
+impl<'rig, 'step> WasiView for SlipwayHost<'rig, 'step> {
     fn ctx(&mut self) -> &mut WasiCtx {
         &mut self.wasi_ctx
     }
@@ -39,7 +48,7 @@ impl<'a> WasiView for SlipwayHost<'a> {
     }
 }
 
-impl<'a> font::Host for SlipwayHost<'a> {
+impl<'rig, 'step> font::Host for SlipwayHost<'rig, 'step> {
     fn try_resolve(&mut self, font_stack: String) -> Option<font::ResolvedFont> {
         slipway_host::fonts::try_resolve(font_stack).map(|resolved| font::ResolvedFont {
             family: resolved.family,
@@ -48,13 +57,37 @@ impl<'a> font::Host for SlipwayHost<'a> {
     }
 }
 
-impl<'a> component::Host for SlipwayHost<'a> {
-    fn run(&mut self, _handle: String, _input: String) -> Result<String, String> {
-        unimplemented!("component run not implemented");
+impl<'rig, 'step> component::Host for SlipwayHost<'rig, 'step> {
+    fn run(&mut self, handle: String, input: String) -> Result<String, String> {
+        // TODO: Hide all this implementation detail.
+        let handle = ComponentHandle::from_str(&handle).expect("HMM");
+        let component_reference = self
+            .execution_context
+            .callout_context
+            .get_component_reference_for_handle(&handle);
+
+        let component_cache = self.execution_context.callout_context.component_cache;
+
+        let permission_chain = Arc::clone(&self.execution_context.permission_chain);
+
+        // TODO: What are the outer callouts here??
+        let outer_callouts = &self.execution_context;
+
+        let execution_data = get_component_execution_data(
+            component_reference,
+            component_cache,
+            permission_chain,
+            outer_callouts,
+            input,
+        );
+
+        // TODO: Where are the component runners?
+
+        run_component(&handle, execution_data, component_runners, permission_chain);
     }
 }
 
-impl<'a> log::Host for SlipwayHost<'a> {
+impl<'rig, 'step> log::Host for SlipwayHost<'rig, 'step> {
     fn trace(&mut self, message: String) {
         trace!(component = self.component_handle.to_string(), message);
     }
