@@ -16,10 +16,10 @@ impl<'rig> ComponentRunner<'rig> for WasmComponentRunner {
         WASMTIME_COMPONENT_RUNNER_IDENTIFIER.to_string()
     }
 
-    fn run(
+    fn run<'call, 'runners>(
         &self,
-        handle: &ComponentHandle,
-        execution_data: &ComponentExecutionData<'rig>,
+        handle: &'call ComponentHandle,
+        execution_data: &'call ComponentExecutionData<'call, 'rig, 'runners>,
     ) -> Result<TryRunComponentResult, RunComponentError> {
         let maybe_wasm_bytes = execution_data
             .context

@@ -4,6 +4,7 @@ use json_editor::{JsonEditor, JsonEditorImpl};
 use serde_json::json;
 use std::io::{self, Write};
 use std::str::FromStr;
+use std::sync::Arc;
 use termion::{color, style};
 
 use slipway_engine::{
@@ -224,7 +225,7 @@ fn debug_rig<W: Write>(
         color::Fg(color::Reset)
     )?;
 
-    let permissions_chain = PermissionChain::new(&engine_permissions);
+    let permissions_chain = Arc::new(PermissionChain::new(&engine_permissions));
 
     loop {
         write!(
@@ -252,7 +253,7 @@ fn debug_rig<W: Write>(
                         &state,
                         &json_editor,
                         &component_runners,
-                        permissions_chain,
+                        Arc::clone(&permissions_chain),
                     ) {
                         Ok(HandleCommandResult::Continue(Some(s))) => {
                             state = s;

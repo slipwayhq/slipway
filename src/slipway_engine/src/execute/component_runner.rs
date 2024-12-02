@@ -40,9 +40,9 @@ pub enum RunComponentError {
 pub trait ComponentRunner<'rig>: Send + Sync {
     fn identifier(&self) -> String;
 
-    fn run(
+    fn run<'call, 'runners>(
         &self,
-        handle: &ComponentHandle,
-        execution_data: &ComponentExecutionData<'rig>,
+        handle: &'call ComponentHandle,
+        execution_data: &'call ComponentExecutionData<'call, 'rig, 'runners>,
     ) -> Result<TryRunComponentResult, RunComponentError>;
 }

@@ -8,17 +8,17 @@ use crate::{
 use super::component_runner::ComponentRunner;
 
 #[derive(Clone)]
-pub struct ComponentExecutionData<'rig> {
+pub struct ComponentExecutionData<'call, 'rig, 'runners> {
     pub input: Rc<ComponentInput>,
-    pub context: ComponentExecutionContext<'rig>,
+    pub context: ComponentExecutionContext<'call, 'rig, 'runners>,
 }
 
 #[derive(Clone)]
-pub struct ComponentExecutionContext<'rig> {
+pub struct ComponentExecutionContext<'call, 'rig, 'runners> {
     pub permission_chain: Arc<PermissionChain<'rig>>,
-    pub component_runners: &'rig [Box<dyn ComponentRunner<'rig>>],
+    pub component_runners: &'runners [Box<dyn ComponentRunner<'rig>>],
     pub files: Arc<dyn ComponentFiles>,
-    pub callout_context: CalloutContext<'rig>,
+    pub callout_context: CalloutContext<'call, 'rig>,
 }
 
 #[derive(Clone)]
@@ -61,14 +61,14 @@ impl<'rig> PermissionChain<'rig> {
 }
 
 #[derive(Clone)]
-pub struct CalloutContext<'rig> {
-    callout_handle_to_reference: HashMap<&'rig ComponentHandle, &'rig SlipwayReference>,
+pub struct CalloutContext<'call, 'rig> {
+    callout_handle_to_reference: HashMap<&'call ComponentHandle, &'rig SlipwayReference>,
     pub component_cache: &'rig ComponentCache,
 }
 
-impl<'rig> CalloutContext<'rig> {
+impl<'call, 'rig> CalloutContext<'call, 'rig> {
     pub fn new(
-        callout_handle_to_reference: HashMap<&'rig ComponentHandle, &'rig SlipwayReference>,
+        callout_handle_to_reference: HashMap<&'call ComponentHandle, &'rig SlipwayReference>,
         component_cache: &'rig ComponentCache,
     ) -> Self {
         Self {
@@ -80,7 +80,7 @@ impl<'rig> CalloutContext<'rig> {
     pub fn get_component_reference_for_handle(
         &self,
         handle: &ComponentHandle,
-    ) -> &SlipwayReference {
+    ) -> &'rig SlipwayReference {
         self.callout_handle_to_reference
             .get(handle)
             .expect_with(|| format!("Callout reference not found for handle {:?}", handle))

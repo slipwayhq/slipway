@@ -5,7 +5,7 @@ use slipway_engine::{
     get_component_execution_data, ComponentExecutionContext, ComponentHandle, ComponentInput,
     JsonMetadata,
 };
-use slipway_host::run::{run_component, run_component_callout};
+use slipway_host::run::run_component_callout;
 use tracing::{debug, error, info, trace, warn};
 use wasmtime::*;
 use wasmtime_wasi::{
@@ -20,17 +20,17 @@ wasmtime::component::bindgen!({
     path: "../../wit/latest"
 });
 
-pub struct SlipwayHost<'rig, 'step> {
-    component_handle: &'rig ComponentHandle,
-    execution_context: &'step ComponentExecutionContext<'rig>,
+pub struct SlipwayHost<'call, 'rig, 'runners> {
+    component_handle: &'call ComponentHandle,
+    execution_context: &'call ComponentExecutionContext<'call, 'rig, 'runners>,
     wasi_ctx: WasiCtx,
     wasi_table: ResourceTable,
 }
 
-impl<'rig, 'step> SlipwayHost<'rig, 'step> {
+impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
     pub fn new(
-        component_handle: &'rig ComponentHandle,
-        execution_data: &'step ComponentExecutionContext<'rig>,
+        component_handle: &'call ComponentHandle,
+        execution_data: &'call ComponentExecutionContext<'call, 'rig, 'runners>,
         wasi_ctx: WasiCtx,
     ) -> Self {
         Self {
@@ -42,7 +42,7 @@ impl<'rig, 'step> SlipwayHost<'rig, 'step> {
     }
 }
 
-impl<'rig, 'step> WasiView for SlipwayHost<'rig, 'step> {
+impl<'call, 'rig, 'runners> WasiView for SlipwayHost<'call, 'rig, 'runners> {
     fn ctx(&mut self) -> &mut WasiCtx {
         &mut self.wasi_ctx
     }
@@ -51,7 +51,7 @@ impl<'rig, 'step> WasiView for SlipwayHost<'rig, 'step> {
     }
 }
 
-impl<'rig, 'step> font::Host for SlipwayHost<'rig, 'step> {
+impl<'call, 'rig, 'runners> font::Host for SlipwayHost<'call, 'rig, 'runners> {
     fn try_resolve(&mut self, font_stack: String) -> Option<font::ResolvedFont> {
         slipway_host::fonts::try_resolve(font_stack).map(|resolved| font::ResolvedFont {
             family: resolved.family,
@@ -60,7 +60,7 @@ impl<'rig, 'step> font::Host for SlipwayHost<'rig, 'step> {
     }
 }
 
-impl<'rig, 'step> component::Host for SlipwayHost<'rig, 'step> {
+impl<'call, 'rig, 'runners> component::Host for SlipwayHost<'call, 'rig, 'runners> {
     fn run(&mut self, handle: String, input: String) -> Result<String, String> {
         // TODO: Hide all this implementation detail.
         let handle = ComponentHandle::from_str(&handle).expect("HMM");
@@ -103,7 +103,7 @@ impl<'rig, 'step> component::Host for SlipwayHost<'rig, 'step> {
     }
 }
 
-impl<'rig, 'step> log::Host for SlipwayHost<'rig, 'step> {
+impl<'call, 'rig, 'runners> log::Host for SlipwayHost<'call, 'rig, 'runners> {
     fn trace(&mut self, message: String) {
         trace!(component = self.component_handle.to_string(), message);
     }

@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
-use slipway_engine::{ComponentHandle, Immutable, Instruction, PermissionChain, RigExecutionState};
-use slipway_host::run::ComponentRunner;
+use slipway_engine::{
+    ComponentHandle, ComponentRunner, Immutable, Instruction, PermissionChain, RigExecutionState,
+};
 use tracing::debug;
 
 use super::errors::SlipwayDebugError;
@@ -43,9 +44,9 @@ mod tests {
     use serde_json::json;
     use slipway_engine::{
         utils::ch, BasicComponentsLoader, ComponentCache, ComponentRigging, Rig, RigSession,
-        Rigging, SlipwayReference,
+        Rigging, RunComponentError, SlipwayReference,
     };
-    use slipway_host::run::{errors::RunComponentError, RunError};
+    use slipway_host::run::RunError;
 
     use common_test_utils::{get_slipway_test_component_path, SLIPWAY_TEST_COMPONENT_NAME};
     use slipway_wasmtime_runner::WASMTIME_COMPONENT_RUNNER_IDENTIFIER;

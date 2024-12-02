@@ -30,16 +30,16 @@ pub(super) fn run_rig<W: Write>(
 
     let mut event_handler = SlipwayRunEventHandler { w };
     let component_runners = get_component_runners();
+    let component_runners_slice = component_runners.as_slice();
 
     let permission_chain = Arc::new(PermissionChain::new(&engine_permissions));
 
     slipway_host::run::run_rig(
         &session,
         &mut event_handler,
-        component_runners.as_slice(),
+        component_runners_slice,
         permission_chain,
     )?;
-
     Ok(())
 }
 

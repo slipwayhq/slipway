@@ -1,5 +1,3 @@
-use slipway_engine::RunMetadata;
-
 pub mod fonts;
 
 pub mod run;

@@ -1,7 +1,8 @@
 use std::{io::Write, sync::Arc};
 
-use slipway_engine::{ComponentHandle, Immutable, PermissionChain, RigExecutionState};
-use slipway_host::run::ComponentRunner;
+use slipway_engine::{
+    ComponentHandle, ComponentRunner, Immutable, PermissionChain, RigExecutionState,
+};
 
 use crate::to_view_model::to_shortcuts;
 

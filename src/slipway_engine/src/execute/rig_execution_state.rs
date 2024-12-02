@@ -34,12 +34,15 @@ impl<'rig> RigExecutionState<'rig> {
         step(self, instruction)
     }
 
-    pub fn get_component_execution_data(
+    pub fn get_component_execution_data<'call, 'runners>(
         &self,
         handle: &ComponentHandle,
         permission_chain: Arc<PermissionChain<'rig>>,
-        component_runners: &'rig [Box<dyn ComponentRunner<'rig>>],
-    ) -> Result<ComponentExecutionData<'rig>, RigError> {
+        component_runners: &'runners [Box<dyn ComponentRunner<'rig>>],
+    ) -> Result<ComponentExecutionData<'call, 'rig, 'runners>, RigError>
+    where
+        'rig: 'call,
+    {
         let component_state = self.get_component_state(handle)?;
 
         let input =
@@ -108,14 +111,17 @@ impl<'rig> RigExecutionState<'rig> {
     }
 }
 
-pub fn get_component_execution_data<'rig>(
+pub fn get_component_execution_data<'call, 'rig, 'runners>(
     component_reference: &'rig SlipwayReference,
     component_cache: &'rig ComponentCache,
-    component_runners: &'rig [Box<dyn ComponentRunner<'rig>>],
+    component_runners: &'runners [Box<dyn ComponentRunner<'rig>>],
     permission_chain: Arc<PermissionChain<'rig>>,
     outer_callouts: Option<&'rig Callouts>,
     input: Rc<ComponentInput>,
-) -> Result<ComponentExecutionData<'rig>, RigError> {
+) -> Result<ComponentExecutionData<'call, 'rig, 'runners>, RigError>
+where
+    'rig: 'call,
+{
     let primed_component = component_cache.get(component_reference);
     let files = Arc::clone(&primed_component.files);
     let component_callouts = primed_component.definition.callouts.as_ref();
@@ -124,7 +130,7 @@ pub fn get_component_execution_data<'rig>(
 
     let callout_state = CalloutContext::new(callouts, component_cache);
 
-    Ok(ComponentExecutionData {
+    Ok(ComponentExecutionData::<'call, 'rig, 'runners> {
         input,
         context: ComponentExecutionContext {
             permission_chain,
