@@ -3,6 +3,8 @@
 
 use std::ops::Deref;
 
+pub use execute::component_execution_data::*;
+pub use execute::component_runner::*;
 pub use execute::component_state::{
     ComponentInput, ComponentInputOverride, ComponentOutput, ComponentOutputOverride,
     ComponentState,

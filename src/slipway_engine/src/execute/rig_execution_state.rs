@@ -5,12 +5,18 @@ use std::{
 };
 
 use crate::{
-    errors::RigError, utils::ExpectWith, Callouts, ComponentCache, ComponentFiles, ComponentHandle,
-    ComponentInput, ComponentPermission, ComponentRigging, Immutable, Instruction, PrimedComponent,
-    RigSession, SlipwayReference, PERMISSIONS_FULL_TRUST_VEC, PERMISSIONS_NONE_VEC,
+    errors::RigError, Callouts, ComponentCache, ComponentHandle, ComponentInput, Immutable,
+    Instruction, RigSession, SlipwayReference, PERMISSIONS_NONE_VEC,
 };
 
-use super::{component_state::ComponentState, step::step};
+use super::{
+    component_execution_data::{
+        CalloutContext, ComponentExecutionContext, ComponentExecutionData, PermissionChain,
+    },
+    component_runner::ComponentRunner,
+    component_state::ComponentState,
+    step::step,
+};
 
 #[derive(Clone)]
 pub struct RigExecutionState<'rig> {
@@ -18,65 +24,6 @@ pub struct RigExecutionState<'rig> {
     pub component_states: HashMap<&'rig ComponentHandle, ComponentState<'rig>>,
     pub valid_execution_order: Vec<&'rig ComponentHandle>,
     pub component_groups: Vec<HashSet<&'rig ComponentHandle>>,
-}
-
-#[derive(Clone)]
-pub struct ComponentExecutionData<'rig> {
-    pub input: Rc<ComponentInput>,
-    pub context: ComponentExecutionContext<'rig>,
-}
-
-#[derive(Clone)]
-pub struct ComponentExecutionContext<'rig> {
-    pub permission_chain: Arc<PermissionChain<'rig>>,
-    pub files: Arc<dyn ComponentFiles>,
-    pub callout_context: CalloutContext<'rig>,
-}
-
-#[derive(Clone)]
-pub struct PermissionChain<'rig> {
-    current: &'rig Vec<ComponentPermission>,
-    previous: Option<Arc<PermissionChain<'rig>>>,
-}
-
-impl<'rig> PermissionChain<'rig> {
-    pub fn new(permissions: &'rig Vec<ComponentPermission>) -> PermissionChain<'rig> {
-        PermissionChain {
-            current: permissions,
-            previous: None,
-        }
-    }
-
-    pub fn full_trust() -> PermissionChain<'rig> {
-        PermissionChain {
-            current: &PERMISSIONS_FULL_TRUST_VEC,
-            previous: None,
-        }
-    }
-
-    pub fn full_trust_arc() -> Arc<PermissionChain<'rig>> {
-        Arc::new(PermissionChain {
-            current: &PERMISSIONS_FULL_TRUST_VEC,
-            previous: None,
-        })
-    }
-}
-
-#[derive(Clone)]
-pub struct CalloutContext<'rig> {
-    callout_handle_to_reference: HashMap<&'rig ComponentHandle, &'rig SlipwayReference>,
-    pub component_cache: &'rig ComponentCache,
-}
-
-impl<'rig> CalloutContext<'rig> {
-    pub fn get_component_reference_for_handle(
-        &self,
-        handle: &ComponentHandle,
-    ) -> &SlipwayReference {
-        self.callout_handle_to_reference
-            .get(handle)
-            .expect_with(|| format!("Callout reference not found for handle {:?}", handle))
-    }
 }
 
 impl<'rig> RigExecutionState<'rig> {
@@ -91,6 +38,7 @@ impl<'rig> RigExecutionState<'rig> {
         &self,
         handle: &ComponentHandle,
         permission_chain: Arc<PermissionChain<'rig>>,
+        component_runners: &'rig [Box<dyn ComponentRunner<'rig>>],
     ) -> Result<ComponentExecutionData<'rig>, RigError> {
         let component_state = self.get_component_state(handle)?;
 
@@ -111,18 +59,16 @@ impl<'rig> RigExecutionState<'rig> {
             .as_ref()
             .unwrap_or(&PERMISSIONS_NONE_VEC);
 
-        let permission_chain = Arc::new(PermissionChain {
-            current: permissions,
-            previous: Some(permission_chain),
-        });
+        let permission_chain = Arc::new(PermissionChain::new_child(permissions, permission_chain));
 
         let component_reference = &component_state.rigging.component;
 
-        let outer_callouts = &component_state.rigging.callouts;
+        let outer_callouts = component_state.rigging.callouts.as_ref();
 
         get_component_execution_data(
             component_reference,
             &self.session.component_cache,
+            component_runners,
             permission_chain,
             outer_callouts,
             Rc::clone(input),
@@ -165,25 +111,24 @@ impl<'rig> RigExecutionState<'rig> {
 pub fn get_component_execution_data<'rig>(
     component_reference: &'rig SlipwayReference,
     component_cache: &'rig ComponentCache,
+    component_runners: &'rig [Box<dyn ComponentRunner<'rig>>],
     permission_chain: Arc<PermissionChain<'rig>>,
-    outer_callouts: &'rig Option<Callouts>,
+    outer_callouts: Option<&'rig Callouts>,
     input: Rc<ComponentInput>,
 ) -> Result<ComponentExecutionData<'rig>, RigError> {
     let primed_component = component_cache.get(component_reference);
     let files = Arc::clone(&primed_component.files);
-    let component_callouts = &primed_component.definition.callouts;
+    let component_callouts = primed_component.definition.callouts.as_ref();
 
     let callouts = get_callout_handle_to_reference_map(outer_callouts, component_callouts);
 
-    let callout_state = CalloutContext {
-        callout_handle_to_reference: callouts,
-        component_cache,
-    };
+    let callout_state = CalloutContext::new(callouts, component_cache);
 
     Ok(ComponentExecutionData {
         input,
         context: ComponentExecutionContext {
             permission_chain,
+            component_runners,
             files,
             callout_context: callout_state,
         },
@@ -191,8 +136,8 @@ pub fn get_component_execution_data<'rig>(
 }
 
 fn get_callout_handle_to_reference_map<'rig>(
-    outer_callouts: &'rig Option<Callouts>,
-    component_callouts: &'rig Option<Callouts>,
+    outer_callouts: Option<&'rig Callouts>,
+    component_callouts: Option<&'rig Callouts>,
 ) -> HashMap<&'rig ComponentHandle, &'rig SlipwayReference> {
     let mut callouts = HashMap::new();
     if let Some(callout_overrides) = &outer_callouts {

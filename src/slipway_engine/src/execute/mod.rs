@@ -1,3 +1,5 @@
+pub(crate) mod component_execution_data;
+pub(crate) mod component_runner;
 pub(crate) mod component_state;
 mod evaluate_component_inputs;
 mod initialize;

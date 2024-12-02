@@ -1,5 +1,17 @@
-use slipway_engine::errors::ComponentLoadError;
+use crate::{errors::ComponentLoadError, ComponentHandle, RunMetadata};
 use thiserror::Error;
+
+use super::component_execution_data::ComponentExecutionData;
+
+pub enum TryRunComponentResult {
+    CannotRun,
+    Ran { result: RunComponentResult },
+}
+
+pub struct RunComponentResult {
+    pub output: serde_json::Value,
+    pub metadata: RunMetadata,
+}
 
 #[derive(Error, Debug)]
 pub enum RunComponentError {
@@ -23,4 +35,14 @@ pub enum RunComponentError {
 
     #[error("Component load failed.\n{0}")]
     ComponentLoadFailed(#[from] ComponentLoadError),
+}
+
+pub trait ComponentRunner<'rig>: Send + Sync {
+    fn identifier(&self) -> String;
+
+    fn run(
+        &self,
+        handle: &ComponentHandle,
+        execution_data: &ComponentExecutionData<'rig>,
+    ) -> Result<TryRunComponentResult, RunComponentError>;
 }

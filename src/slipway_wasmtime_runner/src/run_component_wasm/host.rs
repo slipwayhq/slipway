@@ -1,8 +1,11 @@
-use std::{str::FromStr, sync::Arc};
+use std::{rc::Rc, str::FromStr, sync::Arc};
 
 use bytes::Bytes;
-use slipway_engine::{get_component_execution_data, ComponentExecutionContext, ComponentHandle};
-use slipway_host::run::run_component;
+use slipway_engine::{
+    get_component_execution_data, ComponentExecutionContext, ComponentHandle, ComponentInput,
+    JsonMetadata,
+};
+use slipway_host::run::{run_component, run_component_callout};
 use tracing::{debug, error, info, trace, warn};
 use wasmtime::*;
 use wasmtime_wasi::{
@@ -61,6 +64,7 @@ impl<'rig, 'step> component::Host for SlipwayHost<'rig, 'step> {
     fn run(&mut self, handle: String, input: String) -> Result<String, String> {
         // TODO: Hide all this implementation detail.
         let handle = ComponentHandle::from_str(&handle).expect("HMM");
+
         let component_reference = self
             .execution_context
             .callout_context
@@ -70,20 +74,32 @@ impl<'rig, 'step> component::Host for SlipwayHost<'rig, 'step> {
 
         let permission_chain = Arc::clone(&self.execution_context.permission_chain);
 
-        // TODO: What are the outer callouts here??
-        let outer_callouts = &self.execution_context;
+        // There are no outer callouts if we're already in a callout.
+        let outer_callouts = None;
+
+        let component_runners = self.execution_context.component_runners;
+
+        let input = serde_json::from_str(&input).expect("HMM");
+        let json_metadata = JsonMetadata::from_value(&input);
+
+        let input = Rc::new(ComponentInput {
+            value: input,
+            json_metadata,
+        });
 
         let execution_data = get_component_execution_data(
             component_reference,
             component_cache,
+            component_runners,
             permission_chain,
             outer_callouts,
             input,
-        );
+        )
+        .expect("HMM");
 
-        // TODO: Where are the component runners?
+        let result = run_component_callout::<anyhow::Error>(&handle, &execution_data).expect("HMM");
 
-        run_component(&handle, execution_data, component_runners, permission_chain);
+        Ok(serde_json::to_string(&result.output).expect("HMM"))
     }
 }
 
