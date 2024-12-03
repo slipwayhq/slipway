@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use slipway_engine::{ComponentHandle, ComponentState, RigExecutionState};
 
-pub(super) fn to_view_model<'state, 'rig>(
-    state: &'state RigExecutionState<'rig>,
+pub(super) fn to_view_model<'state, 'rig, 'cache>(
+    state: &'state RigExecutionState<'rig, 'cache>,
 ) -> RigExecutionStateViewModel<'rig>
 where
     'state: 'rig,
@@ -84,7 +84,7 @@ where
 }
 
 pub(super) fn to_shortcuts<'rig>(
-    state: &RigExecutionState<'rig>,
+    state: &RigExecutionState<'rig, '_>,
 ) -> HashMap<String, &'rig ComponentHandle> {
     let mut shortcuts = HashMap::new();
     for &handle in state.valid_execution_order.iter() {
@@ -160,7 +160,7 @@ mod tests {
         });
 
         let component_cache = ComponentCache::for_test_permissive(&rig);
-        let rig_session = RigSession::new(rig, component_cache);
+        let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let view_model = to_view_model(&state);
 
@@ -200,7 +200,7 @@ mod tests {
         });
 
         let component_cache = ComponentCache::for_test_permissive(&rig);
-        let rig_session = RigSession::new(rig, component_cache);
+        let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let view_model = to_view_model(&state);
 
@@ -261,7 +261,7 @@ mod tests {
         });
 
         let component_cache = ComponentCache::for_test_permissive(&rig);
-        let rig_session = RigSession::new(rig, component_cache);
+        let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let view_model = to_view_model(&state);
 

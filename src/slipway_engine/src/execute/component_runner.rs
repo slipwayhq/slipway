@@ -37,12 +37,12 @@ pub enum RunComponentError {
     ComponentLoadFailed(#[from] ComponentLoadError),
 }
 
-pub trait ComponentRunner<'rig>: Send + Sync {
+pub trait ComponentRunner: Send + Sync {
     fn identifier(&self) -> String;
 
-    fn run<'call, 'runners>(
+    fn run<'call>(
         &self,
         handle: &'call ComponentHandle,
-        execution_data: &'call ComponentExecutionData<'call, 'rig, 'runners>,
+        execution_data: &'call ComponentExecutionData<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError>;
 }

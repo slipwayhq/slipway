@@ -7,12 +7,12 @@ use tracing::debug;
 
 use super::errors::SlipwayDebugError;
 
-pub(super) fn handle_run_command<'rig>(
+pub(super) fn handle_run_command<'rig, 'cache>(
     handle: &'rig ComponentHandle,
-    state: &RigExecutionState<'rig>,
-    component_runners: &[Box<dyn ComponentRunner<'rig>>],
+    state: &RigExecutionState<'rig, 'cache>,
+    component_runners: &[Box<dyn ComponentRunner>],
     permission_chain: Arc<PermissionChain<'rig>>,
-) -> Result<Immutable<RigExecutionState<'rig>>, SlipwayDebugError> {
+) -> Result<Immutable<RigExecutionState<'rig, 'cache>>, SlipwayDebugError> {
     let result =
         slipway_host::run::run_component(handle, state, component_runners, permission_chain)?;
 
@@ -78,7 +78,7 @@ mod tests {
 
         let component_cache =
             ComponentCache::primed(&rig, &BasicComponentsLoader::default()).unwrap();
-        let rig_session = RigSession::new(rig, component_cache);
+        let rig_session = RigSession::new(rig, &component_cache);
         let mut state = rig_session.initialize().unwrap();
         let component_runners = get_component_runners();
 
@@ -112,7 +112,7 @@ mod tests {
 
         let component_cache =
             ComponentCache::primed(&rig, &BasicComponentsLoader::default()).unwrap();
-        let rig_session = RigSession::new(rig, component_cache);
+        let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let component_runners = get_component_runners();
 
@@ -141,7 +141,7 @@ mod tests {
 
         let component_cache =
             ComponentCache::primed(&rig, &BasicComponentsLoader::default()).unwrap();
-        let rig_session = RigSession::new(rig, component_cache);
+        let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let component_runners = get_component_runners();
 

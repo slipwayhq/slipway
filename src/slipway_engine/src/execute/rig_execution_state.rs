@@ -19,18 +19,18 @@ use super::{
 };
 
 #[derive(Clone)]
-pub struct RigExecutionState<'rig> {
-    pub session: &'rig RigSession,
+pub struct RigExecutionState<'rig, 'cache> {
+    pub session: &'rig RigSession<'cache>,
     pub component_states: HashMap<&'rig ComponentHandle, ComponentState<'rig>>,
     pub valid_execution_order: Vec<&'rig ComponentHandle>,
     pub component_groups: Vec<HashSet<&'rig ComponentHandle>>,
 }
 
-impl<'rig> RigExecutionState<'rig> {
+impl<'rig, 'cache> RigExecutionState<'rig, 'cache> {
     pub fn step(
         &self,
         instruction: Instruction,
-    ) -> Result<Immutable<RigExecutionState<'rig>>, RigError> {
+    ) -> Result<Immutable<RigExecutionState<'rig, 'cache>>, RigError> {
         step(self, instruction)
     }
 
@@ -38,7 +38,7 @@ impl<'rig> RigExecutionState<'rig> {
         &self,
         handle: &ComponentHandle,
         permission_chain: Arc<PermissionChain<'rig>>,
-        component_runners: &'runners [Box<dyn ComponentRunner<'rig>>],
+        component_runners: &'runners [Box<dyn ComponentRunner>],
     ) -> Result<ComponentExecutionData<'call, 'rig, 'runners>, RigError>
     where
         'rig: 'call,
@@ -70,7 +70,7 @@ impl<'rig> RigExecutionState<'rig> {
 
         get_component_execution_data(
             component_reference,
-            &self.session.component_cache,
+            self.session.component_cache,
             component_runners,
             permission_chain,
             outer_callouts,
@@ -152,7 +152,7 @@ where
 pub fn get_component_execution_data<'call, 'rig, 'runners>(
     component_reference: &'rig SlipwayReference,
     component_cache: &'rig ComponentCache,
-    component_runners: &'runners [Box<dyn ComponentRunner<'rig>>],
+    component_runners: &'runners [Box<dyn ComponentRunner>],
     permission_chain: Arc<PermissionChain<'rig>>,
     outer_callouts: Option<&'rig Callouts>,
     input: Rc<ComponentInput>,

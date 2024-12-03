@@ -207,7 +207,7 @@ fn debug_rig<W: Write>(
     engine_permissions: Vec<ComponentPermission>,
 ) -> anyhow::Result<()> {
     let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::default())?;
-    let session = RigSession::new(rig, component_cache);
+    let session = RigSession::new(rig, &component_cache);
     let mut state = session.initialize()?;
 
     let component_runners = get_component_runners();

@@ -1,12 +1,12 @@
-use slipway_engine::{RigExecutionState, ComponentHandle, Immutable, Instruction};
+use slipway_engine::{ComponentHandle, Immutable, Instruction, RigExecutionState};
 
 use super::{errors::SlipwayDebugError, json_editor::JsonEditor};
 
-pub(super) fn handle_input_command<'rig>(
+pub(super) fn handle_input_command<'rig, 'cache>(
     handle: &'rig ComponentHandle,
-    state: &RigExecutionState<'rig>,
+    state: &RigExecutionState<'rig, 'cache>,
     json_editor: &impl JsonEditor,
-) -> Result<Immutable<RigExecutionState<'rig>>, SlipwayDebugError> {
+) -> Result<Immutable<RigExecutionState<'rig, 'cache>>, SlipwayDebugError> {
     let component = state
         .component_states
         .get(&handle)

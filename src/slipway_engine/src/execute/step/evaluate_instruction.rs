@@ -11,10 +11,10 @@ use crate::{
 
 use super::Instruction;
 
-pub(super) fn evaluate_instruction(
-    state: RigExecutionState,
+pub(super) fn evaluate_instruction<'rig, 'cache>(
+    state: RigExecutionState<'rig, 'cache>,
     instruction: Instruction,
-) -> Result<RigExecutionState, RigError> {
+) -> Result<RigExecutionState<'rig, 'cache>, RigError> {
     match instruction {
         Instruction::SetInputOverride { handle, value } => {
             let mut state = state;

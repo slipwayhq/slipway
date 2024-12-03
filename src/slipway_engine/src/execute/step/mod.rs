@@ -63,11 +63,11 @@ impl RunMetadata {
     }
 }
 
-pub(super) fn step<'rig>(
-    state: &RigExecutionState<'rig>,
+pub(super) fn step<'rig, 'cache>(
+    state: &RigExecutionState<'rig, 'cache>,
     instruction: Instruction,
-) -> Result<Immutable<RigExecutionState<'rig>>, RigError> {
+) -> Result<Immutable<RigExecutionState<'rig, 'cache>>, RigError> {
     // The clone is inexpensive because the input and output JSON structures are reference counted.
-    let state: RigExecutionState<'rig> = state.clone();
+    let state: RigExecutionState<'rig, 'cache> = state.clone();
     evaluate_component_inputs(evaluate_instruction(state, instruction)?).map(Immutable::new)
 }

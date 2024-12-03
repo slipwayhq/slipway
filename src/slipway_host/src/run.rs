@@ -1,12 +1,12 @@
-use std::{str::FromStr, sync::Arc};
+use std::{collections::HashMap, rc::Rc, str::FromStr, sync::Arc};
 
 use thiserror::Error;
 
 use slipway_engine::{
     errors::{ComponentLoadError, RigError},
     get_component_execution_data_for_callout, ComponentExecutionContext, ComponentExecutionData,
-    ComponentHandle, ComponentRunner, Immutable, Instruction, PermissionChain, RigExecutionState,
-    RigSession, RunComponentError, RunComponentResult, TryRunComponentResult,
+    ComponentHandle, ComponentOutput, ComponentRunner, Immutable, Instruction, PermissionChain,
+    RigExecutionState, RigSession, RunComponentError, RunComponentResult, TryRunComponentResult,
 };
 
 #[derive(Error, Debug)]
@@ -41,12 +41,12 @@ pub struct ComponentRunEndEvent<'rig> {
     pub component_handle: &'rig ComponentHandle,
 }
 
-pub struct StateChangeEvent<'rig, 'state> {
-    pub state: &'state Immutable<RigExecutionState<'rig>>,
+pub struct StateChangeEvent<'rig, 'cache, 'state> {
+    pub state: &'state Immutable<RigExecutionState<'rig, 'cache>>,
     pub is_complete: bool,
 }
 
-pub trait RunEventHandler<'rig, THostError> {
+pub trait RunEventHandler<'rig, 'cache, THostError> {
     fn handle_component_run_start(
         &mut self,
         event: ComponentRunStartEvent<'rig>,
@@ -59,16 +59,23 @@ pub trait RunEventHandler<'rig, THostError> {
 
     fn handle_state_changed<'state>(
         &mut self,
-        event: StateChangeEvent<'rig, 'state>,
+        event: StateChangeEvent<'rig, 'cache, 'state>,
     ) -> Result<(), THostError>;
 }
 
-pub fn run_rig<'rig, 'runners, THostError>(
-    rig_session: &'rig RigSession,
-    mut event_handler: Option<&mut impl RunEventHandler<'rig, THostError>>,
-    component_runners: &'runners [Box<dyn ComponentRunner<'rig>>],
+pub struct RunRigResult<'rig> {
+    pub component_outputs: HashMap<&'rig ComponentHandle, Option<Rc<ComponentOutput>>>,
+}
+
+pub fn run_rig<'rig, 'cache, 'runners, THostError>(
+    rig_session: &'rig RigSession<'cache>,
+    mut event_handler: Option<&mut impl RunEventHandler<'rig, 'cache, THostError>>,
+    component_runners: &'runners [Box<dyn ComponentRunner>],
     permission_chain: Arc<PermissionChain<'rig>>,
-) -> Result<Immutable<RigExecutionState<'rig>>, RunError<THostError>> {
+) -> Result<RunRigResult<'rig>, RunError<THostError>>
+where
+    'cache: 'rig,
+{
     let mut state = rig_session.initialize()?;
 
     loop {
@@ -130,13 +137,19 @@ pub fn run_rig<'rig, 'runners, THostError>(
         }
     }
 
-    Ok(state)
+    Ok(RunRigResult {
+        component_outputs: state
+            .component_states
+            .iter()
+            .map(|(&k, v)| (k, v.execution_output.as_ref().map(Rc::clone)))
+            .collect(),
+    })
 }
 
 pub fn run_component<'rig, THostError>(
     handle: &ComponentHandle,
-    state: &RigExecutionState<'rig>,
-    component_runners: &[Box<dyn ComponentRunner<'rig>>],
+    state: &RigExecutionState<'rig, '_>,
+    component_runners: &[Box<dyn ComponentRunner>],
     permission_chain: Arc<PermissionChain<'rig>>,
 ) -> Result<RunComponentResult, RunError<THostError>> {
     let execution_data =

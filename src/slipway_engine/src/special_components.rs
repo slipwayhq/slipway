@@ -10,15 +10,15 @@ pub const SPECIAL_COMPONENT_RUNNER_IDENTIFIER: &str = "special";
 
 pub struct SpecialComponentRunner {}
 
-impl<'rig> ComponentRunner<'rig> for SpecialComponentRunner {
+impl ComponentRunner for SpecialComponentRunner {
     fn identifier(&self) -> String {
         SPECIAL_COMPONENT_RUNNER_IDENTIFIER.to_string()
     }
 
-    fn run<'call, 'runners>(
+    fn run<'call>(
         &self,
         handle: &'call ComponentHandle,
-        execution_data: &'call ComponentExecutionData<'call, 'rig, 'runners>,
+        execution_data: &'call ComponentExecutionData<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError> {
         let reference = execution_data.get_component_reference(handle);
 

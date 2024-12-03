@@ -10,14 +10,14 @@ use super::{
     errors::SlipwayDebugError, json_editor::JsonEditor, write_state, DebugCli, DebuggerCommand,
 };
 
-pub(super) fn handle_command<'rig, W: Write>(
+pub(super) fn handle_command<'rig, 'cache, W: Write>(
     w: &mut W,
     debug_cli: DebugCli,
-    state: &RigExecutionState<'rig>,
+    state: &RigExecutionState<'rig, 'cache>,
     json_editor: &impl JsonEditor,
-    component_runners: &[Box<dyn ComponentRunner<'rig>>],
+    component_runners: &[Box<dyn ComponentRunner>],
     permission_chain: Arc<PermissionChain<'rig>>,
-) -> anyhow::Result<HandleCommandResult<'rig>> {
+) -> anyhow::Result<HandleCommandResult<'rig, 'cache>> {
     let result = match debug_cli.command {
         DebuggerCommand::Print {} => {
             write_state(w, state)?;
@@ -87,14 +87,14 @@ pub(super) fn handle_command<'rig, W: Write>(
     Ok(result)
 }
 
-pub(super) enum HandleCommandResult<'rig> {
-    Continue(Option<Immutable<RigExecutionState<'rig>>>),
+pub(super) enum HandleCommandResult<'rig, 'cache> {
+    Continue(Option<Immutable<RigExecutionState<'rig, 'cache>>>),
     Exit,
 }
 
 fn get_handle<'rig>(
     handle_str: &str,
-    state: &RigExecutionState<'rig>,
+    state: &RigExecutionState<'rig, '_>,
 ) -> Result<&'rig ComponentHandle, SlipwayDebugError> {
     let shortcuts = to_shortcuts(state);
 
@@ -134,7 +134,8 @@ mod tests {
     fn it_should_run_components_in_sequence() {
         let w = &mut std::io::sink();
         let (ch1, ch2, ch3) = component_handles();
-        let rig_session = get_rig_session();
+        let rig_parts = get_rig_parts();
+        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         verify_state(&state, (true, false, false), (false, false, false));
@@ -166,7 +167,8 @@ mod tests {
     fn rerunning_component_should_clear_output_override() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
-        let rig_session = get_rig_session();
+        let rig_parts = get_rig_parts();
+        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
@@ -192,7 +194,8 @@ mod tests {
     fn running_output_clear_command_should_clear_output_override() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
-        let rig_session = get_rig_session();
+        let rig_parts = get_rig_parts();
+        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         verify_state(&state, (true, false, false), (false, false, false));
@@ -224,7 +227,8 @@ mod tests {
     fn running_output_command_twice_should_edit_overridden_output() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
-        let rig_session = get_rig_session();
+        let rig_parts = get_rig_parts();
+        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
@@ -256,7 +260,8 @@ mod tests {
     fn running_output_command_without_changes_should_not_override_output() {
         let w = &mut std::io::sink();
         let (ch1, ch2, _) = component_handles();
-        let rig_session = get_rig_session();
+        let rig_parts = get_rig_parts();
+        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
@@ -283,7 +288,8 @@ mod tests {
     fn it_should_override_inputs() {
         let w = &mut std::io::sink();
         let (_, ch2, ch3) = component_handles();
-        let rig_session = get_rig_session();
+        let rig_parts = get_rig_parts();
+        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
@@ -311,7 +317,8 @@ mod tests {
     fn it_should_override_inputs_with_dependencies() {
         let w = &mut std::io::sink();
         let (_, ch2, ch3) = component_handles();
-        let rig_session = get_rig_session();
+        let rig_parts = get_rig_parts();
+        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
@@ -339,7 +346,8 @@ mod tests {
     fn running_input_clear_command_should_clear_input_override() {
         let w = &mut std::io::sink();
         let (ch1, _, _) = component_handles();
-        let rig_session = get_rig_session();
+        let rig_parts = get_rig_parts();
+        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         assert_input_value(&state, &ch1, 1);
@@ -367,7 +375,8 @@ mod tests {
     fn running_input_command_twice_should_edit_overridden_input() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
-        let rig_session = get_rig_session();
+        let rig_parts = get_rig_parts();
+        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
@@ -401,7 +410,8 @@ mod tests {
     fn running_input_command_without_changes_should_not_override_input() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
-        let rig_session = get_rig_session();
+        let rig_parts = get_rig_parts();
+        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
@@ -443,7 +453,12 @@ mod tests {
         (ch("ch1"), ch("ch2"), ch("ch3"))
     }
 
-    fn get_rig_session() -> RigSession {
+    struct RigParts {
+        rig: Rig,
+        component_cache: ComponentCache,
+    }
+
+    fn get_rig_parts() -> RigParts {
         let (ch1, ch2, ch3) = component_handles();
 
         let increment_reference = SlipwayReference::Local {
@@ -481,7 +496,11 @@ mod tests {
 
         let component_cache =
             ComponentCache::primed(&rig, &BasicComponentsLoader::default()).unwrap();
-        RigSession::new(rig, component_cache)
+
+        RigParts {
+            rig,
+            component_cache,
+        }
     }
 
     fn verify_state(
@@ -504,12 +523,12 @@ mod tests {
         assert_eq!(component(state, &ch3).execution_output.is_some(), outputs.2);
     }
 
-    fn handle_test_command<'rig>(
+    fn handle_test_command<'rig, 'cache>(
         w: &mut std::io::Sink,
         debug_cli: DebugCli,
-        state: &RigExecutionState<'rig>,
+        state: &RigExecutionState<'rig, 'cache>,
         json_editor: &impl JsonEditor,
-    ) -> Immutable<RigExecutionState<'rig>> {
+    ) -> Immutable<RigExecutionState<'rig, 'cache>> {
         let component_runners = get_component_runners();
         match handle_command(
             w,

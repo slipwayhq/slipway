@@ -54,18 +54,18 @@ mod tests {
     }
 
     fn get_component_state<'rig, 'local>(
-        execution_state: &'local RigExecutionState<'rig>,
+        execution_state: &'local RigExecutionState<'rig, '_>,
         handle_str: &str,
     ) -> &'local ComponentState<'rig> {
         let handle = ch(handle_str);
         execution_state.component_states.get(&handle).unwrap()
     }
 
-    fn set_output_to<'a>(
-        execution_state: Immutable<RigExecutionState<'a>>,
+    fn set_output_to<'rig, 'cache>(
+        execution_state: Immutable<RigExecutionState<'rig, 'cache>>,
         next: &str,
         value: serde_json::Value,
-    ) -> Immutable<RigExecutionState<'a>> {
+    ) -> Immutable<RigExecutionState<'rig, 'cache>> {
         execution_state
             .step(Instruction::SetOutput {
                 handle: ch(next),
@@ -77,10 +77,10 @@ mod tests {
     }
 
     // Set the output of a component with a string of the same value as the component name.
-    fn set_output<'a>(
-        execution_state: Immutable<RigExecutionState<'a>>,
+    fn set_output<'rig, 'cache>(
+        execution_state: Immutable<RigExecutionState<'rig, 'cache>>,
         next: &str,
-    ) -> Immutable<RigExecutionState<'a>> {
+    ) -> Immutable<RigExecutionState<'rig, 'cache>> {
         set_output_to(execution_state, next, json!(next))
     }
 
@@ -153,7 +153,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = ComponentCache::for_test_permissive(&rig);
-            let rig_session = RigSession::new(rig, component_cache);
+            let rig_session = RigSession::new(rig, &component_cache);
 
             let execution_state = rig_session.initialize().unwrap();
 
@@ -165,7 +165,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = ComponentCache::for_test_permissive(&rig);
-            let rig_session = RigSession::new(rig, component_cache);
+            let rig_session = RigSession::new(rig, &component_cache);
 
             let s = rig_session.initialize().unwrap();
 
@@ -186,7 +186,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = ComponentCache::for_test_permissive(&rig);
-            let rig_session = RigSession::new(rig, component_cache);
+            let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 
@@ -206,7 +206,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = ComponentCache::for_test_permissive(&rig);
-            let rig_session = RigSession::new(rig, component_cache);
+            let rig_session = RigSession::new(rig, &component_cache);
 
             let s = rig_session.initialize().unwrap();
 
@@ -233,7 +233,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = ComponentCache::for_test_permissive(&rig);
-            let rig_session = RigSession::new(rig, component_cache);
+            let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 
@@ -254,7 +254,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = ComponentCache::for_test_permissive(&rig);
-            let rig_session = RigSession::new(rig, component_cache);
+            let rig_session = RigSession::new(rig, &component_cache);
 
             let s = rig_session.initialize().unwrap();
 
@@ -281,7 +281,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = ComponentCache::for_test_permissive(&rig);
-            let rig_session = RigSession::new(rig, component_cache);
+            let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 
@@ -303,7 +303,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = ComponentCache::for_test_permissive(&rig);
-            let rig_session = RigSession::new(rig, component_cache);
+            let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 
@@ -414,7 +414,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = ComponentCache::for_test_permissive(&rig);
-            let rig_session = RigSession::new(rig, component_cache);
+            let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 
@@ -470,7 +470,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = ComponentCache::for_test_permissive(&rig);
-            let rig_session = RigSession::new(rig, component_cache);
+            let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 
@@ -599,7 +599,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = ComponentCache::for_test_permissive(&rig);
-            let rig_session = RigSession::new(rig, component_cache);
+            let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 
@@ -631,7 +631,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = ComponentCache::for_test_permissive(&rig);
-            let rig_session = RigSession::new(rig, component_cache);
+            let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 
@@ -690,7 +690,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = ComponentCache::for_test_permissive(&rig);
-            let rig_session = RigSession::new(rig, component_cache);
+            let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 

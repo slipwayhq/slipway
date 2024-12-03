@@ -118,7 +118,7 @@ fn test_component(localhost_url: Option<&str>, component_reference: SlipwayRefer
     .unwrap();
 
     // Initialize the rig session.
-    let rig_session = RigSession::new(rig, component_cache);
+    let rig_session = RigSession::new(rig, &component_cache);
     let mut state = rig_session.initialize().unwrap();
 
     let good_input = json!({ "type": "increment", "value": 44});

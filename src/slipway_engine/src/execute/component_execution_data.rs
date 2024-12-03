@@ -36,7 +36,7 @@ impl<'call, 'rig, 'runners> ComponentExecutionData<'call, 'rig, 'runners> {
 #[derive(Clone)]
 pub struct ComponentExecutionContext<'call, 'rig, 'runners> {
     pub permission_chain: Arc<PermissionChain<'rig>>,
-    pub component_runners: &'runners [Box<dyn ComponentRunner<'rig>>],
+    pub component_runners: &'runners [Box<dyn ComponentRunner>],
     pub files: Arc<dyn ComponentFiles>,
     pub callout_context: CalloutContext<'call, 'rig>,
 }

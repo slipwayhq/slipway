@@ -8,7 +8,7 @@ use super::errors::SlipwayDebugError;
 
 pub(super) fn handle_render_command<'rig>(
     handle: &'rig ComponentHandle,
-    state: &RigExecutionState<'rig>,
+    state: &RigExecutionState<'rig, '_>,
     save_path: Option<PathBuf>,
 ) -> Result<(), SlipwayDebugError> {
     let component_state = state

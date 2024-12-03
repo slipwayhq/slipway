@@ -5,7 +5,7 @@ use slipway_engine::{
     ComponentRigging, ComponentRunner, Rig, RigSession, Rigging, RunComponentError,
     RunComponentResult, Schema, SlipwayReference, SpecialComponentReference, TryRunComponentResult,
 };
-use slipway_host::run::{run_rig, RunEventHandler};
+use slipway_host::{run::run_rig, sink_run_event_handler::SinkRunEventHandler};
 
 pub const FRAGMENT_COMPONENT_RUNNER_IDENTIFIER: &str = "fragment";
 pub const INPUT_COMPONENT_HANDLE: &str = "input";
@@ -13,15 +13,15 @@ pub const OUTPUT_COMPONENT_HANDLE: &str = "output";
 
 pub struct FragmentComponentRunner {}
 
-impl<'rig> ComponentRunner<'rig> for FragmentComponentRunner {
+impl ComponentRunner for FragmentComponentRunner {
     fn identifier(&self) -> String {
         FRAGMENT_COMPONENT_RUNNER_IDENTIFIER.to_string()
     }
 
-    fn run<'call, 'runners>(
+    fn run<'call>(
         &self,
         handle: &'call ComponentHandle,
-        execution_data: &'call ComponentExecutionData<'call, 'rig, 'runners>,
+        execution_data: &'call ComponentExecutionData<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError> {
         let component_definition = execution_data.get_component_definition(handle);
 
@@ -32,7 +32,6 @@ impl<'rig> ComponentRunner<'rig> for FragmentComponentRunner {
         let input = &execution_data.input.value;
 
         let run_result = run_component_fragment(
-            handle,
             input,
             Arc::clone(&component_definition),
             rigging,
@@ -44,7 +43,6 @@ impl<'rig> ComponentRunner<'rig> for FragmentComponentRunner {
 }
 
 fn run_component_fragment(
-    handle: &ComponentHandle,
     input: &serde_json::Value,
     component_definition: Arc<Component<Schema>>,
     rigging: &Rigging,
@@ -56,14 +54,14 @@ fn run_component_fragment(
     let output_component_handle = ComponentHandle::from_str(OUTPUT_COMPONENT_HANDLE)
         .expect("Default output component handle should be valid.");
 
-    if rigging.components.get(&input_component_handle).is_some() {
+    if rigging.components.contains_key(&input_component_handle) {
         return Err(RunComponentError::Other(format!(
             "Fragment should not contain a component with the handle \"{}\".",
             INPUT_COMPONENT_HANDLE
         )));
     }
 
-    if rigging.components.get(&output_component_handle).is_none() {
+    if !rigging.components.contains_key(&output_component_handle) {
         return Err(RunComponentError::Other(format!(
             "Fragment must contain a component with the handle \"{}\".",
             OUTPUT_COMPONENT_HANDLE
@@ -92,12 +90,40 @@ fn run_component_fragment(
     };
 
     let component_runners = execution_context.component_runners;
-    let permission_chain = execution_context.permission_chain;
+    let permission_chain = Arc::clone(&execution_context.permission_chain);
 
     let component_cache = execution_context.callout_context.component_cache;
     let rig_session = RigSession::new(rig, component_cache);
 
-    run_rig(&rig_session, None, component_runners, permission_chain);
+    let run_result = run_rig(
+        &rig_session,
+        Some(&mut SinkRunEventHandler {}),
+        component_runners,
+        permission_chain,
+    )
+    .map_err(|e| RunComponentError::RunCallFailed {
+        source: Some(e.into()),
+    })?;
+
+    let output_state = run_result
+        .component_outputs
+        .get(&output_component_handle)
+        .expect("Output component should exist.");
+
+    let Some(output) = output_state.as_ref() else {
+        return Err(RunComponentError::Other(format!(
+            "Component with handle \"{}\" did not have any output set after fragment execution.",
+            INPUT_COMPONENT_HANDLE
+        )));
+    };
+
+    let result = RunComponentResult {
+        output: output.value.clone(),
+        metadata: output.run_metadata.clone(),
+    };
+
+    Ok(result)
+
     // Handling input:
     // Perhaps create an "input" component and set the output on it.
 
@@ -107,28 +133,3 @@ fn run_component_fragment(
     // A fragment should be built with only one component with a dangling output.
     // Or a component with the handle "output" perhaps.
 }
-
-// struct SinkRunEventHandler {}
-
-// impl<'rig> RunEventHandler<'rig, ()> for SinkRunEventHandler {
-//     fn handle_component_run_start(
-//         &mut self,
-//         _event: slipway_host::run::ComponentRunStartEvent<'rig>,
-//     ) -> Result<(), ()> {
-//         Ok(())
-//     }
-
-//     fn handle_component_run_end(
-//         &mut self,
-//         _event: slipway_host::run::ComponentRunEndEvent<'rig>,
-//     ) -> Result<(), ()> {
-//         Ok(())
-//     }
-
-//     fn handle_state_changed<'state>(
-//         &mut self,
-//         _event: slipway_host::run::StateChangeEvent<'rig, 'state>,
-//     ) -> Result<(), ()> {
-//         Ok(())
-//     }
-// }

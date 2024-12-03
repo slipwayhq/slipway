@@ -12,14 +12,14 @@ use crate::{
 
 pub(super) fn write_state<W: Write>(
     w: &mut W,
-    state: &RigExecutionState<'_>,
+    state: &RigExecutionState<'_, '_>,
 ) -> Result<(), HostError> {
     write_state_with_outputs(w, state, PrintComponentOutputsType::None)
 }
 
 pub(super) fn write_state_with_outputs<W: Write>(
     w: &mut W,
-    state: &RigExecutionState<'_>,
+    state: &RigExecutionState<'_, '_>,
     outputs_type: PrintComponentOutputsType,
 ) -> Result<(), HostError> {
     let view_model = to_view_model(state);

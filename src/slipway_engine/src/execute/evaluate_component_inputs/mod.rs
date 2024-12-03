@@ -24,9 +24,9 @@ const RIGGING_KEY: &str = "rigging";
 const INPUT_KEY: &str = "input";
 const OUTPUT_KEY: &str = "output";
 
-pub(super) fn evaluate_component_inputs(
-    state: RigExecutionState,
-) -> Result<RigExecutionState, RigError> {
+pub(super) fn evaluate_component_inputs<'rig, 'cache>(
+    state: RigExecutionState<'rig, 'cache>,
+) -> Result<RigExecutionState<'rig, 'cache>, RigError> {
     let mut dependency_map: HashMap<&ComponentHandle, HashSet<ComponentHandle>> = HashMap::new();
     let mut component_evaluate_input_params: HashMap<&ComponentHandle, EvaluateInputParams> =
         HashMap::new();

@@ -1,10 +1,12 @@
 use std::collections::HashSet;
 
-use crate::{errors::RigError, RigExecutionState, RigSession, ComponentState, Immutable};
+use crate::{errors::RigError, ComponentState, Immutable, RigExecutionState, RigSession};
 
 use super::evaluate_component_inputs::evaluate_component_inputs;
 
-pub(super) fn initialize(session: &RigSession) -> Result<Immutable<RigExecutionState>, RigError> {
+pub(super) fn initialize<'rig, 'cache>(
+    session: &'rig RigSession<'cache>,
+) -> Result<Immutable<RigExecutionState<'rig, 'cache>>, RigError> {
     let component_states = session
         .rig
         .rigging

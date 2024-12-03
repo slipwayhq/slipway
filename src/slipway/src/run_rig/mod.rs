@@ -26,7 +26,7 @@ pub(super) fn run_rig<W: Write>(
     let rig = parse_rig(&file_contents)?;
 
     let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::default())?;
-    let session = RigSession::new(rig, component_cache);
+    let session = RigSession::new(rig, &component_cache);
 
     let mut event_handler = SlipwayRunEventHandler { w };
     let component_runners = get_component_runners();
@@ -47,7 +47,9 @@ struct SlipwayRunEventHandler<'w, W: Write> {
     w: &'w mut W,
 }
 
-impl<'rig, 'w, W: Write> RunEventHandler<'rig, HostError> for SlipwayRunEventHandler<'w, W> {
+impl<'rig, 'cache, 'w, W: Write> RunEventHandler<'rig, 'cache, HostError>
+    for SlipwayRunEventHandler<'w, W>
+{
     fn handle_component_run_start(
         &mut self,
         event: slipway_host::run::ComponentRunStartEvent<'rig>,
@@ -66,7 +68,7 @@ impl<'rig, 'w, W: Write> RunEventHandler<'rig, HostError> for SlipwayRunEventHan
 
     fn handle_state_changed<'state>(
         &mut self,
-        event: slipway_host::run::StateChangeEvent<'rig, 'state>,
+        event: slipway_host::run::StateChangeEvent<'rig, 'cache, 'state>,
     ) -> Result<(), HostError> {
         if event.is_complete {
             writeln!(self.w, "No more components to run.")?;

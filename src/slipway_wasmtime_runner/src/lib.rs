@@ -11,15 +11,15 @@ pub const WASMTIME_COMPONENT_RUNNER_IDENTIFIER: &str = "wasmtime";
 
 pub struct WasmComponentRunner {}
 
-impl<'rig> ComponentRunner<'rig> for WasmComponentRunner {
+impl ComponentRunner for WasmComponentRunner {
     fn identifier(&self) -> String {
         WASMTIME_COMPONENT_RUNNER_IDENTIFIER.to_string()
     }
 
-    fn run<'call, 'runners>(
+    fn run<'call>(
         &self,
         handle: &'call ComponentHandle,
-        execution_data: &'call ComponentExecutionData<'call, 'rig, 'runners>,
+        execution_data: &'call ComponentExecutionData<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError> {
         let maybe_wasm_bytes = execution_data
             .context

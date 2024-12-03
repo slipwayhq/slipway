@@ -1,0 +1,26 @@
+use crate::run::RunEventHandler;
+
+pub struct SinkRunEventHandler {}
+
+impl<'rig, 'cache> RunEventHandler<'rig, 'cache, ()> for SinkRunEventHandler {
+    fn handle_component_run_start(
+        &mut self,
+        _event: crate::run::ComponentRunStartEvent<'rig>,
+    ) -> Result<(), ()> {
+        Ok(())
+    }
+
+    fn handle_component_run_end(
+        &mut self,
+        _event: crate::run::ComponentRunEndEvent<'rig>,
+    ) -> Result<(), ()> {
+        Ok(())
+    }
+
+    fn handle_state_changed<'state>(
+        &mut self,
+        _event: crate::run::StateChangeEvent<'rig, 'cache, 'state>,
+    ) -> Result<(), ()> {
+        Ok(())
+    }
+}

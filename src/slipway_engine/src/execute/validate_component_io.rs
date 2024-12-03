@@ -165,7 +165,7 @@ mod tests {
             .collect(),
         );
 
-        let rig_session = RigSession::new(rig, component_cache);
+        let rig_session = RigSession::new(rig, &component_cache);
 
         let mut s = rig_session.initialize().unwrap();
 
@@ -218,7 +218,7 @@ mod tests {
             .collect(),
         );
 
-        let rig_session = RigSession::new(rig, component_cache);
+        let rig_session = RigSession::new(rig, &component_cache);
 
         let s = rig_session.initialize().unwrap();
         let s_result = s.step(Instruction::SetOutput {
@@ -284,7 +284,7 @@ mod tests {
             .collect(),
         );
 
-        let rig_session = RigSession::new(rig, component_cache);
+        let rig_session = RigSession::new(rig, &component_cache);
 
         let mut s = rig_session.initialize().unwrap();
         s = s
@@ -332,7 +332,7 @@ mod tests {
             .collect(),
         );
 
-        let rig_session = RigSession::new(rig, component_cache);
+        let rig_session = RigSession::new(rig, &component_cache);
 
         let s = rig_session.initialize().unwrap();
         let s_result = s.step(Instruction::SetOutput {
@@ -406,7 +406,7 @@ mod tests {
             .collect(),
         );
 
-        let rig_session = RigSession::new(rig, component_cache);
+        let rig_session = RigSession::new(rig, &component_cache);
 
         let mut s = rig_session.initialize().unwrap();
 
@@ -464,7 +464,7 @@ mod tests {
             .collect(),
         );
 
-        let rig_session = RigSession::new(rig, component_cache);
+        let rig_session = RigSession::new(rig, &component_cache);
 
         let s = rig_session.initialize().unwrap();
         let s_result = s.step(Instruction::SetOutput {
