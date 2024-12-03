@@ -36,7 +36,7 @@ pub(super) fn run_rig<W: Write>(
 
     slipway_host::run::run_rig(
         &session,
-        &mut event_handler,
+        Some(&mut event_handler),
         component_runners_slice,
         permission_chain,
     )?;

@@ -1,0 +1,11 @@
+[package]
+name = "slipway_fragment_runner"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+slipway_engine = { path = "../slipway_engine", features = [] }
+slipway_host = { path = "../slipway_host", features = [] }
+serde = { workspace = true }
+serde_json = { workspace = true }

@@ -7,7 +7,7 @@ use slipway_engine::{
 };
 use slipway_host::SLIPWAY_COMPONENT_WASM_FILE_NAME;
 
-pub const WASMTIME_COMPONENT_RUNNER_IDENTIFIER: &str = "Wasmtime";
+pub const WASMTIME_COMPONENT_RUNNER_IDENTIFIER: &str = "wasmtime";
 
 pub struct WasmComponentRunner {}
 

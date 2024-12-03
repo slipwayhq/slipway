@@ -9,6 +9,7 @@ use crate::{
 pub(super) mod basic_components_loader;
 mod is_safe_path;
 mod prime_component_cache;
+mod special_components;
 
 const SLIPWAY_COMPONENT_FILE_NAME: &str = "slipway_component.json";
 

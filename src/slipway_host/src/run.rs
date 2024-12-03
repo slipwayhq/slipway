@@ -65,7 +65,7 @@ pub trait RunEventHandler<'rig, THostError> {
 
 pub fn run_rig<'rig, 'runners, THostError>(
     rig_session: &'rig RigSession,
-    event_handler: &mut impl RunEventHandler<'rig, THostError>,
+    mut event_handler: Option<&mut impl RunEventHandler<'rig, THostError>>,
     component_runners: &'runners [Box<dyn ComponentRunner<'rig>>],
     permission_chain: Arc<PermissionChain<'rig>>,
 ) -> Result<Immutable<RigExecutionState<'rig>>, RunError<THostError>> {
@@ -85,23 +85,27 @@ pub fn run_rig<'rig, 'runners, THostError>(
             .collect();
 
         let is_complete = ready_components.is_empty();
-        event_handler
-            .handle_state_changed(StateChangeEvent {
-                state: &state,
-                is_complete,
-            })
-            .map_err(|e| RunError::HostError(e))?;
+        if let Some(event_handler) = event_handler.as_mut() {
+            event_handler
+                .handle_state_changed(StateChangeEvent {
+                    state: &state,
+                    is_complete,
+                })
+                .map_err(|e| RunError::HostError(e))?;
+        }
 
         if is_complete {
             break;
         }
 
         for handle in ready_components {
-            event_handler
-                .handle_component_run_start(ComponentRunStartEvent {
-                    component_handle: handle,
-                })
-                .map_err(|e| RunError::HostError(e))?;
+            if let Some(event_handler) = event_handler.as_mut() {
+                event_handler
+                    .handle_component_run_start(ComponentRunStartEvent {
+                        component_handle: handle,
+                    })
+                    .map_err(|e| RunError::HostError(e))?;
+            }
 
             let result = run_component(
                 handle,
@@ -110,11 +114,13 @@ pub fn run_rig<'rig, 'runners, THostError>(
                 Arc::clone(&permission_chain),
             )?;
 
-            event_handler
-                .handle_component_run_end(ComponentRunEndEvent {
-                    component_handle: handle,
-                })
-                .map_err(|e| RunError::HostError(e))?;
+            if let Some(event_handler) = event_handler.as_mut() {
+                event_handler
+                    .handle_component_run_end(ComponentRunEndEvent {
+                        component_handle: handle,
+                    })
+                    .map_err(|e| RunError::HostError(e))?;
+            }
 
             state = state.step(Instruction::SetOutput {
                 handle: handle.clone(),

@@ -1,8 +1,8 @@
 use std::{collections::HashMap, rc::Rc, sync::Arc};
 
 use crate::{
-    utils::ExpectWith, ComponentCache, ComponentFiles, ComponentHandle, ComponentInput,
-    ComponentPermission, SlipwayReference, PERMISSIONS_FULL_TRUST_VEC,
+    utils::ExpectWith, Component, ComponentCache, ComponentFiles, ComponentHandle, ComponentInput,
+    ComponentPermission, Schema, SlipwayReference, PERMISSIONS_FULL_TRUST_VEC,
 };
 
 use super::component_runner::ComponentRunner;
@@ -11,6 +11,26 @@ use super::component_runner::ComponentRunner;
 pub struct ComponentExecutionData<'call, 'rig, 'runners> {
     pub input: Rc<ComponentInput>,
     pub context: ComponentExecutionContext<'call, 'rig, 'runners>,
+}
+
+impl<'call, 'rig, 'runners> ComponentExecutionData<'call, 'rig, 'runners> {
+    pub fn get_component_definition(&self, handle: &ComponentHandle) -> Arc<Component<Schema>> {
+        let component_reference = self
+            .context
+            .callout_context
+            .get_component_reference_for_handle(handle);
+
+        let component_cache = self.context.callout_context.component_cache;
+        let primed_component = component_cache.get(component_reference);
+
+        Arc::clone(&primed_component.definition)
+    }
+
+    pub fn get_component_reference(&self, handle: &ComponentHandle) -> &'rig SlipwayReference {
+        self.context
+            .callout_context
+            .get_component_reference_for_handle(handle)
+    }
 }
 
 #[derive(Clone)]

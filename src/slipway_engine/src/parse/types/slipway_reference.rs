@@ -14,6 +14,10 @@ pub(crate) static REGISTRY_REGEX: Lazy<Regex> =
 static RELATIVE_FILE_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^file:(?<path>[^/].*)$").unwrap());
 
+static PASSTHROUGH_STRING: &str = "pass";
+
+static SINK_STRING: &str = "sink";
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SlipwayReference {
     // publisher.name#version
@@ -33,12 +37,27 @@ pub enum SlipwayReference {
     Url {
         url: Url,
     },
+    Special(SpecialComponentReference),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum SpecialComponentReference {
+    Pass,
+    Sink,
 }
 
 impl FromStr for SlipwayReference {
     type Err = RigError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == PASSTHROUGH_STRING {
+            return Ok(SlipwayReference::Special(SpecialComponentReference::Pass));
+        }
+
+        if s == SINK_STRING {
+            return Ok(SlipwayReference::Special(SpecialComponentReference::Sink));
+        }
+
         if let Some(caps) = REGISTRY_REGEX.captures(s) {
             let version = parse_component_version(&caps["version"])?;
 
@@ -81,37 +100,6 @@ impl FromStr for SlipwayReference {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum GitHubVersion {
-    Commitish(String),
-    Version(Version),
-}
-
-impl FromStr for GitHubVersion {
-    type Err = RigError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        const SEMVER_PREFIX: &str = "semver:";
-        if let Some(semver) = s.strip_prefix(SEMVER_PREFIX) {
-            let version = parse_component_version(semver)?;
-            return Ok(GitHubVersion::Version(version));
-        }
-
-        Ok(GitHubVersion::Commitish(s.to_string()))
-    }
-}
-
-impl Display for GitHubVersion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            GitHubVersion::Commitish(commit) => f.write_str(commit),
-            GitHubVersion::Version(version) => {
-                f.write_fmt(format_args!("{}{}", "semver:", version))
-            }
-        }
-    }
-}
-
 impl Display for SlipwayReference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -132,6 +120,16 @@ impl Display for SlipwayReference {
                 }
             }
             SlipwayReference::Url { url } => f.write_fmt(format_args!("{}", url)),
+            SlipwayReference::Special(inner) => f.write_fmt(format_args!("{}", inner)),
+        }
+    }
+}
+
+impl Display for SpecialComponentReference {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SpecialComponentReference::Pass => f.write_str(PASSTHROUGH_STRING),
+            SpecialComponentReference::Sink => f.write_str(SINK_STRING),
         }
     }
 }
@@ -154,6 +152,39 @@ mod tests {
     use super::*;
     use common_test_utils::quote;
 
+    mod special_reference_tests {
+        use super::*;
+
+        #[test]
+        fn it_should_serialize_and_deserialize_pass() {
+            let s = r"pass";
+            let json = quote(s);
+
+            let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
+
+            let SlipwayReference::Special(SpecialComponentReference::Pass) = reference else {
+                panic!("Unexpected reference: {reference:?}");
+            };
+
+            let json_out = serde_json::to_string(&reference).unwrap();
+            assert_eq!(json, json_out);
+        }
+
+        #[test]
+        fn it_should_serialize_and_deserialize_sink() {
+            let s = r"sink";
+            let json = quote(s);
+
+            let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
+
+            let SlipwayReference::Special(SpecialComponentReference::Sink) = reference else {
+                panic!("Unexpected reference: {reference:?}");
+            };
+
+            let json_out = serde_json::to_string(&reference).unwrap();
+            assert_eq!(json, json_out);
+        }
+    }
     mod registry_tests {
         use super::*;
 

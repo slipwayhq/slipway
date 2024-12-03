@@ -25,6 +25,7 @@ pub mod errors;
 mod execute;
 mod load;
 mod parse;
+mod special_components;
 pub mod utils;
 
 #[cfg(any(feature = "unstable-test-utils", test))]

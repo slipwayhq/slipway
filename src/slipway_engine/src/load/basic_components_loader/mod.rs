@@ -11,7 +11,7 @@ use crate::{
     SlipwayReference,
 };
 
-use super::{ComponentsLoader, LoadedComponent};
+use super::{special_components::load_special_component, ComponentsLoader, LoadedComponent};
 
 mod component_io_abstractions;
 mod filename_from_url;
@@ -126,6 +126,7 @@ impl BasicComponentsLoader {
         component_reference: &SlipwayReference,
     ) -> Result<LoadedComponent, ComponentLoadError> {
         match component_reference {
+            SlipwayReference::Special(inner) => Ok(load_special_component(inner)),
             SlipwayReference::Local { path } => {
                 if self.io_abstractions.is_dir(path) {
                     load_from_directory::load_from_directory(
