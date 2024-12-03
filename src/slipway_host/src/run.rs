@@ -1,12 +1,12 @@
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
 use thiserror::Error;
 
 use slipway_engine::{
     errors::{ComponentLoadError, RigError},
-    ComponentExecutionData, ComponentHandle, ComponentRunner, Immutable, Instruction,
-    PermissionChain, RigExecutionState, RigSession, RunComponentError, RunComponentResult,
-    TryRunComponentResult,
+    get_component_execution_data_for_callout, ComponentExecutionContext, ComponentExecutionData,
+    ComponentHandle, ComponentRunner, Immutable, Instruction, PermissionChain, RigExecutionState,
+    RigSession, RunComponentError, RunComponentResult, TryRunComponentResult,
 };
 
 #[derive(Error, Debug)]
@@ -139,11 +139,51 @@ pub fn run_component<'rig, THostError>(
     run_component_inner(handle, &execution_data)
 }
 
+pub fn run_component_callout_for_host(
+    from_handle: &ComponentHandle,
+    execution_context: &ComponentExecutionContext,
+    handle: &str,
+    input: &str,
+) -> String {
+    let handle = ComponentHandle::from_str(handle).unwrap_or_else(|e| {
+        panic!(
+            "Failed to parse component handle \"{}\" for callout from \"{}\":\n{}",
+            handle, from_handle, e
+        );
+    });
+
+    let input = serde_json::from_str(input).unwrap_or_else(|e| {
+        panic!(
+            "Failed to parse input JSON for callout from \"{}\":\n{}",
+            from_handle, e
+        );
+    });
+
+    let result = run_component_callout::<anyhow::Error>(&handle, input, execution_context)
+        .unwrap_or_else(|e| {
+            panic!(
+                "Failed to run callout from \"{}\" to \"{}\":\n{}",
+                from_handle, handle, e
+            );
+        });
+
+    serde_json::to_string(&result.output).unwrap_or_else(|e| {
+        panic!(
+            "Failed to serialize output JSON for callout from \"{}\" to \"{}\":\n{}",
+            from_handle, handle, e
+        );
+    })
+}
+
 pub fn run_component_callout<THostError>(
     handle: &ComponentHandle,
-    execution_data: &ComponentExecutionData,
+    input: serde_json::Value,
+    execution_context: &ComponentExecutionContext,
 ) -> Result<RunComponentResult, RunError<THostError>> {
-    run_component_inner(handle, execution_data)
+    let execution_data =
+        get_component_execution_data_for_callout(handle, input, execution_context)?;
+
+    run_component_inner(handle, &execution_data)
 }
 
 fn run_component_inner<THostError>(

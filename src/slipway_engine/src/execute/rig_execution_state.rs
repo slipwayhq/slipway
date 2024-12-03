@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     errors::RigError, Callouts, ComponentCache, ComponentHandle, ComponentInput, Immutable,
-    Instruction, RigSession, SlipwayReference, PERMISSIONS_NONE_VEC,
+    Instruction, JsonMetadata, RigSession, SlipwayReference, PERMISSIONS_NONE_VEC,
 };
 
 use super::{
@@ -109,6 +109,44 @@ impl<'rig> RigExecutionState<'rig> {
 
         Ok(component_state)
     }
+}
+
+pub fn get_component_execution_data_for_callout<'call, 'rig, 'runners>(
+    handle: &ComponentHandle,
+    input: serde_json::Value,
+    execution_context: &ComponentExecutionContext<'call, 'rig, 'runners>,
+) -> Result<ComponentExecutionData<'call, 'rig, 'runners>, RigError>
+where
+    'rig: 'call,
+{
+    let component_reference = execution_context
+        .callout_context
+        .get_component_reference_for_handle(handle);
+
+    let component_cache = execution_context.callout_context.component_cache;
+
+    let permission_chain = Arc::clone(&execution_context.permission_chain);
+
+    // There are no outer callouts if we're already in a callout.
+    let outer_callouts = None;
+
+    let component_runners = execution_context.component_runners;
+
+    let json_metadata = JsonMetadata::from_value(&input);
+
+    let input = Rc::new(ComponentInput {
+        value: input,
+        json_metadata,
+    });
+
+    get_component_execution_data(
+        component_reference,
+        component_cache,
+        component_runners,
+        permission_chain,
+        outer_callouts,
+        input,
+    )
 }
 
 pub fn get_component_execution_data<'call, 'rig, 'runners>(
