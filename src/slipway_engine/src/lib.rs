@@ -21,6 +21,7 @@ pub use parse::types::primitives::*;
 pub use parse::types::slipway_id::*;
 pub use parse::types::slipway_reference::*;
 pub use parse::types::*;
+pub use special_components::SpecialComponentRunner;
 pub mod errors;
 mod execute;
 mod load;

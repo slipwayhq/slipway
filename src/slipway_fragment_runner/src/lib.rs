@@ -20,10 +20,9 @@ impl ComponentRunner for FragmentComponentRunner {
 
     fn run<'call>(
         &self,
-        handle: &'call ComponentHandle,
         execution_data: &'call ComponentExecutionData<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError> {
-        let component_definition = execution_data.get_component_definition(handle);
+        let component_definition = &execution_data.context.component_definition;
 
         let Some(rigging) = component_definition.rigging.as_ref() else {
             return Ok(TryRunComponentResult::CannotRun);
@@ -33,7 +32,7 @@ impl ComponentRunner for FragmentComponentRunner {
 
         let run_result = run_component_fragment(
             input,
-            Arc::clone(&component_definition),
+            Arc::clone(component_definition),
             rigging,
             &execution_data.context,
         )?;
@@ -92,7 +91,7 @@ fn run_component_fragment(
     let component_runners = execution_context.component_runners;
     let permission_chain = Arc::clone(&execution_context.permission_chain);
 
-    let component_cache = execution_context.callout_context.component_cache;
+    let component_cache = execution_context.component_cache;
     let rig_session = RigSession::new(rig, component_cache);
 
     let run_result = run_rig(
@@ -123,13 +122,4 @@ fn run_component_fragment(
     };
 
     Ok(result)
-
-    // Handling input:
-    // Perhaps create an "input" component and set the output on it.
-
-    // Handling output:
-    // 🤔
-    // Take the first component with a dangling output.
-    // A fragment should be built with only one component with a dangling output.
-    // Or a component with the handle "output" perhaps.
 }

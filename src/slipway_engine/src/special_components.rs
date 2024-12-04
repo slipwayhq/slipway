@@ -1,9 +1,8 @@
 use std::time::{Duration, Instant};
 
 use crate::{
-    ComponentExecutionData, ComponentHandle, ComponentRunner, RunComponentError,
-    RunComponentResult, RunMetadata, SlipwayReference, SpecialComponentReference,
-    TryRunComponentResult,
+    ComponentExecutionData, ComponentRunner, RunComponentError, RunComponentResult, RunMetadata,
+    SlipwayReference, SpecialComponentReference, TryRunComponentResult,
 };
 
 pub const SPECIAL_COMPONENT_RUNNER_IDENTIFIER: &str = "special";
@@ -17,10 +16,9 @@ impl ComponentRunner for SpecialComponentRunner {
 
     fn run<'call>(
         &self,
-        handle: &'call ComponentHandle,
         execution_data: &'call ComponentExecutionData<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError> {
-        let reference = execution_data.get_component_reference(handle);
+        let reference = execution_data.context.component_reference;
 
         let SlipwayReference::Special(inner) = reference else {
             return Ok(TryRunComponentResult::CannotRun);

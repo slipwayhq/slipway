@@ -155,7 +155,7 @@ pub fn run_component<'rig, THostError>(
     let execution_data =
         state.get_component_execution_data(handle, permission_chain, component_runners)?;
 
-    run_component_inner(handle, &execution_data)
+    run_component_inner(&execution_data)
 }
 
 pub fn run_component_callout_for_host(
@@ -202,22 +202,20 @@ pub fn run_component_callout<THostError>(
     let execution_data =
         get_component_execution_data_for_callout(handle, input, execution_context)?;
 
-    run_component_inner(handle, &execution_data)
+    run_component_inner(&execution_data)
 }
 
 fn run_component_inner<THostError>(
-    handle: &ComponentHandle,
     execution_data: &ComponentExecutionData,
 ) -> Result<RunComponentResult, RunError<THostError>> {
     for runner in execution_data.context.component_runners {
-        let result =
-            runner
-                .run(handle, execution_data)
-                .map_err(|e| RunError::RunComponentFailed {
-                    component_handle: handle.clone(),
-                    component_runner: runner.identifier(),
-                    error: e,
-                })?;
+        let result = runner
+            .run(execution_data)
+            .map_err(|e| RunError::RunComponentFailed {
+                component_handle: execution_data.context.component_handle.clone(),
+                component_runner: runner.identifier(),
+                error: e,
+            })?;
 
         match result {
             TryRunComponentResult::Ran { result } => return Ok(result),
@@ -226,6 +224,6 @@ fn run_component_inner<THostError>(
     }
 
     Err(RunError::ComponentRunnerNotFound {
-        component_handle: handle.clone(),
+        component_handle: execution_data.context.component_handle.clone(),
     })
 }

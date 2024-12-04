@@ -13,32 +13,40 @@ pub struct ComponentExecutionData<'call, 'rig, 'runners> {
     pub context: ComponentExecutionContext<'call, 'rig, 'runners>,
 }
 
-impl<'call, 'rig, 'runners> ComponentExecutionData<'call, 'rig, 'runners> {
-    pub fn get_component_definition(&self, handle: &ComponentHandle) -> Arc<Component<Schema>> {
-        let component_reference = self
-            .context
-            .callout_context
-            .get_component_reference_for_handle(handle);
-
-        let component_cache = self.context.callout_context.component_cache;
-        let primed_component = component_cache.get(component_reference);
-
-        Arc::clone(&primed_component.definition)
-    }
-
-    pub fn get_component_reference(&self, handle: &ComponentHandle) -> &'rig SlipwayReference {
-        self.context
-            .callout_context
-            .get_component_reference_for_handle(handle)
-    }
+#[derive(Clone)]
+pub struct ComponentExecutionContext<'call, 'rig, 'runners> {
+    pub component_handle: &'rig ComponentHandle,
+    pub component_reference: &'rig SlipwayReference,
+    pub component_definition: Arc<Component<Schema>>,
+    pub component_cache: &'rig ComponentCache,
+    pub component_runners: &'runners [Box<dyn ComponentRunner>],
+    pub permission_chain: Arc<PermissionChain<'rig>>,
+    pub files: Arc<dyn ComponentFiles>,
+    pub callout_context: CalloutContext<'call, 'rig>,
 }
 
 #[derive(Clone)]
-pub struct ComponentExecutionContext<'call, 'rig, 'runners> {
-    pub permission_chain: Arc<PermissionChain<'rig>>,
-    pub component_runners: &'runners [Box<dyn ComponentRunner>],
-    pub files: Arc<dyn ComponentFiles>,
-    pub callout_context: CalloutContext<'call, 'rig>,
+pub struct CalloutContext<'call, 'rig> {
+    callout_handle_to_reference: HashMap<&'call ComponentHandle, &'rig SlipwayReference>,
+}
+
+impl<'call, 'rig> CalloutContext<'call, 'rig> {
+    pub fn new(
+        callout_handle_to_reference: HashMap<&'call ComponentHandle, &'rig SlipwayReference>,
+    ) -> Self {
+        Self {
+            callout_handle_to_reference,
+        }
+    }
+
+    pub fn get_component_reference_for_handle(
+        &self,
+        handle: &ComponentHandle,
+    ) -> &'rig SlipwayReference {
+        self.callout_handle_to_reference
+            .get(handle)
+            .expect_with(|| format!("Component reference not found for handle {:?}", handle))
+    }
 }
 
 #[derive(Clone)]
@@ -77,32 +85,5 @@ impl<'rig> PermissionChain<'rig> {
             current: &PERMISSIONS_FULL_TRUST_VEC,
             previous: None,
         })
-    }
-}
-
-#[derive(Clone)]
-pub struct CalloutContext<'call, 'rig> {
-    callout_handle_to_reference: HashMap<&'call ComponentHandle, &'rig SlipwayReference>,
-    pub component_cache: &'rig ComponentCache,
-}
-
-impl<'call, 'rig> CalloutContext<'call, 'rig> {
-    pub fn new(
-        callout_handle_to_reference: HashMap<&'call ComponentHandle, &'rig SlipwayReference>,
-        component_cache: &'rig ComponentCache,
-    ) -> Self {
-        Self {
-            callout_handle_to_reference,
-            component_cache,
-        }
-    }
-
-    pub fn get_component_reference_for_handle(
-        &self,
-        handle: &ComponentHandle,
-    ) -> &'rig SlipwayReference {
-        self.callout_handle_to_reference
-            .get(handle)
-            .expect_with(|| format!("Callout reference not found for handle {:?}", handle))
     }
 }

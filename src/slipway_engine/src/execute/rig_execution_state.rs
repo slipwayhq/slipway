@@ -36,7 +36,7 @@ impl<'rig, 'cache> RigExecutionState<'rig, 'cache> {
 
     pub fn get_component_execution_data<'call, 'runners>(
         &self,
-        handle: &ComponentHandle,
+        handle: &'rig ComponentHandle,
         permission_chain: Arc<PermissionChain<'rig>>,
         component_runners: &'runners [Box<dyn ComponentRunner>],
     ) -> Result<ComponentExecutionData<'call, 'rig, 'runners>, RigError>
@@ -69,6 +69,7 @@ impl<'rig, 'cache> RigExecutionState<'rig, 'cache> {
         let outer_callouts = component_state.rigging.callouts.as_ref();
 
         get_component_execution_data(
+            handle,
             component_reference,
             self.session.component_cache,
             component_runners,
@@ -112,7 +113,7 @@ impl<'rig, 'cache> RigExecutionState<'rig, 'cache> {
 }
 
 pub fn get_component_execution_data_for_callout<'call, 'rig, 'runners>(
-    handle: &ComponentHandle,
+    handle: &'rig ComponentHandle,
     input: serde_json::Value,
     execution_context: &ComponentExecutionContext<'call, 'rig, 'runners>,
 ) -> Result<ComponentExecutionData<'call, 'rig, 'runners>, RigError>
@@ -123,7 +124,7 @@ where
         .callout_context
         .get_component_reference_for_handle(handle);
 
-    let component_cache = execution_context.callout_context.component_cache;
+    let component_cache = execution_context.component_cache;
 
     let permission_chain = Arc::clone(&execution_context.permission_chain);
 
@@ -140,6 +141,7 @@ where
     });
 
     get_component_execution_data(
+        handle,
         component_reference,
         component_cache,
         component_runners,
@@ -150,6 +152,7 @@ where
 }
 
 pub fn get_component_execution_data<'call, 'rig, 'runners>(
+    component_handle: &'rig ComponentHandle,
     component_reference: &'rig SlipwayReference,
     component_cache: &'rig ComponentCache,
     component_runners: &'runners [Box<dyn ComponentRunner>],
@@ -161,20 +164,25 @@ where
     'rig: 'call,
 {
     let primed_component = component_cache.get(component_reference);
+    let component_definition = Arc::clone(&primed_component.definition);
     let files = Arc::clone(&primed_component.files);
     let component_callouts = primed_component.definition.callouts.as_ref();
 
     let callouts = get_callout_handle_to_reference_map(outer_callouts, component_callouts);
 
-    let callout_state = CalloutContext::new(callouts, component_cache);
+    let callout_context = CalloutContext::new(callouts);
 
     Ok(ComponentExecutionData::<'call, 'rig, 'runners> {
         input,
         context: ComponentExecutionContext {
-            permission_chain,
+            component_handle,
+            component_reference,
+            component_definition,
+            component_cache,
             component_runners,
+            permission_chain,
             files,
-            callout_context: callout_state,
+            callout_context,
         },
     })
 }

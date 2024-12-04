@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Instant};
 
 use host::{OutputObserverStream, OutputObserverType, SlipwayComponent, SlipwayHost};
 use slipway_engine::{
-    ComponentExecutionContext, ComponentHandle, RunComponentError, RunComponentResult, RunMetadata,
+    ComponentExecutionContext, RunComponentError, RunComponentResult, RunMetadata,
 };
 use wasmtime::*;
 use wasmtime_wasi::WasiCtxBuilder;
@@ -10,12 +10,13 @@ use wasmtime_wasi::WasiCtxBuilder;
 mod host;
 
 pub fn run_component_wasm(
-    handle: &ComponentHandle,
     input: &serde_json::Value,
     wasm_bytes: Arc<Vec<u8>>,
     execution_context: &ComponentExecutionContext,
 ) -> Result<RunComponentResult, RunComponentError> {
     let prepare_input_start = Instant::now();
+
+    let handle = execution_context.component_handle;
 
     // Serialize the input JSON to a vector of bytes
     let input_string = serde_json::to_string(input)

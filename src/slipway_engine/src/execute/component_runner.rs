@@ -1,4 +1,4 @@
-use crate::{errors::ComponentLoadError, ComponentHandle, RunMetadata};
+use crate::{errors::ComponentLoadError, RunMetadata};
 use thiserror::Error;
 
 use super::component_execution_data::ComponentExecutionData;
@@ -42,7 +42,6 @@ pub trait ComponentRunner: Send + Sync {
 
     fn run<'call>(
         &self,
-        handle: &'call ComponentHandle,
         execution_data: &'call ComponentExecutionData<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError>;
 }
