@@ -13,7 +13,7 @@ pub use execute::primitives::*;
 pub use execute::rig_execution_state::*;
 pub use execute::rig_session::*;
 pub use execute::step::*;
-pub use load::basic_components_loader::BasicComponentsLoader;
+pub use load::basic_components_loader::*;
 pub use load::*;
 pub use parse::parse_component;
 pub use parse::parse_rig;

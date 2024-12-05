@@ -41,14 +41,16 @@ pub(super) fn handle_run_command<'rig, 'cache>(
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use serde_json::json;
     use slipway_engine::{
-        utils::ch, BasicComponentsLoader, ComponentCache, ComponentRigging, Rig, RigSession,
-        Rigging, RunComponentError, SlipwayReference,
+        utils::ch, BasicComponentsLoader, BasicComponentsLoaderBuilder, ComponentCache,
+        ComponentRigging, Rig, RigSession, Rigging, RunComponentError, SlipwayReference,
     };
     use slipway_host::run::RunError;
 
-    use common_test_utils::{get_slipway_test_component_path, SLIPWAY_TEST_COMPONENT_NAME};
+    use common_test_utils::{get_slipway_test_components_path, SLIPWAY_TEST_COMPONENT_NAME};
     use slipway_wasmtime_runner::WASMTIME_COMPONENT_RUNNER_IDENTIFIER;
 
     use crate::{component_runners::get_component_runners, host_error::HostError};
@@ -61,7 +63,7 @@ mod tests {
                 component_handle.clone(),
                 ComponentRigging::for_test_with_reference(
                     SlipwayReference::Local {
-                        path: get_slipway_test_component_path(SLIPWAY_TEST_COMPONENT_NAME),
+                        path: PathBuf::from(SLIPWAY_TEST_COMPONENT_NAME),
                     },
                     Some(input),
                 ),
@@ -71,13 +73,18 @@ mod tests {
         })
     }
 
+    fn create_components_loader() -> BasicComponentsLoader {
+        BasicComponentsLoaderBuilder::new()
+            .local_base_directory(&get_slipway_test_components_path())
+            .build()
+    }
+
     #[test]
     fn it_should_run_basic_component() {
         let handle = ch("test_component");
         let rig = create_rig(&handle, json!({ "type": "increment", "value": 42}));
 
-        let component_cache =
-            ComponentCache::primed(&rig, &BasicComponentsLoader::default()).unwrap();
+        let component_cache = ComponentCache::primed(&rig, &create_components_loader()).unwrap();
         let rig_session = RigSession::new(rig, &component_cache);
         let mut state = rig_session.initialize().unwrap();
         let component_runners = get_component_runners();
@@ -110,8 +117,7 @@ mod tests {
         let handle = ch("test_component");
         let rig = create_rig(&handle, json!({ "type": "panic" }));
 
-        let component_cache =
-            ComponentCache::primed(&rig, &BasicComponentsLoader::default()).unwrap();
+        let component_cache = ComponentCache::primed(&rig, &create_components_loader()).unwrap();
         let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let component_runners = get_component_runners();
@@ -139,8 +145,7 @@ mod tests {
         let handle = ch("test_component");
         let rig = create_rig(&handle, json!({ "type": "error" }));
 
-        let component_cache =
-            ComponentCache::primed(&rig, &BasicComponentsLoader::default()).unwrap();
+        let component_cache = ComponentCache::primed(&rig, &create_components_loader()).unwrap();
         let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let component_runners = get_component_runners();

@@ -54,7 +54,7 @@ impl<'call, 'rig, 'runners> font::Host for SlipwayHost<'call, 'rig, 'runners> {
     }
 }
 
-impl<'call, 'rig, 'runners> component::Host for SlipwayHost<'call, 'rig, 'runners> {
+impl<'call, 'rig, 'runners> callout::Host for SlipwayHost<'call, 'rig, 'runners> {
     fn run(&mut self, handle: String, input: String) -> String {
         slipway_host::run::run_component_callout_for_host(
             self.component_handle,

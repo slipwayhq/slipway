@@ -20,7 +20,7 @@ static SINK_STRING: &str = "sink";
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SlipwayReference {
-    // publisher.name#version
+    // publisher.name.version
     Registry {
         publisher: String,
         name: String,
@@ -28,7 +28,7 @@ pub enum SlipwayReference {
     },
 
     // file://absolute-path
-    // file:./relative-path
+    // file:relative-path
     Local {
         path: PathBuf,
     },

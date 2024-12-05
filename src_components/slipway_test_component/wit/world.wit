@@ -11,7 +11,7 @@ world slipway-component {
         try-resolve: func(font-stack: string) -> option<resolved-font>;
     }
 
-    import component: interface {
+    import callout: interface {
         run: func(handle: string, input: string) -> string;
     }
 

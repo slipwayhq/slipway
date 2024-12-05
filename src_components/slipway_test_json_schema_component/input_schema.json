@@ -12,6 +12,23 @@
     },
     {
       "properties": {
+        "type": { "const": "callout_increment" },
+        "handle": { "type": "string" },
+        "value": { "type": "integer" },
+        "ttl": {
+          "type": "integer",
+          "inclusiveMinimum": 0
+        },
+        "result_type": {
+          "type": "string",
+          "enum": ["increment", "panic", "error"]
+        }
+      },
+      "required": ["type", "value", "handle", "ttl", "result_type"],
+      "additionalProperties": false
+    },
+    {
+      "properties": {
         "type": { "const": "panic" }
       },
       "required": ["type"],

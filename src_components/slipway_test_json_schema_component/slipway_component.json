@@ -1,6 +1,6 @@
 {
   "publisher": "slipway",
-  "name": "slipway_test_component",
+  "name": "test_json_schema",
   "description": "Does a simple JSON modification.",
   "version": "0.0.1",
   "input": {
@@ -10,5 +10,8 @@
   "output": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$ref": "output_schema.json"
+  },
+  "callouts": {
+    "test": "file:slipway.test_json_schema.0.0.1"
   }
 }

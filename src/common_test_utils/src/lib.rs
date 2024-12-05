@@ -3,14 +3,9 @@ use std::path::{Path, PathBuf};
 pub mod test_server;
 
 pub const SLIPWAY_TEST_COMPONENTS_PATH: &str = "./artifacts/debug";
-pub const SLIPWAY_TEST_COMPONENT_NAME: &str = "slipway_test_component";
-pub const SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_NAME: &str = "slipway_test_component_json_schema";
-pub const SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_TAR_NAME: &str =
-    "slipway_test_component_json_schema.tar";
-
-pub fn get_slipway_test_component_path(component_name: &str) -> PathBuf {
-    find_ancestor_path(PathBuf::from(SLIPWAY_TEST_COMPONENTS_PATH).join(component_name))
-}
+pub const SLIPWAY_TEST_COMPONENT_NAME: &str = "slipway.test.0.0.1";
+pub const SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_NAME: &str = "slipway.test_json_schema.0.0.1";
+pub const SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_TAR_NAME: &str = "slipway.test_json_schema.0.0.1.tar";
 
 pub fn get_slipway_test_components_path() -> PathBuf {
     find_ancestor_path(PathBuf::from(SLIPWAY_TEST_COMPONENTS_PATH))

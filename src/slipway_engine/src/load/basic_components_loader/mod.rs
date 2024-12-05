@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -26,13 +27,9 @@ fn get_default_slipway_components_cache_dir() -> PathBuf {
     home_dir.join(".slipway/components")
 }
 
-pub enum ComponentLoaderErrorBehavior {
-    ErrorAlways,
-    ErrorIfComponentNotLoaded,
-}
-
 pub struct BasicComponentsLoader {
     registry_lookup_url: Option<String>,
+    local_base_directory: PathBuf,
     io_abstractions: Arc<dyn ComponentIOAbstractions>,
 }
 
@@ -45,6 +42,8 @@ enum RegistrySelection {
 pub struct BasicComponentsLoaderBuilder {
     registry_lookup_url: RegistrySelection,
     components_cache_path: Option<PathBuf>,
+    local_base_directory: Option<PathBuf>,
+    io_abstractions: Option<Arc<dyn ComponentIOAbstractions>>,
 }
 
 impl BasicComponentsLoaderBuilder {
@@ -52,6 +51,8 @@ impl BasicComponentsLoaderBuilder {
         Self {
             registry_lookup_url: RegistrySelection::Default,
             components_cache_path: None,
+            local_base_directory: None,
+            io_abstractions: None,
         }
     }
 
@@ -70,6 +71,16 @@ impl BasicComponentsLoaderBuilder {
         self
     }
 
+    pub fn local_base_directory(mut self, path: &Path) -> Self {
+        self.local_base_directory = Some(path.to_owned());
+        self
+    }
+
+    fn io_abstractions(mut self, io_abstractions: Arc<dyn ComponentIOAbstractions>) -> Self {
+        self.io_abstractions = Some(io_abstractions);
+        self
+    }
+
     pub fn build(self) -> BasicComponentsLoader {
         let registry_lookup_url = match self.registry_lookup_url {
             RegistrySelection::None => None,
@@ -81,11 +92,18 @@ impl BasicComponentsLoaderBuilder {
             .components_cache_path
             .unwrap_or_else(get_default_slipway_components_cache_dir);
 
-        let io_abstractions = Arc::new(ComponentIOAbstractionsImpl::new(components_cache_path));
+        let local_base_directory = self
+            .local_base_directory
+            .unwrap_or_else(|| PathBuf::from(""));
+
+        let io_abstractions = self
+            .io_abstractions
+            .unwrap_or_else(|| Arc::new(ComponentIOAbstractionsImpl::new(components_cache_path)));
 
         BasicComponentsLoader {
             registry_lookup_url,
             io_abstractions,
+            local_base_directory,
         }
     }
 }
@@ -128,17 +146,23 @@ impl BasicComponentsLoader {
         match component_reference {
             SlipwayReference::Special(inner) => Ok(load_special_component(inner)),
             SlipwayReference::Local { path } => {
-                if self.io_abstractions.is_dir(path) {
+                let path = if path.is_relative() {
+                    Cow::Owned(self.local_base_directory.join(path))
+                } else {
+                    Cow::Borrowed(path)
+                };
+
+                if self.io_abstractions.is_dir(&path) {
                     load_from_directory::load_from_directory(
                         component_reference,
-                        path,
-                        self.io_abstractions.clone(),
+                        &path,
+                        Arc::clone(&self.io_abstractions),
                     )
                 } else if path.extension() == Some("tar".as_ref()) {
                     load_from_tar::load_from_tar(
                         component_reference,
-                        path,
-                        self.io_abstractions.clone(),
+                        &path,
+                        Arc::clone(&self.io_abstractions),
                     )
                 } else {
                     Err(ComponentLoadError::new(
@@ -252,6 +276,7 @@ mod tests {
                 path: &Path,
                 component_reference: &SlipwayReference,
             ) -> Result<Vec<u8>, ComponentLoadError> {
+                println!("load_bin: {:?}", path);
                 assert_eq!(component_reference, &self.component_reference);
                 let maybe_bin = self.map.bin.get(path.to_string_lossy().as_ref());
 
@@ -278,6 +303,7 @@ mod tests {
                 path: &Path,
                 component_reference: &SlipwayReference,
             ) -> Result<String, ComponentLoadError> {
+                println!("load_text: {:?}", path);
                 assert_eq!(component_reference, &self.component_reference);
                 self.map
                     .text
@@ -320,41 +346,93 @@ mod tests {
         }
 
         #[test]
-        fn it_should_load_all_component_files_from_local_directory() {
+        fn it_should_load_all_component_files_from_relative_directory() {
             let component_reference = SlipwayReference::Local {
                 path: PathBuf::from_str("path/to/my_component").unwrap(),
             };
 
+            run_load_all_component_files_tests(component_reference, "path/to/my_component", None);
+        }
+
+        #[test]
+        fn it_should_load_all_component_files_from_relative_to_base_directory() {
+            let component_reference = SlipwayReference::Local {
+                path: PathBuf::from_str("path/to/my_component").unwrap(),
+            };
+
+            run_load_all_component_files_tests(
+                component_reference,
+                "some/other/path/to/my_component",
+                Some("some/other"),
+            );
+        }
+
+        #[test]
+        fn it_should_load_all_component_files_from_relative_to_absolute_base_directory() {
+            let component_reference = SlipwayReference::Local {
+                path: PathBuf::from_str("path/to/my_component").unwrap(),
+            };
+
+            run_load_all_component_files_tests(
+                component_reference,
+                "/some/other/path/to/my_component",
+                Some("/some/other"),
+            );
+        }
+
+        #[test]
+        fn it_should_load_all_component_files_from_absolute_directory() {
+            let component_reference = SlipwayReference::Local {
+                path: PathBuf::from_str("/path/to/my_component").unwrap(),
+            };
+
+            run_load_all_component_files_tests(
+                component_reference,
+                "/path/to/my_component",
+                Some("/some/other"),
+            );
+        }
+
+        fn run_load_all_component_files_tests(
+            component_reference: SlipwayReference,
+            path_to_component: &str,
+            local_base_directory: Option<&str>,
+        ) {
             let definition_content = r#"{ "definition": "1" }"#;
             let file1_content = r#"{ "file": "1" }"#;
             let binary_content = vec![1, 2, 3];
 
             let io_abstractions = MockComponentIOAbstractions {
-                component_path: PathBuf::from_str("path/to/my_component").unwrap(),
+                component_path: PathBuf::from_str(path_to_component).unwrap(),
                 component_reference: component_reference.clone(),
                 url_to_file: HashMap::new(),
                 map: MockComponentFileLoaderInner {
                     text: HashMap::from([
                         (
-                            "path/to/my_component/slipway_component.json".to_string(),
+                            format!("{}/slipway_component.json", path_to_component),
                             definition_content.to_string(),
                         ),
                         (
-                            "path/to/my_component/file1.json".to_string(),
+                            format!("{}/file1.json", path_to_component),
                             file1_content.to_string(),
                         ),
                     ]),
                     bin: HashMap::from([(
-                        "path/to/my_component/bin_file.bin".to_string(),
+                        format!("{}/bin_file.bin", path_to_component),
                         binary_content.clone(),
                     )]),
                 },
             };
 
-            let loader = BasicComponentsLoader {
-                registry_lookup_url: None,
-                io_abstractions: Arc::new(io_abstractions),
-            };
+            let mut loader_builder =
+                BasicComponentsLoaderBuilder::new().io_abstractions(Arc::new(io_abstractions));
+
+            if let Some(local_base_directory) = local_base_directory {
+                loader_builder =
+                    loader_builder.local_base_directory(&PathBuf::from(local_base_directory));
+            }
+
+            let loader = loader_builder.build();
 
             let result = loader.load_components(&[component_reference]);
 
@@ -380,7 +458,7 @@ mod tests {
                         error: ComponentLoadErrorInner::FileLoadFailed { path, .. },
                         ..
                     } => {
-                        assert_eq!(path, "path/to/my_component/file2.json");
+                        assert_eq!(path, format!("{}/file2.json", path_to_component));
                     }
                     e => panic!("Unexpected error: {:?}", e),
                 },
@@ -446,10 +524,9 @@ mod tests {
 
             let io_abstractions = MockComponentAnyFileIOAbstractions {};
 
-            let loader = BasicComponentsLoader {
-                registry_lookup_url: None,
-                io_abstractions: Arc::new(io_abstractions),
-            };
+            let loader = BasicComponentsLoaderBuilder::new()
+                .io_abstractions(Arc::new(io_abstractions))
+                .build();
 
             let result = loader.load_components(&[component_reference]);
 
@@ -510,17 +587,19 @@ mod tests {
         impl ComponentIOAbstractions for MockComponentIOAbstractions {
             fn load_text(
                 &self,
-                _path: &Path,
+                path: &Path,
                 _component_reference: &SlipwayReference,
             ) -> Result<String, ComponentLoadError> {
+                println!("load_text: {:?}", path);
                 unimplemented!();
             }
 
             fn load_bin(
                 &self,
-                _path: &Path,
+                path: &Path,
                 _component_reference: &SlipwayReference,
             ) -> Result<Vec<u8>, ComponentLoadError> {
+                println!("load_bin: {:?}", path);
                 unimplemented!();
             }
 
@@ -614,6 +693,7 @@ mod tests {
             loader: BasicComponentsLoader,
             component_reference: SlipwayReference,
             data: MockData,
+            expected_component_path: &str,
         ) {
             let result = loader.load_components(&[component_reference]);
 
@@ -639,7 +719,7 @@ mod tests {
                         error: ComponentLoadErrorInner::FileLoadFailed { path, .. },
                         ..
                     } => {
-                        assert_eq!(path, "path/to/my_component.tar:file2.json");
+                        assert_eq!(path, format!("{}:file2.json", expected_component_path));
                     }
                     e => panic!("Unexpected error: {:?}", e),
                 },
@@ -647,7 +727,7 @@ mod tests {
         }
 
         #[test]
-        fn it_should_load_all_component_files_from_local_tar() {
+        fn it_should_load_all_component_files_from_relative_tar() {
             let component_reference = SlipwayReference::Local {
                 path: PathBuf::from_str("path/to/my_component.tar").unwrap(),
             };
@@ -660,12 +740,73 @@ mod tests {
                 url_to_file_map: HashMap::new(),
             };
 
-            let loader = BasicComponentsLoader {
-                registry_lookup_url: None,
-                io_abstractions: Arc::new(io_abstractions),
+            let loader = BasicComponentsLoaderBuilder::new()
+                .io_abstractions(Arc::new(io_abstractions))
+                .build();
+
+            assert_result(
+                loader,
+                component_reference,
+                data,
+                "path/to/my_component.tar",
+            );
+        }
+
+        #[test]
+        fn it_should_load_all_component_files_from_relative_to_base_tar() {
+            let component_reference = SlipwayReference::Local {
+                path: PathBuf::from_str("path/to/my_component.tar").unwrap(),
             };
 
-            assert_result(loader, component_reference, data);
+            let data = MockData::new();
+            let tar_data = create_tar(&data);
+
+            let io_abstractions = MockComponentIOAbstractions {
+                files: HashMap::from([(
+                    "some/other/path/to/my_component.tar".to_string(),
+                    tar_data.clone(),
+                )]),
+                url_to_file_map: HashMap::new(),
+            };
+
+            let loader = BasicComponentsLoaderBuilder::new()
+                .io_abstractions(Arc::new(io_abstractions))
+                .local_base_directory(Path::new("some/other"))
+                .build();
+
+            assert_result(
+                loader,
+                component_reference,
+                data,
+                "some/other/path/to/my_component.tar",
+            );
+        }
+
+        #[test]
+        fn it_should_load_all_component_files_from_absolute_tar() {
+            let component_reference = SlipwayReference::Local {
+                path: PathBuf::from_str("/path/to/my_component.tar").unwrap(),
+            };
+
+            let data = MockData::new();
+            let tar_data = create_tar(&data);
+
+            let io_abstractions = MockComponentIOAbstractions {
+                files: HashMap::from([("/path/to/my_component.tar".to_string(), tar_data.clone())]),
+                url_to_file_map: HashMap::new(),
+            };
+
+            let loader = BasicComponentsLoaderBuilder::new()
+                .io_abstractions(Arc::new(io_abstractions))
+                .local_base_directory(Path::new("some/other"))
+                .build();
+
+            assert_result(
+                loader,
+                component_reference,
+                data,
+                "/path/to/my_component.tar",
+            );
         }
 
         #[test]
@@ -688,12 +829,16 @@ mod tests {
                 )]),
             };
 
-            let loader = BasicComponentsLoader {
-                registry_lookup_url: None,
-                io_abstractions: Arc::new(io_abstractions),
-            };
+            let loader = BasicComponentsLoaderBuilder::new()
+                .io_abstractions(Arc::new(io_abstractions))
+                .build();
 
-            assert_result(loader, component_reference, data);
+            assert_result(
+                loader,
+                component_reference,
+                data,
+                "path/to/my_component.tar",
+            );
         }
 
         #[test]
@@ -718,12 +863,17 @@ mod tests {
                 )]),
             };
 
-            let loader = BasicComponentsLoader {
-                registry_lookup_url: Some(URL.to_string()),
-                io_abstractions: Arc::new(io_abstractions),
-            };
+            let loader = BasicComponentsLoaderBuilder::new()
+                .registry_lookup_url(URL)
+                .io_abstractions(Arc::new(io_abstractions))
+                .build();
 
-            assert_result(loader, component_reference, data);
+            assert_result(
+                loader,
+                component_reference,
+                data,
+                "path/to/my_component.tar",
+            );
         }
     }
 }

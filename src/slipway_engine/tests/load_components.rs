@@ -1,8 +1,10 @@
+use std::{path::PathBuf, str::FromStr};
+
 use semver::Version;
 use serde_json::json;
 
 use common_test_utils::{
-    get_slipway_test_component_path, get_slipway_test_components_path, test_server::TestServer,
+    get_slipway_test_components_path, test_server::TestServer,
     SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_NAME, SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_TAR_NAME,
     SLIPWAY_TEST_COMPONENT_NAME,
 };
@@ -19,7 +21,7 @@ fn load_component_from_folder() {
     test_component(
         None,
         SlipwayReference::Local {
-            path: get_slipway_test_component_path(SLIPWAY_TEST_COMPONENT_NAME),
+            path: PathBuf::from(SLIPWAY_TEST_COMPONENT_NAME),
         },
     );
 }
@@ -29,7 +31,7 @@ fn load_component_from_folder_with_json_schema_refs() {
     test_component(
         None,
         SlipwayReference::Local {
-            path: get_slipway_test_component_path(SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_NAME),
+            path: PathBuf::from(SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_NAME),
         },
     );
 }
@@ -39,7 +41,7 @@ fn load_component_from_tar_with_json_schema_refs() {
     test_component(
         None,
         SlipwayReference::Local {
-            path: get_slipway_test_component_path(SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_TAR_NAME),
+            path: PathBuf::from(SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_TAR_NAME),
         },
     );
 }
@@ -66,14 +68,18 @@ fn load_component_from_url_with_json_schema_refs() {
 fn load_component_from_registry_with_json_schema_refs() {
     let test_server = TestServer::start_from_folder(get_slipway_test_components_path());
 
-    test_component(
-        Some(&test_server.localhost_url),
+    let reference = SlipwayReference::from_str(SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_NAME).unwrap();
+
+    match reference {
         SlipwayReference::Registry {
-            publisher: "slipway".to_string(),
-            name: "test_component_json_schema".to_string(),
-            version: Version::parse("0.1.2").unwrap(),
-        },
-    );
+            publisher: _,
+            name: _,
+            version: _,
+        } => {}
+        _ => panic!("Expected registry reference"),
+    }
+
+    test_component(Some(&test_server.localhost_url), reference);
 
     test_server.stop();
 }
@@ -108,6 +114,7 @@ fn test_component(localhost_url: Option<&str>, component_reference: SlipwayRefer
     let component_cache = ComponentCache::primed(
         &rig,
         &BasicComponentsLoader::builder()
+            .local_base_directory(&get_slipway_test_components_path())
             .registry_lookup_url(&format!(
                 "{}{{publisher}}.{{name}}.{{version}}.tar",
                 localhost_url.unwrap_or("http://localhost/")

@@ -26,16 +26,38 @@ clean-src:
 clean-components:
   cd src_components && cargo clean
 
-assemble-test-components configuration="debug": (clean-artifacts configuration)
-  mkdir -p artifacts/{{configuration}}/slipway_test_component
-  cp src_components/target/wasm32-wasip1/{{configuration}}/slipway_test_component.wasm artifacts/{{configuration}}/slipway_test_component/slipway_component.wasm
-  cp src_components/slipway_test_component/slipway_component.json artifacts/{{configuration}}/slipway_test_component/slipway_component.json
+assemble-test-components configuration="debug": \
+  (clean-artifacts configuration) \
+  && \
+  (tar-component-files configuration "test") \
+  (rename-component-artifacts configuration "test") \
+  (tar-component-files configuration "test_json_schema") \
+  (rename-component-artifacts configuration "test_json_schema") \
+  (tar-component-files configuration "fragment") \
+  (rename-component-artifacts configuration "fragment") \
 
-  mkdir -p artifacts/{{configuration}}/slipway_test_component_json_schema
-  cp src_components/target/wasm32-wasip1/{{configuration}}/slipway_test_component.wasm artifacts/{{configuration}}/slipway_test_component_json_schema/slipway_component.wasm
-  cp src_components/alternative_definition_files/slipway_component_json_schema.json artifacts/{{configuration}}/slipway_test_component_json_schema/slipway_component.json
-  cp src_components/alternative_definition_files/input_schema.json artifacts/{{configuration}}/slipway_test_component_json_schema/input_schema.json
-  cp src_components/alternative_definition_files/output_schema.json artifacts/{{configuration}}/slipway_test_component_json_schema/output_schema.json
+  mkdir -p artifacts/{{configuration}}/slipway_test
+  cp src_components/target/wasm32-wasip1/{{configuration}}/slipway_test_component.wasm artifacts/{{configuration}}/slipway_test/slipway_component.wasm
+  cp src_components/slipway_test_component/slipway_component.json artifacts/{{configuration}}/slipway_test/slipway_component.json
 
-  tar -cf artifacts/{{configuration}}/slipway_test_component_json_schema.tar -C artifacts/{{configuration}}/slipway_test_component_json_schema .
-  cp artifacts/{{configuration}}/slipway_test_component_json_schema.tar artifacts/{{configuration}}/slipway.test_component_json_schema.0.1.2.tar 
+  mkdir -p artifacts/{{configuration}}/slipway_test_json_schema
+  cp src_components/target/wasm32-wasip1/{{configuration}}/slipway_test_component.wasm artifacts/{{configuration}}/slipway_test_json_schema/slipway_component.wasm
+  cp src_components/slipway_test_json_schema_component/slipway_component.json artifacts/{{configuration}}/slipway_test_json_schema/slipway_component.json
+  cp src_components/slipway_test_json_schema_component/input_schema.json artifacts/{{configuration}}/slipway_test_json_schema/input_schema.json
+  cp src_components/slipway_test_json_schema_component/output_schema.json artifacts/{{configuration}}/slipway_test_json_schema/output_schema.json
+
+  mkdir -p artifacts/{{configuration}}/slipway_fragment
+  cp src_components/slipway_fragment_component/slipway_component.json artifacts/{{configuration}}/slipway_fragment/slipway_component.json
+
+tar-component-files configuration name:
+  tar -cf artifacts/{{configuration}}/slipway_{{name}}.tar -C artifacts/{{configuration}}/slipway_{{name}} .
+
+rename-component-artifacts configuration name:
+  # Rename the tarball with a name that includes the publisher, name and version.
+  publisher=$(jq -r '.publisher' src_components/slipway_{{name}}_component/slipway_component.json) && \
+    name=$(jq -r '.name' src_components/slipway_{{name}}_component/slipway_component.json) && \
+    version=$(jq -r '.version' src_components/slipway_{{name}}_component/slipway_component.json) && \
+    new_filename="${publisher}.${name}.${version}" && \
+    mv artifacts/{{configuration}}/slipway_{{name}} "artifacts/{{configuration}}/$new_filename" && \
+    mv artifacts/{{configuration}}/slipway_{{name}}.tar "artifacts/{{configuration}}/$new_filename.tar"
+

@@ -1,7 +1,7 @@
 {
   "publisher": "slipway",
-  "name": "test",
-  "description": "Does a simple JSON modification.",
+  "name": "fragment",
+  "description": "A simple fragment component that increments one extra time.",
   "version": "0.0.1",
   "input": {
     "discriminator": "type",
@@ -23,9 +23,6 @@
           },
           "ttl": {
             "type": "uint32"
-          },
-          "result_type": {
-            "enum": ["increment", "panic", "error"]
           }
         }
       },
@@ -40,7 +37,17 @@
       }
     }
   },
-  "callouts": {
-    "test": "file:slipway.test.0.0.1"
+  "rigging": {
+    "first": {
+      "component": "file:slipway.test.0.0.1",
+      "input": "$$input"
+    },
+    "output": {
+      "component": "file:slipway.test.0.0.1",
+      "input": {
+        "type": "increment",
+        "value": "$$first.value"
+      }
+    }
   }
 }

@@ -128,7 +128,7 @@ pub mod font {
     }
 }
 #[allow(dead_code, clippy::all)]
-pub mod component {
+pub mod callout {
     #[used]
     #[doc(hidden)]
     static __FORCE_SECTION_REF: fn() = super::__link_custom_section_describing_imports;
@@ -147,7 +147,7 @@ pub mod component {
             let len1 = vec1.len();
             let ptr2 = ret_area.0.as_mut_ptr().cast::<u8>();
             #[cfg(target_arch = "wasm32")]
-            #[link(wasm_import_module = "component")]
+            #[link(wasm_import_module = "callout")]
             extern "C" {
                 #[link_name = "run"]
                 fn wit_import(_: *mut u8, _: usize, _: *mut u8, _: usize, _: *mut u8);
@@ -329,12 +329,12 @@ pub(crate) use __export_slipway_component_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:wit-bindgen:0.35.0:slipway:component@0.1.0:slipway-component:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 419] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x9b\x02\x01A\x02\x01\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 417] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x99\x02\x01A\x02\x01\
 A\x09\x01B\x06\x01p}\x01r\x02\x06familys\x04data\0\x04\0\x0dresolved-font\x03\0\x01\
 \x01k\x02\x01@\x01\x0afont-stacks\0\x03\x04\0\x0btry-resolve\x01\x04\x03\0\x04fo\
-nt\x05\0\x01B\x02\x01@\x02\x06handles\x05inputs\0s\x04\0\x03run\x01\0\x03\0\x09c\
-omponent\x05\x01\x01B\x06\x01@\x01\x07messages\x01\0\x04\0\x05trace\x01\0\x04\0\x05\
+nt\x05\0\x01B\x02\x01@\x02\x06handles\x05inputs\0s\x04\0\x03run\x01\0\x03\0\x07c\
+allout\x05\x01\x01B\x06\x01@\x01\x07messages\x01\0\x04\0\x05trace\x01\0\x04\0\x05\
 debug\x01\0\x04\0\x04info\x01\0\x04\0\x04warn\x01\0\x04\0\x05error\x01\0\x03\0\x03\
 log\x05\x02\x01j\x01s\x01s\x01@\x01\x05inputs\0\x03\x04\0\x03run\x01\x04\x04\0)s\
 lipway:component/slipway-component@0.1.0\x04\0\x0b\x17\x01\0\x11slipway-componen\

@@ -118,13 +118,15 @@ fn get_handle<'rig>(
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use serde_json::json;
     use slipway_engine::{
-        utils::ch, BasicComponentsLoader, ComponentCache, ComponentRigging, ComponentState, Rig,
-        RigSession, Rigging, SlipwayReference,
+        utils::ch, BasicComponentsLoaderBuilder, ComponentCache, ComponentRigging, ComponentState,
+        Rig, RigSession, Rigging, SlipwayReference,
     };
 
-    use common_test_utils::{get_slipway_test_component_path, SLIPWAY_TEST_COMPONENT_NAME};
+    use common_test_utils::{get_slipway_test_components_path, SLIPWAY_TEST_COMPONENT_NAME};
 
     use crate::component_runners::get_component_runners;
 
@@ -462,7 +464,7 @@ mod tests {
         let (ch1, ch2, ch3) = component_handles();
 
         let increment_reference = SlipwayReference::Local {
-            path: get_slipway_test_component_path(SLIPWAY_TEST_COMPONENT_NAME),
+            path: PathBuf::from(SLIPWAY_TEST_COMPONENT_NAME),
         };
 
         // ch1 -> ch2 -> ch3
@@ -494,8 +496,13 @@ mod tests {
             .collect(),
         });
 
-        let component_cache =
-            ComponentCache::primed(&rig, &BasicComponentsLoader::default()).unwrap();
+        let component_cache = ComponentCache::primed(
+            &rig,
+            &BasicComponentsLoaderBuilder::new()
+                .local_base_directory(&get_slipway_test_components_path())
+                .build(),
+        )
+        .unwrap();
 
         RigParts {
             rig,
