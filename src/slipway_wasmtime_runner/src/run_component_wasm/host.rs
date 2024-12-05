@@ -36,7 +36,7 @@ impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
     }
 }
 
-impl<'call, 'rig, 'runners> WasiView for SlipwayHost<'call, 'rig, 'runners> {
+impl WasiView for SlipwayHost<'_, '_, '_> {
     fn ctx(&mut self) -> &mut WasiCtx {
         &mut self.wasi_ctx
     }
@@ -45,7 +45,7 @@ impl<'call, 'rig, 'runners> WasiView for SlipwayHost<'call, 'rig, 'runners> {
     }
 }
 
-impl<'call, 'rig, 'runners> font::Host for SlipwayHost<'call, 'rig, 'runners> {
+impl font::Host for SlipwayHost<'_, '_, '_> {
     fn try_resolve(&mut self, font_stack: String) -> Option<font::ResolvedFont> {
         slipway_host::fonts::try_resolve(font_stack).map(|resolved| font::ResolvedFont {
             family: resolved.family,
@@ -54,7 +54,7 @@ impl<'call, 'rig, 'runners> font::Host for SlipwayHost<'call, 'rig, 'runners> {
     }
 }
 
-impl<'call, 'rig, 'runners> callout::Host for SlipwayHost<'call, 'rig, 'runners> {
+impl callout::Host for SlipwayHost<'_, '_, '_> {
     fn run(&mut self, handle: String, input: String) -> String {
         slipway_host::run::run_component_callout_for_host(
             self.component_handle,
@@ -65,7 +65,7 @@ impl<'call, 'rig, 'runners> callout::Host for SlipwayHost<'call, 'rig, 'runners>
     }
 }
 
-impl<'call, 'rig, 'runners> log::Host for SlipwayHost<'call, 'rig, 'runners> {
+impl log::Host for SlipwayHost<'_, '_, '_> {
     fn trace(&mut self, message: String) {
         trace!(component = self.component_handle.to_string(), message);
     }

@@ -1,6 +1,5 @@
 use std::{path::PathBuf, str::FromStr};
 
-use semver::Version;
 use serde_json::json;
 
 use common_test_utils::{

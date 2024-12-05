@@ -179,7 +179,7 @@ impl fmt::Display for JsonTypeDefValidationFailure {
     }
 }
 
-impl<'a> From<jtd::ValidationErrorIndicator<'a>> for JsonTypeDefValidationFailure {
+impl From<jtd::ValidationErrorIndicator<'_>> for JsonTypeDefValidationFailure {
     fn from(error: jtd::ValidationErrorIndicator) -> Self {
         let (instance_path, schema_path) = error.into_owned_paths();
         JsonTypeDefValidationFailure {

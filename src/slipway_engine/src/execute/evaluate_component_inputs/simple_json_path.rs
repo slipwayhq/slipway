@@ -18,7 +18,7 @@ pub(super) trait JsonPathOperations {
     fn replace(&self, target: &mut Value, new_value: Value) -> Result<(), RigError>;
 }
 
-impl<'a> JsonPathOperations for Vec<SimpleJsonPath<'a>> {
+impl JsonPathOperations for Vec<SimpleJsonPath<'_>> {
     fn to_json_path_string(&self) -> String {
         self.to_prefixed_path_string("$")
     }

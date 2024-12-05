@@ -47,8 +47,8 @@ struct SlipwayRunEventHandler<'w, W: Write> {
     w: &'w mut W,
 }
 
-impl<'rig, 'cache, 'w, W: Write> RunEventHandler<'rig, 'cache, HostError>
-    for SlipwayRunEventHandler<'w, W>
+impl<'rig, 'cache, W: Write> RunEventHandler<'rig, 'cache, HostError>
+    for SlipwayRunEventHandler<'_, W>
 {
     fn handle_component_run_start(
         &mut self,

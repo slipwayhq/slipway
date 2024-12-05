@@ -23,7 +23,7 @@ pub struct ComponentState<'rig> {
     pub execution_output: Option<Rc<ComponentOutput>>,
 }
 
-impl<'rig> ComponentState<'rig> {
+impl ComponentState<'_> {
     /// Get the input of the component, which is either the input_override or
     /// the input or None.
     pub fn input(&self) -> Option<&serde_json::Value> {
