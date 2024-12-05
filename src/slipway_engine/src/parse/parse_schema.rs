@@ -13,13 +13,13 @@ const DEFAULT_BASE_URL_PREFIX: &str = "file:///";
 pub fn parse_schema(
     schema_name: &str,
     schema: serde_json::Value,
-    component_json_loader: Arc<dyn ComponentFiles>,
+    component_files: Arc<dyn ComponentFiles>,
 ) -> Result<Schema, ComponentLoadErrorInner> {
     if let Some(serde_json::Value::String(schema_uri)) = schema.get("$schema") {
         if schema_uri.contains("://json-schema.org/") {
             // If the schema contains a $schema field that refers to a JSON Schema
             // then we parse it as a JSON Schema.
-            return parse_json_schema(schema, schema_name, component_json_loader);
+            return parse_json_schema(schema, schema_name, component_files);
         }
     }
 
@@ -51,7 +51,7 @@ fn parse_json_typedef_schema(
 fn parse_json_schema(
     mut schema: serde_json::Value,
     schema_name: &str,
-    component_json_loader: Arc<dyn ComponentFiles>,
+    component_files: Arc<dyn ComponentFiles>,
 ) -> Result<Schema, ComponentLoadErrorInner> {
     if schema.get("$id").is_none() {
         schema["$id"] =
@@ -59,9 +59,7 @@ fn parse_json_schema(
     }
 
     let compiled_schema = Validator::options()
-        .with_resolver(ComponentJsonSchemaResolver {
-            component_json_loader,
-        })
+        .with_resolver(ComponentJsonSchemaResolver { component_files })
         .build(&schema)
         .map_err(|e| ComponentLoadErrorInner::JsonSchemaParseFailed {
             schema_name: schema_name.to_string(),
@@ -75,7 +73,7 @@ fn parse_json_schema(
 }
 
 struct ComponentJsonSchemaResolver {
-    component_json_loader: Arc<dyn ComponentFiles>,
+    component_files: Arc<dyn ComponentFiles>,
 }
 
 impl SchemaResolver for ComponentJsonSchemaResolver {
@@ -96,7 +94,7 @@ impl SchemaResolver for ComponentJsonSchemaResolver {
             "file" => {
                 if let Ok(path) = url.to_file_path() {
                     Ok(self
-                        .component_json_loader
+                        .component_files
                         .get_json(path.to_string_lossy().trim_start_matches('/'))?)
                 } else {
                     Err(anyhow::anyhow!(format!(
@@ -127,11 +125,11 @@ mod tests {
 
     use super::*;
 
-    struct MockComponentJson {
+    struct MockComponentFiles {
         map: HashMap<String, serde_json::Value>,
     }
 
-    impl ComponentFiles for MockComponentJson {
+    impl ComponentFiles for MockComponentFiles {
         fn get_json(&self, file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
             self.map
                 .get(file_name)
@@ -186,7 +184,7 @@ mod tests {
             }
         });
 
-        let component_json_loader = Arc::new(MockComponentJson {
+        let component_files = Arc::new(MockComponentFiles {
             map: HashMap::new(),
         });
 
@@ -196,7 +194,7 @@ mod tests {
             "phones": ["+44 1234567", "+44 2345678"]
         });
 
-        let schema = parse_schema("test", schema, component_json_loader).unwrap();
+        let schema = parse_schema("test", schema, component_files).unwrap();
 
         match schema {
             Schema::JsonTypeDef { schema } => {
@@ -230,11 +228,11 @@ mod tests {
             "required": ["name", "age"]
         });
 
-        let component_json_loader = Arc::new(MockComponentJson {
+        let component_files = Arc::new(MockComponentFiles {
             map: HashMap::new(),
         });
 
-        let schema = parse_schema("test", schema, component_json_loader).unwrap();
+        let schema = parse_schema("test", schema, component_files).unwrap();
 
         assert_json_schema_errors(schema);
     }
@@ -251,7 +249,7 @@ mod tests {
             "required": ["name", "age"]
         });
 
-        let component_json_loader = Arc::new(MockComponentJson {
+        let component_files = Arc::new(MockComponentFiles {
             map: HashMap::from([
                 ("name.json".to_string(), json!({ "type": "string" })),
                 ("age.json".to_string(), json!({ "type": "number" })),
@@ -262,7 +260,7 @@ mod tests {
             ]),
         });
 
-        let schema = parse_schema("test", schema, component_json_loader).unwrap();
+        let schema = parse_schema("test", schema, component_files).unwrap();
 
         assert_json_schema_errors(schema);
     }
@@ -288,11 +286,11 @@ mod tests {
             "required": ["name", "age"]
         });
 
-        let component_json_loader = Arc::new(MockComponentJson {
+        let component_files = Arc::new(MockComponentFiles {
             map: HashMap::new(),
         });
 
-        let schema = parse_schema("test", schema, component_json_loader).unwrap();
+        let schema = parse_schema("test", schema, component_files).unwrap();
 
         assert_json_schema_errors(schema);
 

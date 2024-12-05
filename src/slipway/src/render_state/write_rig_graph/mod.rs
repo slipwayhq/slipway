@@ -462,7 +462,7 @@ mod tests {
 
     use serde_json::json;
     use slipway_engine::{
-        utils::ch, ComponentCache, ComponentRigging, Instruction, Rig, RigSession, Rigging,
+        utils::ch, BasicComponentCache, ComponentRigging, Instruction, Rig, RigSession, Rigging,
         RunMetadata,
     };
 
@@ -493,7 +493,7 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = ComponentCache::for_test_permissive(&rig);
+        let component_cache = BasicComponentCache::for_test_permissive(&rig);
         let rig_session = RigSession::new(rig, &component_cache);
         let mut state = rig_session.initialize().unwrap();
 
@@ -639,7 +639,7 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = ComponentCache::for_test_permissive(&rig);
+        let component_cache = BasicComponentCache::for_test_permissive(&rig);
         let rig_session = RigSession::new(rig, &component_cache);
         let mut state = rig_session.initialize().unwrap();
 

@@ -42,8 +42,9 @@ impl Guest for Component {
                         result_type,
                     }
                 };
+                let callout_handle = handle.unwrap_or("test".to_string());
                 let output = bindings::callout::run(
-                    &handle,
+                    &callout_handle,
                     &serde_json::to_string(&callout_input).expect("should serialize output"),
                 );
                 Ok(output)
@@ -64,7 +65,7 @@ enum Input {
 
     #[serde(rename = "callout_increment")]
     CalloutIncrement {
-        handle: String,
+        handle: Option<String>,
         value: i32,
         ttl: u32,
         result_type: ResultType,

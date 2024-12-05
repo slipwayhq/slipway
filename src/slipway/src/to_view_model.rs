@@ -131,7 +131,9 @@ pub(super) struct ComponentViewModel<'rig> {
 mod tests {
     use super::*;
     use serde_json::json;
-    use slipway_engine::{utils::ch, ComponentCache, ComponentRigging, Rig, RigSession, Rigging};
+    use slipway_engine::{
+        utils::ch, BasicComponentCache, ComponentRigging, Rig, RigSession, Rigging,
+    };
 
     fn get_component<'rig>(
         view_model: &'rig RigExecutionStateViewModel<'rig>,
@@ -159,7 +161,7 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = ComponentCache::for_test_permissive(&rig);
+        let component_cache = BasicComponentCache::for_test_permissive(&rig);
         let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let view_model = to_view_model(&state);
@@ -199,7 +201,7 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = ComponentCache::for_test_permissive(&rig);
+        let component_cache = BasicComponentCache::for_test_permissive(&rig);
         let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let view_model = to_view_model(&state);
@@ -260,7 +262,7 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = ComponentCache::for_test_permissive(&rig);
+        let component_cache = BasicComponentCache::for_test_permissive(&rig);
         let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let view_model = to_view_model(&state);

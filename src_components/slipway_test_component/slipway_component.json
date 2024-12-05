@@ -13,11 +13,8 @@
           }
         }
       },
-      "callout": {
+      "callout_increment": {
         "properties": {
-          "handle": {
-            "type": "string"
-          },
           "value": {
             "type": "int32"
           },
@@ -26,6 +23,11 @@
           },
           "result_type": {
             "enum": ["increment", "panic", "error"]
+          }
+        },
+        "optionalProperties": {
+          "handle": {
+            "type": "string"
           }
         }
       },

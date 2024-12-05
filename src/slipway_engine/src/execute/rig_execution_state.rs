@@ -154,7 +154,7 @@ where
 pub fn get_component_execution_data<'call, 'rig, 'runners>(
     component_handle: &'rig ComponentHandle,
     component_reference: &'rig SlipwayReference,
-    component_cache: &'rig ComponentCache,
+    component_cache: &'rig dyn ComponentCache,
     component_runners: &'runners [Box<dyn ComponentRunner>],
     permission_chain: Arc<PermissionChain<'rig>>,
     outer_callouts: Option<&'rig Callouts>,

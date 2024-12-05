@@ -10,8 +10,8 @@ use common_test_utils::{
 use slipway_engine::{
     errors::{RigError, ValidationType},
     utils::ch,
-    BasicComponentsLoader, ComponentCache, ComponentHandle, ComponentRigging, Instruction, Rig,
-    RigSession, Rigging, SlipwayReference,
+    BasicComponentCache, BasicComponentsLoader, ComponentHandle, ComponentRigging, Instruction,
+    Rig, RigSession, Rigging, SlipwayReference,
 };
 use url::Url;
 
@@ -110,7 +110,7 @@ fn test_component(localhost_url: Option<&str>, component_reference: SlipwayRefer
 
     // Use a random cache directory, and local registry URL.
     let temp_dir = tempfile::tempdir().unwrap();
-    let component_cache = ComponentCache::primed(
+    let component_cache = BasicComponentCache::primed(
         &rig,
         &BasicComponentsLoader::builder()
             .local_base_directory(&get_slipway_test_components_path())

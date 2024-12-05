@@ -18,7 +18,7 @@ pub struct ComponentExecutionContext<'call, 'rig, 'runners> {
     pub component_handle: &'rig ComponentHandle,
     pub component_reference: &'rig SlipwayReference,
     pub component_definition: Arc<Component<Schema>>,
-    pub component_cache: &'rig ComponentCache,
+    pub component_cache: &'rig dyn ComponentCache,
     pub component_runners: &'runners [Box<dyn ComponentRunner>],
     pub permission_chain: Arc<PermissionChain<'rig>>,
     pub files: Arc<dyn ComponentFiles>,

@@ -122,8 +122,8 @@ mod tests {
 
     use serde_json::json;
     use slipway_engine::{
-        utils::ch, BasicComponentsLoaderBuilder, ComponentCache, ComponentRigging, ComponentState,
-        Rig, RigSession, Rigging, SlipwayReference,
+        utils::ch, BasicComponentCache, BasicComponentsLoaderBuilder, ComponentRigging,
+        ComponentState, Rig, RigSession, Rigging, SlipwayReference,
     };
 
     use common_test_utils::{get_slipway_test_components_path, SLIPWAY_TEST_COMPONENT_NAME};
@@ -457,7 +457,7 @@ mod tests {
 
     struct RigParts {
         rig: Rig,
-        component_cache: ComponentCache,
+        component_cache: BasicComponentCache,
     }
 
     fn get_rig_parts() -> RigParts {
@@ -496,7 +496,7 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = ComponentCache::primed(
+        let component_cache = BasicComponentCache::primed(
             &rig,
             &BasicComponentsLoaderBuilder::new()
                 .local_base_directory(&get_slipway_test_components_path())

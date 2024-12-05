@@ -2,7 +2,7 @@ use std::{io::Write, sync::Arc};
 
 use anyhow::Context;
 use slipway_engine::{
-    parse_rig, BasicComponentsLoader, ComponentCache, ComponentPermission, PermissionChain,
+    parse_rig, BasicComponentCache, BasicComponentsLoader, ComponentPermission, PermissionChain,
     RigSession,
 };
 use slipway_host::run::RunEventHandler;
@@ -25,7 +25,7 @@ pub(super) fn run_rig<W: Write>(
         .with_context(|| format!("Failed to read component from {}", input.display()))?;
     let rig = parse_rig(&file_contents)?;
 
-    let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::default())?;
+    let component_cache = BasicComponentCache::primed(&rig, &BasicComponentsLoader::default())?;
     let session = RigSession::new(rig, &component_cache);
 
     let mut event_handler = SlipwayRunEventHandler { w };
@@ -36,7 +36,7 @@ pub(super) fn run_rig<W: Write>(
 
     slipway_host::run::run_rig(
         &session,
-        Some(&mut event_handler),
+        &mut event_handler,
         component_runners_slice,
         permission_chain,
     )?;

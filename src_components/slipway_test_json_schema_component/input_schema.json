@@ -24,7 +24,7 @@
           "enum": ["increment", "panic", "error"]
         }
       },
-      "required": ["type", "value", "handle", "ttl", "result_type"],
+      "required": ["type", "value", "ttl", "result_type"],
       "additionalProperties": false
     },
     {

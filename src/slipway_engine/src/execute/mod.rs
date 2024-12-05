@@ -85,7 +85,7 @@ mod tests {
     }
 
     mod step {
-        use crate::{errors::RigError, ComponentCache, RigSession};
+        use crate::{errors::RigError, BasicComponentCache, RigSession};
 
         use super::*;
 
@@ -152,7 +152,7 @@ mod tests {
         fn initialize_should_populate_execution_inputs_of_components_that_can_run_immediately() {
             let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig);
             let rig_session = RigSession::new(rig, &component_cache);
 
             let execution_state = rig_session.initialize().unwrap();
@@ -164,7 +164,7 @@ mod tests {
         fn it_should_populate_references_to_other_parts_of_rig() {
             let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig);
             let rig_session = RigSession::new(rig, &component_cache);
 
             let s = rig_session.initialize().unwrap();
@@ -185,7 +185,7 @@ mod tests {
         fn it_should_allow_setting_the_output_on_a_component_which_can_execute() {
             let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig);
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
@@ -205,7 +205,7 @@ mod tests {
         fn it_should_not_allow_setting_the_output_on_a_component_which_cannot_execute() {
             let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig);
             let rig_session = RigSession::new(rig, &component_cache);
 
             let s = rig_session.initialize().unwrap();
@@ -232,7 +232,7 @@ mod tests {
         fn it_should_allow_optional_json_path_references_missing_resolved_values() {
             let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig);
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
@@ -253,7 +253,7 @@ mod tests {
         fn it_should_not_allow_required_json_path_references_missing_resolved_values() {
             let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig);
             let rig_session = RigSession::new(rig, &component_cache);
 
             let s = rig_session.initialize().unwrap();
@@ -280,7 +280,7 @@ mod tests {
         fn it_should_resolve_references_to_other_inputs_using_the_resolved_referenced_input() {
             let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig);
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
@@ -302,7 +302,7 @@ mod tests {
         fn it_should_step_though_entire_graph() {
             let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig);
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
@@ -348,7 +348,7 @@ mod tests {
     mod input_override {
         use itertools::Itertools;
 
-        use crate::{ComponentCache, RigSession};
+        use crate::{BasicComponentCache, RigSession};
 
         use super::*;
 
@@ -413,7 +413,7 @@ mod tests {
         fn setting_input_override_should_affect_dependencies() {
             let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig);
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
@@ -469,7 +469,7 @@ mod tests {
         fn setting_input_override_should_update_input_hash() {
             let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig);
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
@@ -571,7 +571,7 @@ mod tests {
     }
 
     mod output_override {
-        use crate::{ComponentCache, RigSession};
+        use crate::{BasicComponentCache, RigSession};
 
         use super::*;
 
@@ -598,7 +598,7 @@ mod tests {
         fn setting_output_override_should_affect_execution_states() {
             let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig);
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
@@ -630,7 +630,7 @@ mod tests {
         fn setting_output_should_use_input_hash() {
             let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig);
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
@@ -689,7 +689,7 @@ mod tests {
         fn setting_output_should_update_dependent_input_hashes() {
             let rig = create_rig();
 
-            let component_cache = ComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig);
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();

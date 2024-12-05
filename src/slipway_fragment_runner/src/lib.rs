@@ -1,11 +1,12 @@
 use std::{str::FromStr, sync::Arc};
 
 use slipway_engine::{
-    Component, ComponentExecutionContext, ComponentExecutionData, ComponentHandle,
-    ComponentRigging, ComponentRunner, Rig, RigSession, Rigging, RunComponentError,
-    RunComponentResult, Schema, SlipwayReference, SpecialComponentReference, TryRunComponentResult,
+    prime_special_component, BasicComponentCache, Component, ComponentExecutionContext,
+    ComponentExecutionData, ComponentHandle, ComponentRigging, ComponentRunner,
+    MultiComponentCache, Rig, RigSession, Rigging, RunComponentError, RunComponentResult, Schema,
+    SlipwayReference, SpecialComponentReference, TryRunComponentResult,
 };
-use slipway_host::{run::run_rig, sink_run_event_handler::SinkRunEventHandler};
+use slipway_host::run::{no_event_handler, run_rig};
 
 pub const FRAGMENT_COMPONENT_RUNNER_IDENTIFIER: &str = "fragment";
 pub const INPUT_COMPONENT_HANDLE: &str = "input";
@@ -91,12 +92,16 @@ fn run_component_fragment(
     let component_runners = execution_context.component_runners;
     let permission_chain = Arc::clone(&execution_context.permission_chain);
 
-    let component_cache = execution_context.component_cache;
-    let rig_session = RigSession::new(rig, component_cache);
+    let original_component_cache = execution_context.component_cache;
+    let new_component_cache = get_component_cache_with_pass_component();
+    let component_cache =
+        MultiComponentCache::new(vec![original_component_cache, &new_component_cache]);
+
+    let rig_session = RigSession::new(rig, &component_cache);
 
     let run_result = run_rig(
         &rig_session,
-        Some(&mut SinkRunEventHandler {}),
+        &mut no_event_handler(),
         component_runners,
         permission_chain,
     )
@@ -122,4 +127,17 @@ fn run_component_fragment(
     };
 
     Ok(result)
+}
+
+fn get_component_cache_with_pass_component() -> BasicComponentCache {
+    let pass_reference = SpecialComponentReference::Pass;
+    let pass_component = prime_special_component(&pass_reference);
+    BasicComponentCache::for_primed(
+        vec![(
+            SlipwayReference::Special(pass_reference.clone()),
+            pass_component,
+        )]
+        .into_iter()
+        .collect(),
+    )
 }

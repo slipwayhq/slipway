@@ -8,7 +8,7 @@ use std::sync::Arc;
 use termion::{color, style};
 
 use slipway_engine::{
-    parse_rig, BasicComponentsLoader, ComponentCache, ComponentHandle, ComponentPermission,
+    parse_rig, BasicComponentCache, BasicComponentsLoader, ComponentHandle, ComponentPermission,
     ComponentRigging, Name, PermissionChain, Publisher, Rig, RigSession, Rigging, SlipwayReference,
 };
 
@@ -206,7 +206,7 @@ fn debug_rig<W: Write>(
     json_editor: impl JsonEditor,
     engine_permissions: Vec<ComponentPermission>,
 ) -> anyhow::Result<()> {
-    let component_cache = ComponentCache::primed(&rig, &BasicComponentsLoader::default())?;
+    let component_cache = BasicComponentCache::primed(&rig, &BasicComponentsLoader::default())?;
     let session = RigSession::new(rig, &component_cache);
     let mut state = session.initialize()?;
 

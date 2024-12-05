@@ -9,14 +9,14 @@ use crate::parse::types::Rig;
 
 pub struct RigSession<'cache> {
     pub(crate) rig: Rig,
-    pub(crate) component_cache: &'cache ComponentCache,
+    pub(crate) component_cache: &'cache dyn ComponentCache,
     pub(crate) options: RigSessionOptions,
 }
 
 impl<'cache> RigSession<'cache> {
     pub fn new_with_options(
         rig: Rig,
-        component_cache: &'cache ComponentCache,
+        component_cache: &'cache dyn ComponentCache,
         options: RigSessionOptions,
     ) -> Self {
         RigSession {
@@ -26,7 +26,7 @@ impl<'cache> RigSession<'cache> {
         }
     }
 
-    pub fn new(rig: Rig, component_cache: &'cache ComponentCache) -> Self {
+    pub fn new(rig: Rig, component_cache: &'cache dyn ComponentCache) -> Self {
         RigSession {
             rig,
             component_cache,

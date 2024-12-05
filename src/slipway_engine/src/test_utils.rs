@@ -3,8 +3,8 @@ use crate::errors::ComponentLoadErrorInner;
 use crate::load::ComponentsLoader;
 use crate::load::LoadedComponent;
 use crate::utils::ch;
+use crate::BasicComponentCache;
 use crate::Component;
-use crate::ComponentCache;
 use crate::ComponentFiles;
 use crate::ComponentHandle;
 use crate::ComponentRigging;
@@ -260,12 +260,15 @@ impl ComponentsLoader for PermissiveMockComponentsLoader {
     }
 }
 
-impl ComponentCache {
-    pub fn for_test_with_schemas(rig: &Rig, schemas: HashMap<String, (Schema, Schema)>) -> Self {
-        ComponentCache::primed(rig, &MockComponentsLoader::new(schemas)).unwrap()
+impl BasicComponentCache {
+    pub fn for_test_with_schemas(
+        rig: &Rig,
+        schemas: HashMap<String, (Schema, Schema)>,
+    ) -> BasicComponentCache {
+        BasicComponentCache::primed(rig, &MockComponentsLoader::new(schemas)).unwrap()
     }
 
-    pub fn for_test_permissive(rig: &Rig) -> Self {
-        ComponentCache::primed(rig, &PermissiveMockComponentsLoader::new()).unwrap()
+    pub fn for_test_permissive(rig: &Rig) -> BasicComponentCache {
+        BasicComponentCache::primed(rig, &PermissiveMockComponentsLoader::new()).unwrap()
     }
 }

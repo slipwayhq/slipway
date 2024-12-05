@@ -1,4 +1,5 @@
-use std::{collections::HashMap, path::Path, sync::Arc};
+use core::panic;
+use std::{collections::HashMap, default, path::Path, sync::Arc};
 
 use crate::{
     errors::{ComponentLoadError, ComponentLoadErrorInner},
@@ -9,7 +10,7 @@ use crate::{
 pub(super) mod basic_components_loader;
 mod is_safe_path;
 mod prime_component_cache;
-mod special_components;
+pub(super) mod special_components;
 
 const SLIPWAY_COMPONENT_FILE_NAME: &str = "slipway_component.json";
 
@@ -112,11 +113,31 @@ impl LoadedComponent {
     }
 }
 
-pub struct ComponentCache {
+pub trait ComponentCache: Sync + Send {
+    fn clear(&mut self);
+
+    fn add(
+        &mut self,
+        component_reference: &SlipwayReference,
+        definition: Component<Schema>,
+        files: Arc<dyn ComponentFiles>,
+    );
+
+    fn try_get(&self, component_reference: &SlipwayReference) -> Option<&PrimedComponent>;
+
+    fn get(&self, component_reference: &SlipwayReference) -> &PrimedComponent;
+}
+
+pub struct PrimedComponent {
+    pub definition: Arc<Component<Schema>>,
+    pub files: Arc<dyn ComponentFiles>,
+}
+
+pub struct BasicComponentCache {
     components: HashMap<SlipwayReference, PrimedComponent>,
 }
 
-impl ComponentCache {
+impl BasicComponentCache {
     pub fn empty() -> Self {
         Self {
             components: HashMap::new(),
@@ -127,11 +148,23 @@ impl ComponentCache {
         prime_component_cache::prime_component_cache(rig, loader)
     }
 
-    pub fn clear(&mut self) {
+    pub fn for_primed(components: HashMap<SlipwayReference, PrimedComponent>) -> Self {
+        Self { components }
+    }
+}
+
+impl default::Default for BasicComponentCache {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
+impl ComponentCache for BasicComponentCache {
+    fn clear(&mut self) {
         self.components.clear();
     }
 
-    pub fn add(
+    fn add(
         &mut self,
         component_reference: &SlipwayReference,
         definition: Component<Schema>,
@@ -146,22 +179,61 @@ impl ComponentCache {
         );
     }
 
-    pub fn get_definition(&self, component_reference: &SlipwayReference) -> Arc<Component<Schema>> {
-        self.get(component_reference).definition.clone()
+    fn try_get(&self, component_reference: &SlipwayReference) -> Option<&PrimedComponent> {
+        self.components.get(component_reference)
     }
 
-    pub fn get_files(&self, component_reference: &SlipwayReference) -> Arc<dyn ComponentFiles> {
-        self.get(component_reference).files.clone()
-    }
-
-    pub(crate) fn get(&self, component_reference: &SlipwayReference) -> &PrimedComponent {
+    fn get(&self, component_reference: &SlipwayReference) -> &PrimedComponent {
         self.components
             .get(component_reference)
-            .expect_with(|| format!("component {} not found in cache", component_reference))
+            .expect_with(|| format!("component \"{}\" not found in cache", component_reference))
     }
 }
 
-pub struct PrimedComponent {
-    pub definition: Arc<Component<Schema>>,
-    pub files: Arc<dyn ComponentFiles>,
+pub struct MultiComponentCache<'a> {
+    caches: Vec<&'a dyn ComponentCache>,
+}
+
+impl<'a> MultiComponentCache<'a> {
+    pub fn new(caches: Vec<&'a dyn ComponentCache>) -> Self {
+        Self { caches }
+    }
+}
+
+impl ComponentCache for MultiComponentCache<'_> {
+    fn clear(&mut self) {
+        panic!("Cannot clear a MultiComponentCache");
+    }
+
+    fn add(
+        &mut self,
+        _component_reference: &SlipwayReference,
+        _definition: Component<Schema>,
+        _files: Arc<dyn ComponentFiles>,
+    ) {
+        panic!("Cannot add to a MultiComponentCache");
+    }
+
+    fn try_get(&self, component_reference: &SlipwayReference) -> Option<&PrimedComponent> {
+        for cache in self.caches.iter() {
+            if let Some(component) = cache.try_get(component_reference) {
+                return Some(component);
+            }
+        }
+
+        None
+    }
+
+    fn get(&self, component_reference: &SlipwayReference) -> &PrimedComponent {
+        for cache in self.caches.iter() {
+            if let Some(component) = cache.try_get(component_reference) {
+                return component;
+            }
+        }
+
+        panic!(
+            "component \"{}\" not found in any cache",
+            component_reference
+        );
+    }
 }

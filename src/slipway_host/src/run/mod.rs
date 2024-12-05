@@ -9,6 +9,8 @@ use slipway_engine::{
     RigExecutionState, RigSession, RunComponentError, RunComponentResult, TryRunComponentResult,
 };
 
+pub mod sink_run_event_handler;
+
 #[derive(Error, Debug)]
 pub enum RunError<THostError> {
     #[error("Rig error.\n{0}")]
@@ -67,9 +69,13 @@ pub struct RunRigResult<'rig> {
     pub component_outputs: HashMap<&'rig ComponentHandle, Option<Rc<ComponentOutput>>>,
 }
 
+pub fn no_event_handler<'rig, 'cache>() -> impl RunEventHandler<'rig, 'cache, ()> {
+    sink_run_event_handler::SinkRunEventHandler::new()
+}
+
 pub fn run_rig<'rig, 'cache, 'runners, THostError>(
     rig_session: &'rig RigSession<'cache>,
-    mut event_handler: Option<&mut impl RunEventHandler<'rig, 'cache, THostError>>,
+    event_handler: &mut impl RunEventHandler<'rig, 'cache, THostError>,
     component_runners: &'runners [Box<dyn ComponentRunner>],
     permission_chain: Arc<PermissionChain<'rig>>,
 ) -> Result<RunRigResult<'rig>, RunError<THostError>>
@@ -92,27 +98,23 @@ where
             .collect();
 
         let is_complete = ready_components.is_empty();
-        if let Some(event_handler) = event_handler.as_mut() {
-            event_handler
-                .handle_state_changed(StateChangeEvent {
-                    state: &state,
-                    is_complete,
-                })
-                .map_err(|e| RunError::HostError(e))?;
-        }
+        event_handler
+            .handle_state_changed(StateChangeEvent {
+                state: &state,
+                is_complete,
+            })
+            .map_err(|e| RunError::HostError(e))?;
 
         if is_complete {
             break;
         }
 
         for handle in ready_components {
-            if let Some(event_handler) = event_handler.as_mut() {
-                event_handler
-                    .handle_component_run_start(ComponentRunStartEvent {
-                        component_handle: handle,
-                    })
-                    .map_err(|e| RunError::HostError(e))?;
-            }
+            event_handler
+                .handle_component_run_start(ComponentRunStartEvent {
+                    component_handle: handle,
+                })
+                .map_err(|e| RunError::HostError(e))?;
 
             let result = run_component(
                 handle,
@@ -121,13 +123,11 @@ where
                 Arc::clone(&permission_chain),
             )?;
 
-            if let Some(event_handler) = event_handler.as_mut() {
-                event_handler
-                    .handle_component_run_end(ComponentRunEndEvent {
-                        component_handle: handle,
-                    })
-                    .map_err(|e| RunError::HostError(e))?;
-            }
+            event_handler
+                .handle_component_run_end(ComponentRunEndEvent {
+                    component_handle: handle,
+                })
+                .map_err(|e| RunError::HostError(e))?;
 
             state = state.step(Instruction::SetOutput {
                 handle: handle.clone(),

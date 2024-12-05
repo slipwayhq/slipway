@@ -9,7 +9,7 @@ pub(super) fn validate_component_io<'rig>(
     validation_data: ValidationData,
 ) -> Result<(), RigError> {
     let component_reference = &component_state.rigging.component;
-    let component_definition = session.component_cache.get_definition(component_reference);
+    let component_definition = &session.component_cache.get(component_reference).definition;
 
     // Validate the data against either the component input or output schema.
     let (validation_type, validation_result) = match validation_data {
@@ -111,7 +111,7 @@ mod tests {
         errors::SchemaValidationFailure,
         test_utils::{schema_any, schema_valid},
         utils::ch,
-        ComponentCache, ComponentRigging, Instruction, Rig, Rigging,
+        BasicComponentCache, ComponentRigging, Instruction, Rig, Rigging,
     };
 
     use super::*;
@@ -136,7 +136,7 @@ mod tests {
     fn it_should_validate_component_input() {
         let rig = create_rig();
 
-        let component_cache = ComponentCache::for_test_with_schemas(
+        let component_cache = BasicComponentCache::for_test_with_schemas(
             &rig,
             [
                 ("a".to_string(), (schema_any(), schema_any())),
@@ -189,7 +189,7 @@ mod tests {
     fn it_should_fail_to_validate_invalid_component_input() {
         let rig = create_rig();
 
-        let component_cache = ComponentCache::for_test_with_schemas(
+        let component_cache = BasicComponentCache::for_test_with_schemas(
             &rig,
             [
                 ("a".to_string(), (schema_any(), schema_any())),
@@ -259,7 +259,7 @@ mod tests {
     fn it_should_validate_component_output() {
         let rig = create_rig();
 
-        let component_cache = ComponentCache::for_test_with_schemas(
+        let component_cache = BasicComponentCache::for_test_with_schemas(
             &rig,
             [
                 (
@@ -307,7 +307,7 @@ mod tests {
     fn it_should_fail_to_validate_invalid_component_output() {
         let rig = create_rig();
 
-        let component_cache = ComponentCache::for_test_with_schemas(
+        let component_cache = BasicComponentCache::for_test_with_schemas(
             &rig,
             [
                 (
@@ -372,7 +372,7 @@ mod tests {
     fn it_should_validate_component_input_with_json_schema() {
         let rig = create_rig();
 
-        let component_cache = ComponentCache::for_test_with_schemas(
+        let component_cache = BasicComponentCache::for_test_with_schemas(
             &rig,
             [
                 ("a".to_string(), (schema_any(), schema_any())),
@@ -430,7 +430,7 @@ mod tests {
     fn it_should_fail_to_validate_invalid_component_input_with_json_schema() {
         let rig = create_rig();
 
-        let component_cache = ComponentCache::for_test_with_schemas(
+        let component_cache = BasicComponentCache::for_test_with_schemas(
             &rig,
             [
                 ("a".to_string(), (schema_any(), schema_any())),

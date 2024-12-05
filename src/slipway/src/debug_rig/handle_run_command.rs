@@ -45,7 +45,7 @@ mod tests {
 
     use serde_json::json;
     use slipway_engine::{
-        utils::ch, BasicComponentsLoader, BasicComponentsLoaderBuilder, ComponentCache,
+        utils::ch, BasicComponentCache, BasicComponentsLoader, BasicComponentsLoaderBuilder,
         ComponentRigging, Rig, RigSession, Rigging, RunComponentError, SlipwayReference,
     };
     use slipway_host::run::RunError;
@@ -84,7 +84,8 @@ mod tests {
         let handle = ch("test_component");
         let rig = create_rig(&handle, json!({ "type": "increment", "value": 42}));
 
-        let component_cache = ComponentCache::primed(&rig, &create_components_loader()).unwrap();
+        let component_cache =
+            BasicComponentCache::primed(&rig, &create_components_loader()).unwrap();
         let rig_session = RigSession::new(rig, &component_cache);
         let mut state = rig_session.initialize().unwrap();
         let component_runners = get_component_runners();
@@ -117,7 +118,8 @@ mod tests {
         let handle = ch("test_component");
         let rig = create_rig(&handle, json!({ "type": "panic" }));
 
-        let component_cache = ComponentCache::primed(&rig, &create_components_loader()).unwrap();
+        let component_cache =
+            BasicComponentCache::primed(&rig, &create_components_loader()).unwrap();
         let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let component_runners = get_component_runners();
@@ -145,7 +147,8 @@ mod tests {
         let handle = ch("test_component");
         let rig = create_rig(&handle, json!({ "type": "error" }));
 
-        let component_cache = ComponentCache::primed(&rig, &create_components_loader()).unwrap();
+        let component_cache =
+            BasicComponentCache::primed(&rig, &create_components_loader()).unwrap();
         let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let component_runners = get_component_runners();

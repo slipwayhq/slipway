@@ -1,8 +1,10 @@
+use crate::{
+    ComponentFiles, LoadedComponent, PrimedComponent, SlipwayReference, SpecialComponentReference,
+};
+
 use std::{str::FromStr, sync::Arc};
 
-use crate::{SlipwayReference, SpecialComponentReference};
-
-use super::{ComponentFiles, LoadedComponent};
+use super::prime_component_cache::parse_component_with_json;
 
 const SLIPWAY_PUBLISHER: &str = "slipway";
 
@@ -16,6 +18,22 @@ pub fn load_special_component(reference: &SpecialComponentReference) -> LoadedCo
         files: Arc::new(NoFiles {
             reference: SlipwayReference::Special(reference.clone()),
         }),
+    }
+}
+
+pub fn prime_special_component(reference: &SpecialComponentReference) -> PrimedComponent {
+    let full_reference = SlipwayReference::Special(reference.clone());
+    let definition = get_special_definition(reference);
+    let files: Arc<dyn ComponentFiles> = Arc::new(NoFiles {
+        reference: SlipwayReference::Special(reference.clone()),
+    });
+
+    let definition = parse_component_with_json(&full_reference, definition, Arc::clone(&files))
+        .expect("Special component should be valid");
+
+    PrimedComponent {
+        definition: Arc::new(definition),
+        files,
     }
 }
 

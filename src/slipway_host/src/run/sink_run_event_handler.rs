@@ -2,6 +2,18 @@ use crate::run::RunEventHandler;
 
 pub struct SinkRunEventHandler {}
 
+impl SinkRunEventHandler {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+impl Default for SinkRunEventHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'rig, 'cache> RunEventHandler<'rig, 'cache, ()> for SinkRunEventHandler {
     fn handle_component_run_start(
         &mut self,

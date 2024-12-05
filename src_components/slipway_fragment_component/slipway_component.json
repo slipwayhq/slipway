@@ -13,16 +13,21 @@
           }
         }
       },
-      "callout": {
+      "callout_increment": {
         "properties": {
-          "handle": {
-            "type": "string"
-          },
           "value": {
             "type": "int32"
           },
           "ttl": {
             "type": "uint32"
+          },
+          "result_type": {
+            "enum": ["increment", "panic", "error"]
+          }
+        },
+        "optionalProperties": {
+          "handle": {
+            "type": "string"
           }
         }
       },
@@ -40,13 +45,13 @@
   "rigging": {
     "first": {
       "component": "file:slipway.test.0.0.1",
-      "input": "$$input"
+      "input": "$$.input"
     },
     "output": {
       "component": "file:slipway.test.0.0.1",
       "input": {
         "type": "increment",
-        "value": "$$first.value"
+        "value": "$$.first.value"
       }
     }
   }
