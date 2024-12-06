@@ -5,6 +5,7 @@ use std::{
 };
 
 use component_io_abstractions::{ComponentIOAbstractions, ComponentIOAbstractionsImpl};
+use tracing::debug;
 use url::Url;
 
 use crate::{
@@ -143,6 +144,7 @@ impl BasicComponentsLoader {
         &self,
         component_reference: &SlipwayReference,
     ) -> Result<LoadedComponent, ComponentLoadError> {
+        debug!("Loading component: {}", component_reference);
         match component_reference {
             SlipwayReference::Special(inner) => Ok(load_special_component(inner)),
             SlipwayReference::Local { path } => {

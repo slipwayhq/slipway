@@ -24,11 +24,12 @@ fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types
             bindings::log::debug("This is debug information.");
             bindings::log::trace("This is trace information.");
             println!("This is more information.");
-            let output = Output { value: value + 1 };
+            let output = Output {
+                value: perform_action(value),
+            };
             Ok(serde_json::to_string(&output).expect("Result should be serializable"))
         }
         Input::CalloutIncrement {
-            handle,
             value,
             ttl,
             result_type,
@@ -41,14 +42,12 @@ fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types
                 })
             } else {
                 let callout_input = Input::CalloutIncrement {
-                    handle: handle.clone(),
-                    value: value + 1,
+                    value: perform_action(value),
                     ttl: ttl - 1,
                     result_type,
                 };
-                let callout_handle = handle.unwrap_or("test".to_string());
                 bindings::callout::run(
-                    &callout_handle,
+                    "test",
                     &serde_json::to_string(&callout_input).expect("should serialize output"),
                 )
             }
@@ -58,6 +57,16 @@ fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types
             message: "slipway-test-component-error".to_string(),
         }),
     }
+}
+
+#[cfg(feature = "add-ten")]
+fn perform_action(value: i32) -> i32 {
+    value + 10
+}
+
+#[cfg(not(feature = "add-ten"))]
+fn perform_action(value: i32) -> i32 {
+    value + 1
 }
 
 bindings::export!(Component with_types_in bindings);
@@ -70,7 +79,6 @@ enum Input {
 
     #[serde(rename = "callout_increment")]
     CalloutIncrement {
-        handle: Option<String>,
         value: i32,
         ttl: u32,
         result_type: ResultType,

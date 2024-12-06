@@ -56,6 +56,24 @@ impl ComponentRigging {
             callouts: None,
         }
     }
+
+    pub fn for_test_with_reference_callout_override(
+        reference: SlipwayReference,
+        input: Option<Value>,
+        callout_handle: &str,
+        callout_reference: SlipwayReference,
+    ) -> ComponentRigging {
+        ComponentRigging {
+            component: reference,
+            input,
+            permissions: None,
+            callouts: Some(
+                vec![(ch(callout_handle), callout_reference)]
+                    .into_iter()
+                    .collect(),
+            ),
+        }
+    }
 }
 
 impl<TSchema> Component<TSchema> {

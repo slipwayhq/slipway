@@ -16,3 +16,6 @@ crate-type = ["cdylib"]
 package = "component:slipway-test-component"
 
 [package.metadata.component.dependencies]
+
+[features]
+add-ten = []
