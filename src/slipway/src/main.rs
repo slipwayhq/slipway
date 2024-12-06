@@ -16,8 +16,9 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use slipway_engine::ComponentPermission;
+use time::{format_description, OffsetDateTime};
 use tracing::Level;
-use tracing_subscriber::FmtSubscriber;
+use tracing_subscriber::{fmt::time::FormatTime, FmtSubscriber};
 
 const WASM_INTERFACE_TYPE_STR: &str = include_str!("../../../wit/latest/slipway_component.wit");
 
@@ -116,6 +117,17 @@ fn set_ctrl_c_handler() {
     .expect("Error setting Ctrl-C handler");
 }
 
+struct CustomTimer;
+
+impl FormatTime for CustomTimer {
+    fn format_time(&self, w: &mut tracing_subscriber::fmt::format::Writer<'_>) -> std::fmt::Result {
+        let now = OffsetDateTime::now_utc();
+        let format = format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]")
+            .expect("Timestamp format should be valid");
+        write!(w, "{}", now.format(&format).unwrap())
+    }
+}
+
 fn configure_tracing(log_level: Option<String>) {
     let log_level = match log_level.map(|level| level.to_lowercase()).as_deref() {
         Some("error") => Level::ERROR,
@@ -127,7 +139,11 @@ fn configure_tracing(log_level: Option<String>) {
         _ => Level::INFO,
     };
 
-    let subscriber = FmtSubscriber::builder().with_max_level(log_level).finish();
+    let subscriber = FmtSubscriber::builder()
+        .with_target(false)
+        .with_timer(CustomTimer)
+        .with_max_level(log_level)
+        .finish();
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 }

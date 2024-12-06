@@ -1,0 +1,19 @@
+{
+  "publisher": "slipway",
+  "name": "test_rig",
+  "version": "0.0.1",
+  "description": "Calls a fragment which calls a callout",
+  "constants": {
+  },
+  "rigging": {
+    "frag": {
+      "component": "file:slipway.fragment.0.0.1.tar",
+      "input": {
+        "type": "callout_increment",
+        "value": 0,
+        "ttl": 2,
+        "result_type": "increment"
+      }
+    }
+  }
+}  

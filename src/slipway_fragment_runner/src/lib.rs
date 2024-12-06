@@ -7,6 +7,7 @@ use slipway_engine::{
     SlipwayReference, SpecialComponentReference, TryRunComponentResult,
 };
 use slipway_host::run::{no_event_handler, run_rig};
+use tracing::{span, Level};
 
 pub const FRAGMENT_COMPONENT_RUNNER_IDENTIFIER: &str = "fragment";
 pub const INPUT_COMPONENT_HANDLE: &str = "input";
@@ -28,6 +29,8 @@ impl ComponentRunner for FragmentComponentRunner {
         let Some(rigging) = component_definition.rigging.as_ref() else {
             return Ok(TryRunComponentResult::CannotRun);
         };
+
+        let _span_ = span!(Level::INFO, "fragment").entered();
 
         let input = &execution_data.input.value;
 

@@ -13,10 +13,10 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
+tracing = { workspace = true }
 
 [dev-dependencies]
 common_test_utils = { path = "../common_test_utils" }
 slipway_wasmtime_runner = { path = "../slipway_wasmtime_runner" }
 slipway_fragment_runner = { path = "../slipway_fragment_runner" }
 test-log = { version = "0.2.16", features = ["trace"] }
-tracing = { workspace = true }

@@ -1,5 +1,5 @@
 use bytes::Bytes;
-use slipway_engine::{ComponentExecutionContext, ComponentHandle};
+use slipway_engine::ComponentExecutionContext;
 use tracing::{debug, error, info, trace, warn};
 use wasmtime::*;
 use wasmtime_wasi::{
@@ -15,7 +15,6 @@ wasmtime::component::bindgen!({
 });
 
 pub struct SlipwayHost<'call, 'rig, 'runners> {
-    component_handle: &'call ComponentHandle,
     execution_context: &'call ComponentExecutionContext<'call, 'rig, 'runners>,
     wasi_ctx: WasiCtx,
     wasi_table: ResourceTable,
@@ -23,12 +22,10 @@ pub struct SlipwayHost<'call, 'rig, 'runners> {
 
 impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
     pub fn new(
-        component_handle: &'call ComponentHandle,
         execution_data: &'call ComponentExecutionContext<'call, 'rig, 'runners>,
         wasi_ctx: WasiCtx,
     ) -> Self {
         Self {
-            component_handle,
             execution_context: execution_data,
             wasi_ctx,
             wasi_table: ResourceTable::default(),
@@ -71,23 +68,23 @@ impl From<slipway_host::ComponentError> for ComponentError {
 
 impl log::Host for SlipwayHost<'_, '_, '_> {
     fn trace(&mut self, message: String) {
-        trace!(component = self.component_handle.to_string(), message);
+        trace!(message);
     }
 
     fn debug(&mut self, message: String) {
-        debug!(component = self.component_handle.to_string(), message);
+        debug!(message);
     }
 
     fn info(&mut self, message: String) {
-        info!(component = self.component_handle.to_string(), message);
+        info!(message);
     }
 
     fn warn(&mut self, message: String) {
-        warn!(component = self.component_handle.to_string(), message);
+        warn!(message);
     }
 
     fn error(&mut self, message: String) {
-        error!(component = self.component_handle.to_string(), message);
+        error!(message);
     }
 }
 
@@ -97,7 +94,6 @@ pub enum OutputObserverType {
     Stderr,
 }
 struct OutputObserver {
-    component_handle: ComponentHandle,
     buffer: String,
     observer_type: OutputObserverType,
 }
@@ -110,7 +106,7 @@ impl Subscribe for OutputObserver {
 impl Drop for OutputObserver {
     fn drop(&mut self) {
         if !self.buffer.is_empty() {
-            self.log_line(self.buffer.clone());
+            self.log_line(&self.buffer);
         }
     }
 }
@@ -122,7 +118,7 @@ impl HostOutputStream for OutputObserver {
         // Process complete lines
         while let Some(pos) = self.buffer.find('\n') {
             let line: String = self.buffer.drain(..=pos).collect();
-            self.log_line(line);
+            self.log_line(line.trim());
         }
 
         Ok(())
@@ -139,36 +135,31 @@ impl HostOutputStream for OutputObserver {
 }
 
 impl OutputObserver {
-    fn log_line(&self, line: String) {
+    fn log_line(&self, message: &str) {
         match self.observer_type {
             OutputObserverType::Stdout => {
-                info!(component = self.component_handle.to_string(), line);
+                info!(message);
             }
             OutputObserverType::Stderr => {
-                error!(component = self.component_handle.to_string(), line);
+                error!(message);
             }
         }
     }
 }
 
 pub struct OutputObserverStream {
-    component_handle: ComponentHandle,
     observer_type: OutputObserverType,
 }
 
 impl OutputObserverStream {
-    pub fn new(component_handle: &ComponentHandle, observer_type: OutputObserverType) -> Self {
-        Self {
-            component_handle: component_handle.clone(),
-            observer_type,
-        }
+    pub fn new(observer_type: OutputObserverType) -> Self {
+        Self { observer_type }
     }
 }
 
 impl StdoutStream for OutputObserverStream {
     fn stream(&self) -> Box<dyn wasmtime_wasi::HostOutputStream> {
         Box::new(OutputObserver {
-            component_handle: self.component_handle.clone(),
             buffer: String::new(),
             observer_type: self.observer_type,
         })

@@ -29,6 +29,10 @@ impl ComponentExecutionContext<'_, '_, '_> {
     pub fn component_handle(&self) -> &ComponentHandle {
         self.call_chain.current_component_handle()
     }
+
+    pub fn component_handle_trail(&self) -> String {
+        self.call_chain.component_handle_trail()
+    }
 }
 
 #[derive(Clone)]

@@ -59,7 +59,7 @@ fn write_component_output<W: Write>(
         writeln!(w, r#"Component "{}" output:"#, component.handle)?;
 
         if !render_canvas_if_exists(component.handle, output, None)? {
-            writeln!(w, "{}", output)?;
+            writeln!(w, "{:#}", output)?;
         }
 
         writeln!(w)?;

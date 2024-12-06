@@ -9,6 +9,7 @@ use slipway_engine::{
     Instruction, RigExecutionState, RigSession, RunComponentError, RunComponentResult,
     TryRunComponentResult,
 };
+use tracing::{span, Level};
 
 use crate::ComponentError;
 
@@ -161,6 +162,8 @@ pub fn run_component_callout_for_host(
     handle: &str,
     input: &str,
 ) -> Result<String, ComponentError> {
+    let _span_ = span!(Level::INFO, "callout").entered();
+
     let handle = ComponentHandle::from_str(handle).map_err(|e| ComponentError {
         message: format!(
             "Failed to parse component handle \"{}\" for callout from \"{}\":\n{}",
@@ -212,6 +215,9 @@ pub fn run_component_callout<THostError>(
 fn run_component_inner<THostError>(
     execution_data: &ComponentExecutionData,
 ) -> Result<RunComponentResult, RunError<THostError>> {
+    let handle = format!("{}", execution_data.context.component_handle());
+    let _span_ = span!(Level::INFO, "component", %handle).entered();
+
     for runner in execution_data.context.component_runners {
         let result = runner
             .run(execution_data)

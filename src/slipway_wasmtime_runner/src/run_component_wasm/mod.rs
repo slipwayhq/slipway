@@ -16,8 +16,6 @@ pub fn run_component_wasm(
 ) -> Result<RunComponentResult, RunComponentError> {
     let prepare_input_start = Instant::now();
 
-    let handle = execution_context.component_handle();
-
     // Serialize the input JSON to a vector of bytes
     let input_string = serde_json::to_string(input)
         .map_err(|source| RunComponentError::SerializeInputFailed { source })?;
@@ -34,15 +32,12 @@ pub fn run_component_wasm(
     wasmtime_wasi::add_to_linker_sync(&mut linker)?;
 
     // Create a WASI context, including stdin and stdout pipes
-    let stdout = OutputObserverStream::new(handle, OutputObserverType::Stdout);
-    let stderr = OutputObserverStream::new(handle, OutputObserverType::Stderr);
+    let stdout = OutputObserverStream::new(OutputObserverType::Stdout);
+    let stderr = OutputObserverStream::new(OutputObserverType::Stderr);
     let wasi_ctx = WasiCtxBuilder::new().stdout(stdout).stderr(stderr).build();
 
     // Create a store
-    let mut store = Store::new(
-        &engine,
-        SlipwayHost::new(handle, execution_context, wasi_ctx),
-    );
+    let mut store = Store::new(&engine, SlipwayHost::new(execution_context, wasi_ctx));
 
     // Create the component from raw bytes.
     let component = wasmtime::component::Component::new(&engine, &*wasm_bytes)?;
