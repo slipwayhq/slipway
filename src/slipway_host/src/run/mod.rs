@@ -1,42 +1,17 @@
 use std::{collections::HashMap, rc::Rc, str::FromStr, sync::Arc};
 
-use thiserror::Error;
-
 use slipway_engine::{
-    errors::{ComponentLoadError, RigError},
-    get_component_execution_data_for_callout, CallChain, ComponentExecutionContext,
-    ComponentExecutionData, ComponentHandle, ComponentOutput, ComponentRunner, Immutable,
-    Instruction, RigExecutionState, RigSession, RunComponentError, RunComponentResult,
-    TryRunComponentResult,
+    run_component, CallChain, ComponentExecutionContext, ComponentHandle, ComponentOutput,
+    ComponentRunner, Immutable, Instruction, RigExecutionState, RigSession, RunError,
 };
 use tracing::{span, Level};
 
-use crate::ComponentError;
-
 pub mod sink_run_event_handler;
 
-#[derive(Error, Debug)]
-pub enum RunError<THostError> {
-    #[error("Rig error.\n{0}")]
-    Rig(#[from] RigError),
-
-    #[error("Component load failed during running.\n{0}")]
-    ComponentLoadFailed(#[from] ComponentLoadError),
-
-    #[error("No component runner was found for component \"{component_handle}\".")]
-    ComponentRunnerNotFound { component_handle: ComponentHandle },
-
-    #[error(
-        "Run component failed for component \"{component_handle}\" using \"{component_runner}\" runner.\n{error}"
-    )]
-    RunComponentFailed {
-        component_handle: ComponentHandle,
-        component_runner: String,
-        error: RunComponentError,
-    },
-
-    #[error("Host error.\n{0:#?}")]
-    HostError(THostError),
+// We can't use the Wasmtime/WIT generated ComponentError here, as this crate is host independent,
+// so use our own struct.
+pub struct ComponentError {
+    pub message: String,
 }
 
 pub struct ComponentRunStartEvent<'rig> {
@@ -145,19 +120,7 @@ where
     })
 }
 
-pub fn run_component<'rig, THostError>(
-    handle: &ComponentHandle,
-    state: &RigExecutionState<'rig, '_>,
-    component_runners: &[Box<dyn ComponentRunner>],
-    call_chain: Arc<CallChain<'rig>>,
-) -> Result<RunComponentResult, RunError<THostError>> {
-    let execution_data =
-        state.get_component_execution_data(handle, call_chain, component_runners)?;
-
-    run_component_inner(&execution_data)
-}
-
-pub fn run_component_callout_for_host(
+pub fn run_component_callout(
     execution_context: &ComponentExecutionContext,
     handle: &str,
     input: &str,
@@ -187,8 +150,9 @@ pub fn run_component_callout_for_host(
         ),
     })?;
 
-    let result = run_component_callout::<anyhow::Error>(&handle, input, execution_context)
-        .map_err(|e| ComponentError {
+    let result =
+        slipway_engine::run_component_callout::<anyhow::Error>(&handle, input, execution_context)
+            .map_err(|e| ComponentError {
             message: format!("Failed to run callout \"{}\":\n{}", handle_trail(), e),
         })?;
 
@@ -198,42 +162,5 @@ pub fn run_component_callout_for_host(
             handle_trail(),
             e
         ),
-    })
-}
-
-pub fn run_component_callout<THostError>(
-    handle: &ComponentHandle,
-    input: serde_json::Value,
-    execution_context: &ComponentExecutionContext,
-) -> Result<RunComponentResult, RunError<THostError>> {
-    let execution_data =
-        get_component_execution_data_for_callout(handle, input, execution_context)?;
-
-    run_component_inner(&execution_data)
-}
-
-fn run_component_inner<THostError>(
-    execution_data: &ComponentExecutionData,
-) -> Result<RunComponentResult, RunError<THostError>> {
-    let handle = format!("{}", execution_data.context.component_handle());
-    let _span_ = span!(Level::INFO, "component", %handle).entered();
-
-    for runner in execution_data.context.component_runners {
-        let result = runner
-            .run(execution_data)
-            .map_err(|e| RunError::RunComponentFailed {
-                component_handle: execution_data.context.component_handle().clone(),
-                component_runner: runner.identifier(),
-                error: e,
-            })?;
-
-        match result {
-            TryRunComponentResult::Ran { result } => return Ok(result),
-            TryRunComponentResult::CannotRun => {}
-        }
-    }
-
-    Err(RunError::ComponentRunnerNotFound {
-        component_handle: execution_data.context.component_handle().clone(),
     })
 }

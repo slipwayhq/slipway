@@ -29,6 +29,27 @@
     },
     {
       "properties": {
+        "type": { "const": "invalid_callout_input" }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    {
+      "properties": {
+        "type": { "const": "invalid_callout_output" }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    {
+      "properties": {
+        "type": { "const": "invalid_output" }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    {
+      "properties": {
         "type": { "const": "panic" }
       },
       "required": ["type"],

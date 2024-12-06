@@ -117,7 +117,7 @@ impl<'rig, 'cache> RigExecutionState<'rig, 'cache> {
     }
 }
 
-pub fn get_component_execution_data_for_callout<'call, 'rig, 'runners>(
+pub(super) fn get_component_execution_data_for_callout<'call, 'rig, 'runners>(
     handle: &'rig ComponentHandle,
     input: serde_json::Value,
     execution_context: &ComponentExecutionContext<'call, 'rig, 'runners>,
@@ -156,7 +156,7 @@ where
     )
 }
 
-pub fn get_component_execution_data<'call, 'rig, 'runners>(
+pub(super) fn get_component_execution_data<'call, 'rig, 'runners>(
     component_reference: &'rig SlipwayReference,
     component_cache: &'rig dyn ComponentCache,
     component_runners: &'runners [Box<dyn ComponentRunner>],

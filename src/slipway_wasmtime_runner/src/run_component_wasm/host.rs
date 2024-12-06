@@ -53,15 +53,15 @@ impl font::Host for SlipwayHost<'_, '_, '_> {
 
 impl callout::Host for SlipwayHost<'_, '_, '_> {
     fn run(&mut self, handle: String, input: String) -> Result<String, ComponentError> {
-        slipway_host::run::run_component_callout_for_host(self.execution_context, &handle, &input)
+        slipway_host::run::run_component_callout(self.execution_context, &handle, &input)
             .map_err(|e| e.into())
     }
 }
 
 impl slipway::component::types::Host for SlipwayHost<'_, '_, '_> {}
 
-impl From<slipway_host::ComponentError> for ComponentError {
-    fn from(e: slipway_host::ComponentError) -> Self {
+impl From<slipway_host::run::ComponentError> for ComponentError {
+    fn from(e: slipway_host::run::ComponentError) -> Self {
         ComponentError { message: e.message }
     }
 }

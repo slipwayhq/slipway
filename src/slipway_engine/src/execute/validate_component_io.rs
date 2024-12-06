@@ -1,16 +1,28 @@
+use std::sync::Arc;
+
 use crate::{
     errors::{RigError, SchemaValidationFailures, ValidationType},
-    ComponentState, RigSession, Schema,
+    ComponentHandle, ComponentState, RigSession, Schema,
 };
 
-pub(super) fn validate_component_io<'rig>(
+pub(super) fn validate_component_io_from_session<'rig>(
     session: &'rig RigSession,
     component_state: &ComponentState<'rig>,
     validation_data: ValidationData,
 ) -> Result<(), RigError> {
     let component_reference = &component_state.rigging.component;
-    let component_definition = &session.component_cache.get(component_reference).definition;
+    let component_definition =
+        Arc::clone(&session.component_cache.get(component_reference).definition);
+    let component_handle = &component_state.handle;
 
+    validate_component_io(validation_data, component_definition, component_handle)
+}
+
+pub fn validate_component_io(
+    validation_data: ValidationData<'_>,
+    component_definition: std::sync::Arc<crate::Component<Schema>>,
+    component_handle: &ComponentHandle,
+) -> Result<(), RigError> {
     // Validate the data against either the component input or output schema.
     let (validation_type, validation_result) = match validation_data {
         ValidationData::Input(input) => (
@@ -28,7 +40,7 @@ pub(super) fn validate_component_io<'rig>(
             // The errors returned as part of the Result are fundamental validation errors when trying
             // to validate, rather than errors caused by the JSON not matching the schema.
             let errors = validation_result.map_err(|e| RigError::ComponentValidationAborted {
-                component_handle: component_state.handle.clone(),
+                component_handle: component_handle.clone(),
                 validation_type: validation_type.clone(),
                 validation_error: e,
             })?;
@@ -55,7 +67,7 @@ pub(super) fn validate_component_io<'rig>(
 
     if let Some(validation_failures) = validation_failures {
         return Err(RigError::ComponentValidationFailed {
-            component_handle: component_state.handle.clone(),
+            component_handle: component_handle.clone(),
             validation_type: validation_type.clone(),
             validation_failures,
             validated_data: match validation_data {

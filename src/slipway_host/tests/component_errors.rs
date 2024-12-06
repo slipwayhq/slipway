@@ -2,9 +2,9 @@ use std::str::FromStr;
 
 use slipway_engine::{
     BasicComponentCache, CallChain, ComponentHandle, ComponentRigging, Rig, RigSession, Rigging,
-    RunComponentError, SlipwayReference,
+    RunComponentError, RunError, SlipwayReference,
 };
-use slipway_host::run::{no_event_handler, run_rig, RunError};
+use slipway_host::run::{no_event_handler, run_rig};
 
 use common::{create_components_loader, get_component_runners};
 use serde_json::json;
@@ -13,13 +13,13 @@ mod common;
 
 #[test_log::test]
 fn test_callout_panic() {
-    let rig = create_rig(3, "test", "panic");
+    let rig = create_callout_test_rig(3, "test", "panic");
     assert_run_errors_with(rig, &["\"test -> test -> test -> test\"", "wasm backtrace"]);
 }
 
 #[test_log::test]
 fn test_callout_error() {
-    let rig = create_rig(3, "test", "error");
+    let rig = create_callout_test_rig(3, "test", "error");
     assert_run_errors_with(
         rig,
         &[
@@ -31,7 +31,7 @@ fn test_callout_error() {
 
 #[test_log::test]
 fn test_fragment_callout_error() {
-    let rig = create_rig(3, "fragment", "error");
+    let rig = create_callout_test_rig(3, "fragment", "error");
     assert_run_errors_with(
         rig,
         &[
@@ -39,6 +39,57 @@ fn test_fragment_callout_error() {
             "slipway-test-component-error",
         ],
     );
+}
+
+fn create_callout_test_rig(ttl: u32, component_name: &str, result_type: &str) -> Rig {
+    Rig::for_test(Rigging {
+        components: [(
+            ComponentHandle::from_str("test").unwrap(),
+            ComponentRigging::for_test_with_reference(
+                SlipwayReference::Local {
+                    path: format!("slipway.{component_name}.0.0.1.tar").into(),
+                },
+                Some(json!({
+                    "type": "callout_increment",
+                    "value": 0,
+                    "ttl": ttl,
+                    "result_type": result_type
+                })),
+            ),
+        )]
+        .into_iter()
+        .collect(),
+    })
+}
+
+#[test_log::test]
+fn test_invalid_callout_input() {
+    let rig = create_callout_schema_test_rig("test", "invalid_callout_input");
+    assert_run_errors_with(rig, &["\"test -> test\"", r#""type": "foo""#]);
+}
+
+#[test_log::test]
+fn test_invalid_callout_output() {
+    let rig = create_callout_schema_test_rig("test", "invalid_callout_output");
+    assert_run_errors_with(rig, &["\"test -> test\"", r#""value": "foo""#]);
+}
+
+fn create_callout_schema_test_rig(component_name: &str, call_type: &str) -> Rig {
+    Rig::for_test(Rigging {
+        components: [(
+            ComponentHandle::from_str("test").unwrap(),
+            ComponentRigging::for_test_with_reference(
+                SlipwayReference::Local {
+                    path: format!("slipway.{component_name}.0.0.1.tar").into(),
+                },
+                Some(json!({
+                    "type": call_type,
+                })),
+            ),
+        )]
+        .into_iter()
+        .collect(),
+    })
 }
 
 fn assert_run_errors_with(rig: Rig, expected_messages: &[&str]) {
@@ -87,25 +138,4 @@ fn assert_run_errors_with(rig: Rig, expected_messages: &[&str]) {
             match_inner(&error.into(), expected_messages);
         }
     }
-}
-
-fn create_rig(ttl: u32, component_name: &str, result_type: &str) -> Rig {
-    Rig::for_test(Rigging {
-        components: [(
-            ComponentHandle::from_str("test").unwrap(),
-            ComponentRigging::for_test_with_reference(
-                SlipwayReference::Local {
-                    path: format!("slipway.{component_name}.0.0.1.tar").into(),
-                },
-                Some(json!({
-                    "type": "callout_increment",
-                    "value": 0,
-                    "ttl": ttl,
-                    "result_type": result_type
-                })),
-            ),
-        )]
-        .into_iter()
-        .collect(),
-    })
 }

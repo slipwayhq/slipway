@@ -31,6 +31,9 @@
           }
         }
       },
+      "invalid_callout_input": {},
+      "invalid_callout_output": {},
+      "invalid_output": {},
       "panic": {},
       "error": {}
     }

@@ -13,7 +13,7 @@ pub(super) fn handle_run_command<'rig, 'cache>(
     component_runners: &[Box<dyn ComponentRunner>],
     call_chain: Arc<CallChain<'rig>>,
 ) -> Result<Immutable<RigExecutionState<'rig, 'cache>>, SlipwayDebugError> {
-    let result = slipway_host::run::run_component(handle, state, component_runners, call_chain)?;
+    let result = slipway_engine::run_component(handle, state, component_runners, call_chain)?;
 
     debug!(
         "Prepare input: {:.2?}",
@@ -45,9 +45,8 @@ mod tests {
     use serde_json::json;
     use slipway_engine::{
         utils::ch, BasicComponentCache, BasicComponentsLoader, BasicComponentsLoaderBuilder,
-        ComponentRigging, Rig, RigSession, Rigging, RunComponentError, SlipwayReference,
+        ComponentRigging, Rig, RigSession, Rigging, RunComponentError, RunError, SlipwayReference,
     };
-    use slipway_host::run::RunError;
 
     use common_test_utils::{get_slipway_test_components_path, SLIPWAY_TEST_COMPONENT_NAME};
     use slipway_wasmtime_runner::WASMTIME_COMPONENT_RUNNER_IDENTIFIER;

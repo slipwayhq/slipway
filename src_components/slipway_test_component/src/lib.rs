@@ -52,6 +52,11 @@ fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types
                 )
             }
         }
+        Input::InvalidCalloutInput => bindings::callout::run("test", r#"{ "type": "foo" }"#),
+        Input::InvalidCalloutOutput => {
+            bindings::callout::run("test", r#"{ "type": "invalid_output" }"#)
+        }
+        Input::InvalidOutput => Ok(r#"{ "value": "foo" }"#.to_string()),
         Input::Panic => panic!("slipway-test-component-panic"),
         Input::Error => Err(ComponentError {
             message: "slipway-test-component-error".to_string(),
@@ -74,33 +79,30 @@ bindings::export!(Component with_types_in bindings);
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 enum Input {
-    #[serde(rename = "increment")]
-    Increment { value: i32 },
+    Increment {
+        value: i32,
+    },
 
-    #[serde(rename = "callout_increment")]
     CalloutIncrement {
         value: i32,
         ttl: u32,
         result_type: ResultType,
     },
 
-    #[serde(rename = "panic")]
+    InvalidCalloutInput,
+    InvalidCalloutOutput,
+    InvalidOutput,
     Panic,
-
-    #[serde(rename = "error")]
     Error,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum ResultType {
-    #[serde(rename = "increment")]
     Increment,
 
-    #[serde(rename = "panic")]
     Panic,
 
-    #[serde(rename = "error")]
     Error,
 }
 

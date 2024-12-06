@@ -4,7 +4,7 @@ use crate::{
     errors::RigError,
     execute::{
         primitives::JsonMetadata,
-        validate_component_io::{validate_component_io, ValidationData},
+        validate_component_io::{validate_component_io_from_session, ValidationData},
     },
     ComponentInputOverride, ComponentOutput, ComponentOutputOverride, RigExecutionState,
 };
@@ -51,7 +51,7 @@ pub(super) fn evaluate_instruction<'rig, 'cache>(
         } => {
             {
                 let component_state = state.get_component_state(&handle)?;
-                validate_component_io(
+                validate_component_io_from_session(
                     state.session,
                     component_state,
                     ValidationData::Output(&value),

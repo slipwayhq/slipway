@@ -11,7 +11,7 @@ use self::{
 
 use super::{
     topological_sort::sort_and_group,
-    validate_component_io::{validate_component_io, ValidationData},
+    validate_component_io::{validate_component_io_from_session, ValidationData},
 };
 
 mod evaluate_input;
@@ -109,7 +109,7 @@ pub(super) fn evaluate_component_inputs<'rig, 'cache>(
                     &evaluate_input_params.json_path_strings,
                 )?;
 
-                validate_component_io(
+                validate_component_io_from_session(
                     state.session,
                     component_state,
                     ValidationData::Input(&execution_input.value),
