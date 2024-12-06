@@ -90,7 +90,7 @@ fn run_component_fragment(
     };
 
     let component_runners = execution_context.component_runners;
-    let permission_chain = Arc::clone(&execution_context.permission_chain);
+    let call_chain = Arc::clone(&execution_context.call_chain);
 
     let original_component_cache = execution_context.component_cache;
     let new_component_cache = get_component_cache_with_pass_component();
@@ -103,7 +103,7 @@ fn run_component_fragment(
         &rig_session,
         &mut no_event_handler(),
         component_runners,
-        permission_chain,
+        call_chain,
     )
     .map_err(|e| RunComponentError::RunCallFailed { source: e.into() })?;
 

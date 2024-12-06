@@ -9,7 +9,7 @@ use termion::{color, style};
 
 use slipway_engine::{
     parse_rig, BasicComponentCache, BasicComponentsLoader, ComponentHandle, ComponentPermission,
-    ComponentRigging, Name, PermissionChain, Publisher, Rig, RigSession, Rigging, SlipwayReference,
+    ComponentRigging, Name, CallChain, Publisher, Rig, RigSession, Rigging, SlipwayReference,
 };
 
 use crate::component_runners::get_component_runners;
@@ -225,7 +225,7 @@ fn debug_rig<W: Write>(
         color::Fg(color::Reset)
     )?;
 
-    let permissions_chain = Arc::new(PermissionChain::new(&engine_permissions));
+    let permissions_chain = Arc::new(CallChain::new(&engine_permissions));
 
     loop {
         write!(

@@ -4,9 +4,10 @@ use thiserror::Error;
 
 use slipway_engine::{
     errors::{ComponentLoadError, RigError},
-    get_component_execution_data_for_callout, ComponentExecutionContext, ComponentExecutionData,
-    ComponentHandle, ComponentOutput, ComponentRunner, Immutable, Instruction, PermissionChain,
-    RigExecutionState, RigSession, RunComponentError, RunComponentResult, TryRunComponentResult,
+    get_component_execution_data_for_callout, CallChain, ComponentExecutionContext,
+    ComponentExecutionData, ComponentHandle, ComponentOutput, ComponentRunner, Immutable,
+    Instruction, RigExecutionState, RigSession, RunComponentError, RunComponentResult,
+    TryRunComponentResult,
 };
 
 use crate::ComponentError;
@@ -79,7 +80,7 @@ pub fn run_rig<'rig, 'cache, 'runners, THostError>(
     rig_session: &'rig RigSession<'cache>,
     event_handler: &mut impl RunEventHandler<'rig, 'cache, THostError>,
     component_runners: &'runners [Box<dyn ComponentRunner>],
-    permission_chain: Arc<PermissionChain<'rig>>,
+    call_chain: Arc<CallChain<'rig>>,
 ) -> Result<RunRigResult<'rig>, RunError<THostError>>
 where
     'cache: 'rig,
@@ -118,12 +119,7 @@ where
                 })
                 .map_err(|e| RunError::HostError(e))?;
 
-            let result = run_component(
-                handle,
-                &state,
-                component_runners,
-                Arc::clone(&permission_chain),
-            )?;
+            let result = run_component(handle, &state, component_runners, Arc::clone(&call_chain))?;
 
             event_handler
                 .handle_component_run_end(ComponentRunEndEvent {
@@ -152,16 +148,15 @@ pub fn run_component<'rig, THostError>(
     handle: &ComponentHandle,
     state: &RigExecutionState<'rig, '_>,
     component_runners: &[Box<dyn ComponentRunner>],
-    permission_chain: Arc<PermissionChain<'rig>>,
+    call_chain: Arc<CallChain<'rig>>,
 ) -> Result<RunComponentResult, RunError<THostError>> {
     let execution_data =
-        state.get_component_execution_data(handle, permission_chain, component_runners)?;
+        state.get_component_execution_data(handle, call_chain, component_runners)?;
 
     run_component_inner(&execution_data)
 }
 
 pub fn run_component_callout_for_host(
-    from_handle: &ComponentHandle,
     execution_context: &ComponentExecutionContext,
     handle: &str,
     input: &str,
@@ -169,29 +164,36 @@ pub fn run_component_callout_for_host(
     let handle = ComponentHandle::from_str(handle).map_err(|e| ComponentError {
         message: format!(
             "Failed to parse component handle \"{}\" for callout from \"{}\":\n{}",
-            handle, from_handle, e
+            handle,
+            execution_context.call_chain.component_handle_trail(),
+            e
         ),
     })?;
 
+    let handle_trail = || -> String {
+        execution_context
+            .call_chain
+            .component_handle_trail_for(&handle)
+    };
+
     let input = serde_json::from_str(input).map_err(|e| ComponentError {
         message: format!(
-            "Failed to parse input JSON for callout from \"{}\":\n{}",
-            from_handle, e
+            "Failed to parse input JSON for callout to \"{}\":\n{}",
+            handle_trail(),
+            e
         ),
     })?;
 
     let result = run_component_callout::<anyhow::Error>(&handle, input, execution_context)
         .map_err(|e| ComponentError {
-            message: format!(
-                "Failed to run callout from \"{}\" to \"{}\":\n{}",
-                from_handle, handle, e
-            ),
+            message: format!("Failed to run callout \"{}\":\n{}", handle_trail(), e),
         })?;
 
     serde_json::to_string(&result.output).map_err(|e| ComponentError {
         message: format!(
-            "Failed to serialize output JSON for callout from \"{}\" to \"{}\":\n{}",
-            from_handle, handle, e
+            "Failed to serialize output JSON for callout \"{}\":\n{}",
+            handle_trail(),
+            e
         ),
     })
 }
@@ -214,7 +216,7 @@ fn run_component_inner<THostError>(
         let result = runner
             .run(execution_data)
             .map_err(|e| RunError::RunComponentFailed {
-                component_handle: execution_data.context.component_handle.clone(),
+                component_handle: execution_data.context.component_handle().clone(),
                 component_runner: runner.identifier(),
                 error: e,
             })?;
@@ -226,6 +228,6 @@ fn run_component_inner<THostError>(
     }
 
     Err(RunError::ComponentRunnerNotFound {
-        component_handle: execution_data.context.component_handle.clone(),
+        component_handle: execution_data.context.component_handle().clone(),
     })
 }

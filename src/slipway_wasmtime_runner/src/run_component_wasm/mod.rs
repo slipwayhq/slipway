@@ -16,7 +16,7 @@ pub fn run_component_wasm(
 ) -> Result<RunComponentResult, RunComponentError> {
     let prepare_input_start = Instant::now();
 
-    let handle = execution_context.component_handle;
+    let handle = execution_context.component_handle();
 
     // Serialize the input JSON to a vector of bytes
     let input_string = serde_json::to_string(input)

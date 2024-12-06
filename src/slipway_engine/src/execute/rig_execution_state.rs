@@ -11,7 +11,7 @@ use crate::{
 
 use super::{
     component_execution_data::{
-        CalloutContext, ComponentExecutionContext, ComponentExecutionData, PermissionChain,
+        CallChain, CalloutContext, ComponentExecutionContext, ComponentExecutionData,
     },
     component_runner::ComponentRunner,
     component_state::ComponentState,
@@ -37,7 +37,7 @@ impl<'rig, 'cache> RigExecutionState<'rig, 'cache> {
     pub fn get_component_execution_data<'call, 'runners>(
         &self,
         handle: &'rig ComponentHandle,
-        permission_chain: Arc<PermissionChain<'rig>>,
+        call_chain: Arc<CallChain<'rig>>,
         component_runners: &'runners [Box<dyn ComponentRunner>],
     ) -> Result<ComponentExecutionData<'call, 'rig, 'runners>, RigError>
     where
@@ -62,18 +62,17 @@ impl<'rig, 'cache> RigExecutionState<'rig, 'cache> {
             .as_ref()
             .unwrap_or(&PERMISSIONS_NONE_VEC);
 
-        let permission_chain = Arc::new(PermissionChain::new_child(permissions, permission_chain));
+        let call_chain = CallChain::new_child_arc(handle, Some(permissions), call_chain);
 
         let component_reference = &component_state.rigging.component;
 
         let outer_callouts = component_state.rigging.callouts.as_ref();
 
         get_component_execution_data(
-            handle,
             component_reference,
             self.session.component_cache,
             component_runners,
-            permission_chain,
+            call_chain,
             outer_callouts,
             Rc::clone(input),
         )
@@ -132,7 +131,8 @@ where
 
     let component_cache = execution_context.component_cache;
 
-    let permission_chain = Arc::clone(&execution_context.permission_chain);
+    let call_chain =
+        CallChain::new_child_arc(handle, None, Arc::clone(&execution_context.call_chain));
 
     // There are no outer callouts if we're already in a callout.
     let outer_callouts = None;
@@ -147,22 +147,20 @@ where
     });
 
     get_component_execution_data(
-        handle,
         component_reference,
         component_cache,
         component_runners,
-        permission_chain,
+        call_chain,
         outer_callouts,
         input,
     )
 }
 
 pub fn get_component_execution_data<'call, 'rig, 'runners>(
-    component_handle: &'rig ComponentHandle,
     component_reference: &'rig SlipwayReference,
     component_cache: &'rig dyn ComponentCache,
     component_runners: &'runners [Box<dyn ComponentRunner>],
-    permission_chain: Arc<PermissionChain<'rig>>,
+    call_chain: Arc<CallChain<'rig>>,
     outer_callouts: Option<&'rig Callouts>,
     input: Rc<ComponentInput>,
 ) -> Result<ComponentExecutionData<'call, 'rig, 'runners>, RigError>
@@ -181,12 +179,11 @@ where
     Ok(ComponentExecutionData::<'call, 'rig, 'runners> {
         input,
         context: ComponentExecutionContext {
-            component_handle,
             component_reference,
             component_definition,
             component_cache,
             component_runners,
-            permission_chain,
+            call_chain,
             files,
             callout_context,
         },

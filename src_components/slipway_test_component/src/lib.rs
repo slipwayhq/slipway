@@ -11,36 +11,40 @@ impl Guest for Component {
     fn run(input: String) -> Result<String, ComponentError> {
         let input: Input = serde_json::from_str(&input).expect("should parse JSON from stdin");
 
-        match input {
-            Input::Increment { value } => {
-                bindings::log::error("This is an error.");
-                bindings::log::warn("This is a warning.");
-                bindings::log::info("This is information.");
-                bindings::log::debug("This is debug information.");
-                bindings::log::trace("This is trace information.");
-                println!("This is more information.");
-                let output = Output { value: value + 1 };
-                Ok(serde_json::to_string(&output).expect("Result should be serializable"))
-            }
-            Input::CalloutIncrement {
-                handle,
-                value,
-                ttl,
-                result_type,
-            } => {
-                let callout_input = if ttl == 0 {
-                    match result_type {
-                        ResultType::Increment => Input::Increment { value: value },
-                        ResultType::Panic => Input::Panic,
-                        ResultType::Error => Input::Error,
-                    }
-                } else {
-                    Input::CalloutIncrement {
-                        handle: handle.clone(),
-                        value: value + 1,
-                        ttl: ttl - 1,
-                        result_type,
-                    }
+        run_inner(input)
+    }
+}
+
+fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types::ComponentError> {
+    match input {
+        Input::Increment { value } => {
+            bindings::log::error("This is an error.");
+            bindings::log::warn("This is a warning.");
+            bindings::log::info("This is information.");
+            bindings::log::debug("This is debug information.");
+            bindings::log::trace("This is trace information.");
+            println!("This is more information.");
+            let output = Output { value: value + 1 };
+            Ok(serde_json::to_string(&output).expect("Result should be serializable"))
+        }
+        Input::CalloutIncrement {
+            handle,
+            value,
+            ttl,
+            result_type,
+        } => {
+            if ttl == 0 {
+                run_inner(match result_type {
+                    ResultType::Increment => Input::Increment { value: value },
+                    ResultType::Panic => Input::Panic,
+                    ResultType::Error => Input::Error,
+                })
+            } else {
+                let callout_input = Input::CalloutIncrement {
+                    handle: handle.clone(),
+                    value: value + 1,
+                    ttl: ttl - 1,
+                    result_type,
                 };
                 let callout_handle = handle.unwrap_or("test".to_string());
                 bindings::callout::run(
@@ -48,11 +52,11 @@ impl Guest for Component {
                     &serde_json::to_string(&callout_input).expect("should serialize output"),
                 )
             }
-            Input::Panic => panic!("slipway-test-component-panic"),
-            Input::Error => Err(ComponentError {
-                message: "slipway-test-component-error".to_string(),
-            }),
         }
+        Input::Panic => panic!("slipway-test-component-panic"),
+        Input::Error => Err(ComponentError {
+            message: "slipway-test-component-error".to_string(),
+        }),
     }
 }
 

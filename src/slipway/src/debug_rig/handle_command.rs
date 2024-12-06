@@ -1,8 +1,6 @@
 use std::{io::Write, sync::Arc};
 
-use slipway_engine::{
-    ComponentHandle, ComponentRunner, Immutable, PermissionChain, RigExecutionState,
-};
+use slipway_engine::{CallChain, ComponentHandle, ComponentRunner, Immutable, RigExecutionState};
 
 use crate::to_view_model::to_shortcuts;
 
@@ -16,7 +14,7 @@ pub(super) fn handle_command<'rig, 'cache, W: Write>(
     state: &RigExecutionState<'rig, 'cache>,
     json_editor: &impl JsonEditor,
     component_runners: &[Box<dyn ComponentRunner>],
-    permission_chain: Arc<PermissionChain<'rig>>,
+    call_chain: Arc<CallChain<'rig>>,
 ) -> anyhow::Result<HandleCommandResult<'rig, 'cache>> {
     let result = match debug_cli.command {
         DebuggerCommand::Print {} => {
@@ -29,7 +27,7 @@ pub(super) fn handle_command<'rig, 'cache, W: Write>(
                 handle,
                 state,
                 component_runners,
-                permission_chain,
+                call_chain,
             )?;
             HandleCommandResult::Continue(Some(new_state))
         }
@@ -543,7 +541,7 @@ mod tests {
             state,
             json_editor,
             &component_runners,
-            PermissionChain::full_trust_arc(),
+            CallChain::full_trust_arc(),
         )
         .unwrap()
         {
@@ -569,7 +567,7 @@ mod tests {
             state,
             &NoJsonEditor {},
             &[],
-            PermissionChain::full_trust_arc(),
+            CallChain::full_trust_arc(),
         )
         .unwrap()
         {

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use slipway_engine::{
-    ComponentHandle, ComponentRunner, Immutable, Instruction, PermissionChain, RigExecutionState,
+    CallChain, ComponentHandle, ComponentRunner, Immutable, Instruction, RigExecutionState,
 };
 use tracing::debug;
 
@@ -11,10 +11,9 @@ pub(super) fn handle_run_command<'rig, 'cache>(
     handle: &'rig ComponentHandle,
     state: &RigExecutionState<'rig, 'cache>,
     component_runners: &[Box<dyn ComponentRunner>],
-    permission_chain: Arc<PermissionChain<'rig>>,
+    call_chain: Arc<CallChain<'rig>>,
 ) -> Result<Immutable<RigExecutionState<'rig, 'cache>>, SlipwayDebugError> {
-    let result =
-        slipway_host::run::run_component(handle, state, component_runners, permission_chain)?;
+    let result = slipway_host::run::run_component(handle, state, component_runners, call_chain)?;
 
     debug!(
         "Prepare input: {:.2?}",
@@ -94,7 +93,7 @@ mod tests {
             &handle,
             &state,
             &component_runners,
-            PermissionChain::full_trust_arc(),
+            CallChain::full_trust_arc(),
         )
         .unwrap();
 
@@ -128,7 +127,7 @@ mod tests {
             &handle,
             &state,
             &component_runners,
-            PermissionChain::full_trust_arc(),
+            CallChain::full_trust_arc(),
         );
 
         match maybe_state {
@@ -157,7 +156,7 @@ mod tests {
             &handle,
             &state,
             &component_runners,
-            PermissionChain::full_trust_arc(),
+            CallChain::full_trust_arc(),
         );
 
         match maybe_state {

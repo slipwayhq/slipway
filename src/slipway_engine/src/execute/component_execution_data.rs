@@ -15,14 +15,20 @@ pub struct ComponentExecutionData<'call, 'rig, 'runners> {
 
 #[derive(Clone)]
 pub struct ComponentExecutionContext<'call, 'rig, 'runners> {
-    pub component_handle: &'rig ComponentHandle,
+    // pub component_handle: &'rig ComponentHandle,
     pub component_reference: &'rig SlipwayReference,
     pub component_definition: Arc<Component<Schema>>,
     pub component_cache: &'rig dyn ComponentCache,
     pub component_runners: &'runners [Box<dyn ComponentRunner>],
-    pub permission_chain: Arc<PermissionChain<'rig>>,
+    pub call_chain: Arc<CallChain<'rig>>,
     pub files: Arc<dyn ComponentFiles>,
     pub callout_context: CalloutContext<'call, 'rig>,
+}
+
+impl ComponentExecutionContext<'_, '_, '_> {
+    pub fn component_handle(&self) -> &ComponentHandle {
+        self.call_chain.current_component_handle()
+    }
 }
 
 #[derive(Clone)]
@@ -50,40 +56,91 @@ impl<'call, 'rig> CalloutContext<'call, 'rig> {
 }
 
 #[derive(Clone)]
-pub struct PermissionChain<'rig> {
-    current: &'rig Vec<ComponentPermission>,
-    previous: Option<Arc<PermissionChain<'rig>>>,
+pub struct CallChain<'rig> {
+    component_handle: Option<&'rig ComponentHandle>,
+    permissions: Option<&'rig Vec<ComponentPermission>>,
+    previous: Option<Arc<CallChain<'rig>>>,
 }
 
-impl<'rig> PermissionChain<'rig> {
-    pub fn new(permissions: &'rig Vec<ComponentPermission>) -> PermissionChain<'rig> {
-        PermissionChain {
-            current: permissions,
+const CHAIN_SEPARATOR: &str = " -> ";
+
+impl<'rig> CallChain<'rig> {
+    pub fn new(permissions: &'rig Vec<ComponentPermission>) -> CallChain<'rig> {
+        CallChain {
+            component_handle: None,
+            permissions: Some(permissions),
             previous: None,
         }
     }
 
     pub fn new_child(
-        permissions: &'rig Vec<ComponentPermission>,
-        previous: Arc<PermissionChain<'rig>>,
-    ) -> PermissionChain<'rig> {
-        PermissionChain {
-            current: permissions,
+        component_handle: &'rig ComponentHandle,
+        permissions: Option<&'rig Vec<ComponentPermission>>,
+        previous: Arc<CallChain<'rig>>,
+    ) -> CallChain<'rig> {
+        CallChain {
+            component_handle: Some(component_handle),
+            permissions,
             previous: Some(previous),
         }
     }
 
-    pub fn full_trust() -> PermissionChain<'rig> {
-        PermissionChain {
-            current: &PERMISSIONS_FULL_TRUST_VEC,
+    pub fn new_child_arc(
+        component_handle: &'rig ComponentHandle,
+        permissions: Option<&'rig Vec<ComponentPermission>>,
+        previous: Arc<CallChain<'rig>>,
+    ) -> Arc<CallChain<'rig>> {
+        Arc::new(CallChain::new_child(
+            component_handle,
+            permissions,
+            previous,
+        ))
+    }
+
+    pub fn full_trust() -> CallChain<'rig> {
+        CallChain {
+            component_handle: None,
+            permissions: Some(&PERMISSIONS_FULL_TRUST_VEC),
             previous: None,
         }
     }
 
-    pub fn full_trust_arc() -> Arc<PermissionChain<'rig>> {
-        Arc::new(PermissionChain {
-            current: &PERMISSIONS_FULL_TRUST_VEC,
+    pub fn full_trust_arc() -> Arc<CallChain<'rig>> {
+        Arc::new(CallChain {
+            component_handle: None,
+            permissions: Some(&PERMISSIONS_FULL_TRUST_VEC),
             previous: None,
         })
+    }
+
+    pub fn component_handle_trail(&self) -> String {
+        let mut trail = format!("{}", self.current_component_handle());
+        let mut maybe_current = &self.previous;
+
+        while let Some(current) = maybe_current {
+            if let Some(component_handle) = current.component_handle {
+                trail.insert_str(0, &format!("{}{}", component_handle, CHAIN_SEPARATOR));
+            }
+            maybe_current = &current.previous;
+        }
+
+        trail
+    }
+
+    pub fn component_handle_trail_for(&self, handle: &ComponentHandle) -> String {
+        let mut trail = self.component_handle_trail();
+        let handle_string = format!("{}", handle);
+        if trail.is_empty() {
+            handle_string
+        } else {
+            trail.push_str(CHAIN_SEPARATOR);
+            trail.push_str(&handle_string);
+            trail
+        }
+    }
+
+    pub fn current_component_handle(&self) -> &'rig ComponentHandle {
+        self.component_handle
+            .expect("No component handle in current call chain head")
     }
 }

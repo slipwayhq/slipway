@@ -2,7 +2,7 @@ use std::{io::Write, sync::Arc};
 
 use anyhow::Context;
 use slipway_engine::{
-    parse_rig, BasicComponentCache, BasicComponentsLoader, ComponentPermission, PermissionChain,
+    parse_rig, BasicComponentCache, BasicComponentsLoader, CallChain, ComponentPermission,
     RigSession,
 };
 use slipway_host::run::RunEventHandler;
@@ -32,13 +32,13 @@ pub(super) fn run_rig<W: Write>(
     let component_runners = get_component_runners();
     let component_runners_slice = component_runners.as_slice();
 
-    let permission_chain = Arc::new(PermissionChain::new(&engine_permissions));
+    let call_chain = Arc::new(CallChain::new(&engine_permissions));
 
     slipway_host::run::run_rig(
         &session,
         &mut event_handler,
         component_runners_slice,
-        permission_chain,
+        call_chain,
     )?;
     Ok(())
 }
