@@ -39,7 +39,7 @@ mod tests {
         for path in find_files_with_extension(Path::new(examples_dir), "json").iter() {
             let file_contents = std::fs::read_to_string(path.clone()).unwrap();
             let _rig = parse_method(&file_contents)
-                .unwrap_or_else(|error| panic!("Failed to parse {}: {:?}", path, error));
+                .unwrap_or_else(|error| panic!("Failed to parse {}: {:#?}", path, error));
             parsed_files += 1;
         }
 

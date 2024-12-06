@@ -318,7 +318,7 @@ mod tests {
                     .map_err(|es| es.into_iter().collect())
                     .unwrap_err();
 
-                println!("{:?}", errors);
+                println!("{:#?}", errors);
 
                 assert_eq!(errors.len(), 1);
 

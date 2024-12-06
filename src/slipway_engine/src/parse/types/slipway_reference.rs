@@ -163,7 +163,7 @@ mod tests {
             let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
 
             let SlipwayReference::Special(SpecialComponentReference::Pass) = reference else {
-                panic!("Unexpected reference: {reference:?}");
+                panic!("Unexpected reference: {reference}");
             };
 
             let json_out = serde_json::to_string(&reference).unwrap();
@@ -178,7 +178,7 @@ mod tests {
             let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
 
             let SlipwayReference::Special(SpecialComponentReference::Sink) = reference else {
-                panic!("Unexpected reference: {reference:?}");
+                panic!("Unexpected reference: {reference}");
             };
 
             let json_out = serde_json::to_string(&reference).unwrap();
@@ -211,7 +211,7 @@ mod tests {
                 version,
             } = reference
             else {
-                panic!("Unexpected reference: {reference:?}");
+                panic!("Unexpected reference: {reference}");
             };
 
             assert_eq!(publisher, "test_publisher");
@@ -277,7 +277,7 @@ mod tests {
             let reference = SlipwayReference::from_str(uri).unwrap();
 
             let SlipwayReference::Local { path } = reference else {
-                panic!("Unexpected reference: {reference:?}");
+                panic!("Unexpected reference: {reference}");
             };
 
             assert_eq!(path, PathBuf::from_str("/usr/local/rigging.json").unwrap());
@@ -341,7 +341,7 @@ mod tests {
             let reference = SlipwayReference::from_str(uri).unwrap();
 
             let SlipwayReference::Url { url } = reference else {
-                panic!("Unexpected reference: {reference:?}");
+                panic!("Unexpected reference: {reference}");
             };
 
             assert_eq!(url, Url::parse(uri).unwrap());

@@ -1,3 +1,4 @@
+pub type ComponentError = slipway::component::types::ComponentError;
 #[doc(hidden)]
 #[allow(non_snake_case)]
 pub unsafe fn _export_run_cabi<T: Guest>(arg0: *mut u8, arg1: usize) -> *mut u8 {
@@ -18,12 +19,13 @@ pub unsafe fn _export_run_cabi<T: Guest>(arg0: *mut u8, arg1: usize) -> *mut u8 
         }
         Err(e) => {
             *ptr2.add(0).cast::<u8>() = (1i32) as u8;
-            let vec4 = (e.into_bytes()).into_boxed_slice();
-            let ptr4 = vec4.as_ptr().cast::<u8>();
-            let len4 = vec4.len();
-            ::core::mem::forget(vec4);
-            *ptr2.add(8).cast::<usize>() = len4;
-            *ptr2.add(4).cast::<*mut u8>() = ptr4.cast_mut();
+            let slipway::component::types::ComponentError { message: message4 } = e;
+            let vec5 = (message4.into_bytes()).into_boxed_slice();
+            let ptr5 = vec5.as_ptr().cast::<u8>();
+            let len5 = vec5.len();
+            ::core::mem::forget(vec5);
+            *ptr2.add(8).cast::<usize>() = len5;
+            *ptr2.add(4).cast::<*mut u8>() = ptr5.cast_mut();
         }
     };
     ptr2
@@ -46,7 +48,7 @@ pub unsafe fn __post_return_run<T: Guest>(arg0: *mut u8) {
     }
 }
 pub trait Guest {
-    fn run(input: _rt::String) -> Result<_rt::String, _rt::String>;
+    fn run(input: _rt::String) -> Result<_rt::String, ComponentError>;
 }
 #[doc(hidden)]
 macro_rules! __export_world_slipway_component_cabi {
@@ -63,6 +65,42 @@ pub(crate) use __export_world_slipway_component_cabi;
 #[repr(align(4))]
 struct _RetArea([::core::mem::MaybeUninit<u8>; 12]);
 static mut _RET_AREA: _RetArea = _RetArea([::core::mem::MaybeUninit::uninit(); 12]);
+#[allow(dead_code)]
+pub mod slipway {
+    #[allow(dead_code)]
+    pub mod component {
+        #[allow(dead_code, clippy::all)]
+        pub mod types {
+            #[used]
+            #[doc(hidden)]
+            static __FORCE_SECTION_REF: fn() = super::super::super::__link_custom_section_describing_imports;
+            use super::super::super::_rt;
+            #[derive(Clone)]
+            pub struct ComponentError {
+                pub message: _rt::String,
+            }
+            impl ::core::fmt::Debug for ComponentError {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    f.debug_struct("ComponentError")
+                        .field("message", &self.message)
+                        .finish()
+                }
+            }
+            impl ::core::fmt::Display for ComponentError {
+                fn fmt(
+                    &self,
+                    f: &mut ::core::fmt::Formatter<'_>,
+                ) -> ::core::fmt::Result {
+                    write!(f, "{:?}", self)
+                }
+            }
+            impl std::error::Error for ComponentError {}
+        }
+    }
+}
 #[allow(dead_code, clippy::all)]
 pub mod font {
     #[used]
@@ -133,12 +171,13 @@ pub mod callout {
     #[doc(hidden)]
     static __FORCE_SECTION_REF: fn() = super::__link_custom_section_describing_imports;
     use super::_rt;
+    pub type ComponentError = super::slipway::component::types::ComponentError;
     #[allow(unused_unsafe, clippy::all)]
-    pub fn run(handle: &str, input: &str) -> _rt::String {
+    pub fn run(handle: &str, input: &str) -> Result<_rt::String, ComponentError> {
         unsafe {
             #[repr(align(4))]
-            struct RetArea([::core::mem::MaybeUninit<u8>; 8]);
-            let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 8]);
+            struct RetArea([::core::mem::MaybeUninit<u8>; 12]);
+            let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 12]);
             let vec0 = handle;
             let ptr0 = vec0.as_ptr().cast::<u8>();
             let len0 = vec0.len();
@@ -157,11 +196,32 @@ pub mod callout {
                 unreachable!()
             }
             wit_import(ptr0.cast_mut(), len0, ptr1.cast_mut(), len1, ptr2);
-            let l3 = *ptr2.add(0).cast::<*mut u8>();
-            let l4 = *ptr2.add(4).cast::<usize>();
-            let len5 = l4;
-            let bytes5 = _rt::Vec::from_raw_parts(l3.cast(), len5, len5);
-            _rt::string_lift(bytes5)
+            let l3 = i32::from(*ptr2.add(0).cast::<u8>());
+            match l3 {
+                0 => {
+                    let e = {
+                        let l4 = *ptr2.add(4).cast::<*mut u8>();
+                        let l5 = *ptr2.add(8).cast::<usize>();
+                        let len6 = l5;
+                        let bytes6 = _rt::Vec::from_raw_parts(l4.cast(), len6, len6);
+                        _rt::string_lift(bytes6)
+                    };
+                    Ok(e)
+                }
+                1 => {
+                    let e = {
+                        let l7 = *ptr2.add(4).cast::<*mut u8>();
+                        let l8 = *ptr2.add(8).cast::<usize>();
+                        let len9 = l8;
+                        let bytes9 = _rt::Vec::from_raw_parts(l7.cast(), len9, len9);
+                        super::slipway::component::types::ComponentError {
+                            message: _rt::string_lift(bytes9),
+                        }
+                    };
+                    Err(e)
+                }
+                _ => _rt::invalid_enum_discriminant(),
+            }
         }
     }
 }
@@ -329,17 +389,20 @@ pub(crate) use __export_slipway_component_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:wit-bindgen:0.35.0:slipway:component@0.1.0:slipway-component:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 417] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\x99\x02\x01A\x02\x01\
-A\x09\x01B\x06\x01p}\x01r\x02\x06familys\x04data\0\x04\0\x0dresolved-font\x03\0\x01\
-\x01k\x02\x01@\x01\x0afont-stacks\0\x03\x04\0\x0btry-resolve\x01\x04\x03\0\x04fo\
-nt\x05\0\x01B\x02\x01@\x02\x06handles\x05inputs\0s\x04\0\x03run\x01\0\x03\0\x07c\
-allout\x05\x01\x01B\x06\x01@\x01\x07messages\x01\0\x04\0\x05trace\x01\0\x04\0\x05\
-debug\x01\0\x04\0\x04info\x01\0\x04\0\x04warn\x01\0\x04\0\x05error\x01\0\x03\0\x03\
-log\x05\x02\x01j\x01s\x01s\x01@\x01\x05inputs\0\x03\x04\0\x03run\x01\x04\x04\0)s\
-lipway:component/slipway-component@0.1.0\x04\0\x0b\x17\x01\0\x11slipway-componen\
-t\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.220.0\x10\
-wit-bindgen-rust\x060.35.0";
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 560] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xa8\x03\x01A\x02\x01\
+A\x0d\x01B\x02\x01r\x01\x07messages\x04\0\x0fcomponent-error\x03\0\0\x03\0\x1dsl\
+ipway:component/types@0.1.0\x05\0\x02\x03\0\0\x0fcomponent-error\x03\0\x0fcompon\
+ent-error\x03\0\x01\x01B\x06\x01p}\x01r\x02\x06familys\x04data\0\x04\0\x0dresolv\
+ed-font\x03\0\x01\x01k\x02\x01@\x01\x0afont-stacks\0\x03\x04\0\x0btry-resolve\x01\
+\x04\x03\0\x04font\x05\x03\x01B\x05\x02\x03\x02\x01\x01\x04\0\x0fcomponent-error\
+\x03\0\0\x01j\x01s\x01\x01\x01@\x02\x06handles\x05inputs\0\x02\x04\0\x03run\x01\x03\
+\x03\0\x07callout\x05\x04\x01B\x06\x01@\x01\x07messages\x01\0\x04\0\x05trace\x01\
+\0\x04\0\x05debug\x01\0\x04\0\x04info\x01\0\x04\0\x04warn\x01\0\x04\0\x05error\x01\
+\0\x03\0\x03log\x05\x05\x01j\x01s\x01\x02\x01@\x01\x05inputs\0\x06\x04\0\x03run\x01\
+\x07\x04\0)slipway:component/slipway-component@0.1.0\x04\0\x0b\x17\x01\0\x11slip\
+way-component\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x07\
+0.220.0\x10wit-bindgen-rust\x060.35.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

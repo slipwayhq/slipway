@@ -22,10 +22,10 @@ pub enum RunComponentError {
     Other(String),
 
     #[error("Component run call failed.\nAdditional details: {source:?}")]
-    RunCallFailed { source: Option<anyhow::Error> },
+    RunCallFailed { source: anyhow::Error },
 
-    #[error("Component returned an error: {error}")]
-    RunCallReturnedError { error: String },
+    #[error("Component returned an error: {message}")]
+    RunCallReturnedError { message: String },
 
     #[error("Serializing input JSON failed.\n{source}")]
     SerializeInputFailed { source: serde_json::Error },

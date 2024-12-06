@@ -18,7 +18,7 @@ pub(super) fn map_dependencies_to_rig_handles(
                 Some((kr, _)) => kr,
                 None => {
                     return Err(RigError::RigValidationFailed {
-                        error: format!("dependency {:?} not found in rigging component keys", d),
+                        error: format!("dependency {} not found in rigging component keys", d),
                     })
                 }
             };

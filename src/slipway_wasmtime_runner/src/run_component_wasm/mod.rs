@@ -61,10 +61,12 @@ pub fn run_component_wasm(
 
     // Process the result.
     match call_result {
-        Err(e) => Err(RunComponentError::RunCallFailed { source: Some(e) }),
+        Err(e) => Err(RunComponentError::RunCallFailed { source: e }),
         Ok(r) => match r {
             // The WASM component returned an error from it's `run` function.
-            Err(error) => Err(RunComponentError::RunCallReturnedError { error }),
+            Err(error) => Err(RunComponentError::RunCallReturnedError {
+                message: error.message,
+            }),
             Ok(json_string) => {
                 // Deserialize the output JSON
                 let output = serde_json::from_str(&json_string)

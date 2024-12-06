@@ -8,26 +8,21 @@ mod common;
 
 #[test]
 fn run_no_callout() {
-    run(0, 2);
-}
-
-#[test]
-fn run_one_callout() {
-    run(1, 3);
+    run(0, 1);
 }
 
 #[test]
 fn run_two_callouts() {
-    run(2, 4);
+    run(2, 3);
 }
 
 fn run(ttl: u32, expected_result: u32) {
     let rig: Rig = Rig::for_test(Rigging {
         components: [(
-            ComponentHandle::from_str("frag").unwrap(),
+            ComponentHandle::from_str("test").unwrap(),
             ComponentRigging::for_test_with_reference(
                 SlipwayReference::Local {
-                    path: "slipway.fragment.0.0.1.tar".into(),
+                    path: "slipway.test.0.0.1.tar".into(),
                 },
                 Some(json!({
                     "type": "callout_increment",
@@ -41,7 +36,7 @@ fn run(ttl: u32, expected_result: u32) {
         .collect(),
     });
 
-    let output = get_rig_output(rig, "frag");
+    let output = get_rig_output(rig, "test");
 
     assert_eq!(
         output.value,

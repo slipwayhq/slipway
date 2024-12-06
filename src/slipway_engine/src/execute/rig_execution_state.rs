@@ -89,7 +89,10 @@ impl<'rig, 'cache> RigExecutionState<'rig, 'cache> {
             self.component_states
                 .get_mut(handle)
                 .ok_or(RigError::StepFailed {
-                    error: format!("component {:?} does not exist in component states", handle),
+                    error: format!(
+                        "component \"{}\" does not exist in component states",
+                        handle
+                    ),
                 })?;
 
         Ok(component_state)
@@ -105,7 +108,10 @@ impl<'rig, 'cache> RigExecutionState<'rig, 'cache> {
             .component_states
             .get(handle)
             .ok_or(RigError::StepFailed {
-                error: format!("component {:?} does not exist in component states", handle),
+                error: format!(
+                    "component \"{}\" does not exist in component states",
+                    handle
+                ),
             })?;
 
         Ok(component_state)

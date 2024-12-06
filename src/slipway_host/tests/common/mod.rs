@@ -21,6 +21,7 @@ pub fn create_components_loader() -> BasicComponentsLoader {
         .build()
 }
 
+#[allow(dead_code)]
 pub fn get_rig_output(rig: Rig, output_handle_str: &str) -> Rc<ComponentOutput> {
     let component_cache = BasicComponentCache::primed(&rig, &create_components_loader()).unwrap();
     let component_runners = get_component_runners();
@@ -38,7 +39,7 @@ pub fn get_rig_output(rig: Rig, output_handle_str: &str) -> Rc<ComponentOutput> 
     let output = result
         .component_outputs
         .get(&ComponentHandle::from_str(output_handle_str).unwrap())
-        .unwrap()
+        .expect("Output handle should exist")
         .as_ref()
         .expect("Output should be populated");
 

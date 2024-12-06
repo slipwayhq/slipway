@@ -45,7 +45,7 @@ impl<'call, 'rig> CalloutContext<'call, 'rig> {
     ) -> &'rig SlipwayReference {
         self.callout_handle_to_reference
             .get(handle)
-            .expect_with(|| format!("Component reference not found for handle {:?}", handle))
+            .expect_with(|| format!(r#"Component reference not found for handle "{}""#, handle))
     }
 }
 

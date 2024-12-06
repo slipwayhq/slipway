@@ -9,6 +9,8 @@ use slipway_engine::{
     RigExecutionState, RigSession, RunComponentError, RunComponentResult, TryRunComponentResult,
 };
 
+use crate::ComponentError;
+
 pub mod sink_run_event_handler;
 
 #[derive(Error, Debug)]
@@ -23,7 +25,7 @@ pub enum RunError<THostError> {
     ComponentRunnerNotFound { component_handle: ComponentHandle },
 
     #[error(
-        "Run component failed for \"{component_handle}\" using \"{component_runner}\".\n{error:?}"
+        "Run component failed for component \"{component_handle}\" using \"{component_runner}\" runner.\n{error}"
     )]
     RunComponentFailed {
         component_handle: ComponentHandle,
@@ -31,7 +33,7 @@ pub enum RunError<THostError> {
         error: RunComponentError,
     },
 
-    #[error("Host error.\n{0:?}")]
+    #[error("Host error.\n{0:#?}")]
     HostError(THostError),
 }
 
@@ -163,34 +165,34 @@ pub fn run_component_callout_for_host(
     execution_context: &ComponentExecutionContext,
     handle: &str,
     input: &str,
-) -> String {
-    let handle = ComponentHandle::from_str(handle).unwrap_or_else(|e| {
-        panic!(
+) -> Result<String, ComponentError> {
+    let handle = ComponentHandle::from_str(handle).map_err(|e| ComponentError {
+        message: format!(
             "Failed to parse component handle \"{}\" for callout from \"{}\":\n{}",
             handle, from_handle, e
-        );
-    });
+        ),
+    })?;
 
-    let input = serde_json::from_str(input).unwrap_or_else(|e| {
-        panic!(
+    let input = serde_json::from_str(input).map_err(|e| ComponentError {
+        message: format!(
             "Failed to parse input JSON for callout from \"{}\":\n{}",
             from_handle, e
-        );
-    });
+        ),
+    })?;
 
     let result = run_component_callout::<anyhow::Error>(&handle, input, execution_context)
-        .unwrap_or_else(|e| {
-            panic!(
+        .map_err(|e| ComponentError {
+            message: format!(
                 "Failed to run callout from \"{}\" to \"{}\":\n{}",
                 from_handle, handle, e
-            );
-        });
+            ),
+        })?;
 
-    serde_json::to_string(&result.output).unwrap_or_else(|e| {
-        panic!(
+    serde_json::to_string(&result.output).map_err(|e| ComponentError {
+        message: format!(
             "Failed to serialize output JSON for callout from \"{}\" to \"{}\":\n{}",
             from_handle, handle, e
-        );
+        ),
     })
 }
 

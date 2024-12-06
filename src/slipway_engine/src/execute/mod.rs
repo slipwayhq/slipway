@@ -30,24 +30,18 @@ mod tests {
             let assert_ready = runnable_handles.contains(&handle.0.as_str());
             if assert_ready {
                 if component_state.execution_input.is_none() {
-                    panic!(
-                        "expected component {:?} to have execution input",
-                        handle.0.as_str()
-                    );
+                    panic!("Expected component \"{}\" to have execution input", handle);
                 }
 
                 if component_state.output().is_some() {
-                    panic!(
-                        "expected component {:?} to not have output",
-                        handle.0.as_str()
-                    );
+                    panic!("expected component \"{}\" to not have output", handle);
                 }
             } else if component_state.execution_input.is_some()
                 && component_state.output().is_none()
             {
                 panic!(
-                "expected component {:?} not to be ready, but it has execution input and no output",
-                handle.0.as_str()
+                "expected component \"{}\" not to be ready, but it has execution input and no output",
+                handle
             );
             }
         }
@@ -224,7 +218,7 @@ mod tests {
                     "component g cannot currently be executed, did you intend to override the output?"
                 );
                 }
-                Err(err) => panic!("expected StepFailed error, got {:?}", err),
+                Err(err) => panic!("expected StepFailed error, got {}", err),
             }
         }
 
@@ -272,7 +266,7 @@ mod tests {
                         r#"The input path "f.input.c_z" required "$.rigging.c.output.z" to be a value"#
                     );
                 }
-                Err(err) => panic!("expected StepFailed error, got {:?}", err),
+                Err(err) => panic!("expected StepFailed error, got {}", err),
             }
         }
 

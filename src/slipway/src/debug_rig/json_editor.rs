@@ -32,7 +32,7 @@ impl JsonEditor for JsonEditorImpl {
                     Err(SlipwayDebugError::UserError("Text editor not found".into()))
                 }
                 other_error => Err(SlipwayDebugError::UserError(format!(
-                    "Failed to open the file: {:?}",
+                    "Failed to open the file: {:#?}",
                     other_error
                 ))),
             },

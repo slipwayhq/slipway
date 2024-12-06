@@ -38,7 +38,7 @@ pub enum RigError {
     },
 
     #[error(
-        "Component {validation_type} validation failed for \"{component_handle}\".\n{validation_error:?}"
+        "Component {validation_type} validation failed for \"{component_handle}\".\n{validation_error}"
     )]
     ComponentValidationAborted {
         component_handle: ComponentHandle,
@@ -102,7 +102,7 @@ pub enum ComponentLoadErrorInner {
         error: jtd::FromSerdeSchemaError,
     },
 
-    #[error("JSON Schema parse failed for {schema_name}.\n{error:?}")]
+    #[error("JSON Schema parse failed for {schema_name}.\n{error:#?}")]
     JsonSchemaParseFailed {
         schema_name: String,
         error: JsonSchemaValidationFailure,
@@ -172,7 +172,7 @@ impl fmt::Display for JsonTypeDefValidationFailure {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "instance path: {:?}, schema path: {:?}",
+            "Instance path: {}\nSchema path: {}",
             self.instance_path_str(),
             self.schema_path_str()
         )

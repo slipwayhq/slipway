@@ -1,6 +1,13 @@
 package slipway:component@0.1.0;
 
+interface types {
+    record component-error {
+        message: string,
+    }
+}
+
 world slipway-component {
+
     import font: interface {
 
         record resolved-font {
@@ -12,7 +19,8 @@ world slipway-component {
     }
 
     import callout: interface {
-        run: func(handle: string, input: string) -> string;
+        use types.{component-error};
+        run: func(handle: string, input: string) -> result<string, component-error>;
     }
 
     import log: interface {
@@ -23,5 +31,7 @@ world slipway-component {
         error: func(message: string);
     }
 
-    export run: func(input: string) -> result<string, string>;
+    use types.{component-error};
+
+    export run: func(input: string) -> result<string, component-error>;
 }

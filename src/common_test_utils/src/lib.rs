@@ -25,7 +25,7 @@ pub fn find_ancestor_path(path_to_find: PathBuf) -> PathBuf {
 
         if !current_path.pop() {
             panic!(
-                "Could not find ancestor path: {path_to_find:?}.\nSearched:\n{searched}\n",
+                "Could not find ancestor path: {path_to_find:#?}.\nSearched:\n{searched}\n",
                 searched = searched
                     .iter()
                     .map(|p| p.display().to_string())

@@ -1,14 +1,14 @@
 #[allow(warnings)]
 mod bindings;
 
-use bindings::Guest;
+use bindings::{ComponentError, Guest};
 
 use serde::{Deserialize, Serialize};
 
 struct Component;
 
 impl Guest for Component {
-    fn run(input: String) -> Result<String, String> {
+    fn run(input: String) -> Result<String, ComponentError> {
         let input: Input = serde_json::from_str(&input).expect("should parse JSON from stdin");
 
         match input {
@@ -43,14 +43,15 @@ impl Guest for Component {
                     }
                 };
                 let callout_handle = handle.unwrap_or("test".to_string());
-                let output = bindings::callout::run(
+                bindings::callout::run(
                     &callout_handle,
                     &serde_json::to_string(&callout_input).expect("should serialize output"),
-                );
-                Ok(output)
+                )
             }
             Input::Panic => panic!("slipway-test-component-panic"),
-            Input::Error => Err("slipway-test-component-error".to_string()),
+            Input::Error => Err(ComponentError {
+                message: "slipway-test-component-error".to_string(),
+            }),
         }
     }
 }

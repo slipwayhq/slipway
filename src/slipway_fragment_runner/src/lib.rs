@@ -105,9 +105,7 @@ fn run_component_fragment(
         component_runners,
         permission_chain,
     )
-    .map_err(|e| RunComponentError::RunCallFailed {
-        source: Some(e.into()),
-    })?;
+    .map_err(|e| RunComponentError::RunCallFailed { source: e.into() })?;
 
     let output_state = run_result
         .component_outputs

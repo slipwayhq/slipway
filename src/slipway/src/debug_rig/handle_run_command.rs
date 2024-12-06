@@ -135,9 +135,9 @@ mod tests {
             Err(SlipwayDebugError::RunError(RunError::<HostError>::RunComponentFailed {
                 component_handle: _,
                 component_runner: _,
-                error: RunComponentError::RunCallFailed { source: Some(_) },
+                error: RunComponentError::RunCallFailed { source: _ },
             })) => {}
-            Err(x) => panic!("Expected WasmExecutionFailed/RunCallFailed, got {:?}", x),
+            Err(x) => panic!("Expected WasmExecutionFailed/RunCallFailed, got {}", x),
             Ok(_) => panic!("Expected WasmExecutionFailed/RunCallFailed, got result"),
         }
     }
@@ -164,13 +164,13 @@ mod tests {
             Err(SlipwayDebugError::RunError(RunError::<HostError>::RunComponentFailed {
                 component_handle,
                 component_runner,
-                error: RunComponentError::RunCallReturnedError { error },
+                error: RunComponentError::RunCallReturnedError { message: error },
             })) => {
                 assert_eq!(component_handle, handle);
                 assert_eq!(component_runner, WASMTIME_COMPONENT_RUNNER_IDENTIFIER);
                 assert_eq!(error, "slipway-test-component-error");
             }
-            Err(x) => panic!("Expected WasmExecutionFailed/RunCallFailed, got {:?}", x),
+            Err(x) => panic!("Expected WasmExecutionFailed/RunCallFailed, got {}", x),
             Ok(_) => panic!("Expected WasmExecutionFailed/RunCallFailed, got result"),
         }
     }

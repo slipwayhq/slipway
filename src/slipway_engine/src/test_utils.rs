@@ -219,7 +219,7 @@ impl ComponentsLoader for MockComponentsLoader {
                     .ok_or(ComponentLoadError::new(
                         component_reference,
                         ComponentLoadErrorInner::FileLoadFailed {
-                            path: format!("{:?}", component_reference),
+                            path: format!("{}", component_reference),
                             error: "Component not found in map".to_string(),
                         },
                     ))
