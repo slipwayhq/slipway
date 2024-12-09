@@ -128,7 +128,7 @@ pub enum Schema {
         schema: jtd::Schema,
     },
     JsonSchema {
-        schema: jsonschema::Validator,
+        schema: Box<jsonschema::Validator>, // Boxed to keep enum variant size similar.
         original: serde_json::Value,
     },
 }
@@ -160,9 +160,11 @@ impl Clone for Schema {
                 schema: _,
                 original,
             } => Schema::JsonSchema {
-                schema: jsonschema::Validator::options()
-                    .build(original)
-                    .expect("cloned schema should be valid"),
+                schema: Box::new(
+                    jsonschema::Validator::options()
+                        .build(original)
+                        .expect("cloned schema should be valid"),
+                ),
                 original: original.clone(),
             },
         }

@@ -71,8 +71,8 @@ pub fn validate_component_io(
             validation_type: validation_type.clone(),
             validation_failures,
             validated_data: match validation_data {
-                ValidationData::Input(input) => input.clone(),
-                ValidationData::Output(output) => output.clone(),
+                ValidationData::Input(input) => Box::new(input.clone()),
+                ValidationData::Output(output) => Box::new(output.clone()),
             },
         });
     }
@@ -261,7 +261,10 @@ mod tests {
                     _ => panic!("Expected JsonTypeDef validation failures"),
                 }
 
-                assert_eq!(validated_data, json!({ "a_output": { "foo": "bar" } }));
+                assert_eq!(
+                    validated_data,
+                    Box::new(json!({ "a_output": { "foo": "bar" } }))
+                );
             }
             _ => panic!("Expected ComponentValidationFailed error"),
         }
@@ -374,7 +377,7 @@ mod tests {
                     }
                     _ => panic!("Expected JsonTypeDef validation failures"),
                 }
-                assert_eq!(validated_data, json!({ "foo": "bar" }));
+                assert_eq!(validated_data, Box::new(json!({ "foo": "bar" })));
             }
             _ => panic!("Expected ComponentValidationFailed error"),
         }
@@ -507,7 +510,10 @@ mod tests {
                     _ => panic!("Expected JsonTypeDef validation failures"),
                 }
 
-                assert_eq!(validated_data, json!({ "a_output": { "foo": "bar" } }));
+                assert_eq!(
+                    validated_data,
+                    Box::new(json!({ "a_output": { "foo": "bar" } }))
+                );
             }
             _ => panic!("Expected ComponentValidationFailed error"),
         }

@@ -58,13 +58,15 @@ fn parse_json_schema(
             serde_json::Value::String(format!("{}{}", DEFAULT_BASE_URL_PREFIX, schema_name));
     }
 
-    let compiled_schema = Validator::options()
-        .with_resolver(ComponentJsonSchemaResolver { component_files })
-        .build(&schema)
-        .map_err(|e| ComponentLoadErrorInner::JsonSchemaParseFailed {
-            schema_name: schema_name.to_string(),
-            error: e.into(),
-        })?;
+    let compiled_schema = Box::new(
+        Validator::options()
+            .with_resolver(ComponentJsonSchemaResolver { component_files })
+            .build(&schema)
+            .map_err(|e| ComponentLoadErrorInner::JsonSchemaParseFailed {
+                schema_name: schema_name.to_string(),
+                error: e.into(),
+            })?,
+    );
 
     Ok(Schema::JsonSchema {
         schema: compiled_schema,

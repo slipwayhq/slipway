@@ -147,7 +147,7 @@ fn test_component(localhost_url: Option<&str>, component_reference: SlipwayRefer
         }) => {
             assert_eq!(component_handle, handle);
             assert_eq!(validation_type, ValidationType::Input);
-            assert_eq!(validated_data, bad_input);
+            assert_eq!(*validated_data, bad_input);
         }
         _ => {
             panic!("Expected validation error");
@@ -178,7 +178,7 @@ fn test_component(localhost_url: Option<&str>, component_reference: SlipwayRefer
         }) => {
             assert_eq!(component_handle, handle);
             assert_eq!(validation_type, ValidationType::Output);
-            assert_eq!(validated_data, bad_output);
+            assert_eq!(*validated_data, bad_output);
         }
         _ => {
             panic!("Expected validation error");

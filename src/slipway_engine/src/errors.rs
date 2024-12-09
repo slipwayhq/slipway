@@ -54,7 +54,7 @@ pub enum RigError {
         component_handle: ComponentHandle,
         validation_type: ValidationType,
         validation_failures: SchemaValidationFailures,
-        validated_data: serde_json::Value,
+        validated_data: Box<serde_json::Value>, // Boxed to keep the size of RigError small.
     },
 
     #[error("Rig component load failed.\n{0}")]
