@@ -38,6 +38,30 @@ pub(super) fn run_component_javascript(
         let input_key = v8::String::new(scope, "input").expect("Input key should be valid");
         global.set(scope, input_key.into(), v8_input);
     }
+    {
+        runtime
+            .execute_script(
+                "[anon]",
+                r#"
+                function restorePrototypes(obj) {
+                  if (!obj || typeof obj !== 'object') return;
+                    
+                  if (Array.isArray(obj)) {
+                    Object.setPrototypeOf(obj, Array.prototype);
+                  } else {
+                    Object.setPrototypeOf(obj, Object.prototype);
+                  }
+                
+                  for (const key in obj) {
+                    restorePrototypes(obj[key]);
+                  }
+                }
+
+                restorePrototypes(input);
+            "#,
+            )
+            .map_err(|e| RunComponentError::RunCallFailed { source: e })?;
+    }
     let prepare_input_duration = prepare_input_start.elapsed();
 
     let call_start = Instant::now();
