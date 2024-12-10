@@ -13,7 +13,7 @@ const DEFAULT_BASE_URL_PREFIX: &str = "file:///";
 pub fn parse_schema(
     schema_name: &str,
     schema: serde_json::Value,
-    component_files: Arc<dyn ComponentFiles>,
+    component_files: Arc<ComponentFiles>,
 ) -> Result<Schema, ComponentLoadErrorInner> {
     if let Some(serde_json::Value::String(schema_uri)) = schema.get("$schema") {
         if schema_uri.contains("://json-schema.org/") {
@@ -51,7 +51,7 @@ fn parse_json_typedef_schema(
 fn parse_json_schema(
     mut schema: serde_json::Value,
     schema_name: &str,
-    component_files: Arc<dyn ComponentFiles>,
+    component_files: Arc<ComponentFiles>,
 ) -> Result<Schema, ComponentLoadErrorInner> {
     if schema.get("$id").is_none() {
         schema["$id"] =
@@ -75,7 +75,7 @@ fn parse_json_schema(
 }
 
 struct ComponentJsonSchemaResolver {
-    component_files: Arc<dyn ComponentFiles>,
+    component_files: Arc<ComponentFiles>,
 }
 
 impl SchemaResolver for ComponentJsonSchemaResolver {
@@ -123,7 +123,7 @@ mod tests {
     use serde_json::json;
     use std::collections::HashMap;
 
-    use crate::{errors::ComponentLoadError, SlipwayReference};
+    use crate::{errors::ComponentLoadError, ComponentFilesLoader, SlipwayReference};
 
     use super::*;
 
@@ -131,20 +131,11 @@ mod tests {
         map: HashMap<String, serde_json::Value>,
     }
 
-    impl ComponentFiles for MockComponentFiles {
-        fn get_json(&self, file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
-            self.map
-                .get(file_name)
-                .map(|value| Arc::new(value.clone()))
-                .ok_or(ComponentLoadError::new(
-                    &SlipwayReference::for_test("mock"),
-                    ComponentLoadErrorInner::FileLoadFailed {
-                        path: file_name.to_string(),
-                        error: "file not found in map".to_string(),
-                    },
-                ))
-        }
+    fn mock_component_files(map: HashMap<String, serde_json::Value>) -> Arc<ComponentFiles> {
+        Arc::new(ComponentFiles::new(Box::new(MockComponentFiles { map })))
+    }
 
+    impl ComponentFilesLoader for MockComponentFiles {
         fn get_component_reference(&self) -> &SlipwayReference {
             unimplemented!();
         }
@@ -157,11 +148,20 @@ mod tests {
             unimplemented!()
         }
 
-        fn try_get_bin(
-            &self,
-            _file_name: &str,
-        ) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
-            unimplemented!()
+        fn try_get_bin(&self, file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
+            let json = self
+                .map
+                .get(file_name)
+                .map(|value| Arc::new(value.clone()))
+                .ok_or(ComponentLoadError::new(
+                    &SlipwayReference::for_test("mock"),
+                    ComponentLoadErrorInner::FileLoadFailed {
+                        path: file_name.to_string(),
+                        error: "file not found in map".to_string(),
+                    },
+                ))?;
+
+            Ok(Some(Arc::new(serde_json::to_vec(json.as_ref()).unwrap())))
         }
 
         fn try_get_text(
@@ -186,9 +186,7 @@ mod tests {
             }
         });
 
-        let component_files = Arc::new(MockComponentFiles {
-            map: HashMap::new(),
-        });
+        let component_files = mock_component_files(HashMap::new());
 
         let input_bad = json!({
             "name": "John Doe",
@@ -230,9 +228,7 @@ mod tests {
             "required": ["name", "age"]
         });
 
-        let component_files = Arc::new(MockComponentFiles {
-            map: HashMap::new(),
-        });
+        let component_files = mock_component_files(HashMap::new());
 
         let schema = parse_schema("test", schema, component_files).unwrap();
 
@@ -251,16 +247,14 @@ mod tests {
             "required": ["name", "age"]
         });
 
-        let component_files = Arc::new(MockComponentFiles {
-            map: HashMap::from([
-                ("name.json".to_string(), json!({ "type": "string" })),
-                ("age.json".to_string(), json!({ "type": "number" })),
-                (
-                    "phones.json".to_string(),
-                    json!({ "type": "array", "items": { "type": "string" } }),
-                ),
-            ]),
-        });
+        let component_files = mock_component_files(HashMap::from([
+            ("name.json".to_string(), json!({ "type": "string" })),
+            ("age.json".to_string(), json!({ "type": "number" })),
+            (
+                "phones.json".to_string(),
+                json!({ "type": "array", "items": { "type": "string" } }),
+            ),
+        ]));
 
         let schema = parse_schema("test", schema, component_files).unwrap();
 
@@ -288,9 +282,7 @@ mod tests {
             "required": ["name", "age"]
         });
 
-        let component_files = Arc::new(MockComponentFiles {
-            map: HashMap::new(),
-        });
+        let component_files = mock_component_files(HashMap::new());
 
         let schema = parse_schema("test", schema, component_files).unwrap();
 

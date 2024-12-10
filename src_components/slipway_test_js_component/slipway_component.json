@@ -1,0 +1,20 @@
+{
+  "publisher": "slipway",
+  "name": "test_js",
+  "description": "A simple javascript component that increments a value.",
+  "version": "0.0.1",
+  "input": {
+    "properties": {
+      "value": {
+        "type": "int32"
+      }
+    }
+  },
+  "output": {
+    "properties": {
+      "value": {
+        "type": "int32"
+      }
+    }
+  }
+}

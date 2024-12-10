@@ -8,8 +8,8 @@ use std::{
 use tar::Archive;
 
 use crate::{
-    errors::ComponentLoadError, load::SLIPWAY_COMPONENT_FILE_NAME, ComponentFiles, LoadedComponent,
-    SlipwayReference,
+    errors::ComponentLoadError, load::SLIPWAY_COMPONENT_FILE_NAME, ComponentFiles,
+    ComponentFilesLoader, LoadedComponent, SlipwayReference,
 };
 
 use super::component_io_abstractions::{ComponentIOAbstractions, FileHandle};
@@ -53,9 +53,9 @@ pub(super) fn load_from_tar(
         path: path.to_owned(),
     });
 
-    let component_files = Arc::new(TarComponentFiles {
+    let component_files = Arc::new(ComponentFiles::new(Box::new(TarComponentFilesLoader {
         data: loader_data.clone(),
-    });
+    })));
 
     Ok(LoadedComponent::new(
         component_reference.clone(),
@@ -71,11 +71,11 @@ struct TarComponentFileLoaderData {
     path: PathBuf,
 }
 
-struct TarComponentFiles {
+struct TarComponentFilesLoader {
     data: Arc<TarComponentFileLoaderData>,
 }
 
-impl ComponentFiles for TarComponentFiles {
+impl ComponentFilesLoader for TarComponentFilesLoader {
     fn get_component_reference(&self) -> &SlipwayReference {
         &self.data.component_reference
     }

@@ -12,6 +12,7 @@ slipway_engine = { path = "../slipway_engine", features = [
 slipway_host = { path = "../slipway_host" }
 slipway_wasmtime_runner = { path = "../slipway_wasmtime_runner" }
 slipway_fragment_runner = { path = "../slipway_fragment_runner" }
+slipway_deno_runner = { path = "../slipway_deno_runner" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 termion = "4.0.0"

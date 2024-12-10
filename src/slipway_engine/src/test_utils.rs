@@ -6,6 +6,7 @@ use crate::utils::ch;
 use crate::BasicComponentCache;
 use crate::Component;
 use crate::ComponentFiles;
+use crate::ComponentFilesLoader;
 use crate::ComponentHandle;
 use crate::ComponentRigging;
 use crate::Name;
@@ -141,17 +142,17 @@ pub fn schema_any() -> Schema {
 }
 
 pub fn schema_valid(schema_name: &str, json: serde_json::Value) -> Schema {
-    crate::parse::parse_schema(schema_name, json, Arc::new(MockSchemaResolver {}))
-        .expect("schema should be valid")
+    crate::parse::parse_schema(
+        schema_name,
+        json,
+        Arc::new(ComponentFiles::new(Box::new(MockSchemaResolver {}))),
+    )
+    .expect("schema should be valid")
 }
 
 pub struct MockSchemaResolver {}
 
-impl ComponentFiles for MockSchemaResolver {
-    fn get_json(&self, _file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
-        Ok(Arc::new(json!({})))
-    }
-
+impl ComponentFilesLoader for MockSchemaResolver {
     fn get_component_reference(&self) -> &SlipwayReference {
         unimplemented!();
     }
@@ -165,7 +166,7 @@ impl ComponentFiles for MockSchemaResolver {
     }
 
     fn try_get_bin(&self, _file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
-        unimplemented!()
+        Ok(Some(Arc::new(serde_json::to_vec(&json!({})).unwrap())))
     }
 
     fn try_get_text(&self, _file_name: &str) -> Result<Option<Arc<String>>, ComponentLoadError> {
@@ -190,7 +191,11 @@ impl MockComponentsLoader {
 
 struct NoComponentFiles {}
 
-impl ComponentFiles for NoComponentFiles {
+fn no_component_files() -> Arc<ComponentFiles> {
+    Arc::new(ComponentFiles::new(Box::new(NoComponentFiles {})))
+}
+
+impl ComponentFilesLoader for NoComponentFiles {
     fn get_component_reference(&self) -> &SlipwayReference {
         unimplemented!();
     }
@@ -231,7 +236,7 @@ impl ComponentsLoader for MockComponentsLoader {
                                 output_schema.clone(),
                             ))
                             .expect("schema should serialize"),
-                            Arc::new(NoComponentFiles {}),
+                            no_component_files(),
                         )
                     })
                     .ok_or(ComponentLoadError::new(
@@ -271,7 +276,7 @@ impl ComponentsLoader for PermissiveMockComponentsLoader {
                 Ok(LoadedComponent::new(
                     component_reference.clone(),
                     definition_string,
-                    Arc::new(NoComponentFiles {}),
+                    no_component_files(),
                 ))
             })
             .collect()

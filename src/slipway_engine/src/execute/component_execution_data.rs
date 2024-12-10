@@ -21,7 +21,7 @@ pub struct ComponentExecutionContext<'call, 'rig, 'runners> {
     pub component_cache: &'rig dyn ComponentCache,
     pub component_runners: &'runners [Box<dyn ComponentRunner>],
     pub call_chain: Arc<CallChain<'rig>>,
-    pub files: Arc<dyn ComponentFiles>,
+    pub files: Arc<ComponentFiles>,
     pub callout_context: CalloutContext<'call, 'rig>,
 }
 

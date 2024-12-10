@@ -1,13 +1,11 @@
 use std::{sync::Arc, time::Instant};
 
-use host::{OutputObserverStream, OutputObserverType, SlipwayComponent, SlipwayHost};
+use crate::host::{OutputObserverStream, OutputObserverType, SlipwayComponent, SlipwayHost};
 use slipway_engine::{
     ComponentExecutionContext, RunComponentError, RunComponentResult, RunMetadata,
 };
 use wasmtime::*;
 use wasmtime_wasi::WasiCtxBuilder;
-
-mod host;
 
 pub fn run_component_wasm(
     input: &serde_json::Value,

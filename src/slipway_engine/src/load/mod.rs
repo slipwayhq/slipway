@@ -21,26 +21,50 @@ pub trait ComponentsLoader {
     ) -> Vec<Result<LoadedComponent, ComponentLoadError>>;
 }
 
-// We return Arcs here so that the implementors can cache files in memory if they want to.
-// This was originally the case with the WebAssembly files, but currently we don't do any caching.
-pub trait ComponentFiles: Send + Sync {
-    fn get_component_reference(&self) -> &SlipwayReference;
-    fn get_component_path(&self) -> &Path;
-    fn exists(&self, file_name: &str) -> Result<bool, ComponentLoadError>;
-    fn try_get_bin(&self, file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError>;
-    fn try_get_text(&self, file_name: &str) -> Result<Option<Arc<String>>, ComponentLoadError>;
+pub struct ComponentFiles {
+    inner: Box<dyn ComponentFilesLoader>,
+}
 
-    fn try_get_json(
-        &self,
-        file_name: &str,
-    ) -> Result<Option<Arc<serde_json::Value>>, ComponentLoadError> {
+impl ComponentFiles {
+    pub fn new(inner: Box<dyn ComponentFilesLoader>) -> Self {
+        Self { inner }
+    }
+
+    pub fn get_component_reference(&self) -> &SlipwayReference {
+        self.inner.get_component_reference()
+    }
+
+    pub fn get_component_path(&self) -> &Path {
+        self.inner.get_component_path()
+    }
+
+    pub fn exists(&self, file_name: &str) -> Result<bool, ComponentLoadError> {
+        self.inner.exists(file_name)
+    }
+
+    pub fn try_get_bin(&self, file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
+        self.inner.try_get_bin(file_name)
+    }
+
+    pub fn try_get_text(&self, file_name: &str) -> Result<Option<Arc<String>>, ComponentLoadError> {
+        self.inner.try_get_text(file_name)
+    }
+
+    pub fn get_component_file_separator(&self) -> &str {
+        self.inner.get_component_file_separator()
+    }
+
+    pub fn try_get_json<T>(&self, file_name: &str) -> Result<Option<Arc<T>>, ComponentLoadError>
+    where
+        T: serde::de::DeserializeOwned,
+    {
         let buffer = self.try_get_bin(file_name)?;
 
         match buffer {
             None => Ok(None),
             Some(buffer) => {
                 let slice = buffer.as_slice();
-                let json = serde_json::from_slice(slice).map_err(|e| {
+                let value = serde_json::from_slice(slice).map_err(|e| {
                     ComponentLoadError::new(
                         self.get_component_reference(),
                         ComponentLoadErrorInner::FileJsonParseFailed {
@@ -54,28 +78,27 @@ pub trait ComponentFiles: Send + Sync {
                         },
                     )
                 })?;
-                Ok(Some(Arc::new(json)))
+                Ok(Some(Arc::new(value)))
             }
         }
     }
 
-    fn get_json(&self, file_name: &str) -> Result<Arc<serde_json::Value>, ComponentLoadError> {
-        self.try_get_json(file_name)?
+    pub fn get_json<T>(&self, file_name: &str) -> Result<Arc<T>, ComponentLoadError>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        self.try_get_json::<T>(file_name)?
             .ok_or_else(|| self.get_file_not_found_error(file_name))
     }
 
-    fn get_bin(&self, file_name: &str) -> Result<Arc<Vec<u8>>, ComponentLoadError> {
+    pub fn get_bin(&self, file_name: &str) -> Result<Arc<Vec<u8>>, ComponentLoadError> {
         self.try_get_bin(file_name)?
             .ok_or_else(|| self.get_file_not_found_error(file_name))
     }
 
-    fn get_text(&self, file_name: &str) -> Result<Arc<String>, ComponentLoadError> {
+    pub fn get_text(&self, file_name: &str) -> Result<Arc<String>, ComponentLoadError> {
         self.try_get_text(file_name)?
             .ok_or_else(|| self.get_file_not_found_error(file_name))
-    }
-
-    fn get_component_file_separator(&self) -> &str {
-        "/"
     }
 
     fn get_file_not_found_error(&self, file_name: &str) -> ComponentLoadError {
@@ -93,17 +116,31 @@ pub trait ComponentFiles: Send + Sync {
         )
     }
 }
+
+// We return Arcs here so that the implementors can cache files in memory if they want to.
+// This was originally the case with the WebAssembly files, but currently we don't do any caching.
+pub trait ComponentFilesLoader: Send + Sync {
+    fn get_component_reference(&self) -> &SlipwayReference;
+    fn get_component_path(&self) -> &Path;
+    fn exists(&self, file_name: &str) -> Result<bool, ComponentLoadError>;
+    fn try_get_bin(&self, file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError>;
+    fn try_get_text(&self, file_name: &str) -> Result<Option<Arc<String>>, ComponentLoadError>;
+
+    fn get_component_file_separator(&self) -> &str {
+        "/"
+    }
+}
 pub struct LoadedComponent {
     pub reference: SlipwayReference,
     pub definition: String,
-    pub files: Arc<dyn ComponentFiles>,
+    pub files: Arc<ComponentFiles>,
 }
 
 impl LoadedComponent {
     pub fn new(
         reference: SlipwayReference,
         definition: String,
-        files: Arc<dyn ComponentFiles>,
+        files: Arc<ComponentFiles>,
     ) -> Self {
         Self {
             reference,
@@ -120,7 +157,7 @@ pub trait ComponentCache: Sync + Send {
         &mut self,
         component_reference: &SlipwayReference,
         definition: Component<Schema>,
-        files: Arc<dyn ComponentFiles>,
+        files: Arc<ComponentFiles>,
     );
 
     fn try_get(&self, component_reference: &SlipwayReference) -> Option<&PrimedComponent>;
@@ -130,7 +167,7 @@ pub trait ComponentCache: Sync + Send {
 
 pub struct PrimedComponent {
     pub definition: Arc<Component<Schema>>,
-    pub files: Arc<dyn ComponentFiles>,
+    pub files: Arc<ComponentFiles>,
 }
 
 pub struct BasicComponentCache {
@@ -168,7 +205,7 @@ impl ComponentCache for BasicComponentCache {
         &mut self,
         component_reference: &SlipwayReference,
         definition: Component<Schema>,
-        files: Arc<dyn ComponentFiles>,
+        files: Arc<ComponentFiles>,
     ) {
         self.components.insert(
             component_reference.clone(),
@@ -209,7 +246,7 @@ impl ComponentCache for MultiComponentCache<'_> {
         &mut self,
         _component_reference: &SlipwayReference,
         _definition: Component<Schema>,
-        _files: Arc<dyn ComponentFiles>,
+        _files: Arc<ComponentFiles>,
     ) {
         panic!("Cannot add to a MultiComponentCache");
     }

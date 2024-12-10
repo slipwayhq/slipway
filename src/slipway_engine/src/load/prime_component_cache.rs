@@ -71,7 +71,7 @@ pub(super) fn parse_loaded_component_definition(
 pub(super) fn parse_component_with_json(
     reference: &SlipwayReference,
     parsed_definition: Component<serde_json::Value>,
-    files: Arc<dyn ComponentFiles>,
+    files: Arc<ComponentFiles>,
 ) -> Result<Component<Schema>, ComponentLoadError> {
     let input = handle_component_load_error(
         reference,

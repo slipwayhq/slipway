@@ -1,0 +1,16 @@
+{
+  "publisher": "slipway",
+  "name": "test_rig",
+  "version": "0.0.1",
+  "description": "Calls a js component",
+  "constants": {
+  },
+  "rigging": {
+    "single": {
+      "component": "file:slipway.test_js.0.0.1.tar",
+      "input": {
+        "value": 0
+      }
+    }
+  }
+}  

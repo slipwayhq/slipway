@@ -444,7 +444,10 @@ mod tests {
 
             assert_eq!(loaded.definition.clone(), definition_content);
             assert_eq!(
-                *loaded.files.get_json("file1.json").unwrap(),
+                *loaded
+                    .files
+                    .get_json::<serde_json::Value>("file1.json")
+                    .unwrap(),
                 serde_json::from_str::<serde_json::Value>(file1_content).unwrap()
             );
             assert_eq!(
@@ -453,7 +456,7 @@ mod tests {
             );
 
             // Test that loading asking for `file2.json` fails:
-            match loaded.files.get_json("file2.json") {
+            match loaded.files.get_json::<serde_json::Value>("file2.json") {
                 Ok(_) => panic!("file2.json should not be found"),
                 Err(e) => match e {
                     ComponentLoadError {
@@ -537,12 +540,15 @@ mod tests {
             let loaded = result.first().unwrap().as_ref().unwrap();
 
             assert_eq!(
-                *loaded.files.get_json("file.json").unwrap(),
+                *loaded
+                    .files
+                    .get_json::<serde_json::Value>("file.json")
+                    .unwrap(),
                 serde_json::Value::Object(serde_json::Map::new())
             );
 
             // Test that loading from an absolute path fails
-            match loaded.files.get_json("/bin/file.json") {
+            match loaded.files.get_json::<serde_json::Value>("/bin/file.json") {
                 Ok(_) => panic!("loading absolute file should fail"),
                 Err(e) => match e {
                     ComponentLoadError {
@@ -556,7 +562,7 @@ mod tests {
             }
 
             // Test that loading from outside the component fails
-            match loaded.files.get_json("../file.json") {
+            match loaded.files.get_json::<serde_json::Value>("../file.json") {
                 Ok(_) => panic!("loading outside component file should fail"),
                 Err(e) => match e {
                     ComponentLoadError {
@@ -705,7 +711,10 @@ mod tests {
 
             assert_eq!(loaded.definition.clone(), data.definition_content);
             assert_eq!(
-                *loaded.files.get_json("file1.json").unwrap(),
+                *loaded
+                    .files
+                    .get_json::<serde_json::Value>("file1.json")
+                    .unwrap(),
                 serde_json::from_str::<serde_json::Value>(data.file1_content).unwrap()
             );
             assert_eq!(
@@ -714,7 +723,7 @@ mod tests {
             );
 
             // Test that loading asking for `file2.json` fails:
-            match loaded.files.get_json("file2.json") {
+            match loaded.files.get_json::<serde_json::Value>("file2.json") {
                 Ok(_) => panic!("file2.json should not be found"),
                 Err(e) => match e {
                     ComponentLoadError {

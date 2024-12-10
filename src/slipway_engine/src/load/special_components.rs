@@ -1,10 +1,11 @@
 use crate::{
-    ComponentFiles, LoadedComponent, PrimedComponent, SlipwayReference, SpecialComponentReference,
+    ComponentFilesLoader, LoadedComponent, PrimedComponent, SlipwayReference,
+    SpecialComponentReference,
 };
 
 use std::{str::FromStr, sync::Arc};
 
-use super::prime_component_cache::parse_component_with_json;
+use super::{prime_component_cache::parse_component_with_json, ComponentFiles};
 
 const SLIPWAY_PUBLISHER: &str = "slipway";
 
@@ -15,18 +16,18 @@ pub fn load_special_component(reference: &SpecialComponentReference) -> LoadedCo
         reference: SlipwayReference::Special(reference.clone()),
         definition: serde_json::to_string(&definition)
             .expect("Special component definition should be serializable"),
-        files: Arc::new(NoFiles {
+        files: Arc::new(ComponentFiles::new(Box::new(NoFiles {
             reference: SlipwayReference::Special(reference.clone()),
-        }),
+        }))),
     }
 }
 
 pub fn prime_special_component(reference: &SpecialComponentReference) -> PrimedComponent {
     let full_reference = SlipwayReference::Special(reference.clone());
     let definition = get_special_definition(reference);
-    let files: Arc<dyn ComponentFiles> = Arc::new(NoFiles {
+    let files = Arc::new(ComponentFiles::new(Box::new(NoFiles {
         reference: SlipwayReference::Special(reference.clone()),
-    });
+    })));
 
     let definition = parse_component_with_json(&full_reference, definition, Arc::clone(&files))
         .expect("Special component should be valid");
@@ -59,7 +60,7 @@ struct NoFiles {
     reference: SlipwayReference,
 }
 
-impl ComponentFiles for NoFiles {
+impl ComponentFilesLoader for NoFiles {
     fn get_component_reference(&self) -> &SlipwayReference {
         &self.reference
     }

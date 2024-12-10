@@ -9,7 +9,7 @@ use super::component_io_abstractions::ComponentIOAbstractions;
 use crate::{
     errors::{ComponentLoadError, ComponentLoadErrorInner},
     load::{is_safe_path::is_safe_path, SLIPWAY_COMPONENT_FILE_NAME},
-    ComponentFiles, LoadedComponent, SlipwayReference,
+    ComponentFiles, ComponentFilesLoader, LoadedComponent, SlipwayReference,
 };
 
 pub(super) fn load_from_directory(
@@ -20,11 +20,13 @@ pub(super) fn load_from_directory(
     let definition_path = path.join(SLIPWAY_COMPONENT_FILE_NAME);
     let definition_string = io_abstractions.load_text(&definition_path, component_reference)?;
 
-    let component_files = Arc::new(DirectoryComponentFiles::new(
-        io_abstractions.clone(),
-        component_reference.clone(),
-        path.to_owned(),
-    ));
+    let component_files = Arc::new(ComponentFiles::new(Box::new(
+        DirectoryComponentFilesLoader::new(
+            io_abstractions.clone(),
+            component_reference.clone(),
+            path.to_owned(),
+        ),
+    )));
 
     Ok(LoadedComponent::new(
         component_reference.clone(),
@@ -33,13 +35,13 @@ pub(super) fn load_from_directory(
     ))
 }
 
-struct DirectoryComponentFiles {
+struct DirectoryComponentFilesLoader {
     io_abstractions: Arc<dyn ComponentIOAbstractions>,
     component_reference: SlipwayReference,
     directory: PathBuf,
 }
 
-impl DirectoryComponentFiles {
+impl DirectoryComponentFilesLoader {
     pub fn new(
         io_abstractions: Arc<dyn ComponentIOAbstractions>,
         component_reference: SlipwayReference,
@@ -82,7 +84,7 @@ impl DirectoryComponentFiles {
     }
 }
 
-impl ComponentFiles for DirectoryComponentFiles {
+impl ComponentFilesLoader for DirectoryComponentFilesLoader {
     fn get_component_reference(&self) -> &SlipwayReference {
         &self.component_reference
     }

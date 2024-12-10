@@ -4,7 +4,7 @@ members = [
     "slipway",
     "common_test_utils",
     "slipway_wasmtime_runner",
-    "slipway_host", "slipway_fragment_runner",
+    "slipway_host", "slipway_fragment_runner", "slipway_deno_runner",
 ]
 resolver = "2"
 

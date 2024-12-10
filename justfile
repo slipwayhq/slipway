@@ -41,7 +41,9 @@ assemble-test-components configuration="debug": \
   (rename-component-artifacts "test_json_schema") \
   (tar-component-files "fragment") \
   (rename-component-artifacts "fragment") \
-
+  (tar-component-files "test_js") \
+  (rename-component-artifacts "test_js") \
+  
   mkdir -p artifacts/slipway_test
   cp src_components/target/wasm32-wasip1/{{configuration}}/slipway_test_component.wasm artifacts/slipway_test/slipway_component.wasm
   cp src_components/slipway_test_component/slipway_component.json artifacts/slipway_test/slipway_component.json
@@ -60,6 +62,11 @@ assemble-test-components configuration="debug": \
 
   mkdir -p artifacts/slipway_fragment
   cp src_components/slipway_fragment_component/slipway_component.json artifacts/slipway_fragment/slipway_component.json
+
+  mkdir -p artifacts/slipway_test_js
+  cp src_components/slipway_test_js_component/slipway_component.json artifacts/slipway_test_js/slipway_component.json
+  cp src_components/slipway_test_js_component/slipway_js_component.json artifacts/slipway_test_js/slipway_js_component.json
+  cp src_components/slipway_test_js_component/run.js artifacts/slipway_test_js/run.js
 
 tar-component-files name:
   tar -cf artifacts/slipway_{{name}}.tar -C artifacts/slipway_{{name}} .
