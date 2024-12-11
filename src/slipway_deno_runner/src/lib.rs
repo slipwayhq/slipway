@@ -3,6 +3,7 @@ use slipway_engine::{
     ComponentExecutionData, ComponentRunner, RunComponentError, TryRunComponentResult,
 };
 
+mod deno_ops;
 mod run_component_javascript;
 
 const DENO_COMPONENT_RUNNER_IDENTIFIER: &str = "deno";
