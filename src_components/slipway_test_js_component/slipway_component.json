@@ -4,10 +4,17 @@
   "description": "A simple javascript component that increments a value.",
   "version": "0.0.1",
   "input": {
-    "properties": {
-      "value": {
-        "type": "int32"
-      }
+    "discriminator": "type",
+    "mapping": {
+      "increment": {
+        "properties": {
+          "value": {
+            "type": "int32"
+          }
+        }
+      },
+      "throw": {},
+      "read_file": {}
     }
   },
   "output": {

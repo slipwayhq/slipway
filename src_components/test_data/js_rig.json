@@ -9,7 +9,7 @@
     "single": {
       "component": "file:slipway.test_js.0.0.1.tar",
       "input": {
-        "value": 0
+        "type": "read_file"
       }
     }
   }
