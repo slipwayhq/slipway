@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
 use std::thread;
+use tiny_http::Method;
 use tiny_http::Response;
 use tiny_http::Server;
 
@@ -12,7 +14,7 @@ const LOCALHOST_BINDING: &str = "0.0.0.0:0";
 // is working as expected.
 pub struct TestServer {
     stop_signal: Sender<char>,
-    server_thread: thread::JoinHandle<()>,
+    server_thread: Option<thread::JoinHandle<()>>,
     pub localhost_url: String,
 }
 
@@ -65,7 +67,7 @@ impl TestServer {
 
         TestServer {
             stop_signal: tx,
-            server_thread,
+            server_thread: Some(server_thread),
             localhost_url,
         }
     }
@@ -103,13 +105,84 @@ impl TestServer {
 
         TestServer {
             stop_signal: tx,
-            server_thread,
+            server_thread: Some(server_thread),
             localhost_url,
         }
     }
 
-    pub fn stop(self) {
+    pub fn start_for_call(
+        url: String,
+        method: String,
+        headers: Vec<(String, String)>,
+        body: String,
+        status_code: u16,
+    ) -> Self {
+        let (tx, rx) = mpsc::channel();
+
+        let server = Server::http(LOCALHOST_BINDING).unwrap();
+        let localhost_url = get_localhost_url(&server);
+
+        let server_thread = thread::spawn(move || loop {
+            // Check for stop signal in a non-blocking way
+            if rx.try_recv().is_ok() {
+                break;
+            }
+
+            // Handle incoming requests
+            if let Ok(Some(request)) = server.recv_timeout(std::time::Duration::from_millis(100)) {
+                if url != request.url() {
+                    panic!("Unexpected url: {}", request.url());
+                }
+
+                if request.method() != &Method::from_str(&method).unwrap() {
+                    panic!("Unexpected method: {:?}", request.method());
+                }
+
+                if request.body_length().unwrap_or(0) != body.len() {
+                    panic!(
+                        "Unexpected body length: {}",
+                        request.body_length().unwrap_or(0)
+                    );
+                }
+
+                let actual_headers = request.headers();
+                for (key, value) in headers.iter() {
+                    let actual_header = actual_headers
+                        .iter()
+                        .find(|h| h.field.as_str() == key.as_str());
+
+                    if let Some(actual_header) = actual_header {
+                        assert_eq!(actual_header.value, *value);
+                    } else {
+                        panic!("Expected header not found: {}", key);
+                    }
+                }
+                let response = Response::from_string(body.clone()).with_status_code(status_code);
+                request.respond(response).unwrap();
+            }
+        });
+
+        TestServer {
+            stop_signal: tx,
+            server_thread: Some(server_thread),
+            localhost_url,
+        }
+    }
+
+    pub fn stop(mut self) {
         self.stop_signal.send('a').unwrap();
-        self.server_thread.join().unwrap();
+        match self.server_thread.take() {
+            Some(h) => h.join(),
+            None => Ok(()),
+        }
+        .unwrap()
     }
 }
+
+// impl Drop for TestServer {
+//     fn drop(&mut self) {
+//         if self.server_thread.is_some() {
+//             panic!("TestServer was not stopped before being dropped");
+//         }
+//     }
+// }

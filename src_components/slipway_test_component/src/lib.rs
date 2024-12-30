@@ -101,27 +101,30 @@ fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types
 
             let output = if expected_status_code >= 400 {
                 match response {
-                    Ok(_) => {
-                        panic!("Expected error response, got success");
-                    }
+                    Ok(_) => Err(ComponentError {
+                        message: "Expected error response, got success".to_string(),
+                    }),
                     Err(e) => {
+                        let response_len = e.response.as_ref().unwrap().body.len();
                         assert_eq!(e.response.unwrap().status as u32, expected_status_code);
-                        Output { value: 0 }
+                        Ok(Output {
+                            value: response_len as i32,
+                        })
                     }
                 }
             } else {
                 match response {
                     Ok((status_code, response_len)) => {
                         assert_eq!(status_code as u32, expected_status_code);
-                        Output {
+                        Ok(Output {
                             value: response_len as i32,
-                        }
+                        })
                     }
-                    Err(e) => {
-                        panic!("Expected successful response, got error: {:?}", e);
-                    }
+                    Err(e) => Err(ComponentError {
+                        message: format!("Expected successful response, got error: {:?}", e),
+                    }),
                 }
-            };
+            }?;
 
             Ok(serde_json::to_string(&output).expect("Result should be serializable"))
         }
