@@ -1,7 +1,7 @@
 use std::{collections::HashMap, rc::Rc, sync::Arc};
 
 use crate::{
-    utils::ExpectWith, Component, ComponentCache, ComponentFiles, ComponentHandle, ComponentInput,
+    errors::RigError, Component, ComponentCache, ComponentFiles, ComponentHandle, ComponentInput,
     ComponentPermission, Schema, SlipwayReference, PERMISSIONS_FULL_TRUST_VEC,
 };
 
@@ -52,10 +52,13 @@ impl<'call, 'rig> CalloutContext<'call, 'rig> {
     pub fn get_component_reference_for_handle(
         &self,
         handle: &ComponentHandle,
-    ) -> &'rig SlipwayReference {
+    ) -> Result<&'rig SlipwayReference, RigError> {
         self.callout_handle_to_reference
             .get(handle)
-            .expect_with(|| format!(r#"Component reference not found for handle "{}""#, handle))
+            .copied()
+            .ok_or_else(|| RigError::ComponentNotFound {
+                handle: handle.clone(),
+            })
     }
 }
 

@@ -20,7 +20,11 @@ world slipway-component {
 
     import callout: interface {
         use types.{component-error};
+
         run: func(handle: string, input: string) -> result<string, component-error>;
+
+        get-text: func(handle: string, path: string) -> result<string, component-error>;
+        get-bin: func(handle: string, path: string) -> result<list<u8>, component-error>;
     }
 
     import log: interface {
@@ -31,7 +35,45 @@ world slipway-component {
         error: func(message: string);
     }
 
-    use types.{component-error};
+    import http: interface {
+        type header = tuple<string, string>;
 
+        record request-options {
+            method: string,
+            headers: list<header>,
+            /// Optional request body for POST, PUT, etc.
+            body: option<string>,
+            /// Timeout in milliseconds.
+            timeout-ms: option<u32>,
+        }
+
+        record request-error {
+            message: string,
+            response: option<bin-response>
+        }
+
+        record bin-response {
+            /// HTTP status code (e.g., 200, 404, etc.).
+            status: u16,
+            /// Any response headers (e.g. Content-Type).
+            headers: list<header>,
+            /// Response body as bytes.
+            body: list<u8>,
+        }
+
+        record text-response {
+            /// HTTP status code (e.g., 200, 404, etc.).
+            status: u16,
+            /// Any response headers (e.g. Content-Type).
+            headers: list<header>,
+            /// Response body as bytes.
+            body: string,
+        }
+
+        request-text: func(uri: string, opts: option<request-options>) -> result<text-response, request-error>;
+        request-bin: func(uri: string, opts: option<request-options>) -> result<bin-response, request-error>;
+    }
+
+    use types.{component-error};
     export run: func(input: string) -> result<string, component-error>;
 }

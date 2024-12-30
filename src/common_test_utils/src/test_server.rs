@@ -69,6 +69,7 @@ impl TestServer {
             localhost_url,
         }
     }
+
     pub fn start_from_folder(folder: PathBuf) -> Self {
         let (tx, rx) = mpsc::channel();
 

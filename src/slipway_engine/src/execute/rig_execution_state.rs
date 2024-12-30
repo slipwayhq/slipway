@@ -127,7 +127,7 @@ where
 {
     let component_reference = execution_context
         .callout_context
-        .get_component_reference_for_handle(handle);
+        .get_component_reference_for_handle(handle)?;
 
     let component_cache = execution_context.component_cache;
 

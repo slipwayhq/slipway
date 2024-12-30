@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc, str::FromStr, sync::Arc};
+use std::{collections::HashMap, rc::Rc, sync::Arc};
 
 use slipway_engine::{
     run_component, CallChain, ComponentExecutionContext, ComponentHandle, ComponentOutput,
@@ -6,13 +6,9 @@ use slipway_engine::{
 };
 use tracing::{span, Level};
 
-pub mod sink_run_event_handler;
+use crate::{parse_handle, ComponentError};
 
-// We can't use the Wasmtime/WIT generated ComponentError here, as this crate is host independent,
-// so use our own struct.
-pub struct ComponentError {
-    pub message: String,
-}
+pub mod sink_run_event_handler;
 
 pub struct ComponentRunStartEvent<'rig> {
     pub component_handle: &'rig ComponentHandle,
@@ -127,14 +123,7 @@ pub fn run_component_callout(
 ) -> Result<String, ComponentError> {
     let _span_ = span!(Level::INFO, "callout").entered();
 
-    let handle = ComponentHandle::from_str(handle).map_err(|e| ComponentError {
-        message: format!(
-            "Failed to parse component handle \"{}\" for callout from \"{}\":\n{}",
-            handle,
-            execution_context.call_chain.component_handle_trail(),
-            e
-        ),
-    })?;
+    let handle = parse_handle(execution_context, handle)?;
 
     let handle_trail = || -> String {
         execution_context

@@ -17,10 +17,10 @@ serde_json = { workspace = true }
 serde_with = { version = "3.5.1", default-features = false, features = ["std"] }
 sha2 = "0.10.8"
 thiserror = { workspace = true }
-url = "2.4.1"
+url = { workspace = true }
 tracing = { workspace = true }
 jsonschema = { version = "0.20.0", default-features = false }
-ureq = { version = "2.10.1", features = ["json"] }
+ureq = { workspace = true }
 anyhow = { workspace = true }
 tar = "0.4.42"
 dirs = "5.0.1"

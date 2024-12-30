@@ -59,6 +59,9 @@ pub enum RigError {
 
     #[error("Rig component load failed.\n{0}")]
     ComponentLoadFailed(#[from] ComponentLoadError),
+
+    #[error("Component not found for handle \"{handle}\".")]
+    ComponentNotFound { handle: ComponentHandle },
 }
 
 #[derive(Debug)]

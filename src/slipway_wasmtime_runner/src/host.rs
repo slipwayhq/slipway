@@ -1,4 +1,5 @@
 use bytes::Bytes;
+use http::{BinResponse, RequestError, RequestOptions, TextResponse};
 use slipway_engine::ComponentExecutionContext;
 use tracing::{debug, error, info, trace, warn};
 use wasmtime::*;
@@ -56,12 +57,88 @@ impl callout::Host for SlipwayHost<'_, '_, '_> {
         slipway_host::run::run_component_callout(self.execution_context, &handle, &input)
             .map_err(|e| e.into())
     }
+
+    fn get_text(&mut self, handle: String, path: String) -> Result<String, ComponentError> {
+        slipway_host::load::get_component_file_text(self.execution_context, &handle, &path)
+            .map_err(|e| e.into())
+    }
+
+    fn get_bin(&mut self, handle: String, path: String) -> Result<Vec<u8>, ComponentError> {
+        slipway_host::load::get_component_file_bin(self.execution_context, &handle, &path)
+            .map_err(|e| e.into())
+    }
+}
+
+impl http::Host for SlipwayHost<'_, '_, '_> {
+    fn request_text(
+        &mut self,
+        url: String,
+        opts: Option<RequestOptions>,
+    ) -> Result<TextResponse, RequestError> {
+        slipway_host::http::request_text(&url, opts.map(Into::into))
+            .map(Into::into)
+            .map_err(Into::into)
+    }
+
+    fn request_bin(
+        &mut self,
+        url: String,
+        opts: Option<RequestOptions>,
+    ) -> Result<BinResponse, RequestError> {
+        slipway_host::http::request_bin(&url, opts.map(Into::into))
+            .map(Into::into)
+            .map_err(Into::into)
+    }
+}
+
+impl From<slipway_host::http::RequestError> for RequestError {
+    fn from(e: slipway_host::http::RequestError) -> Self {
+        RequestError {
+            message: e.message,
+            response: e.response.map(|r| BinResponse {
+                status: r.status,
+                headers: r.headers,
+                body: r.body,
+            }),
+        }
+    }
+}
+
+impl From<RequestOptions> for slipway_host::http::RequestOptions {
+    fn from(opts: RequestOptions) -> Self {
+        slipway_host::http::RequestOptions {
+            headers: opts.headers,
+            method: opts.method,
+            body: opts.body,
+            timeout_ms: opts.timeout_ms,
+        }
+    }
+}
+
+impl From<slipway_host::http::BinResponse> for BinResponse {
+    fn from(r: slipway_host::http::BinResponse) -> Self {
+        BinResponse {
+            status: r.status,
+            headers: r.headers,
+            body: r.body,
+        }
+    }
+}
+
+impl From<slipway_host::http::TextResponse> for TextResponse {
+    fn from(r: slipway_host::http::TextResponse) -> Self {
+        TextResponse {
+            status: r.status,
+            headers: r.headers,
+            body: r.body,
+        }
+    }
 }
 
 impl slipway::component::types::Host for SlipwayHost<'_, '_, '_> {}
 
-impl From<slipway_host::run::ComponentError> for ComponentError {
-    fn from(e: slipway_host::run::ComponentError) -> Self {
+impl From<slipway_host::ComponentError> for ComponentError {
+    fn from(e: slipway_host::ComponentError) -> Self {
         ComponentError { message: e.message }
     }
 }

@@ -31,6 +31,29 @@
           }
         }
       },
+      "component_file": {
+        "properties": {
+          "handle": { "type": "string" },
+          "path": { "type": "string" },
+          "file_type": {
+            "enum": ["text", "binary"]
+          }
+        }
+      },
+      "http": {
+        "properties": {
+          "url": { "type": "string" },
+          "method": { "type": "string" },
+          "headers": {
+            "values": { "type": "string" }
+          },
+          "body": { "type": "string" },
+          "expected_status_code": { "type": "uint32" },
+          "response_type": {
+            "enum": ["text", "binary"]
+          }
+        }
+      },
       "invalid_callout_input": {},
       "invalid_callout_output": {},
       "invalid_output": {},
