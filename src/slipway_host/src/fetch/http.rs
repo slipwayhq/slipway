@@ -2,12 +2,12 @@ use std::io::Read;
 
 use url::Url;
 
-use crate::fetch::{RequestError, RequestOptions, Response};
+use crate::fetch::{RequestError, RequestOptions, BinResponse};
 
 pub(super) fn fetch_http(
     url: Url,
     options: Option<RequestOptions>,
-) -> Result<Response, RequestError> {
+) -> Result<BinResponse, RequestError> {
     let opts = options.unwrap_or_default();
 
     let mut agent_builder = ureq::AgentBuilder::new();
@@ -51,7 +51,7 @@ pub(super) fn fetch_http(
                     response: None,
                 })?;
 
-            Ok(Response {
+            Ok(BinResponse {
                 status,
                 headers,
                 body,
@@ -77,7 +77,7 @@ pub(super) fn fetch_http(
                 return Err(RequestError {
                     message,
                     inner: vec![],
-                    response: Some(Response {
+                    response: Some(BinResponse {
                         status: code,
                         headers,
                         body,

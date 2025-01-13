@@ -3,14 +3,14 @@ use url::Url;
 
 use crate::run::run_component_callout;
 
-use super::{apply_json_change, RequestError, RequestOptions, Response};
+use super::{apply_json_change, RequestError, RequestOptions, BinResponse};
 
 pub(super) fn run_component_from_url(
     execution_context: &ComponentExecutionContext,
     handle: ComponentHandle,
     url: &Url,
     options: Option<RequestOptions>,
-) -> Result<Response, RequestError> {
+) -> Result<BinResponse, RequestError> {
     let mut input = options
         .unwrap_or_default()
         .body
@@ -52,7 +52,7 @@ pub(super) fn run_component_from_url(
 
     let result_str = run_component_callout(execution_context, handle, input)?;
 
-    Ok(Response {
+    Ok(BinResponse {
         status: 200,
         headers: vec![],
         body: result_str.into_bytes(),

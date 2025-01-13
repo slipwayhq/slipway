@@ -7,13 +7,13 @@ use std::str::FromStr;
 use slipway_engine::{ComponentExecutionContext, ComponentHandle};
 use url::Url;
 
-use super::{RequestError, RequestOptions, Response};
+use super::{BinResponse, RequestError, RequestOptions};
 
 pub(super) fn fetch_component_data(
     execution_context: &ComponentExecutionContext,
     url: &Url,
     options: Option<RequestOptions>,
-) -> Result<Response, RequestError> {
+) -> Result<BinResponse, RequestError> {
     let handle_str = url.domain().ok_or(RequestError::for_error(
         format!(
             "No domain (component handle) found in url from component {}: {}",

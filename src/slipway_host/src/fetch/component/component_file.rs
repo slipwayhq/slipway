@@ -2,13 +2,13 @@ use std::borrow::Cow;
 
 use slipway_engine::{ComponentExecutionContext, ComponentHandle};
 
-use super::{RequestError, Response};
+use super::{RequestError, BinResponse};
 
 pub(super) fn get_component_file_bin(
     execution_context: &ComponentExecutionContext,
     handle: ComponentHandle,
     path: &str,
-) -> Result<Response, RequestError> {
+) -> Result<BinResponse, RequestError> {
     let handle_trail = || -> String {
         execution_context
             .call_chain
@@ -43,7 +43,7 @@ pub(super) fn get_component_file_bin(
         )
     })?;
 
-    Ok(Response {
+    Ok(BinResponse {
         status: 200,
         headers: vec![],
         body: bin.to_vec(),

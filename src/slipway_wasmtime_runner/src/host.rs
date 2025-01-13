@@ -76,7 +76,7 @@ impl self::slipway_host::Host for SlipwayHost<'_, '_, '_> {
         url: String,
         opts: Option<RequestOptions>,
     ) -> Result<BinResponse, RequestError> {
-        ::slipway_host::fetch::fetch(self.execution_context, &url, opts.map(Into::into))
+        ::slipway_host::fetch::fetch_bin(self.execution_context, &url, opts.map(Into::into))
             .map(Into::into)
             .map_err(Into::into)
     }
@@ -86,35 +86,23 @@ impl self::slipway_host::Host for SlipwayHost<'_, '_, '_> {
         url: String,
         opts: Option<RequestOptions>,
     ) -> Result<TextResponse, RequestError> {
-        ::slipway_host::fetch::fetch(self.execution_context, &url, opts.map(Into::into))
+        ::slipway_host::fetch::fetch_text(self.execution_context, &url, opts.map(Into::into))
             .map(Into::into)
             .map_err(Into::into)
     }
 
     fn run(&mut self, handle: String, input: String) -> Result<String, ComponentError> {
-        self.fetch_text(
-            format!("component://{}", handle),
-            Some(RequestOptions {
-                body: Some(input.into_bytes()),
-                method: None,
-                headers: None,
-                timeout_ms: None,
-            }),
-        )
-        .map(|v| v.body)
-        .map_err(Into::into)
+        ::slipway_host::fetch::run(self.execution_context, handle, input)
+            .map(Into::into)
+            .map_err(Into::into)
     }
 
     fn load_bin(&mut self, handle: String, path: String) -> Result<Vec<u8>, ComponentError> {
-        self.fetch_bin(format!("component://{}/{}", handle, path), None)
-            .map(|v| v.body)
-            .map_err(Into::into)
+        ::slipway_host::fetch::load_bin(self.execution_context, handle, path).map_err(Into::into)
     }
 
     fn load_text(&mut self, handle: String, path: String) -> Result<String, ComponentError> {
-        self.fetch_text(format!("component://{}/{}", handle, path), None)
-            .map(|v| v.body)
-            .map_err(Into::into)
+        ::slipway_host::fetch::load_text(self.execution_context, handle, path).map_err(Into::into)
     }
 }
 
@@ -132,23 +120,6 @@ impl From<::slipway_host::fetch::RequestError> for RequestError {
     }
 }
 
-impl From<RequestError> for ComponentError {
-    fn from(e: RequestError) -> Self {
-        match e.response {
-            None => ComponentError {
-                message: e.message,
-                inner: e.inner,
-            },
-            Some(response) => ComponentError {
-                message: e.message,
-                inner: std::iter::once(format!("{:?}", response))
-                    .chain(e.inner)
-                    .collect(),
-            },
-        }
-    }
-}
-
 impl From<RequestOptions> for ::slipway_host::fetch::RequestOptions {
     fn from(opts: RequestOptions) -> Self {
         ::slipway_host::fetch::RequestOptions {
@@ -160,8 +131,8 @@ impl From<RequestOptions> for ::slipway_host::fetch::RequestOptions {
     }
 }
 
-impl From<::slipway_host::fetch::Response> for BinResponse {
-    fn from(r: ::slipway_host::fetch::Response) -> Self {
+impl From<::slipway_host::fetch::BinResponse> for BinResponse {
+    fn from(r: ::slipway_host::fetch::BinResponse) -> Self {
         BinResponse {
             status: r.status,
             headers: r.headers,
@@ -170,17 +141,15 @@ impl From<::slipway_host::fetch::Response> for BinResponse {
     }
 }
 
-impl From<::slipway_host::fetch::Response> for TextResponse {
-    fn from(r: ::slipway_host::fetch::Response) -> Self {
+impl From<::slipway_host::fetch::TextResponse> for TextResponse {
+    fn from(r: ::slipway_host::fetch::TextResponse) -> Self {
         TextResponse {
             status: r.status,
             headers: r.headers,
-            body: String::from_utf8_lossy(&r.body).into_owned(),
+            body: r.body,
         }
     }
 }
-
-impl slipway::component::types::Host for SlipwayHost<'_, '_, '_> {}
 
 impl From<::slipway_host::ComponentError> for ComponentError {
     fn from(e: ::slipway_host::ComponentError) -> Self {
@@ -190,6 +159,8 @@ impl From<::slipway_host::ComponentError> for ComponentError {
         }
     }
 }
+
+impl slipway::component::types::Host for SlipwayHost<'_, '_, '_> {}
 
 #[derive(Copy, Clone, Debug)]
 pub enum OutputObserverType {
