@@ -6,7 +6,7 @@ use slipway_engine::{
 };
 use tracing::{span, Level};
 
-use crate::{parse_handle, ComponentError};
+use crate::ComponentError;
 
 pub mod sink_run_event_handler;
 
@@ -118,26 +118,18 @@ where
 
 pub fn run_component_callout(
     execution_context: &ComponentExecutionContext,
-    handle: &str,
-    input: &str,
+    handle: ComponentHandle,
+    input: serde_json::Value,
 ) -> Result<String, ComponentError> {
     let _span_ = span!(Level::INFO, "callout").entered();
 
-    let handle = parse_handle(execution_context, handle)?;
+    println!("Running callout for component: {}\n{}", handle, input);
 
     let handle_trail = || -> String {
         execution_context
             .call_chain
             .component_handle_trail_for(&handle)
     };
-
-    let input = serde_json::from_str(input).map_err(|e| ComponentError {
-        message: format!(
-            "Failed to parse input JSON for callout to \"{}\":\n{}",
-            handle_trail(),
-            e
-        ),
-    })?;
 
     let result =
         slipway_engine::run_component_callout::<anyhow::Error>(&handle, input, execution_context)

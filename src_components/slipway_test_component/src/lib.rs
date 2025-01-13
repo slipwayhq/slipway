@@ -20,11 +20,11 @@ impl Guest for Component {
 fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types::ComponentError> {
     match input {
         Input::Increment { value } => {
-            bindings::log::error("This is an error.");
-            bindings::log::warn("This is a warning.");
-            bindings::log::info("This is information.");
-            bindings::log::debug("This is debug information.");
-            bindings::log::trace("This is trace information.");
+            bindings::slipway_host::log_error("This is an error.");
+            bindings::slipway_host::log_warn("This is a warning.");
+            bindings::slipway_host::log_info("This is information.");
+            bindings::slipway_host::log_debug("This is debug information.");
+            bindings::slipway_host::log_trace("This is trace information.");
             println!("This is more information.");
             let output = Output {
                 value: perform_action(value),
@@ -48,7 +48,7 @@ fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types
                     ttl: ttl - 1,
                     result_type,
                 };
-                bindings::callout::run(
+                bindings::slipway_host::run(
                     "test",
                     &serde_json::to_string(&callout_input).expect("should serialize output"),
                 )
@@ -62,14 +62,16 @@ fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types
             let output = match file_type {
                 // Check that we successfully get the file contents and that the result contains data.
                 DataResultType::Text => {
-                    let text = bindings::callout::get_text(&handle, &path)?;
+                    let text = bindings::slipway_host::load_text(&handle, &path)
+                        .map_err(|v| ComponentError { message: v.message })?;
                     assert!(text.len() > 0);
                     Output {
                         value: text.len() as i32,
                     }
                 }
                 DataResultType::Binary => {
-                    let bin = bindings::callout::get_bin(&handle, &path)?;
+                    let bin = bindings::slipway_host::load_bin(&handle, &path)
+                        .map_err(|v| ComponentError { message: v.message })?;
                     assert!(bin.len() > 0);
                     Output {
                         value: bin.len() as i32,
@@ -86,17 +88,23 @@ fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types
             expected_status_code,
             response_type,
         } => {
-            let request_options = bindings::http::RequestOptions {
-                headers: headers.into_iter().collect(),
-                method,
-                body: Some(body),
+            // Make an HTTP request and check the status code is the expected value.
+            // Return the result body content length.
+            let request_options = bindings::slipway_host::RequestOptions {
+                headers: Some(headers.into_iter().collect()),
+                method: Some(method),
+                body: Some(body.into_bytes()),
                 timeout_ms: Some(1000),
             };
             let response = match response_type {
-                DataResultType::Text => bindings::http::request_text(&url, Some(&request_options))
-                    .map(|r| (r.status, r.body.len())),
-                DataResultType::Binary => bindings::http::request_bin(&url, Some(&request_options))
-                    .map(|r| (r.status, r.body.len())),
+                DataResultType::Text => {
+                    bindings::slipway_host::fetch_text(&url, Some(&request_options))
+                        .map(|r| (r.status, r.body.len()))
+                }
+                DataResultType::Binary => {
+                    bindings::slipway_host::fetch_bin(&url, Some(&request_options))
+                        .map(|r| (r.status, r.body.len()))
+                }
             };
 
             let output = if expected_status_code >= 400 {
@@ -128,9 +136,9 @@ fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types
 
             Ok(serde_json::to_string(&output).expect("Result should be serializable"))
         }
-        Input::InvalidCalloutInput => bindings::callout::run("test", r#"{ "type": "foo" }"#),
+        Input::InvalidCalloutInput => bindings::slipway_host::run("test", r#"{ "type": "foo" }"#),
         Input::InvalidCalloutOutput => {
-            bindings::callout::run("test", r#"{ "type": "invalid_output" }"#)
+            bindings::slipway_host::run("test", r#"{ "type": "invalid_output" }"#)
         }
         Input::InvalidOutput => Ok(r#"{ "value": "foo" }"#.to_string()),
         Input::Panic => panic!("slipway-test-component-panic"),

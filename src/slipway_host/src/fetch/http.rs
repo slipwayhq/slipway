@@ -1,43 +1,14 @@
 use std::io::Read;
 
-#[derive(Debug)]
-pub struct RequestOptions {
-    pub method: String,
-    pub headers: Vec<(String, String)>,
-    pub body: Option<String>,
-    pub timeout_ms: Option<u32>,
-}
+use url::Url;
 
-#[derive(Debug)]
-pub struct TextResponse {
-    pub status: u16,
-    pub headers: Vec<(String, String)>,
-    pub body: String,
-}
+use crate::fetch::{RequestError, RequestOptions, Response};
 
-#[derive(Debug, Clone)]
-pub struct BinResponse {
-    pub status: u16,
-    pub headers: Vec<(String, String)>,
-    pub body: Vec<u8>,
-}
-
-#[derive(Debug)]
-pub struct RequestError {
-    pub message: String,
-    pub response: Option<BinResponse>,
-}
-
-pub fn request_bin(
-    url_str: &str,
+pub(super) fn fetch_http(
+    url: Url,
     options: Option<RequestOptions>,
-) -> Result<BinResponse, RequestError> {
-    let opts = options.unwrap_or_else(|| RequestOptions {
-        method: "GET".to_string(),
-        headers: vec![],
-        body: None,
-        timeout_ms: None,
-    });
+) -> Result<Response, RequestError> {
+    let opts = options.unwrap_or_default();
 
     let mut agent_builder = ureq::AgentBuilder::new();
     if let Some(ms) = opts.timeout_ms {
@@ -49,13 +20,15 @@ pub fn request_bin(
     }
     let agent = agent_builder.build();
 
-    let mut request = agent.request(&opts.method, url_str);
-    for (name, value) in &opts.headers {
-        request = request.set(name, value);
+    let mut request = agent.request_url(opts.method.as_deref().unwrap_or("GET"), &url);
+    if let Some(headers) = &opts.headers {
+        for (name, value) in headers {
+            request = request.set(name, value);
+        }
     }
 
     let response = match &opts.body {
-        Some(body) => request.send_string(body),
+        Some(body) => request.send_bytes(body),
         None => request.call(),
     };
 
@@ -77,7 +50,7 @@ pub fn request_bin(
                     response: None,
                 })?;
 
-            Ok(BinResponse {
+            Ok(Response {
                 status,
                 headers,
                 body,
@@ -101,7 +74,7 @@ pub fn request_bin(
                 }
                 return Err(RequestError {
                     message,
-                    response: Some(BinResponse {
+                    response: Some(Response {
                         status: code,
                         headers,
                         body,
@@ -114,20 +87,4 @@ pub fn request_bin(
             })
         }
     }
-}
-
-pub fn request_text(
-    url_str: &str,
-    options: Option<RequestOptions>,
-) -> Result<TextResponse, RequestError> {
-    let bin_result = request_bin(url_str, options)?;
-    let body_string = String::from_utf8(bin_result.body.clone()).map_err(|err| RequestError {
-        message: err.to_string(),
-        response: Some(bin_result.clone()),
-    })?;
-    Ok(TextResponse {
-        status: bin_result.status,
-        headers: bin_result.headers,
-        body: body_string,
-    })
 }

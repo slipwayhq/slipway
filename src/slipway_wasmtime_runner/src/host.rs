@@ -1,7 +1,7 @@
+use self::slipway_host::{BinResponse, RequestError, RequestOptions, ResolvedFont, TextResponse};
 use bytes::Bytes;
-use http::{BinResponse, RequestError, RequestOptions, TextResponse};
 use slipway_engine::ComponentExecutionContext;
-use tracing::{debug, error, info, trace, warn};
+use tracing::{error, info};
 use wasmtime::*;
 use wasmtime_wasi::{
     HostOutputStream, ResourceTable, StdoutStream, StreamResult, Subscribe, WasiCtx, WasiView,
@@ -43,56 +43,83 @@ impl WasiView for SlipwayHost<'_, '_, '_> {
     }
 }
 
-impl font::Host for SlipwayHost<'_, '_, '_> {
-    fn try_resolve(&mut self, font_stack: String) -> Option<font::ResolvedFont> {
-        slipway_host::fonts::try_resolve(font_stack).map(|resolved| font::ResolvedFont {
+impl self::slipway_host::Host for SlipwayHost<'_, '_, '_> {
+    fn try_resolve_font(&mut self, font_stack: String) -> Option<ResolvedFont> {
+        ::slipway_host::fonts::try_resolve(font_stack).map(|resolved| ResolvedFont {
             family: resolved.family,
             data: resolved.data,
         })
     }
-}
 
-impl callout::Host for SlipwayHost<'_, '_, '_> {
-    fn run(&mut self, handle: String, input: String) -> Result<String, ComponentError> {
-        slipway_host::run::run_component_callout(self.execution_context, &handle, &input)
-            .map_err(|e| e.into())
+    fn log_trace(&mut self, message: String) {
+        ::slipway_host::log::log_trace(message);
     }
 
-    fn get_text(&mut self, handle: String, path: String) -> Result<String, ComponentError> {
-        slipway_host::load::get_component_file_text(self.execution_context, &handle, &path)
-            .map_err(|e| e.into())
+    fn log_debug(&mut self, message: String) {
+        ::slipway_host::log::log_debug(message);
     }
 
-    fn get_bin(&mut self, handle: String, path: String) -> Result<Vec<u8>, ComponentError> {
-        slipway_host::load::get_component_file_bin(self.execution_context, &handle, &path)
-            .map_err(|e| e.into())
-    }
-}
-
-impl http::Host for SlipwayHost<'_, '_, '_> {
-    fn request_text(
-        &mut self,
-        url: String,
-        opts: Option<RequestOptions>,
-    ) -> Result<TextResponse, RequestError> {
-        slipway_host::http::request_text(&url, opts.map(Into::into))
-            .map(Into::into)
-            .map_err(Into::into)
+    fn log_info(&mut self, message: String) {
+        ::slipway_host::log::log_info(message);
     }
 
-    fn request_bin(
+    fn log_warn(&mut self, message: String) {
+        ::slipway_host::log::log_warn(message);
+    }
+
+    fn log_error(&mut self, message: String) {
+        ::slipway_host::log::log_error(message);
+    }
+
+    fn fetch_bin(
         &mut self,
         url: String,
         opts: Option<RequestOptions>,
     ) -> Result<BinResponse, RequestError> {
-        slipway_host::http::request_bin(&url, opts.map(Into::into))
+        ::slipway_host::fetch::fetch(self.execution_context, &url, opts.map(Into::into))
             .map(Into::into)
+            .map_err(Into::into)
+    }
+
+    fn fetch_text(
+        &mut self,
+        url: String,
+        opts: Option<RequestOptions>,
+    ) -> Result<TextResponse, RequestError> {
+        ::slipway_host::fetch::fetch(self.execution_context, &url, opts.map(Into::into))
+            .map(Into::into)
+            .map_err(Into::into)
+    }
+
+    fn run(&mut self, handle: String, input: String) -> Result<String, ComponentError> {
+        self.fetch_text(
+            format!("component://{}", handle),
+            Some(RequestOptions {
+                body: Some(input.into_bytes()),
+                method: None,
+                headers: None,
+                timeout_ms: None,
+            }),
+        )
+        .map(|v| v.body)
+        .map_err(Into::into)
+    }
+
+    fn load_bin(&mut self, handle: String, path: String) -> Result<Vec<u8>, ComponentError> {
+        self.fetch_bin(format!("component://{}/{}", handle, path), None)
+            .map(|v| v.body)
+            .map_err(Into::into)
+    }
+
+    fn load_text(&mut self, handle: String, path: String) -> Result<String, ComponentError> {
+        self.fetch_text(format!("component://{}/{}", handle, path), None)
+            .map(|v| v.body)
             .map_err(Into::into)
     }
 }
 
-impl From<slipway_host::http::RequestError> for RequestError {
-    fn from(e: slipway_host::http::RequestError) -> Self {
+impl From<::slipway_host::fetch::RequestError> for RequestError {
+    fn from(e: ::slipway_host::fetch::RequestError) -> Self {
         RequestError {
             message: e.message,
             response: e.response.map(|r| BinResponse {
@@ -104,9 +131,15 @@ impl From<slipway_host::http::RequestError> for RequestError {
     }
 }
 
-impl From<RequestOptions> for slipway_host::http::RequestOptions {
+impl From<RequestError> for ComponentError {
+    fn from(e: RequestError) -> Self {
+        ComponentError { message: e.message }
+    }
+}
+
+impl From<RequestOptions> for ::slipway_host::fetch::RequestOptions {
     fn from(opts: RequestOptions) -> Self {
-        slipway_host::http::RequestOptions {
+        ::slipway_host::fetch::RequestOptions {
             headers: opts.headers,
             method: opts.method,
             body: opts.body,
@@ -115,8 +148,8 @@ impl From<RequestOptions> for slipway_host::http::RequestOptions {
     }
 }
 
-impl From<slipway_host::http::BinResponse> for BinResponse {
-    fn from(r: slipway_host::http::BinResponse) -> Self {
+impl From<::slipway_host::fetch::Response> for BinResponse {
+    fn from(r: ::slipway_host::fetch::Response) -> Self {
         BinResponse {
             status: r.status,
             headers: r.headers,
@@ -125,43 +158,21 @@ impl From<slipway_host::http::BinResponse> for BinResponse {
     }
 }
 
-impl From<slipway_host::http::TextResponse> for TextResponse {
-    fn from(r: slipway_host::http::TextResponse) -> Self {
+impl From<::slipway_host::fetch::Response> for TextResponse {
+    fn from(r: ::slipway_host::fetch::Response) -> Self {
         TextResponse {
             status: r.status,
             headers: r.headers,
-            body: r.body,
+            body: String::from_utf8_lossy(&r.body).into_owned(),
         }
     }
 }
 
 impl slipway::component::types::Host for SlipwayHost<'_, '_, '_> {}
 
-impl From<slipway_host::ComponentError> for ComponentError {
-    fn from(e: slipway_host::ComponentError) -> Self {
+impl From<::slipway_host::ComponentError> for ComponentError {
+    fn from(e: ::slipway_host::ComponentError) -> Self {
         ComponentError { message: e.message }
-    }
-}
-
-impl log::Host for SlipwayHost<'_, '_, '_> {
-    fn trace(&mut self, message: String) {
-        trace!(message);
-    }
-
-    fn debug(&mut self, message: String) {
-        debug!(message);
-    }
-
-    fn info(&mut self, message: String) {
-        info!(message);
-    }
-
-    fn warn(&mut self, message: String) {
-        warn!(message);
-    }
-
-    fn error(&mut self, message: String) {
-        error!(message);
     }
 }
 

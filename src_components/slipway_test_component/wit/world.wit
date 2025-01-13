@@ -7,44 +7,39 @@ interface types {
 }
 
 world slipway-component {
-
-    import font: interface {
-
+    import slipway-host: interface {
         record resolved-font {
             family: string,
             data: list<u8>,
         }
 
-        try-resolve: func(font-stack: string) -> option<resolved-font>;
-    }
+        try-resolve-font: func(font-stack: string) -> option<resolved-font>;
 
-    import callout: interface {
-        use types.{component-error};
+        log-trace: func(message: string);
+        log-debug: func(message: string);
+        log-info: func(message: string);
+        log-warn: func(message: string);
+        log-error: func(message: string);
 
-        run: func(handle: string, input: string) -> result<string, component-error>;
-
-        get-text: func(handle: string, path: string) -> result<string, component-error>;
-        get-bin: func(handle: string, path: string) -> result<list<u8>, component-error>;
-    }
-
-    import log: interface {
-        trace: func(message: string);
-        debug: func(message: string);
-        info: func(message: string);
-        warn: func(message: string);
-        error: func(message: string);
-    }
-
-    import http: interface {
         type header = tuple<string, string>;
 
         record request-options {
-            method: string,
-            headers: list<header>,
-            /// Optional request body for POST, PUT, etc.
-            body: option<string>,
-            /// Timeout in milliseconds.
+            method: option<string>,
+            body: option<list<u8>>,
+            headers: option<list<header>>,
             timeout-ms: option<u32>,
+        }
+
+        record bin-response {
+            status: u16,
+            headers: list<header>,
+            body: list<u8>,
+        }
+
+        record text-response {
+            status: u16,
+            headers: list<header>,
+            body: string,
         }
 
         record request-error {
@@ -52,28 +47,15 @@ world slipway-component {
             response: option<bin-response>
         }
 
-        record bin-response {
-            /// HTTP status code (e.g., 200, 404, etc.).
-            status: u16,
-            /// Any response headers (e.g. Content-Type).
-            headers: list<header>,
-            /// Response body as bytes.
-            body: list<u8>,
-        }
+        use types.{component-error};
 
-        record text-response {
-            /// HTTP status code (e.g., 200, 404, etc.).
-            status: u16,
-            /// Any response headers (e.g. Content-Type).
-            headers: list<header>,
-            /// Response body as bytes.
-            body: string,
-        }
-
-        request-text: func(uri: string, opts: option<request-options>) -> result<text-response, request-error>;
-        request-bin: func(uri: string, opts: option<request-options>) -> result<bin-response, request-error>;
+        fetch-bin: func(uri: string, options: option<request-options>) -> result<bin-response, request-error>;
+        fetch-text: func(uri: string, options: option<request-options>) -> result<text-response, request-error>;
+        run: func(handle: string, input: string) -> result<string, component-error>;
+        load-bin: func(handle: string, path: string) -> result<list<u8>, component-error>;
+        load-text: func(handle: string, path: string) -> result<string, component-error>;
     }
-
+    
     use types.{component-error};
     export run: func(input: string) -> result<string, component-error>;
 }

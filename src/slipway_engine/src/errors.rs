@@ -152,7 +152,7 @@ pub trait SchemaValidationFailure {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct JsonTypeDefValidationFailure {
     /// A path to the part of the instance that was rejected.
     pub instance_path: Vec<String>,
@@ -168,6 +168,15 @@ impl SchemaValidationFailure for JsonTypeDefValidationFailure {
 
     fn schema_path(&self) -> &Vec<String> {
         &self.schema_path
+    }
+}
+
+impl fmt::Debug for JsonTypeDefValidationFailure {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("JsonTypeDefValidationFailure")
+            .field("instance_path", &self.instance_path_str())
+            .field("schema_path", &self.schema_path_str())
+            .finish()
     }
 }
 
@@ -192,7 +201,7 @@ impl From<jtd::ValidationErrorIndicator<'_>> for JsonTypeDefValidationFailure {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct JsonSchemaValidationFailure {
     /// Type of validation error.
     pub kind: Arc<ValidationErrorKind>,
@@ -221,5 +230,27 @@ impl SchemaValidationFailure for JsonSchemaValidationFailure {
 
     fn schema_path(&self) -> &Vec<String> {
         &self.schema_path
+    }
+}
+
+impl fmt::Debug for JsonSchemaValidationFailure {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("JsonTypeDefValidationFailure")
+            .field("kind", &self.kind)
+            .field("instance_path", &self.instance_path_str())
+            .field("schema_path", &self.schema_path_str())
+            .finish()
+    }
+}
+
+impl fmt::Display for JsonSchemaValidationFailure {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Kind: {:#?}\nInstance path: {}\nSchema path: {}",
+            self.kind,
+            self.instance_path_str(),
+            self.schema_path_str()
+        )
     }
 }

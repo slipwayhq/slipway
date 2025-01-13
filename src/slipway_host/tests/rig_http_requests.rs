@@ -70,6 +70,7 @@ fn run(file_type: &str, status_code: u16) {
     let output = get_rig_output(rig, "test");
     test_server.stop();
 
+    // Errors contain a binary body in the response, so for errors we'd get the binary size back.
     let expected_length = if file_type == "text" && status_code < 400 {
         BODY.len()
     } else {
