@@ -11,7 +11,10 @@ struct Component;
 
 impl Guest for Component {
     fn run(input: String) -> Result<String, ComponentError> {
-        let input: Input = serde_json::from_str(&input).expect("should parse JSON from stdin");
+        let input: Input = serde_json::from_str(&input).map_err(|e| ComponentError {
+            message: format!("{e:#?}"),
+            inner: vec![],
+        })?;
 
         run_inner(input)
     }
@@ -96,8 +99,10 @@ fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types
             };
             let response = match response_type {
                 DataResultType::Text => {
-                    bindings::slipway_host::fetch_text(&url, Some(&request_options))
-                        .map(|r| (r.status, r.body.len()))
+                    bindings::slipway_host::fetch_text(&url, Some(&request_options)).map(|r| {
+                        bindings::slipway_host::log_error(&format!("{}", r.body));
+                        (r.status, r.body.len())
+                    })
                 }
                 DataResultType::Binary => {
                     bindings::slipway_host::fetch_bin(&url, Some(&request_options))

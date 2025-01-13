@@ -6,7 +6,7 @@ use slipway_engine::{ComponentHandle, ComponentRigging, Rig, Rigging, SlipwayRef
 
 mod common;
 
-#[test]
+#[test_log::test]
 fn test_fetch_callout() {
     let rig: Rig = Rig::for_test(Rigging {
         components: [(
@@ -36,8 +36,8 @@ fn test_fetch_callout() {
 
     let output = get_rig_output(rig, "test");
 
-    // Expected: {"value":4}
-    let expected_length = 11;
+    // Expected {"value":13} because test_2 component adds 10 instead of 1.
+    let expected_length = 12;
 
     assert_eq!(
         output.value,

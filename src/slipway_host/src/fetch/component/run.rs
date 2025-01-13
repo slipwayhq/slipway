@@ -30,8 +30,17 @@ pub(super) fn run_component_from_url(
         })?;
 
     for (path, value) in url.query_pairs() {
-        let value = if let Ok(float_value) = value.parse::<f64>() {
-            serde_json::Value::Number(serde_json::Number::from_f64(float_value).unwrap())
+        let value = if let Ok(int_value) = value.parse::<i64>() {
+            serde_json::Value::Number(serde_json::Number::from(int_value))
+        } else if let Ok(float_value) = value.parse::<f64>() {
+            if float_value.is_finite() {
+                serde_json::Value::Number(
+                    serde_json::Number::from_f64(float_value)
+                        .expect("finite float should convert to JSON number"),
+                )
+            } else {
+                serde_json::Value::String(value.into_owned())
+            }
         } else if let Ok(bool_value) = value.parse::<bool>() {
             serde_json::Value::Bool(bool_value)
         } else {
