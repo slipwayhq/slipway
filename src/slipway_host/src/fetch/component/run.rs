@@ -19,12 +19,14 @@ pub(super) fn run_component_from_url(
             |v| serde_json::from_slice(&v),
         )
         .map_err(|e| {
-            RequestError::for_message(format!(
-                "Failed to parse body as JSON for component {}, url: {}\n{:#?}",
-                execution_context.call_chain.component_handle_trail(),
-                url,
-                e
-            ))
+            RequestError::for_error(
+                format!(
+                    "Failed to parse body as JSON for component {}, url: {}",
+                    execution_context.call_chain.component_handle_trail(),
+                    url,
+                ),
+                Some(format!("{e}")),
+            )
         })?;
 
     for (path, value) in url.query_pairs() {

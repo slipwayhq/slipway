@@ -29,6 +29,7 @@ mod load;
 mod parse;
 mod special_components;
 pub mod utils;
+pub mod custom_iter_tools;
 
 #[cfg(any(feature = "unstable-test-utils", test))]
 pub mod test_utils;

@@ -22,13 +22,25 @@ pub struct Response {
 #[derive(Debug)]
 pub struct RequestError {
     pub message: String,
+    pub inner: Vec<String>,
     pub response: Option<Response>,
 }
 
 impl RequestError {
-    pub fn for_message(message: String) -> RequestError {
+    pub fn for_error(message: String, error: Option<String>) -> RequestError {
         RequestError {
             message,
+            inner: match error {
+                None => vec![],
+                Some(e) => vec![format!("{}", e)],
+            },
+            response: None,
+        }
+    }
+    pub fn for_inner(message: String, inner: Vec<String>) -> RequestError {
+        RequestError {
+            message,
+            inner,
             response: None,
         }
     }
@@ -36,7 +48,7 @@ impl RequestError {
 
 impl From<crate::ComponentError> for RequestError {
     fn from(value: crate::ComponentError) -> Self {
-        RequestError::for_message(value.message)
+        RequestError::for_inner(value.message, value.inner)
     }
 }
 
@@ -46,22 +58,27 @@ pub fn fetch(
     options: Option<RequestOptions>,
 ) -> Result<Response, RequestError> {
     let url = Url::parse(url_str).map_err(|e| {
-        RequestError::for_message(format!(
-            "Failed to parse URL from component {}: {}\n{:#?}",
-            execution_context.call_chain.component_handle_trail(),
-            url_str,
-            e
-        ))
+        RequestError::for_error(
+            format!(
+                "Failed to parse URL from component {}: {}",
+                execution_context.call_chain.component_handle_trail(),
+                url_str,
+            ),
+            Some(format!("{e}")),
+        )
     })?;
     let scheme = url.scheme();
 
     match scheme {
         "https" | "http" => http::fetch_http(url, options),
         "component" => component::fetch_component_data(execution_context, &url, options),
-        _ => Err(RequestError::for_message(format!(
-            "Unsupported URL scheme for URL from component {}: {}",
-            execution_context.call_chain.component_handle_trail(),
-            url_str
-        ))),
+        _ => Err(RequestError::for_error(
+            format!(
+                "Unsupported URL scheme for URL from component {}: {}",
+                execution_context.call_chain.component_handle_trail(),
+                url_str
+            ),
+            None,
+        )),
     }
 }

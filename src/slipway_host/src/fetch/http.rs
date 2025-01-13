@@ -46,7 +46,8 @@ pub(super) fn fetch_http(
                 .into_reader()
                 .read_to_end(&mut body)
                 .map_err(|e| RequestError {
-                    message: format!("Reading response failed: {}", e),
+                    message: "Reading HTTP response body failed.".to_string(),
+                    inner: vec![format!("{}", e)],
                     response: None,
                 })?;
 
@@ -68,12 +69,14 @@ pub(super) fn fetch_http(
                 let mut body = vec![];
                 if let Err(e) = resp.into_reader().read_to_end(&mut body) {
                     return Err(RequestError {
-                        message: format!("Reading error response failed: {}", e),
+                        message: "Reading error response failed.".to_string(),
+                        inner: vec![format!("{}", e)],
                         response: None,
                     });
                 }
                 return Err(RequestError {
                     message,
+                    inner: vec![],
                     response: Some(Response {
                         status: code,
                         headers,
@@ -83,6 +86,7 @@ pub(super) fn fetch_http(
             }
             Err(RequestError {
                 message,
+                inner: vec![],
                 response: None,
             })
         }

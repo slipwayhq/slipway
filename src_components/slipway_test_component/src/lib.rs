@@ -62,16 +62,14 @@ fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types
             let output = match file_type {
                 // Check that we successfully get the file contents and that the result contains data.
                 DataResultType::Text => {
-                    let text = bindings::slipway_host::load_text(&handle, &path)
-                        .map_err(|v| ComponentError { message: v.message })?;
+                    let text = bindings::slipway_host::load_text(&handle, &path)?;
                     assert!(text.len() > 0);
                     Output {
                         value: text.len() as i32,
                     }
                 }
                 DataResultType::Binary => {
-                    let bin = bindings::slipway_host::load_bin(&handle, &path)
-                        .map_err(|v| ComponentError { message: v.message })?;
+                    let bin = bindings::slipway_host::load_bin(&handle, &path)?;
                     assert!(bin.len() > 0);
                     Output {
                         value: bin.len() as i32,
@@ -111,6 +109,7 @@ fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types
                 match response {
                     Ok(_) => Err(ComponentError {
                         message: "Expected error response, got success".to_string(),
+                        inner: vec![],
                     }),
                     Err(e) => {
                         let response_len = e.response.as_ref().unwrap().body.len();
@@ -129,7 +128,10 @@ fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types
                         })
                     }
                     Err(e) => Err(ComponentError {
-                        message: format!("Expected successful response, got error: {:?}", e),
+                        message: format!("Expected successful response, got error."),
+                        inner: std::iter::once(e.message)
+                            .chain(e.inner.into_iter())
+                            .collect(),
                     }),
                 }
             }?;
@@ -144,6 +146,7 @@ fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types
         Input::Panic => panic!("slipway-test-component-panic"),
         Input::Error => Err(ComponentError {
             message: "slipway-test-component-error".to_string(),
+            inner: vec![],
         }),
     }
 }

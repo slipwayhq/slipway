@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use itertools::Itertools;
-
-use crate::{errors::RigError, parse::types::primitives::ComponentHandle};
+use crate::{
+    custom_iter_tools::CustomIterTools, errors::RigError, parse::types::primitives::ComponentHandle,
+};
 
 const CYCLE_DETECTED_ERROR: &str = "Cycle detected in the graph";
 

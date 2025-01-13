@@ -112,9 +112,11 @@ fn assert_run_errors_with(rig: Rig, expected_messages: &[&str]) {
                 component_runner: _,
                 error,
             } => match error {
-                RunComponentError::RunCallReturnedError { message } => {
+                RunComponentError::RunCallReturnedError { message, inner } => {
                     for expected_message in expected_messages {
-                        if !message.contains(expected_message) {
+                        if !message.contains(expected_message)
+                            && !inner.iter().any(|i| i.contains(expected_message))
+                        {
                             panic!("Error message did not contain \"{}\"", expected_message);
                         }
                     }
@@ -134,7 +136,6 @@ fn assert_run_errors_with(rig: Rig, expected_messages: &[&str]) {
     match result {
         Ok(_) => panic!("Expected error"),
         Err(error) => {
-            println!("{}", error);
             match_inner(&error.into(), expected_messages);
         }
     }

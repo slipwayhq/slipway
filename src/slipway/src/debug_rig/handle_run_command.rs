@@ -51,7 +51,7 @@ mod tests {
     use common_test_utils::{get_slipway_test_components_path, SLIPWAY_TEST_COMPONENT_NAME};
     use slipway_wasmtime_runner::WASMTIME_COMPONENT_RUNNER_IDENTIFIER;
 
-    use crate::{component_runners::get_component_runners, host_error::HostError};
+    use crate::component_runners::get_component_runners;
 
     use super::*;
 
@@ -130,7 +130,7 @@ mod tests {
         );
 
         match maybe_state {
-            Err(SlipwayDebugError::RunError(RunError::<HostError>::RunComponentFailed {
+            Err(SlipwayDebugError::RunError(RunError::RunComponentFailed {
                 component_handle: _,
                 component_runner: _,
                 error: RunComponentError::RunCallFailed { source: _ },
@@ -159,14 +159,19 @@ mod tests {
         );
 
         match maybe_state {
-            Err(SlipwayDebugError::RunError(RunError::<HostError>::RunComponentFailed {
+            Err(SlipwayDebugError::RunError(RunError::RunComponentFailed {
                 component_handle,
                 component_runner,
-                error: RunComponentError::RunCallReturnedError { message: error },
+                error:
+                    RunComponentError::RunCallReturnedError {
+                        message: error,
+                        inner,
+                    },
             })) => {
                 assert_eq!(component_handle, handle);
                 assert_eq!(component_runner, WASMTIME_COMPONENT_RUNNER_IDENTIFIER);
                 assert_eq!(error, "slipway-test-component-error");
+                assert_eq!(inner.len(), 0);
             }
             Err(x) => panic!("Expected WasmExecutionFailed/RunCallFailed, got {}", x),
             Ok(_) => panic!("Expected WasmExecutionFailed/RunCallFailed, got result"),

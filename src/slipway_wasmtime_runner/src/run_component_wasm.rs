@@ -59,6 +59,7 @@ pub fn run_component_wasm(
             // The WASM component returned an error from it's `run` function.
             Err(error) => Err(RunComponentError::RunCallReturnedError {
                 message: error.message,
+                inner: error.inner,
             }),
             Ok(json_string) => {
                 // Deserialize the output JSON

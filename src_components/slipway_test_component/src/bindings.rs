@@ -19,13 +19,44 @@ pub unsafe fn _export_run_cabi<T: Guest>(arg0: *mut u8, arg1: usize) -> *mut u8 
         }
         Err(e) => {
             *ptr2.add(0).cast::<u8>() = (1i32) as u8;
-            let slipway::component::types::ComponentError { message: message4 } = e;
+            let slipway::component::types::ComponentError {
+                message: message4,
+                inner: inner4,
+            } = e;
             let vec5 = (message4.into_bytes()).into_boxed_slice();
             let ptr5 = vec5.as_ptr().cast::<u8>();
             let len5 = vec5.len();
             ::core::mem::forget(vec5);
             *ptr2.add(8).cast::<usize>() = len5;
             *ptr2.add(4).cast::<*mut u8>() = ptr5.cast_mut();
+            let vec7 = inner4;
+            let len7 = vec7.len();
+            let layout7 = _rt::alloc::Layout::from_size_align_unchecked(
+                vec7.len() * 8,
+                4,
+            );
+            let result7 = if layout7.size() != 0 {
+                let ptr = _rt::alloc::alloc(layout7).cast::<u8>();
+                if ptr.is_null() {
+                    _rt::alloc::handle_alloc_error(layout7);
+                }
+                ptr
+            } else {
+                ::core::ptr::null_mut()
+            };
+            for (i, e) in vec7.into_iter().enumerate() {
+                let base = result7.add(i * 8);
+                {
+                    let vec6 = (e.into_bytes()).into_boxed_slice();
+                    let ptr6 = vec6.as_ptr().cast::<u8>();
+                    let len6 = vec6.len();
+                    ::core::mem::forget(vec6);
+                    *base.add(4).cast::<usize>() = len6;
+                    *base.add(0).cast::<*mut u8>() = ptr6.cast_mut();
+                }
+            }
+            *ptr2.add(16).cast::<usize>() = len7;
+            *ptr2.add(12).cast::<*mut u8>() = result7;
         }
     };
     ptr2
@@ -44,6 +75,19 @@ pub unsafe fn __post_return_run<T: Guest>(arg0: *mut u8) {
             let l3 = *arg0.add(4).cast::<*mut u8>();
             let l4 = *arg0.add(8).cast::<usize>();
             _rt::cabi_dealloc(l3, l4, 1);
+            let l5 = *arg0.add(12).cast::<*mut u8>();
+            let l6 = *arg0.add(16).cast::<usize>();
+            let base9 = l5;
+            let len9 = l6;
+            for i in 0..len9 {
+                let base = base9.add(i * 8);
+                {
+                    let l7 = *base.add(0).cast::<*mut u8>();
+                    let l8 = *base.add(4).cast::<usize>();
+                    _rt::cabi_dealloc(l7, l8, 1);
+                }
+            }
+            _rt::cabi_dealloc(base9, len9 * 8, 4);
         }
     }
 }
@@ -63,8 +107,8 @@ macro_rules! __export_world_slipway_component_cabi {
 #[doc(hidden)]
 pub(crate) use __export_world_slipway_component_cabi;
 #[repr(align(4))]
-struct _RetArea([::core::mem::MaybeUninit<u8>; 12]);
-static mut _RET_AREA: _RetArea = _RetArea([::core::mem::MaybeUninit::uninit(); 12]);
+struct _RetArea([::core::mem::MaybeUninit<u8>; 20]);
+static mut _RET_AREA: _RetArea = _RetArea([::core::mem::MaybeUninit::uninit(); 20]);
 #[allow(dead_code)]
 pub mod slipway {
     #[allow(dead_code)]
@@ -78,6 +122,7 @@ pub mod slipway {
             #[derive(Clone)]
             pub struct ComponentError {
                 pub message: _rt::String,
+                pub inner: _rt::Vec<_rt::String>,
             }
             impl ::core::fmt::Debug for ComponentError {
                 fn fmt(
@@ -86,6 +131,7 @@ pub mod slipway {
                 ) -> ::core::fmt::Result {
                     f.debug_struct("ComponentError")
                         .field("message", &self.message)
+                        .field("inner", &self.inner)
                         .finish()
                 }
             }
@@ -172,12 +218,14 @@ pub mod slipway_host {
     #[derive(Clone)]
     pub struct RequestError {
         pub message: _rt::String,
+        pub inner: _rt::Vec<_rt::String>,
         pub response: Option<BinResponse>,
     }
     impl ::core::fmt::Debug for RequestError {
         fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
             f.debug_struct("RequestError")
                 .field("message", &self.message)
+                .field("inner", &self.inner)
                 .field("response", &self.response)
                 .finish()
         }
@@ -335,8 +383,8 @@ pub mod slipway_host {
         unsafe {
             let mut cleanup_list = _rt::Vec::new();
             #[repr(align(4))]
-            struct RetArea([::core::mem::MaybeUninit<u8>; 36]);
-            let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 36]);
+            struct RetArea([::core::mem::MaybeUninit<u8>; 44]);
+            let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 44]);
             let vec0 = uri;
             let ptr0 = vec0.as_ptr().cast::<u8>();
             let len0 = vec0.len();
@@ -569,50 +617,72 @@ pub mod slipway_host {
                         let l29 = *ptr13.add(8).cast::<usize>();
                         let len30 = l29;
                         let bytes30 = _rt::Vec::from_raw_parts(l28.cast(), len30, len30);
-                        let l31 = i32::from(*ptr13.add(12).cast::<u8>());
+                        let l31 = *ptr13.add(12).cast::<*mut u8>();
+                        let l32 = *ptr13.add(16).cast::<usize>();
+                        let base36 = l31;
+                        let len36 = l32;
+                        let mut result36 = _rt::Vec::with_capacity(len36);
+                        for i in 0..len36 {
+                            let base = base36.add(i * 8);
+                            let e36 = {
+                                let l33 = *base.add(0).cast::<*mut u8>();
+                                let l34 = *base.add(4).cast::<usize>();
+                                let len35 = l34;
+                                let bytes35 = _rt::Vec::from_raw_parts(
+                                    l33.cast(),
+                                    len35,
+                                    len35,
+                                );
+                                _rt::string_lift(bytes35)
+                            };
+                            result36.push(e36);
+                        }
+                        _rt::cabi_dealloc(base36, len36 * 8, 4);
+                        let l37 = i32::from(*ptr13.add(20).cast::<u8>());
                         RequestError {
                             message: _rt::string_lift(bytes30),
-                            response: match l31 {
+                            inner: result36,
+                            response: match l37 {
                                 0 => None,
                                 1 => {
                                     let e = {
-                                        let l32 = i32::from(*ptr13.add(16).cast::<u16>());
-                                        let l33 = *ptr13.add(20).cast::<*mut u8>();
-                                        let l34 = *ptr13.add(24).cast::<usize>();
-                                        let base41 = l33;
-                                        let len41 = l34;
-                                        let mut result41 = _rt::Vec::with_capacity(len41);
-                                        for i in 0..len41 {
-                                            let base = base41.add(i * 16);
-                                            let e41 = {
-                                                let l35 = *base.add(0).cast::<*mut u8>();
-                                                let l36 = *base.add(4).cast::<usize>();
-                                                let len37 = l36;
-                                                let bytes37 = _rt::Vec::from_raw_parts(
-                                                    l35.cast(),
-                                                    len37,
-                                                    len37,
+                                        let l38 = i32::from(*ptr13.add(24).cast::<u16>());
+                                        let l39 = *ptr13.add(28).cast::<*mut u8>();
+                                        let l40 = *ptr13.add(32).cast::<usize>();
+                                        let base47 = l39;
+                                        let len47 = l40;
+                                        let mut result47 = _rt::Vec::with_capacity(len47);
+                                        for i in 0..len47 {
+                                            let base = base47.add(i * 16);
+                                            let e47 = {
+                                                let l41 = *base.add(0).cast::<*mut u8>();
+                                                let l42 = *base.add(4).cast::<usize>();
+                                                let len43 = l42;
+                                                let bytes43 = _rt::Vec::from_raw_parts(
+                                                    l41.cast(),
+                                                    len43,
+                                                    len43,
                                                 );
-                                                let l38 = *base.add(8).cast::<*mut u8>();
-                                                let l39 = *base.add(12).cast::<usize>();
-                                                let len40 = l39;
-                                                let bytes40 = _rt::Vec::from_raw_parts(
-                                                    l38.cast(),
-                                                    len40,
-                                                    len40,
+                                                let l44 = *base.add(8).cast::<*mut u8>();
+                                                let l45 = *base.add(12).cast::<usize>();
+                                                let len46 = l45;
+                                                let bytes46 = _rt::Vec::from_raw_parts(
+                                                    l44.cast(),
+                                                    len46,
+                                                    len46,
                                                 );
-                                                (_rt::string_lift(bytes37), _rt::string_lift(bytes40))
+                                                (_rt::string_lift(bytes43), _rt::string_lift(bytes46))
                                             };
-                                            result41.push(e41);
+                                            result47.push(e47);
                                         }
-                                        _rt::cabi_dealloc(base41, len41 * 16, 4);
-                                        let l42 = *ptr13.add(28).cast::<*mut u8>();
-                                        let l43 = *ptr13.add(32).cast::<usize>();
-                                        let len44 = l43;
+                                        _rt::cabi_dealloc(base47, len47 * 16, 4);
+                                        let l48 = *ptr13.add(36).cast::<*mut u8>();
+                                        let l49 = *ptr13.add(40).cast::<usize>();
+                                        let len50 = l49;
                                         BinResponse {
-                                            status: l32 as u16,
-                                            headers: result41,
-                                            body: _rt::Vec::from_raw_parts(l42.cast(), len44, len44),
+                                            status: l38 as u16,
+                                            headers: result47,
+                                            body: _rt::Vec::from_raw_parts(l48.cast(), len50, len50),
                                         }
                                     };
                                     Some(e)
@@ -635,8 +705,8 @@ pub mod slipway_host {
         unsafe {
             let mut cleanup_list = _rt::Vec::new();
             #[repr(align(4))]
-            struct RetArea([::core::mem::MaybeUninit<u8>; 36]);
-            let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 36]);
+            struct RetArea([::core::mem::MaybeUninit<u8>; 44]);
+            let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 44]);
             let vec0 = uri;
             let ptr0 = vec0.as_ptr().cast::<u8>();
             let len0 = vec0.len();
@@ -870,50 +940,72 @@ pub mod slipway_host {
                         let l29 = *ptr13.add(8).cast::<usize>();
                         let len30 = l29;
                         let bytes30 = _rt::Vec::from_raw_parts(l28.cast(), len30, len30);
-                        let l31 = i32::from(*ptr13.add(12).cast::<u8>());
+                        let l31 = *ptr13.add(12).cast::<*mut u8>();
+                        let l32 = *ptr13.add(16).cast::<usize>();
+                        let base36 = l31;
+                        let len36 = l32;
+                        let mut result36 = _rt::Vec::with_capacity(len36);
+                        for i in 0..len36 {
+                            let base = base36.add(i * 8);
+                            let e36 = {
+                                let l33 = *base.add(0).cast::<*mut u8>();
+                                let l34 = *base.add(4).cast::<usize>();
+                                let len35 = l34;
+                                let bytes35 = _rt::Vec::from_raw_parts(
+                                    l33.cast(),
+                                    len35,
+                                    len35,
+                                );
+                                _rt::string_lift(bytes35)
+                            };
+                            result36.push(e36);
+                        }
+                        _rt::cabi_dealloc(base36, len36 * 8, 4);
+                        let l37 = i32::from(*ptr13.add(20).cast::<u8>());
                         RequestError {
                             message: _rt::string_lift(bytes30),
-                            response: match l31 {
+                            inner: result36,
+                            response: match l37 {
                                 0 => None,
                                 1 => {
                                     let e = {
-                                        let l32 = i32::from(*ptr13.add(16).cast::<u16>());
-                                        let l33 = *ptr13.add(20).cast::<*mut u8>();
-                                        let l34 = *ptr13.add(24).cast::<usize>();
-                                        let base41 = l33;
-                                        let len41 = l34;
-                                        let mut result41 = _rt::Vec::with_capacity(len41);
-                                        for i in 0..len41 {
-                                            let base = base41.add(i * 16);
-                                            let e41 = {
-                                                let l35 = *base.add(0).cast::<*mut u8>();
-                                                let l36 = *base.add(4).cast::<usize>();
-                                                let len37 = l36;
-                                                let bytes37 = _rt::Vec::from_raw_parts(
-                                                    l35.cast(),
-                                                    len37,
-                                                    len37,
+                                        let l38 = i32::from(*ptr13.add(24).cast::<u16>());
+                                        let l39 = *ptr13.add(28).cast::<*mut u8>();
+                                        let l40 = *ptr13.add(32).cast::<usize>();
+                                        let base47 = l39;
+                                        let len47 = l40;
+                                        let mut result47 = _rt::Vec::with_capacity(len47);
+                                        for i in 0..len47 {
+                                            let base = base47.add(i * 16);
+                                            let e47 = {
+                                                let l41 = *base.add(0).cast::<*mut u8>();
+                                                let l42 = *base.add(4).cast::<usize>();
+                                                let len43 = l42;
+                                                let bytes43 = _rt::Vec::from_raw_parts(
+                                                    l41.cast(),
+                                                    len43,
+                                                    len43,
                                                 );
-                                                let l38 = *base.add(8).cast::<*mut u8>();
-                                                let l39 = *base.add(12).cast::<usize>();
-                                                let len40 = l39;
-                                                let bytes40 = _rt::Vec::from_raw_parts(
-                                                    l38.cast(),
-                                                    len40,
-                                                    len40,
+                                                let l44 = *base.add(8).cast::<*mut u8>();
+                                                let l45 = *base.add(12).cast::<usize>();
+                                                let len46 = l45;
+                                                let bytes46 = _rt::Vec::from_raw_parts(
+                                                    l44.cast(),
+                                                    len46,
+                                                    len46,
                                                 );
-                                                (_rt::string_lift(bytes37), _rt::string_lift(bytes40))
+                                                (_rt::string_lift(bytes43), _rt::string_lift(bytes46))
                                             };
-                                            result41.push(e41);
+                                            result47.push(e47);
                                         }
-                                        _rt::cabi_dealloc(base41, len41 * 16, 4);
-                                        let l42 = *ptr13.add(28).cast::<*mut u8>();
-                                        let l43 = *ptr13.add(32).cast::<usize>();
-                                        let len44 = l43;
+                                        _rt::cabi_dealloc(base47, len47 * 16, 4);
+                                        let l48 = *ptr13.add(36).cast::<*mut u8>();
+                                        let l49 = *ptr13.add(40).cast::<usize>();
+                                        let len50 = l49;
                                         BinResponse {
-                                            status: l32 as u16,
-                                            headers: result41,
-                                            body: _rt::Vec::from_raw_parts(l42.cast(), len44, len44),
+                                            status: l38 as u16,
+                                            headers: result47,
+                                            body: _rt::Vec::from_raw_parts(l48.cast(), len50, len50),
                                         }
                                     };
                                     Some(e)
@@ -932,8 +1024,8 @@ pub mod slipway_host {
     pub fn run(handle: &str, input: &str) -> Result<_rt::String, ComponentError> {
         unsafe {
             #[repr(align(4))]
-            struct RetArea([::core::mem::MaybeUninit<u8>; 12]);
-            let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 12]);
+            struct RetArea([::core::mem::MaybeUninit<u8>; 20]);
+            let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 20]);
             let vec0 = handle;
             let ptr0 = vec0.as_ptr().cast::<u8>();
             let len0 = vec0.len();
@@ -970,8 +1062,30 @@ pub mod slipway_host {
                         let l8 = *ptr2.add(8).cast::<usize>();
                         let len9 = l8;
                         let bytes9 = _rt::Vec::from_raw_parts(l7.cast(), len9, len9);
+                        let l10 = *ptr2.add(12).cast::<*mut u8>();
+                        let l11 = *ptr2.add(16).cast::<usize>();
+                        let base15 = l10;
+                        let len15 = l11;
+                        let mut result15 = _rt::Vec::with_capacity(len15);
+                        for i in 0..len15 {
+                            let base = base15.add(i * 8);
+                            let e15 = {
+                                let l12 = *base.add(0).cast::<*mut u8>();
+                                let l13 = *base.add(4).cast::<usize>();
+                                let len14 = l13;
+                                let bytes14 = _rt::Vec::from_raw_parts(
+                                    l12.cast(),
+                                    len14,
+                                    len14,
+                                );
+                                _rt::string_lift(bytes14)
+                            };
+                            result15.push(e15);
+                        }
+                        _rt::cabi_dealloc(base15, len15 * 8, 4);
                         super::slipway::component::types::ComponentError {
                             message: _rt::string_lift(bytes9),
+                            inner: result15,
                         }
                     };
                     Err(e)
@@ -984,8 +1098,8 @@ pub mod slipway_host {
     pub fn load_bin(handle: &str, path: &str) -> Result<_rt::Vec<u8>, ComponentError> {
         unsafe {
             #[repr(align(4))]
-            struct RetArea([::core::mem::MaybeUninit<u8>; 12]);
-            let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 12]);
+            struct RetArea([::core::mem::MaybeUninit<u8>; 20]);
+            let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 20]);
             let vec0 = handle;
             let ptr0 = vec0.as_ptr().cast::<u8>();
             let len0 = vec0.len();
@@ -1021,8 +1135,30 @@ pub mod slipway_host {
                         let l8 = *ptr2.add(8).cast::<usize>();
                         let len9 = l8;
                         let bytes9 = _rt::Vec::from_raw_parts(l7.cast(), len9, len9);
+                        let l10 = *ptr2.add(12).cast::<*mut u8>();
+                        let l11 = *ptr2.add(16).cast::<usize>();
+                        let base15 = l10;
+                        let len15 = l11;
+                        let mut result15 = _rt::Vec::with_capacity(len15);
+                        for i in 0..len15 {
+                            let base = base15.add(i * 8);
+                            let e15 = {
+                                let l12 = *base.add(0).cast::<*mut u8>();
+                                let l13 = *base.add(4).cast::<usize>();
+                                let len14 = l13;
+                                let bytes14 = _rt::Vec::from_raw_parts(
+                                    l12.cast(),
+                                    len14,
+                                    len14,
+                                );
+                                _rt::string_lift(bytes14)
+                            };
+                            result15.push(e15);
+                        }
+                        _rt::cabi_dealloc(base15, len15 * 8, 4);
                         super::slipway::component::types::ComponentError {
                             message: _rt::string_lift(bytes9),
+                            inner: result15,
                         }
                     };
                     Err(e)
@@ -1035,8 +1171,8 @@ pub mod slipway_host {
     pub fn load_text(handle: &str, path: &str) -> Result<_rt::String, ComponentError> {
         unsafe {
             #[repr(align(4))]
-            struct RetArea([::core::mem::MaybeUninit<u8>; 12]);
-            let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 12]);
+            struct RetArea([::core::mem::MaybeUninit<u8>; 20]);
+            let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 20]);
             let vec0 = handle;
             let ptr0 = vec0.as_ptr().cast::<u8>();
             let len0 = vec0.len();
@@ -1073,8 +1209,30 @@ pub mod slipway_host {
                         let l8 = *ptr2.add(8).cast::<usize>();
                         let len9 = l8;
                         let bytes9 = _rt::Vec::from_raw_parts(l7.cast(), len9, len9);
+                        let l10 = *ptr2.add(12).cast::<*mut u8>();
+                        let l11 = *ptr2.add(16).cast::<usize>();
+                        let base15 = l10;
+                        let len15 = l11;
+                        let mut result15 = _rt::Vec::with_capacity(len15);
+                        for i in 0..len15 {
+                            let base = base15.add(i * 8);
+                            let e15 = {
+                                let l12 = *base.add(0).cast::<*mut u8>();
+                                let l13 = *base.add(4).cast::<usize>();
+                                let len14 = l13;
+                                let bytes14 = _rt::Vec::from_raw_parts(
+                                    l12.cast(),
+                                    len14,
+                                    len14,
+                                );
+                                _rt::string_lift(bytes14)
+                            };
+                            result15.push(e15);
+                        }
+                        _rt::cabi_dealloc(base15, len15 * 8, 4);
                         super::slipway::component::types::ComponentError {
                             message: _rt::string_lift(bytes9),
+                            inner: result15,
                         }
                     };
                     Err(e)
@@ -1206,29 +1364,29 @@ pub(crate) use __export_slipway_component_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:wit-bindgen:0.35.0:slipway:component@0.1.0:slipway-component:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 944] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xa8\x06\x01A\x02\x01\
-A\x09\x01B\x02\x01r\x01\x07messages\x04\0\x0fcomponent-error\x03\0\0\x03\0\x1dsl\
-ipway:component/types@0.1.0\x05\0\x02\x03\0\0\x0fcomponent-error\x03\0\x0fcompon\
-ent-error\x03\0\x01\x01B-\x02\x03\x02\x01\x01\x04\0\x0fcomponent-error\x03\0\0\x01\
-p}\x01r\x02\x06familys\x04data\x02\x04\0\x0dresolved-font\x03\0\x03\x01o\x02ss\x04\
-\0\x06header\x03\0\x05\x01ks\x01k\x02\x01p\x06\x01k\x09\x01ky\x01r\x04\x06method\
-\x07\x04body\x08\x07headers\x0a\x0atimeout-ms\x0b\x04\0\x0frequest-options\x03\0\
-\x0c\x01r\x03\x06status{\x07headers\x09\x04body\x02\x04\0\x0cbin-response\x03\0\x0e\
-\x01r\x03\x06status{\x07headers\x09\x04bodys\x04\0\x0dtext-response\x03\0\x10\x01\
-k\x0f\x01r\x02\x07messages\x08response\x12\x04\0\x0drequest-error\x03\0\x13\x01k\
-\x04\x01@\x01\x0afont-stacks\0\x15\x04\0\x10try-resolve-font\x01\x16\x01@\x01\x07\
-messages\x01\0\x04\0\x09log-trace\x01\x17\x04\0\x09log-debug\x01\x17\x04\0\x08lo\
-g-info\x01\x17\x04\0\x08log-warn\x01\x17\x04\0\x09log-error\x01\x17\x01k\x0d\x01\
-j\x01\x0f\x01\x14\x01@\x02\x03uris\x07options\x18\0\x19\x04\0\x09fetch-bin\x01\x1a\
-\x01j\x01\x11\x01\x14\x01@\x02\x03uris\x07options\x18\0\x1b\x04\0\x0afetch-text\x01\
-\x1c\x01j\x01s\x01\x01\x01@\x02\x06handles\x05inputs\0\x1d\x04\0\x03run\x01\x1e\x01\
-j\x01\x02\x01\x01\x01@\x02\x06handles\x04paths\0\x1f\x04\0\x08load-bin\x01\x20\x01\
-@\x02\x06handles\x04paths\0\x1d\x04\0\x09load-text\x01!\x03\0\x0cslipway-host\x05\
-\x03\x01j\x01s\x01\x02\x01@\x01\x05inputs\0\x04\x04\0\x03run\x01\x05\x04\0)slipw\
-ay:component/slipway-component@0.1.0\x04\0\x0b\x17\x01\0\x11slipway-component\x03\
-\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.220.0\x10wit-\
-bindgen-rust\x060.35.0";
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 964] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xbc\x06\x01A\x02\x01\
+A\x09\x01B\x03\x01ps\x01r\x02\x07messages\x05inner\0\x04\0\x0fcomponent-error\x03\
+\0\x01\x03\0\x1dslipway:component/types@0.1.0\x05\0\x02\x03\0\0\x0fcomponent-err\
+or\x03\0\x0fcomponent-error\x03\0\x01\x01B.\x02\x03\x02\x01\x01\x04\0\x0fcompone\
+nt-error\x03\0\0\x01p}\x01r\x02\x06familys\x04data\x02\x04\0\x0dresolved-font\x03\
+\0\x03\x01o\x02ss\x04\0\x06header\x03\0\x05\x01ks\x01k\x02\x01p\x06\x01k\x09\x01\
+ky\x01r\x04\x06method\x07\x04body\x08\x07headers\x0a\x0atimeout-ms\x0b\x04\0\x0f\
+request-options\x03\0\x0c\x01r\x03\x06status{\x07headers\x09\x04body\x02\x04\0\x0c\
+bin-response\x03\0\x0e\x01r\x03\x06status{\x07headers\x09\x04bodys\x04\0\x0dtext\
+-response\x03\0\x10\x01ps\x01k\x0f\x01r\x03\x07messages\x05inner\x12\x08response\
+\x13\x04\0\x0drequest-error\x03\0\x14\x01k\x04\x01@\x01\x0afont-stacks\0\x16\x04\
+\0\x10try-resolve-font\x01\x17\x01@\x01\x07messages\x01\0\x04\0\x09log-trace\x01\
+\x18\x04\0\x09log-debug\x01\x18\x04\0\x08log-info\x01\x18\x04\0\x08log-warn\x01\x18\
+\x04\0\x09log-error\x01\x18\x01k\x0d\x01j\x01\x0f\x01\x15\x01@\x02\x03uris\x07op\
+tions\x19\0\x1a\x04\0\x09fetch-bin\x01\x1b\x01j\x01\x11\x01\x15\x01@\x02\x03uris\
+\x07options\x19\0\x1c\x04\0\x0afetch-text\x01\x1d\x01j\x01s\x01\x01\x01@\x02\x06\
+handles\x05inputs\0\x1e\x04\0\x03run\x01\x1f\x01j\x01\x02\x01\x01\x01@\x02\x06ha\
+ndles\x04paths\0\x20\x04\0\x08load-bin\x01!\x01@\x02\x06handles\x04paths\0\x1e\x04\
+\0\x09load-text\x01\"\x03\0\x0cslipway-host\x05\x03\x01j\x01s\x01\x02\x01@\x01\x05\
+inputs\0\x04\x04\0\x03run\x01\x05\x04\0)slipway:component/slipway-component@0.1.\
+0\x04\0\x0b\x17\x01\0\x11slipway-component\x03\0\0\0G\x09producers\x01\x0cproces\
+sed-by\x02\x0dwit-component\x070.220.0\x10wit-bindgen-rust\x060.35.0";
 #[inline(never)]
 #[doc(hidden)]
 pub fn __link_custom_section_describing_imports() {

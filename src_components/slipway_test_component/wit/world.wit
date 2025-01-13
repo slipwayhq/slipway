@@ -3,6 +3,7 @@ package slipway:component@0.1.0;
 interface types {
     record component-error {
         message: string,
+        inner: list<string>
     }
 }
 
@@ -44,6 +45,7 @@ world slipway-component {
 
         record request-error {
             message: string,
+            inner: list<string>,
             response: option<bin-response>
         }
 

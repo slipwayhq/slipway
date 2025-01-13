@@ -28,14 +28,14 @@ pub enum RunComponentError {
     #[error("Execution error.\n{0}")]
     GenericError(#[from] anyhow::Error),
 
-    #[error("Execution error.\n{0}")]
+    #[error("{0}")]
     Other(String),
 
-    #[error("Component run call failed.\nAdditional details: {source:?}")]
+    #[error("{source}")]
     RunCallFailed { source: anyhow::Error },
 
-    #[error("Component returned an error: {message}")]
-    RunCallReturnedError { message: String },
+    #[error("Component returned an error: {message}\nInner errors:\n{inner:#?}")]
+    RunCallReturnedError { message: String, inner: Vec<String> },
 
     #[error("Serializing input JSON failed.\n{source}")]
     SerializeInputFailed { source: serde_json::Error },

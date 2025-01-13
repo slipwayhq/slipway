@@ -9,4 +9,5 @@ pub const SLIPWAY_COMPONENT_WASM_FILE_NAME: &str = "slipway_component.wasm";
 // so use our own struct.
 pub struct ComponentError {
     pub message: String,
+    pub inner: Vec<String>,
 }

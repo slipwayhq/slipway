@@ -19,11 +19,13 @@ pub(super) fn get_component_file_bin(
         .callout_context
         .get_component_reference_for_handle(&handle)
         .map_err(|e| {
-            RequestError::for_message(format!(
-                "Failed to find component to load binary file at \"{}\":\n{}",
-                handle_trail(),
-                e
-            ))
+            RequestError::for_error(
+                format!(
+                    "Failed to find component to load binary file at \"{}\"",
+                    handle_trail(),
+                ),
+                Some(format!("{e}")),
+            )
         })?;
 
     let component = execution_context.component_cache.get(component_reference);
@@ -31,12 +33,14 @@ pub(super) fn get_component_file_bin(
     let path = sanitize_slashes(path);
 
     let bin = component.files.get_bin(path.as_ref()).map_err(|e| {
-        RequestError::for_message(format!(
-            "Failed to load file \"{}\" file from component \"{}\":\n{}",
-            path,
-            handle_trail(),
-            e
-        ))
+        RequestError::for_error(
+            format!(
+                "Failed to load file \"{}\" file from component \"{}\"",
+                path,
+                handle_trail(),
+            ),
+            Some(format!("{e}")),
+        )
     })?;
 
     Ok(Response {

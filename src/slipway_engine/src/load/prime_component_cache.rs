@@ -3,9 +3,8 @@ use std::{
     sync::Arc,
 };
 
-use itertools::Itertools;
-
 use crate::{
+    custom_iter_tools::CustomIterTools,
     errors::{ComponentLoadError, ComponentLoadErrorInner},
     load::ComponentsLoader,
     parse::parse_schema,
@@ -23,7 +22,7 @@ pub(super) fn prime_component_cache(
     let mut loaded_component_references: HashSet<SlipwayReference> = HashSet::new();
 
     while !pending_component_references.is_empty() {
-        let next = pending_component_references.drain().collect_vec();
+        let next = pending_component_references.drain().collect::<Vec<_>>();
         let loaded_components = components_loader.load_components(&next);
         loaded_component_references.extend(next);
 

@@ -6,7 +6,6 @@ authors.workspace = true
 
 [dependencies]
 async-trait = "0.1.73"
-itertools = "0.13.0"
 jsonpath-rust = "0.7.0"
 jtd = { workspace = true }
 once_cell = "1.18.0"

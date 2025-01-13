@@ -2,7 +2,8 @@ use std::{collections::HashMap, rc::Rc, sync::Arc};
 
 use slipway_engine::{
     run_component, CallChain, ComponentExecutionContext, ComponentHandle, ComponentOutput,
-    ComponentRunner, Immutable, Instruction, RigExecutionState, RigSession, RunError,
+    ComponentRunner, Immutable, Instruction, RigExecutionState, RigSession, RunComponentError,
+    RunError,
 };
 use tracing::{span, Level};
 
@@ -123,8 +124,6 @@ pub fn run_component_callout(
 ) -> Result<String, ComponentError> {
     let _span_ = span!(Level::INFO, "callout").entered();
 
-    println!("Running callout for component: {}\n{}", handle, input);
-
     let handle_trail = || -> String {
         execution_context
             .call_chain
@@ -133,15 +132,38 @@ pub fn run_component_callout(
 
     let result =
         slipway_engine::run_component_callout::<anyhow::Error>(&handle, input, execution_context)
-            .map_err(|e| ComponentError {
-            message: format!("Failed to run callout \"{}\":\n{}", handle_trail(), e),
+            .map_err(|e| {
+            let mut inner_errors = Vec::new();
+            let message = format!("Failed to run component \"{}\"", handle_trail());
+
+            if let RunError::RunComponentFailed {
+                component_handle,
+                component_runner,
+                error: RunComponentError::RunCallReturnedError { message, inner },
+            } = &e
+            {
+                inner_errors.push(format!(
+                    "Run component failed for component \"{component_handle}\" using \"{component_runner}\" runner.",
+                ));
+
+                inner_errors.push(message.clone());
+                inner_errors.extend(inner.clone());
+            }
+            else {
+                inner_errors.push(format!("{}", e));
+            }
+
+            ComponentError {
+                message,
+                inner: inner_errors,
+            }
         })?;
 
     serde_json::to_string(&result.output).map_err(|e| ComponentError {
         message: format!(
-            "Failed to serialize output JSON for callout \"{}\":\n{}",
+            "Failed to serialize output JSON for callout \"{}\"",
             handle_trail(),
-            e
         ),
+        inner: vec![format!("{}", e)],
     })
 }

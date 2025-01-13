@@ -340,9 +340,7 @@ mod tests {
     }
 
     mod input_override {
-        use itertools::Itertools;
-
-        use crate::{BasicComponentCache, RigSession};
+        use crate::{custom_iter_tools::CustomIterTools, BasicComponentCache, RigSession};
 
         use super::*;
 

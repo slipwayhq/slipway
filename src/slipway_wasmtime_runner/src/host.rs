@@ -122,6 +122,7 @@ impl From<::slipway_host::fetch::RequestError> for RequestError {
     fn from(e: ::slipway_host::fetch::RequestError) -> Self {
         RequestError {
             message: e.message,
+            inner: e.inner,
             response: e.response.map(|r| BinResponse {
                 status: r.status,
                 headers: r.headers,
@@ -133,7 +134,18 @@ impl From<::slipway_host::fetch::RequestError> for RequestError {
 
 impl From<RequestError> for ComponentError {
     fn from(e: RequestError) -> Self {
-        ComponentError { message: e.message }
+        match e.response {
+            None => ComponentError {
+                message: e.message,
+                inner: e.inner,
+            },
+            Some(response) => ComponentError {
+                message: e.message,
+                inner: std::iter::once(format!("{:?}", response))
+                    .chain(e.inner)
+                    .collect(),
+            },
+        }
     }
 }
 
@@ -172,7 +184,10 @@ impl slipway::component::types::Host for SlipwayHost<'_, '_, '_> {}
 
 impl From<::slipway_host::ComponentError> for ComponentError {
     fn from(e: ::slipway_host::ComponentError) -> Self {
-        ComponentError { message: e.message }
+        ComponentError {
+            message: e.message,
+            inner: e.inner,
+        }
     }
 }
 
