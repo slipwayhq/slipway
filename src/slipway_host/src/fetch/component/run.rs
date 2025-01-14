@@ -3,7 +3,7 @@ use url::Url;
 
 use crate::run::run_component_callout;
 
-use super::{apply_json_change, RequestError, RequestOptions, BinResponse};
+use super::{apply_json_change, BinResponse, RequestError, RequestOptions};
 
 pub(super) fn run_component_from_url(
     execution_context: &ComponentExecutionContext,
@@ -54,7 +54,7 @@ pub(super) fn run_component_from_url(
 
     Ok(BinResponse {
         status: 200,
-        headers: vec![],
+        headers: vec![("content-type".to_string(), "application/json".to_string())],
         body: result_str.into_bytes(),
     })
 }
