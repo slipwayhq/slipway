@@ -6,6 +6,7 @@ use self::types::{Component, Rig};
 
 mod parse_schema;
 pub(crate) mod types;
+pub(crate) mod url;
 
 pub use parse_schema::parse_schema;
 

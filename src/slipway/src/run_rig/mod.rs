@@ -17,6 +17,7 @@ pub(super) fn run_rig<W: Write>(
     w: &mut W,
     input: std::path::PathBuf,
     engine_permissions: Vec<ComponentPermission>,
+    registry_url: Option<String>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Launching {}", input.display())?;
     writeln!(w)?;
@@ -25,7 +26,14 @@ pub(super) fn run_rig<W: Write>(
         .with_context(|| format!("Failed to read component from {}", input.display()))?;
     let rig = parse_rig(&file_contents)?;
 
-    let component_cache = BasicComponentCache::primed(&rig, &BasicComponentsLoader::default())?;
+    let components_loader = match registry_url {
+        None => BasicComponentsLoader::default(),
+        Some(url) => BasicComponentsLoader::builder()
+            .registry_lookup_url(&url)
+            .build(),
+    };
+
+    let component_cache = BasicComponentCache::primed(&rig, &components_loader)?;
     let session = RigSession::new(rig, &component_cache);
 
     let mut event_handler = SlipwayRunEventHandler { w };

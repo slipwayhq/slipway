@@ -39,6 +39,9 @@ pub(crate) enum Commands {
 
         #[arg(short, long)]
         log_level: Option<String>,
+
+        #[arg(short, long)]
+        registry_url: Option<String>,
     },
 
     /// Debug a Slipway rig.
@@ -48,6 +51,9 @@ pub(crate) enum Commands {
 
         #[arg(short, long)]
         log_level: Option<String>,
+
+        #[arg(short, long)]
+        registry_url: Option<String>,
     },
 
     /// Debug a Slipway component.
@@ -60,6 +66,9 @@ pub(crate) enum Commands {
 
         #[arg(short, long)]
         log_level: Option<String>,
+
+        #[arg(short, long)]
+        registry_url: Option<String>,
     },
 
     /// Output the WIT (WASM Interface Type) definition, for building Slipway components.
@@ -73,18 +82,24 @@ fn main() -> anyhow::Result<()> {
     set_ctrl_c_handler();
 
     match args.command {
-        Commands::Debug { path, log_level } => {
+        Commands::Debug {
+            path,
+            log_level,
+            registry_url,
+        } => {
             configure_tracing(log_level);
             debug_rig::debug_rig_from_rig_file(
                 &mut std::io::stdout(),
                 path,
                 ComponentPermission::full_trust(),
+                registry_url,
             )?;
         }
         Commands::DebugComponent {
             path,
             input,
             log_level,
+            registry_url,
         } => {
             configure_tracing(log_level);
             debug_rig::debug_rig_from_component_file(
@@ -92,14 +107,20 @@ fn main() -> anyhow::Result<()> {
                 path,
                 input,
                 ComponentPermission::full_trust(),
+                registry_url,
             )?;
         }
-        Commands::Run { path, log_level } => {
+        Commands::Run {
+            path,
+            log_level,
+            registry_url,
+        } => {
             configure_tracing(log_level);
             run_rig::run_rig(
                 &mut std::io::stdout(),
                 path,
                 ComponentPermission::full_trust(),
+                registry_url,
             )?;
         }
         Commands::Wit => {

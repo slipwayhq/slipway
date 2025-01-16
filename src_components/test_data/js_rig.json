@@ -7,9 +7,10 @@
   },
   "rigging": {
     "single": {
-      "component": "file:slipway.test_js.0.0.1.tar",
+      "component": "slipway.test_js.0.0.1",
       "input": {
-        "type": "read_file"
+        "type": "increment",
+        "value": 0
       }
     }
   }

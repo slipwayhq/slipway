@@ -1,4 +1,10 @@
-use crate::{errors::RigError, parse::types::parse_component_version};
+use crate::{
+    errors::RigError,
+    parse::{
+        types::parse_component_version,
+        url::{process_url_str, ProcessedUrl},
+    },
+};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use semver::Version;
@@ -10,9 +16,6 @@ use super::{REGISTRY_PUBLISHER_SEPARATOR, VERSION_SEPARATOR};
 
 pub(crate) static REGISTRY_REGEX: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^(?<publisher>\w+)\.(?<name>\w+)\.(?<version>.+)$").unwrap());
-
-static RELATIVE_FILE_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^file:(?<path>[^/].*)$").unwrap());
 
 static PASSTHROUGH_STRING: &str = "pass";
 
@@ -68,28 +71,11 @@ impl FromStr for SlipwayReference {
             });
         }
 
-        if let Some(caps) = RELATIVE_FILE_REGEX.captures(s) {
-            let path = PathBuf::from_str(&caps["path"]).expect("PathBuf::from_str is infallible");
-            return Ok(SlipwayReference::Local { path });
-        }
-
-        if let Ok(uri) = Url::parse(s) {
-            return match uri.scheme() {
-                "file" => {
-                    let file_path =
-                        uri.to_file_path()
-                            .map_err(|_| RigError::InvalidSlipwayPrimitive {
-                                primitive_type: stringify!(SlipwayReference).to_string(),
-                                message: format!("unable to convert file URI to local path: {uri}"),
-                            })?;
-
-                    Ok(SlipwayReference::Local { path: file_path })
-                }
-                "https" => Ok(SlipwayReference::Url { url: uri }),
-                other => Err(RigError::InvalidSlipwayPrimitive {
-                    primitive_type: stringify!(SlipwayReference).to_string(),
-                    message: format!("unsupported URI scheme: {other}"),
-                }),
+        if let Ok(processed_url) = process_url_str(s) {
+            return match processed_url {
+                ProcessedUrl::RelativePath(path) => Ok(SlipwayReference::Local { path }),
+                ProcessedUrl::AbsolutePath(path) => Ok(SlipwayReference::Local { path }),
+                ProcessedUrl::Url(url) => Ok(SlipwayReference::Url { url }),
             };
         }
 
@@ -261,8 +247,8 @@ mod tests {
 
         #[test]
         fn it_should_serialize_and_deserialize_local_files() {
-            let uri = r"file:///usr/local/rigging.json";
-            let json = quote(uri);
+            let url = r"file:///usr/local/rigging.json";
+            let json = quote(url);
 
             let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
 
@@ -272,9 +258,9 @@ mod tests {
 
         #[test]
         fn it_should_parse_local_files() {
-            let uri = r"file:///usr/local/rigging.json";
+            let url = r"file:///usr/local/rigging.json";
 
-            let reference = SlipwayReference::from_str(uri).unwrap();
+            let reference = SlipwayReference::from_str(url).unwrap();
 
             let SlipwayReference::Local { path } = reference else {
                 panic!("Unexpected reference: {reference}");
@@ -285,8 +271,8 @@ mod tests {
 
         #[test]
         fn it_should_serialize_and_deserialize_relative_local_files() {
-            let uri = r"file:../rigging.json";
-            let json = quote(uri);
+            let url = r"file:../rigging.json";
+            let json = quote(url);
 
             let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
 
@@ -303,8 +289,8 @@ mod tests {
 
         #[test]
         fn it_should_serialize_and_deserialize_local_file_name() {
-            let uri = r"file:rigging.json";
-            let json = quote(uri);
+            let url = r"file:rigging.json";
+            let json = quote(url);
 
             let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
 
@@ -325,8 +311,8 @@ mod tests {
 
         #[test]
         fn it_should_serialize_and_deserialize_urls() {
-            let uri = r"https://asdf.com/asdf.tar.gz";
-            let json = quote(uri);
+            let url = r"https://asdf.com/asdf.tar.gz";
+            let json = quote(url);
 
             let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
 
@@ -336,15 +322,15 @@ mod tests {
 
         #[test]
         fn it_should_parse_urls() {
-            let uri = r"https://asdf.com/asdf.tar.gz";
+            let url_str = r"https://asdf.com/asdf.tar.gz";
 
-            let reference = SlipwayReference::from_str(uri).unwrap();
+            let reference = SlipwayReference::from_str(url_str).unwrap();
 
             let SlipwayReference::Url { url } = reference else {
                 panic!("Unexpected reference: {reference}");
             };
 
-            assert_eq!(url, Url::parse(uri).unwrap());
+            assert_eq!(url, Url::parse(url_str).unwrap());
         }
     }
 }

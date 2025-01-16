@@ -51,8 +51,8 @@ world slipway-component {
 
         use types.{component-error};
 
-        fetch-bin: func(uri: string, options: option<request-options>) -> result<bin-response, request-error>;
-        fetch-text: func(uri: string, options: option<request-options>) -> result<text-response, request-error>;
+        fetch-bin: func(url: string, options: option<request-options>) -> result<bin-response, request-error>;
+        fetch-text: func(url: string, options: option<request-options>) -> result<text-response, request-error>;
         run: func(handle: string, input: string) -> result<string, component-error>;
         load-bin: func(handle: string, path: string) -> result<list<u8>, component-error>;
         load-text: func(handle: string, path: string) -> result<string, component-error>;

@@ -7,7 +7,7 @@
   },
   "rigging": {
     "frag": {
-      "component": "file:slipway.fragment.0.0.1.tar",
+      "component": "slipway.fragment.0.0.1",
       "input": {
         "type": "callout_increment",
         "value": 0,

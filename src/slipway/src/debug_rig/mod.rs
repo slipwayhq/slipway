@@ -8,8 +8,9 @@ use std::sync::Arc;
 use termion::{color, style};
 
 use slipway_engine::{
-    parse_rig, BasicComponentCache, BasicComponentsLoader, ComponentHandle, ComponentPermission,
-    ComponentRigging, Name, CallChain, Publisher, Rig, RigSession, Rigging, SlipwayReference,
+    parse_rig, BasicComponentCache, BasicComponentsLoader, CallChain, ComponentHandle,
+    ComponentPermission, ComponentRigging, Name, Publisher, Rig, RigSession, Rigging,
+    SlipwayReference,
 };
 
 use crate::component_runners::get_component_runners;
@@ -117,6 +118,7 @@ pub(crate) fn debug_rig_from_component_file<W: Write>(
     component_path: std::path::PathBuf,
     input_path: Option<std::path::PathBuf>,
     engine_permissions: Vec<ComponentPermission>,
+    registry_url: Option<String>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Debugging {}", component_path.display())?;
     writeln!(w)?;
@@ -170,13 +172,14 @@ pub(crate) fn debug_rig_from_component_file<W: Write>(
         },
     };
 
-    debug_rig(w, rig, json_editor, engine_permissions)
+    debug_rig(w, rig, json_editor, engine_permissions, registry_url)
 }
 
 pub(crate) fn debug_rig_from_rig_file<W: Write>(
     w: &mut W,
     input: std::path::PathBuf,
     engine_permissions: Vec<ComponentPermission>,
+    registry_url: Option<String>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Debugging {}", input.display())?;
     writeln!(w)?;
@@ -187,7 +190,7 @@ pub(crate) fn debug_rig_from_rig_file<W: Write>(
 
     let json_editor = JsonEditorImpl::new();
 
-    debug_rig(w, rig, json_editor, engine_permissions)
+    debug_rig(w, rig, json_editor, engine_permissions, registry_url)
 }
 
 fn redirect_to_json_if_wasm(input: &std::path::Path) -> std::path::PathBuf {
@@ -205,8 +208,16 @@ fn debug_rig<W: Write>(
     rig: Rig,
     json_editor: impl JsonEditor,
     engine_permissions: Vec<ComponentPermission>,
+    registry_url: Option<String>,
 ) -> anyhow::Result<()> {
-    let component_cache = BasicComponentCache::primed(&rig, &BasicComponentsLoader::default())?;
+    let components_loader = match registry_url {
+        None => BasicComponentsLoader::default(),
+        Some(url) => BasicComponentsLoader::builder()
+            .registry_lookup_url(&url)
+            .build(),
+    };
+
+    let component_cache = BasicComponentCache::primed(&rig, &components_loader)?;
     let session = RigSession::new(rig, &component_cache);
     let mut state = session.initialize()?;
 

@@ -377,7 +377,7 @@ pub mod slipway_host {
     }
     #[allow(unused_unsafe, clippy::all)]
     pub fn fetch_bin(
-        uri: &str,
+        url: &str,
         options: Option<&RequestOptions>,
     ) -> Result<BinResponse, RequestError> {
         unsafe {
@@ -385,7 +385,7 @@ pub mod slipway_host {
             #[repr(align(4))]
             struct RetArea([::core::mem::MaybeUninit<u8>; 44]);
             let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 44]);
-            let vec0 = uri;
+            let vec0 = url;
             let ptr0 = vec0.as_ptr().cast::<u8>();
             let len0 = vec0.len();
             let (
@@ -699,7 +699,7 @@ pub mod slipway_host {
     }
     #[allow(unused_unsafe, clippy::all)]
     pub fn fetch_text(
-        uri: &str,
+        url: &str,
         options: Option<&RequestOptions>,
     ) -> Result<TextResponse, RequestError> {
         unsafe {
@@ -707,7 +707,7 @@ pub mod slipway_host {
             #[repr(align(4))]
             struct RetArea([::core::mem::MaybeUninit<u8>; 44]);
             let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 44]);
-            let vec0 = uri;
+            let vec0 = url;
             let ptr0 = vec0.as_ptr().cast::<u8>();
             let len0 = vec0.len();
             let (
@@ -1378,8 +1378,8 @@ bin-response\x03\0\x0e\x01r\x03\x06status{\x07headers\x09\x04bodys\x04\0\x0dtext
 \x13\x04\0\x0drequest-error\x03\0\x14\x01k\x04\x01@\x01\x0afont-stacks\0\x16\x04\
 \0\x10try-resolve-font\x01\x17\x01@\x01\x07messages\x01\0\x04\0\x09log-trace\x01\
 \x18\x04\0\x09log-debug\x01\x18\x04\0\x08log-info\x01\x18\x04\0\x08log-warn\x01\x18\
-\x04\0\x09log-error\x01\x18\x01k\x0d\x01j\x01\x0f\x01\x15\x01@\x02\x03uris\x07op\
-tions\x19\0\x1a\x04\0\x09fetch-bin\x01\x1b\x01j\x01\x11\x01\x15\x01@\x02\x03uris\
+\x04\0\x09log-error\x01\x18\x01k\x0d\x01j\x01\x0f\x01\x15\x01@\x02\x03urls\x07op\
+tions\x19\0\x1a\x04\0\x09fetch-bin\x01\x1b\x01j\x01\x11\x01\x15\x01@\x02\x03urls\
 \x07options\x19\0\x1c\x04\0\x0afetch-text\x01\x1d\x01j\x01s\x01\x01\x01@\x02\x06\
 handles\x05inputs\0\x1e\x04\0\x03run\x01\x1f\x01j\x01\x02\x01\x01\x01@\x02\x06ha\
 ndles\x04paths\0\x20\x04\0\x08load-bin\x01!\x01@\x02\x06handles\x04paths\0\x1e\x04\
