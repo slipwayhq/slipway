@@ -2,6 +2,7 @@ pub mod fetch;
 pub mod fonts;
 pub mod log;
 pub mod run;
+mod permissions;
 
 pub const SLIPWAY_COMPONENT_WASM_FILE_NAME: &str = "slipway_component.wasm";
 

@@ -5,8 +5,8 @@ use std::{
 };
 
 use crate::{
-    errors::RigError, Callouts, ComponentCache, ComponentHandle, ComponentInput, Immutable,
-    Instruction, JsonMetadata, RigSession, SlipwayReference, PERMISSIONS_NONE_VEC,
+    errors::RigError, Callouts, ChainItem, ComponentCache, ComponentHandle, ComponentInput,
+    Immutable, Instruction, JsonMetadata, RigSession, SlipwayReference, PERMISSIONS_NONE_VEC,
 };
 
 use super::{
@@ -62,7 +62,7 @@ impl<'rig, 'cache> RigExecutionState<'rig, 'cache> {
             .as_ref()
             .unwrap_or(&PERMISSIONS_NONE_VEC);
 
-        let call_chain = CallChain::new_child_arc(handle, Some(permissions), call_chain);
+        let call_chain = CallChain::new_child_arc(handle, ChainItem::Some(permissions), call_chain);
 
         let component_reference = &component_state.rigging.component;
 
@@ -131,8 +131,11 @@ where
 
     let component_cache = execution_context.component_cache;
 
-    let call_chain =
-        CallChain::new_child_arc(handle, None, Arc::clone(&execution_context.call_chain));
+    let call_chain = CallChain::new_child_arc(
+        handle,
+        ChainItem::Inherit,
+        Arc::clone(&execution_context.call_chain),
+    );
 
     // There are no outer callouts if we're already in a callout.
     let outer_callouts = None;

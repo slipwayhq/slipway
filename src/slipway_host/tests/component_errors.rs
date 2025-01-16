@@ -117,6 +117,10 @@ fn assert_run_errors_with(rig: Rig, expected_messages: &[&str]) {
                         if !message.contains(expected_message)
                             && !inner.iter().any(|i| i.contains(expected_message))
                         {
+                            println!("Error message: {}", message);
+                            for i in inner {
+                                println!("Inner error: {}", i);
+                            }
                             panic!("Error message did not contain \"{}\"", expected_message);
                         }
                     }

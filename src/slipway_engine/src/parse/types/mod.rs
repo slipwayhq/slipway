@@ -79,16 +79,12 @@ pub struct ComponentRigging {
 pub enum ComponentPermission {
     FullTrust,
 
-    Url { url: String },
-    Domain { domain: String },
-    UrlRegex { regex: String },
+    FetchAny,
+    FetchExact { url: String },
+    FetchPrefix { prefix: String },
+    FetchDomain { domain: String },
 
-    File { path: String },
-    Directory { path: String },
-    FileRegex { regex: String },
-
-    Env { value: String },
-    EnvRegex { regex: String },
+    Noop, // For testing. Remove when we have more than just fetch permissions.
 }
 
 impl ComponentPermission {

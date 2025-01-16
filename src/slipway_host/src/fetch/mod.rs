@@ -101,10 +101,14 @@ pub fn fetch_bin(
             Some(format!("{e}")),
         )
     })?;
+
     let scheme = url.scheme();
 
     match scheme {
-        "https" | "http" => http::fetch_http(url, options),
+        "https" | "http" => {
+            crate::permissions::ensure_can_fetch_url(url_str, &url, execution_context)?;
+            http::fetch_http(url, options)
+        }
         "component" => component::fetch_component_data(execution_context, &url, options),
         _ => Err(RequestError::for_error(
             format!(

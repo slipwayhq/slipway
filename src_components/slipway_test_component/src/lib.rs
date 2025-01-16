@@ -117,8 +117,21 @@ fn run_inner(input: Input) -> Result<String, bindings::slipway::component::types
                         inner: vec![],
                     }),
                     Err(e) => {
-                        let response_len = e.response.as_ref().unwrap().body.len();
-                        assert_eq!(e.response.unwrap().status as u32, expected_status_code);
+                        let response = e.response.as_ref().ok_or_else(|| ComponentError {
+                            message: "Expected an HTTP error response, but got a rust error."
+                                .to_string(),
+                            inner: vec![format!("{e}")],
+                        })?;
+                        let response_len = response.body.len();
+                        if response.status as u32 != expected_status_code {
+                            return Err(ComponentError {
+                                message: format!(
+                                    "Expected status code {}, got {}",
+                                    expected_status_code, response.status
+                                ),
+                                inner: vec![],
+                            });
+                        }
                         Ok(Output {
                             value: response_len as i32,
                         })

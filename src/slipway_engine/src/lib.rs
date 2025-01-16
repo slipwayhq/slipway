@@ -3,6 +3,7 @@
 
 use std::ops::Deref;
 
+pub use execute::component_execution_data::permissions::*;
 pub use execute::component_execution_data::*;
 pub use execute::component_runner::*;
 pub use execute::component_state::{
@@ -23,13 +24,13 @@ pub use parse::types::slipway_id::*;
 pub use parse::types::slipway_reference::*;
 pub use parse::types::*;
 pub use special_components::*;
+pub mod custom_iter_tools;
 pub mod errors;
 mod execute;
 mod load;
 mod parse;
 mod special_components;
 pub mod utils;
-pub mod custom_iter_tools;
 
 #[cfg(any(feature = "unstable-test-utils", test))]
 pub mod test_utils;

@@ -2,8 +2,8 @@ use std::{rc::Rc, str::FromStr};
 
 use common_test_utils::get_slipway_test_components_path;
 use slipway_engine::{
-    BasicComponentCache, BasicComponentsLoader, BasicComponentsLoaderBuilder, ComponentHandle,
-    ComponentOutput, ComponentRunner, CallChain, Rig, RigSession,
+    BasicComponentCache, BasicComponentsLoader, BasicComponentsLoaderBuilder, CallChain,
+    ComponentHandle, ComponentOutput, ComponentRunner, Rig, RigSession,
 };
 use slipway_host::run::{no_event_handler, run_rig};
 
