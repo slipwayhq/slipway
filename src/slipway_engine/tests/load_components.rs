@@ -94,7 +94,8 @@ fn create_rig(component_reference: SlipwayReference) -> (Rig, ComponentHandle) {
                     "type": "increment",
                     "value": 42
                 }}),
-                permissions: None,
+                allow: None,
+                deny: None,
                 callouts: None,
             },
         )]

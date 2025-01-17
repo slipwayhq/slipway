@@ -8,9 +8,9 @@ use crate::Component;
 use crate::ComponentFiles;
 use crate::ComponentFilesLoader;
 use crate::ComponentHandle;
-use crate::ComponentPermission;
 use crate::ComponentRigging;
 use crate::Name;
+use crate::Permission;
 use crate::Publisher;
 use crate::Rig;
 use crate::Rigging;
@@ -54,7 +54,8 @@ impl ComponentRigging {
         ComponentRigging {
             component: reference,
             input,
-            permissions: Some(vec![ComponentPermission::FullTrust]),
+            allow: Some(vec![Permission::All]),
+            deny: None,
             callouts: None,
         }
     }
@@ -68,7 +69,8 @@ impl ComponentRigging {
         ComponentRigging {
             component: reference,
             input,
-            permissions: Some(vec![ComponentPermission::FullTrust]),
+            allow: Some(vec![Permission::All]),
+            deny: None,
             callouts: Some(
                 vec![(ch(callout_handle), callout_reference)]
                     .into_iter()

@@ -9,8 +9,7 @@ use termion::{color, style};
 
 use slipway_engine::{
     parse_rig, BasicComponentCache, BasicComponentsLoader, CallChain, ComponentHandle,
-    ComponentPermission, ComponentRigging, Name, Publisher, Rig, RigSession, Rigging,
-    SlipwayReference,
+    ComponentRigging, Name, Permissions, Publisher, Rig, RigSession, Rigging, SlipwayReference,
 };
 
 use crate::component_runners::get_component_runners;
@@ -117,7 +116,7 @@ pub(crate) fn debug_rig_from_component_file<W: Write>(
     w: &mut W,
     component_path: std::path::PathBuf,
     input_path: Option<std::path::PathBuf>,
-    engine_permissions: Vec<ComponentPermission>,
+    engine_permissions: Permissions,
     registry_url: Option<String>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Debugging {}", component_path.display())?;
@@ -163,7 +162,8 @@ pub(crate) fn debug_rig_from_component_file<W: Write>(
                 ComponentRigging {
                     component: component_reference,
                     input: Some(initial_input),
-                    permissions: None,
+                    allow: None,
+                    deny: None,
                     callouts: None,
                 },
             )]
@@ -178,7 +178,7 @@ pub(crate) fn debug_rig_from_component_file<W: Write>(
 pub(crate) fn debug_rig_from_rig_file<W: Write>(
     w: &mut W,
     input: std::path::PathBuf,
-    engine_permissions: Vec<ComponentPermission>,
+    engine_permissions: Permissions,
     registry_url: Option<String>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Debugging {}", input.display())?;
@@ -207,7 +207,7 @@ fn debug_rig<W: Write>(
     w: &mut W,
     rig: Rig,
     json_editor: impl JsonEditor,
-    engine_permissions: Vec<ComponentPermission>,
+    engine_permissions: Permissions,
     registry_url: Option<String>,
 ) -> anyhow::Result<()> {
     let components_loader = match registry_url {
@@ -236,7 +236,7 @@ fn debug_rig<W: Write>(
         color::Fg(color::Reset)
     )?;
 
-    let permissions_chain = Arc::new(CallChain::new(&engine_permissions));
+    let permissions_chain = Arc::new(CallChain::new(engine_permissions));
 
     loop {
         write!(

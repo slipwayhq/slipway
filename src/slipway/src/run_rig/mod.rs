@@ -2,8 +2,7 @@ use std::{io::Write, sync::Arc};
 
 use anyhow::Context;
 use slipway_engine::{
-    parse_rig, BasicComponentCache, BasicComponentsLoader, CallChain, ComponentPermission,
-    RigSession,
+    parse_rig, BasicComponentCache, BasicComponentsLoader, CallChain, Permissions, RigSession,
 };
 use slipway_host::run::RunEventHandler;
 
@@ -16,7 +15,7 @@ use crate::{
 pub(super) fn run_rig<W: Write>(
     w: &mut W,
     input: std::path::PathBuf,
-    engine_permissions: Vec<ComponentPermission>,
+    engine_permissions: Permissions,
     registry_url: Option<String>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Launching {}", input.display())?;
@@ -40,7 +39,7 @@ pub(super) fn run_rig<W: Write>(
     let component_runners = get_component_runners();
     let component_runners_slice = component_runners.as_slice();
 
-    let call_chain = Arc::new(CallChain::new(&engine_permissions));
+    let call_chain = Arc::new(CallChain::new(engine_permissions));
 
     slipway_host::run::run_rig(
         &session,

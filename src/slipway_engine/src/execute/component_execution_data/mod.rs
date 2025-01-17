@@ -2,7 +2,7 @@ use std::{collections::HashMap, rc::Rc, sync::Arc};
 
 use crate::{
     errors::RigError, Component, ComponentCache, ComponentFiles, ComponentHandle, ComponentInput,
-    ComponentPermission, Schema, SlipwayReference, PERMISSIONS_FULL_TRUST_VEC,
+    Permission, Schema, SlipwayReference, PERMISSIONS_ALL_VEC, PERMISSIONS_NONE_VEC,
 };
 
 use super::component_runner::ComponentRunner;
@@ -72,14 +72,54 @@ pub enum ChainItem<T> {
 #[derive(Clone)]
 pub struct CallChain<'rig> {
     component_handle: Option<&'rig ComponentHandle>,
-    permissions: ChainItem<&'rig Vec<ComponentPermission>>,
+    permissions: ChainItem<Permissions<'rig>>,
     previous: Option<Arc<CallChain<'rig>>>,
+}
+
+#[derive(Clone)]
+pub struct Permissions<'rig> {
+    pub allow: &'rig Vec<Permission>,
+    pub deny: &'rig Vec<Permission>,
+}
+
+impl<'rig> Permissions<'rig> {
+    pub fn empty() -> Permissions<'static> {
+        Permissions {
+            allow: &PERMISSIONS_NONE_VEC,
+            deny: &PERMISSIONS_NONE_VEC,
+        }
+    }
+
+    pub fn allow_all() -> Permissions<'rig> {
+        Permissions {
+            allow: &PERMISSIONS_ALL_VEC,
+            deny: &PERMISSIONS_NONE_VEC,
+        }
+    }
+
+    pub fn new(allow: &'rig Vec<Permission>, deny: &'rig Vec<Permission>) -> Permissions<'rig> {
+        Permissions { allow, deny }
+    }
+
+    pub fn allow(allow: &'rig Vec<Permission>) -> Permissions<'rig> {
+        Permissions {
+            allow,
+            deny: &PERMISSIONS_NONE_VEC,
+        }
+    }
+
+    pub fn deny(deny: &'rig Vec<Permission>) -> Permissions<'rig> {
+        Permissions {
+            allow: &PERMISSIONS_NONE_VEC,
+            deny,
+        }
+    }
 }
 
 const CHAIN_SEPARATOR: &str = " -> ";
 
 impl<'rig> CallChain<'rig> {
-    pub fn new(permissions: &'rig Vec<ComponentPermission>) -> CallChain<'rig> {
+    pub fn new(permissions: Permissions<'rig>) -> CallChain<'rig> {
         CallChain {
             component_handle: None,
             permissions: ChainItem::Some(permissions),
@@ -89,7 +129,7 @@ impl<'rig> CallChain<'rig> {
 
     pub fn new_for_component(
         component_handle: &'rig ComponentHandle,
-        permissions: &'rig Vec<ComponentPermission>,
+        permissions: Permissions<'rig>,
     ) -> CallChain<'rig> {
         CallChain {
             component_handle: Some(component_handle),
@@ -100,7 +140,7 @@ impl<'rig> CallChain<'rig> {
 
     pub fn new_child(
         component_handle: &'rig ComponentHandle,
-        permissions: ChainItem<&'rig Vec<ComponentPermission>>,
+        permissions: ChainItem<Permissions<'rig>>,
         previous: Arc<CallChain<'rig>>,
     ) -> CallChain<'rig> {
         CallChain {
@@ -112,7 +152,7 @@ impl<'rig> CallChain<'rig> {
 
     pub fn new_child_arc(
         component_handle: &'rig ComponentHandle,
-        permissions: ChainItem<&'rig Vec<ComponentPermission>>,
+        permissions: ChainItem<Permissions<'rig>>,
         previous: Arc<CallChain<'rig>>,
     ) -> Arc<CallChain<'rig>> {
         Arc::new(CallChain::new_child(
@@ -125,7 +165,10 @@ impl<'rig> CallChain<'rig> {
     pub fn full_trust() -> CallChain<'rig> {
         CallChain {
             component_handle: None,
-            permissions: ChainItem::Some(&PERMISSIONS_FULL_TRUST_VEC),
+            permissions: ChainItem::Some(Permissions {
+                allow: &PERMISSIONS_ALL_VEC,
+                deny: &PERMISSIONS_NONE_VEC,
+            }),
             previous: None,
         }
     }
@@ -133,7 +176,10 @@ impl<'rig> CallChain<'rig> {
     pub fn full_trust_arc() -> Arc<CallChain<'rig>> {
         Arc::new(CallChain {
             component_handle: None,
-            permissions: ChainItem::Some(&PERMISSIONS_FULL_TRUST_VEC),
+            permissions: ChainItem::Some(Permissions {
+                allow: &PERMISSIONS_ALL_VEC,
+                deny: &PERMISSIONS_NONE_VEC,
+            }),
             previous: None,
         })
     }

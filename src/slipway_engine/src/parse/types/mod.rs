@@ -69,34 +69,54 @@ pub type Callouts = HashMap<ComponentHandle, SlipwayReference>;
 pub struct ComponentRigging {
     pub component: SlipwayReference,
     pub input: Option<serde_json::Value>,
-    pub permissions: Option<Vec<ComponentPermission>>,
+    pub allow: Option<Vec<Permission>>,
+    pub deny: Option<Vec<Permission>>,
     pub callouts: Option<Callouts>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(tag = "type")]
+#[serde(tag = "permission")]
 #[serde(rename_all = "snake_case")]
-pub enum ComponentPermission {
-    FullTrust,
+pub enum Permission {
+    All,
 
-    FetchAny,
-    FetchExact { url: String },
-    FetchPrefix { prefix: String },
-    FetchDomain { domain: String },
+    HttpFetch(UrlPermission),
 
-    Noop, // For testing. Remove when we have more than just fetch permissions.
+    FontQuery(StringPermission),
+
+    RegistryComponent(StringPermission),
+    HttpComponent(UrlPermission),
+    FileComponent(StringPermission),
 }
 
-impl ComponentPermission {
-    pub fn full_trust() -> Vec<ComponentPermission> {
-        vec![ComponentPermission::FullTrust]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(tag = "variant")]
+#[serde(rename_all = "snake_case")]
+pub enum StringPermission {
+    Any,
+    Exact { url: String },
+    Prefix { prefix: String },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(tag = "variant")]
+#[serde(rename_all = "snake_case")]
+pub enum UrlPermission {
+    Any,
+    Exact { url: String },
+    Prefix { prefix: String },
+    Domain { domain: String },
+}
+
+impl Permission {
+    pub fn all() -> Vec<Permission> {
+        vec![Permission::All]
     }
 }
 
-pub(crate) static PERMISSIONS_FULL_TRUST_VEC: Lazy<Vec<ComponentPermission>> =
-    Lazy::new(|| vec![ComponentPermission::FullTrust]);
+pub(crate) static PERMISSIONS_ALL_VEC: Lazy<Vec<Permission>> = Lazy::new(|| vec![Permission::All]);
 
-pub(crate) static PERMISSIONS_NONE_VEC: Lazy<Vec<ComponentPermission>> = Lazy::new(Vec::new);
+pub(crate) static PERMISSIONS_NONE_VEC: Lazy<Vec<Permission>> = Lazy::new(Vec::new);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(deny_unknown_fields)]

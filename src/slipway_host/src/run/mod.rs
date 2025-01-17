@@ -58,6 +58,13 @@ pub fn run_rig<'rig, 'cache, 'runners, THostError>(
 where
     'cache: 'rig,
 {
+    // TODO:
+    // for component_rigging in rig_session.rig.rigging.components.values() {
+    //     let component_reference = &component_rigging.component;
+
+    //     todo!("Test permissions for rig accessing component.");
+    // }
+
     let mut state = rig_session.initialize()?;
 
     loop {

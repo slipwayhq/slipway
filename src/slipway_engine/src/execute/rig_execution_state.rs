@@ -6,7 +6,8 @@ use std::{
 
 use crate::{
     errors::RigError, Callouts, ChainItem, ComponentCache, ComponentHandle, ComponentInput,
-    Immutable, Instruction, JsonMetadata, RigSession, SlipwayReference, PERMISSIONS_NONE_VEC,
+    Immutable, Instruction, JsonMetadata, Permissions, RigSession, SlipwayReference,
+    PERMISSIONS_NONE_VEC,
 };
 
 use super::{
@@ -56,13 +57,22 @@ impl<'rig, 'cache> RigExecutionState<'rig, 'cache> {
                     ),
                 })?;
 
-        let permissions = component_state
+        let allow = component_state
             .rigging
-            .permissions
+            .allow
+            .as_ref()
+            .unwrap_or(&PERMISSIONS_NONE_VEC);
+        let deny = component_state
+            .rigging
+            .deny
             .as_ref()
             .unwrap_or(&PERMISSIONS_NONE_VEC);
 
-        let call_chain = CallChain::new_child_arc(handle, ChainItem::Some(permissions), call_chain);
+        let call_chain = CallChain::new_child_arc(
+            handle,
+            ChainItem::Some(Permissions::new(allow, deny)),
+            call_chain,
+        );
 
         let component_reference = &component_state.rigging.component;
 

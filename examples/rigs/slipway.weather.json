@@ -20,9 +20,9 @@
       "input": {
         "url": "$$.weather_url_resolver"
       },
-      "permissions": [
-        { "type": "fetch_domain", "domain": "weather.yahoo.com" },
-        { "type": "fetch_domain", "domain": "met.com" }
+      "allow": [
+        { "permission": "http_fetch", "variant": "domain", "domain": "weather.yahoo.com" },
+        { "permission": "http_fetch", "variant": "domain", "domain": "met.com" }
       ]
     },
     "weather_transformer": {

@@ -15,7 +15,7 @@ mod test_utils;
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use slipway_engine::ComponentPermission;
+use slipway_engine::Permissions;
 use time::{format_description, OffsetDateTime};
 use tracing::Level;
 use tracing_subscriber::{fmt::time::FormatTime, FmtSubscriber};
@@ -91,7 +91,7 @@ fn main() -> anyhow::Result<()> {
             debug_rig::debug_rig_from_rig_file(
                 &mut std::io::stdout(),
                 path,
-                ComponentPermission::full_trust(),
+                Permissions::allow_all(),
                 registry_url,
             )?;
         }
@@ -106,7 +106,7 @@ fn main() -> anyhow::Result<()> {
                 &mut std::io::stdout(),
                 path,
                 input,
-                ComponentPermission::full_trust(),
+                Permissions::allow_all(),
                 registry_url,
             )?;
         }
@@ -119,7 +119,7 @@ fn main() -> anyhow::Result<()> {
             run_rig::run_rig(
                 &mut std::io::stdout(),
                 path,
-                ComponentPermission::full_trust(),
+                Permissions::allow_all(),
                 registry_url,
             )?;
         }

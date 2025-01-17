@@ -78,7 +78,8 @@ fn run_component_fragment(
         ComponentRigging {
             component: SlipwayReference::Special(SpecialComponentReference::Pass),
             input: Some(input.clone()),
-            permissions: None,
+            allow: None,
+            deny: None,
             callouts: None,
         },
     );
