@@ -1,13 +1,17 @@
 use std::io::Read;
 
+use slipway_engine::ComponentExecutionContext;
 use url::Url;
 
-use crate::fetch::{RequestError, RequestOptions, BinResponse};
+use crate::fetch::{BinResponse, RequestError, RequestOptions};
 
 pub(super) fn fetch_http(
+    execution_context: &ComponentExecutionContext,
     url: Url,
     options: Option<RequestOptions>,
 ) -> Result<BinResponse, RequestError> {
+    crate::permissions::ensure_can_fetch_url(&url, execution_context)?;
+
     let opts = options.unwrap_or_default();
 
     let mut agent_builder = ureq::AgentBuilder::new();

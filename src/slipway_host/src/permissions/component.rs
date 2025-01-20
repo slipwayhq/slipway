@@ -1,13 +1,12 @@
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
+use crate::ComponentError;
 use slipway_engine::{
     CallChain, ComponentExecutionContext, ComponentHandle, Permission, SlipwayReference,
-    StringPermission, UrlPermission,
 };
 use url::Url;
-use crate::ComponentError;
 
-pub fn ensure_can_use_component(
+pub fn ensure_can_use_component_handle(
     handle: &ComponentHandle,
     execution_context: &ComponentExecutionContext,
 ) -> Result<(), ComponentError> {
@@ -24,30 +23,102 @@ pub fn ensure_can_use_component(
             inner: vec![format!("{e}")],
         })?;
 
-    if let SlipwayReference::Local { path } = &component_reference {
-        if !slipway_engine::ensure_permissions(
-            Arc::clone(&execution_context.call_chain),
-            |permissions| {
+    let call_chain = Arc::clone(&execution_context.call_chain);
+
+    ensure_can_use_component_reference(component_reference, call_chain)
+}
+
+pub fn ensure_can_use_component_reference(
+    component_reference: &SlipwayReference,
+    call_chain: Arc<CallChain<'_>>,
+) -> Result<(), ComponentError> {
+    let is_allowed = match component_reference {
+        SlipwayReference::Registry {
+            publisher: _,
+            name: _,
+            version: _,
+        } => {
+            fn matches(reference: &str, permission: &Permission) -> bool {
+                match permission {
+                    Permission::All => true,
+                    Permission::RegistryComponent(permission) => permission.matches(reference),
+                    _ => false,
+                }
+            }
+
+            let reference = component_reference.to_string();
+            slipway_engine::ensure_permissions(call_chain.clone(), |permissions| {
+                for permission in permissions.deny {
+                    if matches(&reference, permission) {
+                        return false;
+                    }
+                }
                 for permission in permissions.allow {
-                    match permission {
-                        Permission::FileComponent(StringPermission::Any) | Permission::All => {
-                            return true
-                        }
-                        _ => {}
+                    if matches(&reference, permission) {
+                        return true;
                     }
                 }
                 false
-            },
-        ) {
-            return Err(ComponentError {
-                message: format!(
-                    "Component {} does not have permission to access local component {}",
-                    execution_context.call_chain.component_handle_trail(),
-                    handle
-                ),
-                inner: vec![format!("Local component path: {}", path.to_string_lossy())],
-            });
+            })
         }
+        SlipwayReference::Url { url } => {
+            fn matches(url: &Url, permission: &Permission) -> bool {
+                match permission {
+                    Permission::All => true,
+                    Permission::HttpComponent(permission) => permission.matches(url),
+                    _ => false,
+                }
+            }
+
+            slipway_engine::ensure_permissions(call_chain.clone(), |permissions| {
+                for permission in permissions.deny {
+                    if matches(url, permission) {
+                        return false;
+                    }
+                }
+                for permission in permissions.allow {
+                    if matches(url, permission) {
+                        return true;
+                    }
+                }
+                false
+            })
+        }
+        SlipwayReference::Local { path } => {
+            fn matches(path: &Path, permission: &Permission) -> bool {
+                match permission {
+                    Permission::All => true,
+                    Permission::FileComponent(permission) => permission.matches(path),
+                    _ => false,
+                }
+            }
+
+            slipway_engine::ensure_permissions(call_chain.clone(), |permissions| {
+                for permission in permissions.deny {
+                    if matches(path, permission) {
+                        return false;
+                    }
+                }
+                for permission in permissions.allow {
+                    if matches(path, permission) {
+                        return true;
+                    }
+                }
+                false
+            })
+        }
+        SlipwayReference::Special(_) => true,
+    };
+
+    if !is_allowed {
+        return Err(ComponentError {
+            message: format!(
+                "Component {} does not have permission to access component {}",
+                call_chain.component_handle_trail(),
+                component_reference
+            ),
+            inner: vec![],
+        });
     }
 
     Ok(())

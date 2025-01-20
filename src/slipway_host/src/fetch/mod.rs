@@ -105,14 +105,8 @@ pub fn fetch_bin(
     let scheme = url.scheme();
 
     match scheme {
-        "https" | "http" => {
-            crate::permissions::ensure_can_fetch_url(url_str, &url, execution_context)?;
-            http::fetch_http(url, options)
-        }
-        "component" => {
-            // TODO: crate::permissions::ensure_can_use_component(handle, execution_context);
-            component::fetch_component_data(execution_context, &url, options)
-        }
+        "https" | "http" => http::fetch_http(execution_context, url, options),
+        "component" => component::fetch_component_data(execution_context, &url, options),
         _ => Err(RequestError::for_error(
             format!(
                 "Unsupported URL scheme for URL from component {}: {}",

@@ -30,7 +30,7 @@ pub enum SlipwayReference {
         version: Version,
     },
 
-    // file://absolute-path
+    // file:///absolute-path
     // file:relative-path
     Local {
         path: PathBuf,

@@ -1,6 +1,6 @@
 use crate::errors::RigError;
 use crate::load::ComponentCache;
-use crate::Immutable;
+use crate::{Immutable, SlipwayReference};
 
 use super::initialize::initialize;
 use super::rig_execution_state::RigExecutionState;
@@ -38,6 +38,15 @@ impl<'cache> RigSession<'cache> {
         &'rig self,
     ) -> Result<Immutable<RigExecutionState<'rig, 'cache>>, RigError> {
         initialize(self)
+    }
+
+    pub fn rigging_component_references(&self) -> Vec<&SlipwayReference> {
+        self.rig
+            .rigging
+            .components
+            .values()
+            .map(|c| &c.component)
+            .collect()
     }
 }
 

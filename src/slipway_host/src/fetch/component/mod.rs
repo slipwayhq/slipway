@@ -34,6 +34,8 @@ pub(super) fn fetch_component_data(
         )
     })?;
 
+    crate::permissions::ensure_can_use_component_handle(&handle, execution_context)?;
+
     let path = url.path();
 
     match path {

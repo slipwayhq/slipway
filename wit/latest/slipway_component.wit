@@ -9,6 +9,8 @@ interface types {
 
 world slipway-component {
     import slipway-host: interface {
+        use types.{component-error};
+    
         record resolved-font {
             family: string,
             data: list<u8>,
@@ -48,8 +50,6 @@ world slipway-component {
             inner: list<string>,
             response: option<bin-response>
         }
-
-        use types.{component-error};
 
         fetch-bin: func(url: string, options: option<request-options>) -> result<bin-response, request-error>;
         fetch-text: func(url: string, options: option<request-options>) -> result<text-response, request-error>;

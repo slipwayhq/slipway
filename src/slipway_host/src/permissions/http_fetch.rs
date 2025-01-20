@@ -1,49 +1,53 @@
 use std::sync::Arc;
 
 use crate::ComponentError;
-use slipway_engine::{CallChain, ComponentExecutionContext, Permission, UrlPermission};
+use slipway_engine::{CallChain, ComponentExecutionContext, Permission};
+use tracing::warn;
 use url::Url;
 
 pub fn ensure_can_fetch_url(
-    url_str: &str,
     url: &Url,
     execution_context: &ComponentExecutionContext,
 ) -> Result<(), ComponentError> {
-    ensure_can_fetch_url_inner(url_str, url, Arc::clone(&execution_context.call_chain))
+    ensure_can_fetch_url_inner(url, Arc::clone(&execution_context.call_chain))
 }
 
-pub fn ensure_can_fetch_url_inner(
-    url_str: &str,
+fn ensure_can_fetch_url_inner(
     url: &Url,
     call_chain: Arc<CallChain<'_>>,
 ) -> Result<(), ComponentError> {
     let is_allowed = slipway_engine::ensure_permissions(Arc::clone(&call_chain), |permissions| {
-        fn matches(url_str: &str, url: &Url, permission: &Permission) -> bool {
+        fn matches(url: &Url, permission: &Permission) -> bool {
             match permission {
-                Permission::HttpFetch(UrlPermission::Any) | Permission::All => true,
-                Permission::HttpFetch(UrlPermission::Exact { url }) => url == url_str,
-                Permission::HttpFetch(UrlPermission::Prefix { prefix }) => {
-                    url_str.starts_with(prefix)
-                }
-                Permission::HttpFetch(UrlPermission::Domain { domain }) => {
-                    url.domain() == Some(domain)
-                }
-
+                Permission::All => true,
+                Permission::HttpFetch(permission) => permission.matches(url),
                 _ => false,
             }
         }
 
         for permission in permissions.deny {
-            if matches(url_str, url, permission) {
+            if matches(url, permission) {
+                warn!(
+                    "Component {} denied access to url {} with deny permission {:?}",
+                    call_chain.component_handle_trail(),
+                    url,
+                    permission
+                );
                 return false;
             }
         }
 
         for permission in permissions.allow {
-            if matches(url_str, url, permission) {
+            if matches(url, permission) {
                 return true;
             }
         }
+
+        warn!(
+            "Component {} denied access to url {}. No appropriate allow permission found.",
+            call_chain.component_handle_trail(),
+            url
+        );
 
         false
     });
@@ -64,6 +68,8 @@ pub fn ensure_can_fetch_url_inner(
 
 #[cfg(test)]
 mod test {
+    use slipway_engine::StringPermission;
+    use slipway_engine::UrlPermission;
     use slipway_engine::{utils::ch, ComponentHandle, Permissions};
 
     use super::*;
@@ -75,14 +81,12 @@ mod test {
         let handle = CH.get_or_init(|| ch("test"));
         let call_chain = Arc::new(CallChain::new_for_component(handle, permissions));
         assert_eq!(
-            ensure_can_fetch_url_inner(url_str, &url, call_chain.clone()).is_ok(),
+            ensure_can_fetch_url_inner(&url, call_chain.clone()).is_ok(),
             expected
         );
     }
 
     mod insufficient_permissions {
-        use slipway_engine::StringPermission;
-
         use super::*;
 
         #[test]
@@ -134,9 +138,9 @@ mod test {
         use super::*;
 
         fn create_permissions() -> Vec<Permission> {
-            vec![Permission::HttpFetch(UrlPermission::Exact {
-                url: "https://example.com/foo/bar.json".to_string(),
-            })]
+            vec![Permission::HttpFetch(UrlPermission::Exact(
+                Url::parse("https://example.com/foo/bar.json").unwrap(),
+            ))]
         }
 
         #[test]
@@ -179,9 +183,9 @@ mod test {
         use super::*;
 
         fn create_permissions() -> Vec<Permission> {
-            vec![Permission::HttpFetch(UrlPermission::Prefix {
-                prefix: "https://example.com/foo/".to_string(),
-            })]
+            vec![Permission::HttpFetch(UrlPermission::Prefix(
+                Url::parse("https://example.com/foo/").unwrap(),
+            ))]
         }
 
         #[test]
@@ -228,13 +232,13 @@ mod test {
         use super::*;
 
         fn create_permissions() -> Vec<Permission> {
-            vec![Permission::HttpFetch(UrlPermission::Domain {
-                domain: "foo.bar.co.uk".to_string(),
-            })]
+            vec![Permission::HttpFetch(UrlPermission::Prefix(
+                Url::parse("https://foo.bar.co.uk").unwrap(),
+            ))]
         }
 
         #[test]
-        fn it_should_allow_exact_domain() {
+        fn it_should_allow_exact_domain_and_scheme() {
             run_test(
                 "https://foo.bar.co.uk/foo/bar.json",
                 Permissions::allow(&create_permissions()),
@@ -243,7 +247,7 @@ mod test {
             run_test(
                 "http://foo.bar.co.uk/foo/bar.json",
                 Permissions::allow(&create_permissions()),
-                true,
+                false,
             );
         }
 
@@ -273,15 +277,15 @@ mod test {
         use super::*;
 
         fn create_allow_permissions() -> Vec<Permission> {
-            vec![Permission::HttpFetch(UrlPermission::Domain {
-                domain: "foo.bar.co.uk".to_string(),
-            })]
+            vec![Permission::HttpFetch(UrlPermission::Prefix(
+                Url::parse("https://foo.bar.co.uk").unwrap(),
+            ))]
         }
 
         fn create_deny_permissions() -> Vec<Permission> {
-            vec![Permission::HttpFetch(UrlPermission::Exact {
-                url: "https://foo.bar.co.uk/foo/baz.json".to_string(),
-            })]
+            vec![Permission::HttpFetch(UrlPermission::Exact(
+                Url::parse("https://foo.bar.co.uk/foo/baz.json").unwrap(),
+            ))]
         }
 
         #[test]
@@ -304,24 +308,24 @@ mod test {
 
         fn create_permissions() -> Vec<Permission> {
             vec![
-                Permission::HttpFetch(UrlPermission::Exact {
-                    url: "https://one.com/foo/bar.json".to_string(),
-                }),
-                Permission::HttpFetch(UrlPermission::Exact {
-                    url: "https://two.com/foo/baz.json".to_string(),
-                }),
-                Permission::HttpFetch(UrlPermission::Prefix {
-                    prefix: "https://three.com/foo/".to_string(),
-                }),
-                Permission::HttpFetch(UrlPermission::Prefix {
-                    prefix: "https://one.com/foo/".to_string(),
-                }),
-                Permission::HttpFetch(UrlPermission::Domain {
-                    domain: "four.com".to_string(),
-                }),
-                Permission::HttpFetch(UrlPermission::Domain {
-                    domain: "one.com".to_string(),
-                }),
+                Permission::HttpFetch(UrlPermission::Exact(
+                    Url::parse("https://one.com/foo/bar.json").unwrap(),
+                )),
+                Permission::HttpFetch(UrlPermission::Exact(
+                    Url::parse("https://two.com/foo/baz.json").unwrap(),
+                )),
+                Permission::HttpFetch(UrlPermission::Prefix(
+                    Url::parse("https://three.com/foo/").unwrap(),
+                )),
+                Permission::HttpFetch(UrlPermission::Prefix(
+                    Url::parse("https://one.com/foo/").unwrap(),
+                )),
+                Permission::HttpFetch(UrlPermission::Prefix(
+                    Url::parse("https://four.com").unwrap(),
+                )),
+                Permission::HttpFetch(UrlPermission::Prefix(
+                    Url::parse("https://one.com").unwrap(),
+                )),
             ]
         }
 

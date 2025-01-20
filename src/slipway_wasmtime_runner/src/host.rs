@@ -45,9 +45,11 @@ impl WasiView for SlipwayHost<'_, '_, '_> {
 
 impl self::slipway_host::Host for SlipwayHost<'_, '_, '_> {
     fn try_resolve_font(&mut self, font_stack: String) -> Option<ResolvedFont> {
-        ::slipway_host::fonts::try_resolve(font_stack).map(|resolved| ResolvedFont {
-            family: resolved.family,
-            data: resolved.data,
+        ::slipway_host::fonts::try_resolve(self.execution_context, font_stack).map(|resolved| {
+            ResolvedFont {
+                family: resolved.family,
+                data: resolved.data,
+            }
         })
     }
 

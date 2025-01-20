@@ -122,6 +122,9 @@ pub enum ComponentLoadErrorInner {
 
     #[error("Component was not found.")]
     NotFound,
+
+    #[error("Rig has insufficient permissions to load component:\n{message}")]
+    PermissionDenied { message: String, inner: Vec<String> },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -21,8 +21,8 @@
         "url": "$$.weather_url_resolver"
       },
       "allow": [
-        { "permission": "http_fetch", "variant": "domain", "domain": "weather.yahoo.com" },
-        { "permission": "http_fetch", "variant": "domain", "domain": "met.com" }
+        { "permission": "http_fetch", "variant": "prefix", "value": "https://weather.yahoo.com" },
+        { "permission": "http_fetch", "variant": "prefix", "value": "https://met.com" }
       ]
     },
     "weather_transformer": {

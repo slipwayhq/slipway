@@ -1,6 +1,7 @@
 use std::{collections::HashMap, rc::Rc, sync::Arc};
 
 use slipway_engine::{
+    errors::{ComponentLoadError, ComponentLoadErrorInner},
     run_component, CallChain, ComponentExecutionContext, ComponentHandle, ComponentOutput,
     ComponentRunner, Immutable, Instruction, RigExecutionState, RigSession, RunComponentError,
     RunError,
@@ -58,12 +59,7 @@ pub fn run_rig<'rig, 'cache, 'runners, THostError>(
 where
     'cache: 'rig,
 {
-    // TODO:
-    // for component_rigging in rig_session.rig.rigging.components.values() {
-    //     let component_reference = &component_rigging.component;
-
-    //     todo!("Test permissions for rig accessing component.");
-    // }
+    check_rig_component_permissions(rig_session, &call_chain)?;
 
     let mut state = rig_session.initialize()?;
 
@@ -122,6 +118,29 @@ where
             .map(|(&k, v)| (k, v.execution_output.as_ref().map(Rc::clone)))
             .collect(),
     })
+}
+
+fn check_rig_component_permissions<THostError>(
+    rig_session: &RigSession<'_>,
+    call_chain: &Arc<CallChain<'_>>,
+) -> Result<(), RunError<THostError>> {
+    for component_reference in rig_session.rigging_component_references() {
+        crate::permissions::ensure_can_use_component_reference(
+            component_reference,
+            Arc::clone(call_chain),
+        )
+        .map_err(|e| {
+            RunError::ComponentLoadFailed(ComponentLoadError {
+                reference: Box::new(component_reference.clone()),
+                error: ComponentLoadErrorInner::PermissionDenied {
+                    message: e.message,
+                    inner: e.inner,
+                },
+            })
+        })?;
+    }
+
+    Ok(())
 }
 
 pub fn run_component_callout(
