@@ -10,10 +10,7 @@
 //! and is what the users will expect based on other toolchains
 //! such as Node's package.json.
 
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
 use semver::Version;
@@ -28,11 +25,13 @@ use self::{
     slipway_reference::SlipwayReference,
 };
 
-use super::url::{process_url_str, ProcessedUrl};
-
+mod local_component_permission;
 pub(crate) mod primitives;
+mod registry_component_permission;
 pub(crate) mod slipway_id;
 pub(crate) mod slipway_reference;
+mod string_permission;
+mod url_permission;
 
 pub(crate) const REGISTRY_PUBLISHER_SEPARATOR: char = '.';
 pub(crate) const VERSION_SEPARATOR: char = '.';
@@ -89,9 +88,9 @@ pub enum Permission {
 
     FontQuery(StringPermission),
 
-    RegistryComponent(StringPermission),
+    RegistryComponent(RegistryComponentPermission),
     HttpComponent(UrlPermission),
-    FileComponent(PathPermission),
+    LocalComponent(LocalComponentPermission),
 }
 
 impl Permission {
@@ -109,51 +108,16 @@ pub enum StringPermission {
     Suffix(String),
 }
 
-impl StringPermission {
-    pub fn matches(&self, string: &str) -> bool {
-        match self {
-            StringPermission::Any => true,
-            StringPermission::Exact(value) => value == string,
-            StringPermission::Prefix(value) => string.starts_with(value),
-            StringPermission::Suffix(value) => string.ends_with(value),
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(tag = "variant", content = "value", rename_all = "snake_case")]
-pub enum PathPermission {
+pub enum LocalComponentPermission {
     Any,
-    Exact(PathBuf),
-    Within(PathBuf),
-}
 
-impl PathPermission {
-    pub fn matches(&self, path: &Path) -> bool {
-        match self {
-            PathPermission::Any => true,
-            PathPermission::Exact(value) => match (value.canonicalize(), path.canonicalize()) {
-                (Ok(val), Ok(p)) => val == p,
-                _ => false,
-            },
-            PathPermission::Within(value) => match (value.canonicalize(), path.canonicalize()) {
-                (Ok(val), Ok(p)) => p.starts_with(&val),
-                _ => false,
-            },
-        }
-    }
-
-    pub fn matches_url_str(&self, url_str: &str) -> bool {
-        let Ok(processed_url) = process_url_str(url_str) else {
-            return false;
-        };
-
-        match processed_url {
-            ProcessedUrl::RelativePath(path) => self.matches(&path),
-            ProcessedUrl::AbsolutePath(path) => self.matches(&path),
-            ProcessedUrl::Url(_) => false,
-        }
-    }
+    // We only support exact for component paths because we
+    // don't know where the ComponentsLoader implementation will load
+    // the components from, which makes it hard to check paths using
+    // PathPermission and canonicalize.
+    Exact(String),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -164,15 +128,73 @@ pub enum UrlPermission {
     Prefix(Url),
 }
 
-impl UrlPermission {
-    pub fn matches(&self, url: &Url) -> bool {
-        match self {
-            UrlPermission::Any => true,
-            UrlPermission::Exact(value) => value.as_str() == url.as_str(),
-            UrlPermission::Prefix(value) => url.as_str().starts_with(value.as_str()),
-        }
-    }
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub struct RegistryComponentPermission {
+    pub publisher: Option<String>,
+    pub name: Option<String>,
+    pub version: Option<semver::VersionReq>,
 }
+
+// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+// #[serde(tag = "variant", content = "value", rename_all = "snake_case")]
+// pub enum PathPermission {
+//     Any,
+//     Exact(PathBuf),
+//     Within(PathBuf),
+// }
+
+// impl PathPermission {
+//     pub fn matches(&self, path: &Path) -> bool {
+//         match self {
+//             PathPermission::Any => true,
+//             PathPermission::Exact(value) => match (value.canonicalize(), path.canonicalize()) {
+//                 (Ok(val), Ok(p)) => val == p,
+//                 _ => false,
+//             },
+//             PathPermission::Within(value) => match (value.canonicalize(), path.canonicalize()) {
+//                 (Ok(val), Ok(p)) => p.starts_with(&val),
+//                 (Err(value_e), Err(path_e)) => {
+//                     warn!(
+//                         "Error canonicalizing path to check permissions: {:?}, error: {:?}",
+//                         value, value_e
+//                     );
+//                     warn!(
+//                         "Error canonicalizing path to check permissions: {:?}, error: {:?}",
+//                         path, path_e
+//                     );
+//                     false
+//                 }
+//                 (Err(value_e), Ok(_)) => {
+//                     warn!(
+//                         "Error canonicalizing path to check permissions: {:?}, error: {:?}",
+//                         value, value_e
+//                     );
+//                     false
+//                 }
+//                 (Ok(_), Err(path_e)) => {
+//                     warn!(
+//                         "Error canonicalizing path to check permissions: {:?}, error: {:?}",
+//                         path, path_e
+//                     );
+//                     false
+//                 }
+//             },
+//         }
+//     }
+
+//     pub fn matches_url_str(&self, url_str: &str) -> bool {
+//         let Ok(processed_url) = process_url_str(url_str) else {
+//             return false;
+//         };
+
+//         match processed_url {
+//             ProcessedUrl::RelativePath(path) => self.matches(&path),
+//             ProcessedUrl::AbsolutePath(path) => self.matches(&path),
+//             ProcessedUrl::Url(_) => false,
+//         }
+//     }
+// }
 
 pub(crate) static PERMISSIONS_ALL_VEC: Lazy<Vec<Permission>> = Lazy::new(|| vec![Permission::All]);
 

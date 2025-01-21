@@ -16,6 +16,7 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 ureq = { workspace = true }
 url = { workspace = true }
+semver = { workspace = true }
 
 [dev-dependencies]
 common_test_utils = { path = "../common_test_utils" }

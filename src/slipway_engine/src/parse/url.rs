@@ -9,7 +9,7 @@ use url::Url;
 pub enum ProcessedUrl {
     RelativePath(PathBuf),
     AbsolutePath(PathBuf),
-    Url(Url),
+    Http(Url),
 }
 
 static RELATIVE_FILE_REGEX: Lazy<Regex> =
@@ -47,7 +47,7 @@ pub fn process_url_str(url_str: &str) -> Result<ProcessedUrl, String> {
 
             Ok(ProcessedUrl::AbsolutePath(file_path))
         }
-        "https" | "http" => Ok(ProcessedUrl::Url(url)),
+        "https" | "http" => Ok(ProcessedUrl::Http(url)),
         other => Err(format!("unsupported URL scheme: {other}")),
     }
 }
@@ -114,7 +114,7 @@ mod test {
     fn it_should_process_http_urls() {
         assert_eq!(
             super::process_url_str("http://blah.com/test.txt").unwrap(),
-            super::ProcessedUrl::Url(Url::parse("http://blah.com/test.txt").unwrap())
+            super::ProcessedUrl::Http(Url::parse("http://blah.com/test.txt").unwrap())
         );
     }
 
@@ -122,7 +122,7 @@ mod test {
     fn it_should_process_https_urls() {
         assert_eq!(
             super::process_url_str("https://blah.com/test.txt").unwrap(),
-            super::ProcessedUrl::Url(Url::parse("https://blah.com/test.txt").unwrap())
+            super::ProcessedUrl::Http(Url::parse("https://blah.com/test.txt").unwrap())
         );
     }
 

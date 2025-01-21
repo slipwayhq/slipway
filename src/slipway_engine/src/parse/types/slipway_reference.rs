@@ -37,7 +37,7 @@ pub enum SlipwayReference {
     },
 
     // https://url
-    Url {
+    Http {
         url: Url,
     },
     Special(SpecialComponentReference),
@@ -75,7 +75,7 @@ impl FromStr for SlipwayReference {
             return match processed_url {
                 ProcessedUrl::RelativePath(path) => Ok(SlipwayReference::Local { path }),
                 ProcessedUrl::AbsolutePath(path) => Ok(SlipwayReference::Local { path }),
-                ProcessedUrl::Url(url) => Ok(SlipwayReference::Url { url }),
+                ProcessedUrl::Http(url) => Ok(SlipwayReference::Http { url }),
             };
         }
 
@@ -105,7 +105,7 @@ impl Display for SlipwayReference {
                     f.write_fmt(format_args!("{}", url))
                 }
             }
-            SlipwayReference::Url { url } => f.write_fmt(format_args!("{}", url)),
+            SlipwayReference::Http { url } => f.write_fmt(format_args!("{}", url)),
             SlipwayReference::Special(inner) => f.write_fmt(format_args!("{}", inner)),
         }
     }
@@ -326,7 +326,7 @@ mod tests {
 
             let reference = SlipwayReference::from_str(url_str).unwrap();
 
-            let SlipwayReference::Url { url } = reference else {
+            let SlipwayReference::Http { url } = reference else {
                 panic!("Unexpected reference: {reference}");
             };
 

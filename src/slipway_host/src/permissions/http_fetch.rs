@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use crate::ComponentError;
 use slipway_engine::{CallChain, ComponentExecutionContext, Permission};
-use tracing::warn;
 use url::Url;
 
 pub fn ensure_can_fetch_url(
@@ -27,12 +26,7 @@ fn ensure_can_fetch_url_inner(
 
         for permission in permissions.deny {
             if matches(url, permission) {
-                warn!(
-                    "Component {} denied access to url {} with deny permission {:?}",
-                    call_chain.component_handle_trail(),
-                    url,
-                    permission
-                );
+                super::warn_deny_permission_triggered(permission);
                 return false;
             }
         }
@@ -43,24 +37,16 @@ fn ensure_can_fetch_url_inner(
             }
         }
 
-        warn!(
-            "Component {} denied access to url {}. No appropriate allow permission found.",
-            call_chain.component_handle_trail(),
-            url
-        );
-
         false
     });
 
     if !is_allowed {
-        return Err(ComponentError {
-            message: format!(
-                "Component {} does not have permission to fetch url {}",
-                call_chain.component_handle_trail(),
-                url
-            ),
-            inner: vec![],
-        });
+        let message = format!(
+            "Component {} does not have permission to fetch url {}",
+            call_chain.component_handle_trail(),
+            url
+        );
+        return Err(super::create_permission_error(message, &call_chain));
     }
 
     Ok(())
@@ -108,7 +94,7 @@ mod test {
         }
     }
 
-    mod full_trust {
+    mod allow_all {
         use super::*;
 
         #[test]
@@ -273,7 +259,7 @@ mod test {
         }
     }
 
-    mod deny {
+    mod fetch_deny {
         use super::*;
 
         fn create_allow_permissions() -> Vec<Permission> {

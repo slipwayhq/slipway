@@ -51,7 +51,7 @@ fn load_component_from_url_with_json_schema_refs() {
 
     test_component(
         Some(&test_server.localhost_url),
-        SlipwayReference::Url {
+        SlipwayReference::Http {
             url: Url::parse(&format!(
                 "{}{}",
                 test_server.localhost_url, SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_TAR_NAME

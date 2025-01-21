@@ -48,7 +48,10 @@
   "rigging": {
     "first": {
       "component": "file:slipway.test.0.0.1",
-      "input": "$$.input"
+      "input": "$$.input",
+      "allow": [
+        { "permission": "local_component", "variant": "exact", "value": "file:slipway.test.0.0.1" }
+      ]
     },
     "output": {
       "component": "file:slipway.test.0.0.1",

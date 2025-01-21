@@ -176,7 +176,7 @@ impl BasicComponentsLoader {
                     ))
                 }
             }
-            SlipwayReference::Url { url } => {
+            SlipwayReference::Http { url } => {
                 let local_path = self
                     .io_abstractions
                     .load_file_from_url(url, component_reference)?;
@@ -232,7 +232,7 @@ impl BasicComponentsLoader {
                 let url_reference = match processed_url {
                     ProcessedUrl::RelativePath(path) => SlipwayReference::Local { path },
                     ProcessedUrl::AbsolutePath(path) => SlipwayReference::Local { path },
-                    ProcessedUrl::Url(url) => SlipwayReference::Url { url },
+                    ProcessedUrl::Http(url) => SlipwayReference::Http { url },
                 };
 
                 let result = self.load_component(&url_reference);
@@ -836,7 +836,7 @@ mod tests {
             // This test does not test the actual downloading of the file, but rather the loading
             // of the tar file once it has been downloaded.
             const URL: &str = "http://example.com/path/to/my_component.tar";
-            let component_reference = SlipwayReference::Url {
+            let component_reference = SlipwayReference::Http {
                 url: Url::parse(URL).unwrap(),
             };
 

@@ -63,20 +63,20 @@ impl<'call, 'rig> CalloutContext<'call, 'rig> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum ChainItem<T> {
     Some(T),
     Inherit,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CallChain<'rig> {
     component_handle: Option<&'rig ComponentHandle>,
     permissions: ChainItem<Permissions<'rig>>,
     previous: Option<Arc<CallChain<'rig>>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Permissions<'rig> {
     pub allow: &'rig Vec<Permission>,
     pub deny: &'rig Vec<Permission>,
@@ -117,6 +117,9 @@ impl<'rig> Permissions<'rig> {
 }
 
 const CHAIN_SEPARATOR: &str = " -> ";
+
+#[derive(Clone, Debug)]
+pub struct CallChainLink<'rig>(Option<&'rig ComponentHandle>, ChainItem<Permissions<'rig>>);
 
 impl<'rig> CallChain<'rig> {
     pub fn new(permissions: Permissions<'rig>) -> CallChain<'rig> {
@@ -196,6 +199,24 @@ impl<'rig> CallChain<'rig> {
         }
 
         trail
+    }
+
+    pub fn permission_trail(&self) -> Vec<CallChainLink<'rig>> {
+        let mut result = vec![CallChainLink(
+            self.component_handle,
+            self.permissions.clone(),
+        )];
+        let mut maybe_current = &self.previous;
+
+        while let Some(current) = maybe_current {
+            result.push(CallChainLink(
+                current.component_handle,
+                current.permissions.clone(),
+            ));
+            maybe_current = &current.previous;
+        }
+
+        result
     }
 
     pub fn component_handle_trail_for(&self, handle: &ComponentHandle) -> String {
