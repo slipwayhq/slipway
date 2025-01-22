@@ -50,7 +50,7 @@
       "component": "file:slipway.test.0.0.1",
       "input": "$$.input",
       "allow": [
-        { "permission": "local_component", "variant": "exact", "value": "file:slipway.test.0.0.1" }
+        { "permission": "local_component", "exact": "file:slipway.test.0.0.1" }
       ]
     },
     "output": {

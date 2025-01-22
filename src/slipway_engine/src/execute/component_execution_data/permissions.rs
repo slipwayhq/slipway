@@ -58,14 +58,14 @@ mod test {
 
         assert!(!ensure_permissions(call_chain.clone(), |p| p
             .allow
-            .contains(&Permission::HttpFetch(UrlPermission::Any))));
+            .contains(&Permission::Http(UrlPermission::Any {}))));
     }
 
     #[test]
     fn test_ensure_permissions_inherit() {
-        let allow1 = vec![Permission::All, Permission::HttpFetch(UrlPermission::Any)];
+        let allow1 = vec![Permission::All, Permission::Http(UrlPermission::Any {})];
         let permissions1 = Permissions::allow(&allow1);
-        let allow2 = vec![Permission::HttpFetch(UrlPermission::Any)];
+        let allow2 = vec![Permission::Http(UrlPermission::Any {})];
         let permissions2 = Permissions::allow(&allow2);
 
         let call_chain = Arc::new(CallChain {
@@ -84,7 +84,7 @@ mod test {
 
         assert!(ensure_permissions(call_chain.clone(), |p| p
             .allow
-            .contains(&Permission::HttpFetch(UrlPermission::Any))));
+            .contains(&Permission::Http(UrlPermission::Any {}))));
 
         assert!(!ensure_permissions(call_chain.clone(), |p| p
             .allow

@@ -130,7 +130,7 @@ pub fn ensure_can_use_component_reference(
 
     if !is_allowed {
         let message = format!(
-            "Component {} does not have permission to access component {}",
+            "Component \"{}\" does not have permission to access component \"{}\"",
             call_chain.component_handle_trail(),
             component_reference
         );
@@ -175,7 +175,7 @@ mod test {
         fn it_should_forbid_any_query_with_incorrect_permissions() {
             run_test(
                 "p1.n1.1.0.1",
-                Permissions::allow(&vec![Permission::HttpFetch(UrlPermission::Any)]),
+                Permissions::allow(&vec![Permission::Http(UrlPermission::Any {})]),
                 false,
             );
         }
@@ -353,7 +353,7 @@ mod test {
             fn it_should_allow_any_reference() {
                 run_test(
                     "https://slipway-registry.com/p1/n1/1.0.1",
-                    Permissions::allow(&vec![Permission::HttpComponent(UrlPermission::Any)]),
+                    Permissions::allow(&vec![Permission::HttpComponent(UrlPermission::Any {})]),
                     true,
                 );
             }
@@ -363,9 +363,9 @@ mod test {
             use super::*;
 
             fn create_permissions() -> Vec<Permission> {
-                vec![Permission::HttpComponent(UrlPermission::Exact(
-                    Url::parse("https://slipway-registry.com/p1/n1/1.0.1").unwrap(),
-                ))]
+                vec![Permission::HttpComponent(UrlPermission::Exact {
+                    exact: Url::parse("https://slipway-registry.com/p1/n1/1.0.1").unwrap(),
+                })]
             }
 
             #[test]
@@ -390,9 +390,9 @@ mod test {
             use super::*;
 
             fn create_permissions() -> Vec<Permission> {
-                vec![Permission::HttpComponent(UrlPermission::Prefix(
-                    Url::parse("https://slipway-registry.com/p1/").unwrap(),
-                ))]
+                vec![Permission::HttpComponent(UrlPermission::Prefix {
+                    prefix: Url::parse("https://slipway-registry.com/p1/").unwrap(),
+                })]
             }
 
             #[test]
@@ -423,15 +423,15 @@ mod test {
             use super::*;
 
             fn create_allow_permissions() -> Vec<Permission> {
-                vec![Permission::HttpComponent(UrlPermission::Prefix(
-                    Url::parse("https://slipway-registry.com/p1/").unwrap(),
-                ))]
+                vec![Permission::HttpComponent(UrlPermission::Prefix {
+                    prefix: Url::parse("https://slipway-registry.com/p1/").unwrap(),
+                })]
             }
 
             fn create_deny_permissions() -> Vec<Permission> {
-                vec![Permission::HttpComponent(UrlPermission::Prefix(
-                    Url::parse("https://slipway-registry.com/p1/n2/").unwrap(),
-                ))]
+                vec![Permission::HttpComponent(UrlPermission::Prefix {
+                    prefix: Url::parse("https://slipway-registry.com/p1/n2/").unwrap(),
+                })]
             }
 
             #[test]
@@ -494,9 +494,11 @@ mod test {
             use super::*;
 
             fn create_permissions() -> Vec<Permission> {
-                vec![Permission::LocalComponent(LocalComponentPermission::Exact(
-                    "file:components/foo".to_string(),
-                ))]
+                vec![Permission::LocalComponent(
+                    LocalComponentPermission::Exact {
+                        exact: "file:components/foo".to_string(),
+                    },
+                )]
             }
 
             #[test]
@@ -527,15 +529,19 @@ mod test {
             use super::*;
 
             fn create_allow_permissions() -> Vec<Permission> {
-                vec![Permission::LocalComponent(LocalComponentPermission::Exact(
-                    "file:components/foo".to_string(),
-                ))]
+                vec![Permission::LocalComponent(
+                    LocalComponentPermission::Exact {
+                        exact: "file:components/foo".to_string(),
+                    },
+                )]
             }
 
             fn create_deny_permissions() -> Vec<Permission> {
-                vec![Permission::LocalComponent(LocalComponentPermission::Exact(
-                    "file:components/foo".to_string(),
-                ))]
+                vec![Permission::LocalComponent(
+                    LocalComponentPermission::Exact {
+                        exact: "file:components/foo".to_string(),
+                    },
+                )]
             }
 
             #[test]

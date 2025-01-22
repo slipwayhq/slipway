@@ -21,8 +21,8 @@
         "url": "$$.weather_url_resolver"
       },
       "allow": [
-        { "permission": "http_fetch", "variant": "prefix", "value": "https://weather.yahoo.com" },
-        { "permission": "http_fetch", "variant": "prefix", "value": "https://met.com" }
+        { "permission": "http", "prefix": "https://weather.yahoo.com" },
+        { "permission": "http", "prefix": "https://met.com" }
       ]
     },
     "weather_transformer": {

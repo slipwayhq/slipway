@@ -4,7 +4,7 @@ impl LocalComponentPermission {
     pub fn matches(&self, path: &str) -> bool {
         match self {
             LocalComponentPermission::Any => true,
-            LocalComponentPermission::Exact(value) => value == path,
+            LocalComponentPermission::Exact { exact } => exact == path,
         }
     }
 }
@@ -22,7 +22,9 @@ mod tests {
 
     #[test]
     fn it_should_match_exact() {
-        let permission = LocalComponentPermission::Exact("file:///some/path.tar".to_string());
+        let permission = LocalComponentPermission::Exact {
+            exact: "file:///some/path.tar".to_string(),
+        };
         assert!(permission.matches("file:///some/path.tar"));
         assert!(!permission.matches("file:some/path.tar"));
         assert!(!permission.matches("file:///some/path.tar.gs"));

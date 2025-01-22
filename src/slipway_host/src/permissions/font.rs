@@ -19,7 +19,7 @@ fn ensure_can_query_font_inner(
         fn matches(query: &str, permission: &Permission) -> bool {
             match permission {
                 Permission::All => true,
-                Permission::FontQuery(permission) => permission.matches(query),
+                Permission::Font(permission) => permission.matches(query),
                 _ => false,
             }
         }
@@ -42,7 +42,7 @@ fn ensure_can_query_font_inner(
 
     if !is_allowed {
         let message = format!(
-            "Component {} does not have permission to perform font query {}",
+            "Component \"{}\" does not have permission to perform font query \"{}\"",
             call_chain.component_handle_trail(),
             query
         );
@@ -83,7 +83,7 @@ mod test {
         fn it_should_forbid_any_query_with_incorrect_permissions() {
             run_test(
                 "Roboto",
-                Permissions::allow(&vec![Permission::HttpFetch(UrlPermission::Any)]),
+                Permissions::allow(&vec![Permission::Http(UrlPermission::Any {})]),
                 false,
             );
         }
@@ -105,7 +105,7 @@ mod test {
         fn it_should_allow_any_query() {
             run_test(
                 "Roboto",
-                Permissions::allow(&vec![Permission::FontQuery(StringPermission::Any)]),
+                Permissions::allow(&vec![Permission::Font(StringPermission::Any {})]),
                 true,
             );
         }
@@ -115,9 +115,9 @@ mod test {
         use super::*;
 
         fn create_permissions() -> Vec<Permission> {
-            vec![Permission::FontQuery(StringPermission::Exact(
-                "Roboto".to_string(),
-            ))]
+            vec![Permission::Font(StringPermission::Exact {
+                exact: "Roboto".to_string(),
+            })]
         }
 
         #[test]
@@ -134,9 +134,9 @@ mod test {
         use super::*;
 
         fn create_permissions() -> Vec<Permission> {
-            vec![Permission::FontQuery(StringPermission::Prefix(
-                "Roboto".to_string(),
-            ))]
+            vec![Permission::Font(StringPermission::Prefix {
+                prefix: "Roboto".to_string(),
+            })]
         }
 
         #[test]
@@ -154,9 +154,9 @@ mod test {
         use super::*;
 
         fn create_permissions() -> Vec<Permission> {
-            vec![Permission::FontQuery(StringPermission::Suffix(
-                "Roboto".to_string(),
-            ))]
+            vec![Permission::Font(StringPermission::Suffix {
+                suffix: "Roboto".to_string(),
+            })]
         }
 
         #[test]
@@ -174,15 +174,15 @@ mod test {
         use super::*;
 
         fn create_allow_permissions() -> Vec<Permission> {
-            vec![Permission::FontQuery(StringPermission::Prefix(
-                "Roboto".to_string(),
-            ))]
+            vec![Permission::Font(StringPermission::Prefix {
+                prefix: "Roboto".to_string(),
+            })]
         }
 
         fn create_deny_permissions() -> Vec<Permission> {
-            vec![Permission::FontQuery(StringPermission::Exact(
-                "Roboto Mono".to_string(),
-            ))]
+            vec![Permission::Font(StringPermission::Exact {
+                exact: "Roboto Mono".to_string(),
+            })]
         }
 
         #[test]
@@ -217,15 +217,15 @@ mod test {
         use super::*;
 
         fn create_allow_permissions() -> Vec<Permission> {
-            vec![Permission::FontQuery(StringPermission::Prefix(
-                "Roboto".to_string(),
-            ))]
+            vec![Permission::Font(StringPermission::Prefix {
+                prefix: "Roboto".to_string(),
+            })]
         }
 
         fn create_deny_permissions() -> Vec<Permission> {
-            vec![Permission::FontQuery(StringPermission::Prefix(
-                "Roboto Mono".to_string(),
-            ))]
+            vec![Permission::Font(StringPermission::Prefix {
+                prefix: "Roboto Mono".to_string(),
+            })]
         }
 
         #[test]

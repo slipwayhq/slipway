@@ -5,9 +5,9 @@ use super::UrlPermission;
 impl UrlPermission {
     pub fn matches(&self, url: &Url) -> bool {
         match self {
-            UrlPermission::Any => true,
-            UrlPermission::Exact(value) => value.as_str() == url.as_str(),
-            UrlPermission::Prefix(value) => url.as_str().starts_with(value.as_str()),
+            UrlPermission::Any {} => true,
+            UrlPermission::Exact { exact } => exact.as_str() == url.as_str(),
+            UrlPermission::Prefix { prefix } => url.as_str().starts_with(prefix.as_str()),
         }
     }
 }
@@ -22,14 +22,16 @@ mod test {
 
     #[test]
     fn it_should_match_any_url() {
-        let permission = UrlPermission::Any;
+        let permission = UrlPermission::Any {};
         assert!(permission.matches(&url("https://example.com")));
         assert!(permission.matches(&url("http://other.co.uk/foo.bar.json")));
     }
 
     #[test]
     fn it_should_match_exact_domain() {
-        let permission = UrlPermission::Exact(url("https://example.com"));
+        let permission = UrlPermission::Exact {
+            exact: url("https://example.com"),
+        };
 
         assert!(permission.matches(&url("https://example.com")));
         assert!(permission.matches(&url("https://example.com/")));
@@ -43,7 +45,9 @@ mod test {
 
     #[test]
     fn it_should_match_exact_domain_with_path() {
-        let permission = UrlPermission::Exact(url("https://example.com/some/file.json"));
+        let permission = UrlPermission::Exact {
+            exact: url("https://example.com/some/file.json"),
+        };
 
         assert!(permission.matches(&url("https://example.com/some/file.json")));
 
@@ -57,7 +61,9 @@ mod test {
 
     #[test]
     fn it_should_match_prefix() {
-        let permission = UrlPermission::Prefix(url("https://example.com/some/file.json"));
+        let permission = UrlPermission::Prefix {
+            prefix: url("https://example.com/some/file.json"),
+        };
 
         assert!(permission.matches(&url("https://example.com/some/file.json")));
         assert!(permission.matches(&url("https://example.com/some/file.json?query=1")));

@@ -84,13 +84,13 @@ pub struct ComponentRigging {
 pub enum Permission {
     All,
 
-    HttpFetch(UrlPermission),
+    Http(#[serde(default)] UrlPermission),
 
-    FontQuery(StringPermission),
+    Font(#[serde(default)] StringPermission),
 
     RegistryComponent(RegistryComponentPermission),
-    HttpComponent(UrlPermission),
-    LocalComponent(LocalComponentPermission),
+    HttpComponent(#[serde(default)] UrlPermission),
+    LocalComponent(#[serde(default)] LocalComponentPermission),
 }
 
 impl Permission {
@@ -99,17 +99,35 @@ impl Permission {
     }
 }
 
+/// The structure of this enum is designed to allow user friendly JSON.
+/// For example:
+/// ```json
+/// {
+///   "permission": "http"
+/// }
+/// ```
+/// for `Permission::Http(UrlPermission::Any)`.
+/// and
+/// ```json
+/// {
+///   "permission": "http",
+///   "prefix": "https://example.com/"
+/// }
+/// ```
+/// for `Permission::Http(UrlPermission::Prefix { prefix: "https://example.com/".into() })`.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(tag = "variant", content = "value", rename_all = "snake_case")]
+#[serde(untagged, rename_all = "snake_case")]
 pub enum StringPermission {
-    Any,
-    Exact(String),
-    Prefix(String),
-    Suffix(String),
+    Any {},
+    Exact { exact: String },
+    Prefix { prefix: String },
+    Suffix { suffix: String },
 }
 
+/// The structure of this enum is designed to allow user friendly JSON.
+/// See `StringPermission` for more details.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(tag = "variant", content = "value", rename_all = "snake_case")]
+#[serde(untagged, rename_all = "snake_case")]
 pub enum LocalComponentPermission {
     Any,
 
@@ -117,27 +135,35 @@ pub enum LocalComponentPermission {
     // don't know where the ComponentsLoader implementation will load
     // the components from, which makes it hard to check paths using
     // PathPermission and canonicalize.
-    Exact(String),
+    Exact { exact: String },
 }
 
+/// The structure of this enum is designed to allow user friendly JSON.
+/// See `StringPermission` for more details.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(tag = "variant", content = "value", rename_all = "snake_case")]
+#[serde(untagged, rename_all = "snake_case")]
 pub enum UrlPermission {
-    Any,
-    Exact(Url),
-    Prefix(Url),
+    Any {},
+    Exact { exact: Url },
+    Prefix { prefix: Url },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+#[serde(deny_unknown_fields)]
 pub struct RegistryComponentPermission {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub publisher: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<semver::VersionReq>,
 }
 
 // #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-// #[serde(tag = "variant", content = "value", rename_all = "snake_case")]
+// #[serde(tag = "type", content = "value", rename_all = "snake_case")]
 // pub enum PathPermission {
 //     Any,
 //     Exact(PathBuf),

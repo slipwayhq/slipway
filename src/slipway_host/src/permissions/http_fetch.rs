@@ -19,7 +19,7 @@ fn ensure_can_fetch_url_inner(
         fn matches(url: &Url, permission: &Permission) -> bool {
             match permission {
                 Permission::All => true,
-                Permission::HttpFetch(permission) => permission.matches(url),
+                Permission::Http(permission) => permission.matches(url),
                 _ => false,
             }
         }
@@ -42,7 +42,7 @@ fn ensure_can_fetch_url_inner(
 
     if !is_allowed {
         let message = format!(
-            "Component {} does not have permission to fetch url {}",
+            "Component \"{}\" does not have permission to fetch url \"{}\"",
             call_chain.component_handle_trail(),
             url
         );
@@ -88,7 +88,7 @@ mod test {
         fn it_should_forbid_any_url_for_incorrect_permissions() {
             run_test(
                 "https://example.com/foo/bar.json",
-                Permissions::allow(&vec![Permission::FontQuery(StringPermission::Any)]),
+                Permissions::allow(&vec![Permission::Font(StringPermission::Any {})]),
                 false,
             );
         }
@@ -114,7 +114,7 @@ mod test {
         fn it_should_allow_any_url() {
             run_test(
                 "https://example.com/foo/bar.json",
-                Permissions::allow(&vec![Permission::HttpFetch(UrlPermission::Any)]),
+                Permissions::allow(&vec![Permission::Http(UrlPermission::Any {})]),
                 true,
             );
         }
@@ -124,9 +124,9 @@ mod test {
         use super::*;
 
         fn create_permissions() -> Vec<Permission> {
-            vec![Permission::HttpFetch(UrlPermission::Exact(
-                Url::parse("https://example.com/foo/bar.json").unwrap(),
-            ))]
+            vec![Permission::Http(UrlPermission::Exact {
+                exact: Url::parse("https://example.com/foo/bar.json").unwrap(),
+            })]
         }
 
         #[test]
@@ -169,9 +169,9 @@ mod test {
         use super::*;
 
         fn create_permissions() -> Vec<Permission> {
-            vec![Permission::HttpFetch(UrlPermission::Prefix(
-                Url::parse("https://example.com/foo/").unwrap(),
-            ))]
+            vec![Permission::Http(UrlPermission::Prefix {
+                prefix: Url::parse("https://example.com/foo/").unwrap(),
+            })]
         }
 
         #[test]
@@ -218,9 +218,9 @@ mod test {
         use super::*;
 
         fn create_permissions() -> Vec<Permission> {
-            vec![Permission::HttpFetch(UrlPermission::Prefix(
-                Url::parse("https://foo.bar.co.uk").unwrap(),
-            ))]
+            vec![Permission::Http(UrlPermission::Prefix {
+                prefix: Url::parse("https://foo.bar.co.uk").unwrap(),
+            })]
         }
 
         #[test]
@@ -263,15 +263,15 @@ mod test {
         use super::*;
 
         fn create_allow_permissions() -> Vec<Permission> {
-            vec![Permission::HttpFetch(UrlPermission::Prefix(
-                Url::parse("https://foo.bar.co.uk").unwrap(),
-            ))]
+            vec![Permission::Http(UrlPermission::Prefix {
+                prefix: Url::parse("https://foo.bar.co.uk").unwrap(),
+            })]
         }
 
         fn create_deny_permissions() -> Vec<Permission> {
-            vec![Permission::HttpFetch(UrlPermission::Exact(
-                Url::parse("https://foo.bar.co.uk/foo/baz.json").unwrap(),
-            ))]
+            vec![Permission::Http(UrlPermission::Exact {
+                exact: Url::parse("https://foo.bar.co.uk/foo/baz.json").unwrap(),
+            })]
         }
 
         #[test]
@@ -294,24 +294,24 @@ mod test {
 
         fn create_permissions() -> Vec<Permission> {
             vec![
-                Permission::HttpFetch(UrlPermission::Exact(
-                    Url::parse("https://one.com/foo/bar.json").unwrap(),
-                )),
-                Permission::HttpFetch(UrlPermission::Exact(
-                    Url::parse("https://two.com/foo/baz.json").unwrap(),
-                )),
-                Permission::HttpFetch(UrlPermission::Prefix(
-                    Url::parse("https://three.com/foo/").unwrap(),
-                )),
-                Permission::HttpFetch(UrlPermission::Prefix(
-                    Url::parse("https://one.com/foo/").unwrap(),
-                )),
-                Permission::HttpFetch(UrlPermission::Prefix(
-                    Url::parse("https://four.com").unwrap(),
-                )),
-                Permission::HttpFetch(UrlPermission::Prefix(
-                    Url::parse("https://one.com").unwrap(),
-                )),
+                Permission::Http(UrlPermission::Exact {
+                    exact: Url::parse("https://one.com/foo/bar.json").unwrap(),
+                }),
+                Permission::Http(UrlPermission::Exact {
+                    exact: Url::parse("https://two.com/foo/baz.json").unwrap(),
+                }),
+                Permission::Http(UrlPermission::Prefix {
+                    prefix: Url::parse("https://three.com/foo/").unwrap(),
+                }),
+                Permission::Http(UrlPermission::Prefix {
+                    prefix: Url::parse("https://one.com/foo/").unwrap(),
+                }),
+                Permission::Http(UrlPermission::Prefix {
+                    prefix: Url::parse("https://four.com").unwrap(),
+                }),
+                Permission::Http(UrlPermission::Prefix {
+                    prefix: Url::parse("https://one.com").unwrap(),
+                }),
             ]
         }
 
