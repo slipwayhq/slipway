@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 wit_bindgen::generate!({
-    // the name of the world in the `*.wit` input file
     world: "slipway",
 });
 
@@ -22,7 +21,6 @@ export!(Component);
 
 fn run_inner(input: Input) -> Result<String, ComponentError> {
     let output = match input.file_type {
-        // Check that we successfully get the file contents and that the result contains data.
         DataResultType::Text => {
             let text = slipway_host::load_text(&input.handle, &input.path)?;
             Output {

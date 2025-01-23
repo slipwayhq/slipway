@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use slipway_host::RequestError;
 
 wit_bindgen::generate!({
-    // the name of the world in the `*.wit` input file
     world: "slipway",
 });
 
