@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use slipway_engine::{ComponentExecutionContext, ComponentHandle};
 
-use super::{RequestError, BinResponse};
+use super::{BinResponse, RequestError};
 
 pub(super) fn get_component_file_bin(
     execution_context: &ComponentExecutionContext,
@@ -44,7 +44,7 @@ pub(super) fn get_component_file_bin(
     })?;
 
     Ok(BinResponse {
-        status: 200,
+        status_code: 200,
         headers: vec![],
         body: bin.to_vec(),
     })

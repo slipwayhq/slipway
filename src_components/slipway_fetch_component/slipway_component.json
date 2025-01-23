@@ -1,0 +1,36 @@
+{
+  "publisher": "slipway",
+  "name": "fetch",
+  "description": "Does a simple fetch.",
+  "version": "0.0.1",
+  "input": {
+    "properties": {
+      "url": { "type": "string" },
+      "method": { "type": "string" },
+      "headers": {
+        "values": { "type": "string" }
+      },
+      "body": { "type": "string" },
+      "response_type": {
+        "enum": ["text", "binary"]
+      }
+    }
+  },
+  "output": {
+    "properties": {
+      "status_code": {
+        "type": "int32"
+      }
+    },
+    "optionalProperties": {
+      "body_text": {
+        "type": "string"
+      },
+      "body_bin": {
+        "elements": {
+          "type": "uint8"
+        }
+      }
+    }
+  }
+}

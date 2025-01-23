@@ -1,6 +1,9 @@
 use std::str::FromStr;
 
 use common::get_rig_output;
+use common_test_utils::{
+    SLIPWAY_INCREMENT_COMPONENT_TAR_NAME, SLIPWAY_INCREMENT_TEN_COMPONENT_TAR_NAME,
+};
 use serde_json::json;
 use slipway_engine::{ComponentHandle, ComponentRigging, Rig, Rigging, SlipwayReference};
 
@@ -22,7 +25,7 @@ fn run(ttl: u32, expected_result: u32) {
             ComponentHandle::from_str("test").unwrap(),
             ComponentRigging::for_test_with_reference_callout_override(
                 SlipwayReference::Local {
-                    path: "slipway.test.0.0.1.tar".into(),
+                    path: SLIPWAY_INCREMENT_COMPONENT_TAR_NAME.into(),
                 },
                 Some(json!({
                     "type": "callout_increment",
@@ -30,9 +33,9 @@ fn run(ttl: u32, expected_result: u32) {
                     "ttl": ttl,
                     "result_type": "increment"
                 })),
-                "test",
+                "increment",
                 SlipwayReference::Local {
-                    path: "slipway.test_2.0.0.1.tar".into(),
+                    path: SLIPWAY_INCREMENT_TEN_COMPONENT_TAR_NAME.into(),
                 },
             ),
         )]

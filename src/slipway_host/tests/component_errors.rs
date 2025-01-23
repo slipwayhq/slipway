@@ -13,18 +13,24 @@ mod common;
 
 #[test_log::test]
 fn test_callout_panic() {
-    let rig = create_callout_test_rig(3, "test", "panic");
-    assert_run_errors_with(rig, &["\"test -> test -> test -> test\"", "wasm backtrace"]);
+    let rig = create_callout_test_rig(3, "increment", "panic");
+    assert_run_errors_with(
+        rig,
+        &[
+            "\"test -> increment -> increment -> increment\"",
+            "wasm backtrace",
+        ],
+    );
 }
 
 #[test_log::test]
 fn test_callout_error() {
-    let rig = create_callout_test_rig(3, "test", "error");
+    let rig = create_callout_test_rig(3, "increment", "error");
     assert_run_errors_with(
         rig,
         &[
-            "\"test -> test -> test -> test\"",
-            "slipway-test-component-error",
+            "\"test -> increment -> increment -> increment\"",
+            "slipway-increment-component-error",
         ],
     );
 }
@@ -35,8 +41,8 @@ fn test_fragment_callout_error() {
     assert_run_errors_with(
         rig,
         &[
-            "\"test -> first -> test -> test -> test\"",
-            "slipway-test-component-error",
+            "\"test -> first -> increment -> increment -> increment\"",
+            "slipway-increment-component-error",
         ],
     );
 }
@@ -64,14 +70,14 @@ fn create_callout_test_rig(ttl: u32, component_name: &str, result_type: &str) ->
 
 #[test_log::test]
 fn test_invalid_callout_input() {
-    let rig = create_callout_schema_test_rig("test", "invalid_callout_input");
-    assert_run_errors_with(rig, &["\"test -> test\"", r#""type": "foo""#]);
+    let rig = create_callout_schema_test_rig("increment", "invalid_callout_input");
+    assert_run_errors_with(rig, &["\"test -> increment\"", r#""type": "foo""#]);
 }
 
 #[test_log::test]
 fn test_invalid_callout_output() {
-    let rig = create_callout_schema_test_rig("test", "invalid_callout_output");
-    assert_run_errors_with(rig, &["\"test -> test\"", r#""value": "foo""#]);
+    let rig = create_callout_schema_test_rig("increment", "invalid_callout_output");
+    assert_run_errors_with(rig, &["\"test -> increment\"", r#""value": "foo""#]);
 }
 
 fn create_callout_schema_test_rig(component_name: &str, call_type: &str) -> Rig {

@@ -7,7 +7,7 @@ interface types {
     }
 }
 
-world slipway-component {
+world slipway {
     import slipway-host: interface {
         use types.{component-error};
     
@@ -34,13 +34,13 @@ world slipway-component {
         }
 
         record bin-response {
-            status: u16,
+            status-code: u16,
             headers: list<header>,
             body: list<u8>,
         }
 
         record text-response {
-            status: u16,
+            status-code: u16,
             headers: list<header>,
             body: string,
         }

@@ -1,0 +1,21 @@
+{
+  "publisher": "slipway",
+  "name": "component_file",
+  "description": "Does a simple JSON modification.",
+  "version": "0.0.1",
+  "input": {
+    "properties": {
+      "handle": { "type": "string" },
+      "path": { "type": "string" },
+      "file_type": {
+        "enum": ["text", "binary"]
+      }
+    }
+  },
+  "output": {
+    "optionalProperties": {
+      "text": { "type": "string" },
+      "bin": { "elements": { "type": "uint8" } }
+    }
+  }
+}

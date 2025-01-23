@@ -15,11 +15,6 @@ function run() {
       case "throw":
         throw new Error("This is a thrown error.");
 
-      case "read_file":
-        const data = Deno.readTextFileSync("hello.txt");
-        console.log(data);
-        break;
-
       default:
           throw new Error("Unexpected input type: " + input.type);
   }  

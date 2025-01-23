@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use common::get_rig_output;
+use common_test_utils::SLIPWAY_FRAGMENT_COMPONENT_TAR_NAME;
 use serde_json::json;
 use slipway_engine::{ComponentHandle, ComponentRigging, Rig, Rigging, SlipwayReference};
 
@@ -27,7 +28,7 @@ fn run(ttl: u32, expected_result: u32) {
             ComponentHandle::from_str("frag").unwrap(),
             ComponentRigging::for_test_with_reference(
                 SlipwayReference::Local {
-                    path: "slipway.fragment.0.0.1.tar".into(),
+                    path: SLIPWAY_FRAGMENT_COMPONENT_TAR_NAME.into(),
                 },
                 Some(json!({
                     "type": "callout_increment",

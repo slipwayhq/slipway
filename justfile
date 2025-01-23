@@ -19,10 +19,12 @@ build-src configuration="debug":
   cd src && cargo build {{ if configuration == "release" { "--release" } else { "" } }}
 
 build-components configuration="debug": && (assemble-test-components configuration)
-  cp wit/latest/slipway_component.wit src_components/slipway_test_component/wit/world.wit
+  cp wit/latest/slipway.wit src_components/slipway_increment_component/wit/slipway.wit
+  cp wit/latest/slipway.wit src_components/slipway_component_file_component/wit/slipway.wit
+  cp wit/latest/slipway.wit src_components/slipway_fetch_component/wit/slipway.wit
   cd src_components && \
-    cargo component build -p slipway_test_component {{ if configuration == "release" { "--release" } else { "" } }} && \
-    cargo component build -p slipway_test_component --features add-ten --target-dir target/add-ten {{ if configuration == "release" { "--release" } else { "" } }}
+    cargo build --target wasm32-wasip2 {{ if configuration == "release" { "--release" } else { "" } }} && \
+    cargo build -p slipway_increment_component --features increment-ten --target-dir target/increment-ten --target wasm32-wasip2 {{ if configuration == "release" { "--release" } else { "" } }}
   
 clean-src:
   cd src && cargo clean
@@ -32,41 +34,38 @@ clean-components:
 
 assemble-test-components configuration="debug": \
   (clean-artifacts configuration) \
+  (assemble-rust-component "increment" configuration) \
+  (assemble-rust-component "component_file" configuration) \
+  (assemble-rust-component "fetch" configuration) \
   && \
-  (tar-component-files "test") \
-  (rename-component-artifacts "test") \
-  (tar-component-files "test_2") \
-  (rename-component-artifacts "test_2") \
-  (tar-component-files "test_json_schema") \
-  (rename-component-artifacts "test_json_schema") \
+  (tar-component-files "increment_ten") \
+  (rename-component-artifacts "increment_ten") \
+  (tar-component-files "increment_json_schema") \
+  (rename-component-artifacts "increment_json_schema") \
   (tar-component-files "fragment") \
   (rename-component-artifacts "fragment") \
-  (tar-component-files "test_js") \
-  (rename-component-artifacts "test_js") \
+  (tar-component-files "increment_js") \
+  (rename-component-artifacts "increment_js") \
   
-  mkdir -p artifacts/slipway_test
-  cp src_components/target/wasm32-wasip1/{{configuration}}/slipway_test_component.wasm artifacts/slipway_test/slipway_component.wasm
-  cp src_components/slipway_test_component/slipway_component.json artifacts/slipway_test/slipway_component.json
+  mkdir -p artifacts/slipway_increment_ten
+  cp src_components/target/increment-ten/wasm32-wasip2/{{configuration}}/slipway_increment_component.wasm artifacts/slipway_increment_ten/slipway_component.wasm
+  cp src_components/slipway_increment_component/slipway_component.json artifacts/slipway_increment_ten/slipway_component.json
+  jq '.name = "increment_ten"' artifacts/slipway_increment_ten/slipway_component.json > artifacts/slipway_increment_ten/slipway_component2.json
+  mv artifacts/slipway_increment_ten/slipway_component2.json artifacts/slipway_increment_ten/slipway_component.json
 
-  mkdir -p artifacts/slipway_test_2
-  cp src_components/target/add-ten/wasm32-wasip1/{{configuration}}/slipway_test_component.wasm artifacts/slipway_test_2/slipway_component.wasm
-  cp src_components/slipway_test_component/slipway_component.json artifacts/slipway_test_2/slipway_component.json
-  jq '.name = "test_2"' artifacts/slipway_test_2/slipway_component.json > artifacts/slipway_test_2/slipway_component2.json
-  mv artifacts/slipway_test_2/slipway_component2.json artifacts/slipway_test_2/slipway_component.json
-
-  mkdir -p artifacts/slipway_test_json_schema
-  cp src_components/target/wasm32-wasip1/{{configuration}}/slipway_test_component.wasm artifacts/slipway_test_json_schema/slipway_component.wasm
-  cp src_components/slipway_test_json_schema_component/slipway_component.json artifacts/slipway_test_json_schema/slipway_component.json
-  cp src_components/slipway_test_json_schema_component/input_schema.json artifacts/slipway_test_json_schema/input_schema.json
-  cp src_components/slipway_test_json_schema_component/output_schema.json artifacts/slipway_test_json_schema/output_schema.json
+  mkdir -p artifacts/slipway_increment_json_schema
+  cp src_components/target/wasm32-wasip2/{{configuration}}/slipway_increment_component.wasm artifacts/slipway_increment_json_schema/slipway_component.wasm
+  cp src_components/slipway_increment_json_schema_component/slipway_component.json artifacts/slipway_increment_json_schema/slipway_component.json
+  cp src_components/slipway_increment_json_schema_component/input_schema.json artifacts/slipway_increment_json_schema/input_schema.json
+  cp src_components/slipway_increment_json_schema_component/output_schema.json artifacts/slipway_increment_json_schema/output_schema.json
 
   mkdir -p artifacts/slipway_fragment
   cp src_components/slipway_fragment_component/slipway_component.json artifacts/slipway_fragment/slipway_component.json
 
-  mkdir -p artifacts/slipway_test_js
-  cp src_components/slipway_test_js_component/slipway_component.json artifacts/slipway_test_js/slipway_component.json
-  cp src_components/slipway_test_js_component/slipway_js_component.json artifacts/slipway_test_js/slipway_js_component.json
-  cp src_components/slipway_test_js_component/run.js artifacts/slipway_test_js/run.js
+  mkdir -p artifacts/slipway_increment_js
+  cp src_components/slipway_increment_js_component/slipway_component.json artifacts/slipway_increment_js/slipway_component.json
+  cp src_components/slipway_increment_js_component/slipway_js_component.json artifacts/slipway_increment_js/slipway_js_component.json
+  cp src_components/slipway_increment_js_component/run.js artifacts/slipway_increment_js/run.js
 
 tar-component-files name:
   tar -cf artifacts/slipway_{{name}}.tar -C artifacts/slipway_{{name}} .
@@ -80,3 +79,11 @@ rename-component-artifacts name:
     mv artifacts/slipway_{{name}} "artifacts/$new_filename" && \
     mv artifacts/slipway_{{name}}.tar "artifacts/$new_filename.tar"
 
+assemble-rust-component name configuration="debug": \
+  && \
+  (tar-component-files name) \
+  (rename-component-artifacts name) \
+
+  mkdir -p artifacts/slipway_{{name}}
+  cp src_components/target/wasm32-wasip2/{{configuration}}/slipway_{{name}}_component.wasm artifacts/slipway_{{name}}/slipway_component.wasm
+  cp src_components/slipway_{{name}}_component/slipway_component.json artifacts/slipway_{{name}}/slipway_component.json

@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Instant};
 
-use crate::host::{OutputObserverStream, OutputObserverType, SlipwayComponent, SlipwayHost};
+use crate::host::{OutputObserverStream, OutputObserverType, Slipway, SlipwayHost};
 use slipway_engine::{
     ComponentExecutionContext, RunComponentError, RunComponentResult, RunMetadata,
 };
@@ -26,7 +26,7 @@ pub fn run_component_wasm(
     let mut linker = wasmtime::component::Linker::new(&engine);
 
     // Add WASI to linker
-    SlipwayComponent::add_to_linker(&mut linker, |state: &mut SlipwayHost| state)?;
+    Slipway::add_to_linker(&mut linker, |state: &mut SlipwayHost| state)?;
     wasmtime_wasi::add_to_linker_sync(&mut linker)?;
 
     // Create a WASI context, including stdin and stdout pipes
@@ -41,7 +41,7 @@ pub fn run_component_wasm(
     let component = wasmtime::component::Component::new(&engine, &*wasm_bytes)?;
 
     // Create the SlipwayComponent instance.
-    let slipway_component = SlipwayComponent::instantiate(&mut store, &component, &linker)?;
+    let slipway_component = Slipway::instantiate(&mut store, &component, &linker)?;
 
     let prepare_component_duration = prepare_component_start.elapsed();
 

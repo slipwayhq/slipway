@@ -1,6 +1,6 @@
 {
   "publisher": "slipway",
-  "name": "test_js",
+  "name": "increment_js",
   "description": "A simple javascript component that increments a value.",
   "version": "0.0.1",
   "input": {
@@ -13,8 +13,7 @@
           }
         }
       },
-      "throw": {},
-      "read_file": {}
+      "throw": {}
     }
   },
   "output": {

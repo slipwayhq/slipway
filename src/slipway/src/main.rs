@@ -20,7 +20,7 @@ use time::{format_description, OffsetDateTime};
 use tracing::Level;
 use tracing_subscriber::{fmt::time::FormatTime, FmtSubscriber};
 
-const WASM_INTERFACE_TYPE_STR: &str = include_str!("../../../wit/latest/slipway_component.wit");
+const WASM_INTERFACE_TYPE_STR: &str = include_str!("../../../wit/latest/slipway.wit");
 
 #[derive(Debug, Parser)]
 #[command(name = "slipway")]

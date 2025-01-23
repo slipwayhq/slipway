@@ -56,7 +56,7 @@ pub(super) fn fetch_http(
                 })?;
 
             Ok(BinResponse {
-                status,
+                status_code: status,
                 headers,
                 body,
             })
@@ -82,7 +82,7 @@ pub(super) fn fetch_http(
                     message,
                     inner: vec![],
                     response: Some(BinResponse {
-                        status: code,
+                        status_code: code,
                         headers,
                         body,
                     }),

@@ -1,13 +1,18 @@
 use std::str::FromStr;
 
 use common::get_rig_output;
+use common_test_utils::{
+    SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME, SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_TAR_NAME,
+};
+use serde::Deserialize;
 use serde_json::json;
 use slipway_engine::{ComponentHandle, ComponentRigging, Rig, Rigging, SlipwayReference};
 
 mod common;
 
-const SCHEMA_STR: &str =
-    include_str!("../../../src_components/slipway_test_json_schema_component/input_schema.json");
+const SCHEMA_STR: &str = include_str!(
+    "../../../src_components/slipway_increment_json_schema_component/input_schema.json"
+);
 const SCHEMA_BYTES: &[u8] = SCHEMA_STR.as_bytes();
 
 #[test]
@@ -26,17 +31,16 @@ fn run(file_type: &str) {
             ComponentHandle::from_str("test").unwrap(),
             ComponentRigging::for_test_with_reference_callout_override(
                 SlipwayReference::Local {
-                    path: "slipway.test.0.0.1.tar".into(),
+                    path: SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME.into(),
                 },
                 Some(json!({
-                    "type": "component_file",
                     "handle": "other",
                     "path": "input_schema.json",
                     "file_type": file_type
                 })),
                 "other",
                 SlipwayReference::Local {
-                    path: "slipway.test_json_schema.0.0.1.tar".into(),
+                    path: SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_TAR_NAME.into(),
                 },
             ),
         )]
@@ -44,18 +48,21 @@ fn run(file_type: &str) {
         .collect(),
     });
 
-    let output = get_rig_output(rig, "test");
+    let component_output = get_rig_output(rig, "test");
 
-    let expected_length = if file_type == "text" {
-        SCHEMA_STR.len()
+    let output = serde_json::from_value::<Output>(component_output.value.clone()).unwrap();
+
+    if file_type == "text" {
+        assert_eq!(output.text, Some(SCHEMA_STR.to_string()));
+        assert!(output.bin.is_none());
     } else {
-        SCHEMA_BYTES.len()
+        assert_eq!(output.bin, Some(SCHEMA_BYTES.to_vec()));
+        assert!(output.text.is_none());
     };
+}
 
-    assert_eq!(
-        output.value,
-        json!({
-            "value": expected_length
-        })
-    );
+#[derive(Deserialize)]
+struct Output {
+    text: Option<String>,
+    bin: Option<Vec<u8>>,
 }

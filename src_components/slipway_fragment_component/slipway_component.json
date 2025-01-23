@@ -47,14 +47,14 @@
   },
   "rigging": {
     "first": {
-      "component": "file:slipway.test.0.0.1",
+      "component": "file:slipway.increment.0.0.1",
       "input": "$$.input",
       "allow": [
-        { "permission": "local_component", "exact": "file:slipway.test.0.0.1" }
+        { "permission": "local_component", "exact": "file:slipway.increment.0.0.1" }
       ]
     },
     "output": {
-      "component": "file:slipway.test.0.0.1",
+      "component": "file:slipway.increment.0.0.1",
       "input": {
         "type": "increment",
         "value": "$$.first.value"

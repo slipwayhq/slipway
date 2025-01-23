@@ -53,7 +53,7 @@ pub(super) fn run_component_from_url(
     let result_str = run_component_callout(execution_context, handle, input)?;
 
     Ok(BinResponse {
-        status: 200,
+        status_code: 200,
         headers: vec![("content-type".to_string(), "application/json".to_string())],
         body: result_str.into_bytes(),
     })

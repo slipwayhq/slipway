@@ -114,7 +114,7 @@ impl From<::slipway_host::fetch::RequestError> for RequestError {
             message: e.message,
             inner: e.inner,
             response: e.response.map(|r| BinResponse {
-                status: r.status,
+                status_code: r.status_code,
                 headers: r.headers,
                 body: r.body,
             }),
@@ -136,7 +136,7 @@ impl From<RequestOptions> for ::slipway_host::fetch::RequestOptions {
 impl From<::slipway_host::fetch::BinResponse> for BinResponse {
     fn from(r: ::slipway_host::fetch::BinResponse) -> Self {
         BinResponse {
-            status: r.status,
+            status_code: r.status_code,
             headers: r.headers,
             body: r.body,
         }
@@ -146,7 +146,7 @@ impl From<::slipway_host::fetch::BinResponse> for BinResponse {
 impl From<::slipway_host::fetch::TextResponse> for TextResponse {
     fn from(r: ::slipway_host::fetch::TextResponse) -> Self {
         TextResponse {
-            status: r.status,
+            status_code: r.status_code,
             headers: r.headers,
             body: r.body,
         }

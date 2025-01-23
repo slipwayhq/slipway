@@ -3,9 +3,8 @@ use std::{path::PathBuf, str::FromStr};
 use serde_json::json;
 
 use common_test_utils::{
-    get_slipway_test_components_path, test_server::TestServer,
-    SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_NAME, SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_TAR_NAME,
-    SLIPWAY_TEST_COMPONENT_NAME,
+    get_slipway_test_components_path, test_server::TestServer, SLIPWAY_INCREMENT_COMPONENT_NAME,
+    SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_NAME, SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_TAR_NAME,
 };
 use slipway_engine::{
     errors::{RigError, ValidationType},
@@ -20,7 +19,7 @@ fn load_component_from_folder() {
     test_component(
         None,
         SlipwayReference::Local {
-            path: PathBuf::from(SLIPWAY_TEST_COMPONENT_NAME),
+            path: PathBuf::from(SLIPWAY_INCREMENT_COMPONENT_NAME),
         },
     );
 }
@@ -30,7 +29,7 @@ fn load_component_from_folder_with_json_schema_refs() {
     test_component(
         None,
         SlipwayReference::Local {
-            path: PathBuf::from(SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_NAME),
+            path: PathBuf::from(SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_NAME),
         },
     );
 }
@@ -40,7 +39,7 @@ fn load_component_from_tar_with_json_schema_refs() {
     test_component(
         None,
         SlipwayReference::Local {
-            path: PathBuf::from(SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_TAR_NAME),
+            path: PathBuf::from(SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_TAR_NAME),
         },
     );
 }
@@ -54,7 +53,7 @@ fn load_component_from_url_with_json_schema_refs() {
         SlipwayReference::Http {
             url: Url::parse(&format!(
                 "{}{}",
-                test_server.localhost_url, SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_TAR_NAME
+                test_server.localhost_url, SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_TAR_NAME
             ))
             .unwrap(),
         },
@@ -67,7 +66,8 @@ fn load_component_from_url_with_json_schema_refs() {
 fn load_component_from_registry_with_json_schema_refs() {
     let test_server = TestServer::start_from_folder(get_slipway_test_components_path());
 
-    let reference = SlipwayReference::from_str(SLIPWAY_TEST_COMPONENT_JSON_SCHEMA_NAME).unwrap();
+    let reference =
+        SlipwayReference::from_str(SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_NAME).unwrap();
 
     match reference {
         SlipwayReference::Registry {

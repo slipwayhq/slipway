@@ -14,14 +14,14 @@ pub struct RequestOptions {
 
 #[derive(Debug, Clone)]
 pub struct BinResponse {
-    pub status: u16,
+    pub status_code: u16,
     pub headers: Vec<(String, String)>,
     pub body: Vec<u8>,
 }
 
 #[derive(Debug, Clone)]
 pub struct TextResponse {
-    pub status: u16,
+    pub status_code: u16,
     pub headers: Vec<(String, String)>,
     pub body: String,
 }
@@ -79,7 +79,7 @@ impl From<RequestError> for crate::ComponentError {
 impl From<BinResponse> for TextResponse {
     fn from(r: BinResponse) -> Self {
         TextResponse {
-            status: r.status,
+            status_code: r.status_code,
             headers: r.headers,
             body: String::from_utf8_lossy(&r.body).into_owned(),
         }

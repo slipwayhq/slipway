@@ -1,6 +1,10 @@
 use std::str::FromStr;
 
 use common::get_rig_output;
+use common_test_utils::{
+    SLIPWAY_FETCH_COMPONENT_TAR_NAME, SLIPWAY_INCREMENT_TEN_COMPONENT_TAR_NAME,
+};
+use serde::Deserialize;
 use serde_json::json;
 use slipway_engine::{ComponentHandle, ComponentRigging, Rig, Rigging, SlipwayReference};
 
@@ -13,20 +17,18 @@ fn test_fetch_callout() {
             ComponentHandle::from_str("test").unwrap(),
             ComponentRigging::for_test_with_reference_callout_override(
                 SlipwayReference::Local {
-                    path: "slipway.test.0.0.1.tar".into(),
+                    path: SLIPWAY_FETCH_COMPONENT_TAR_NAME.into(),
                 },
                 Some(json!({
-                    "type": "http",
                     "url": format!("component://other?type=increment&value=3"),
                     "method": "GET",
                     "headers": {},
-                    "expected_status_code": 200,
                     "body": "{}",
                     "response_type": "text"
                 })),
                 "other",
                 SlipwayReference::Local {
-                    path: "slipway.test_2.0.0.1.tar".into(),
+                    path: SLIPWAY_INCREMENT_TEN_COMPONENT_TAR_NAME.into(),
                 },
             ),
         )]
@@ -34,15 +36,23 @@ fn test_fetch_callout() {
         .collect(),
     });
 
-    let output = get_rig_output(rig, "test");
+    let component_output = get_rig_output(rig, "test");
+    let output = serde_json::from_value::<Output>(component_output.value.clone()).unwrap();
 
-    // Expected {"value":13} because test_2 component adds 10 instead of 1.
-    let expected_length = 12;
-
+    // Expected {"value":13} because increment_ten component adds 10 instead of 1.
+    assert_eq!(output.status_code, 200);
+    assert!(output.body_bin.is_none());
     assert_eq!(
-        output.value,
+        serde_json::from_str::<serde_json::Value>(&output.body_text.unwrap()).unwrap(),
         json!({
-            "value": expected_length
+            "value": 13
         })
     );
+}
+
+#[derive(Deserialize)]
+struct Output {
+    status_code: u16,
+    body_text: Option<String>,
+    body_bin: Option<Vec<u8>>,
 }
