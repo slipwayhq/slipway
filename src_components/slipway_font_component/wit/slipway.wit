@@ -10,13 +10,6 @@ interface types {
 world slipway {
     import slipway-host: interface {
         use types.{component-error};
-    
-        record resolved-font {
-            family: string,
-            data: list<u8>,
-        }
-
-        try-resolve-font: func(font-stack: string) -> option<resolved-font>;
 
         log-trace: func(message: string);
         log-debug: func(message: string);
@@ -56,6 +49,17 @@ world slipway {
         run: func(handle: string, input: string) -> result<string, component-error>;
         load-bin: func(handle: string, path: string) -> result<list<u8>, component-error>;
         load-text: func(handle: string, path: string) -> result<string, component-error>;
+        env: func(key: string) -> option<string>;
+    
+        record resolved-font {
+            family: string,
+            data: list<u8>,
+        }
+
+        font: func(font-stack: string) -> option<resolved-font>;
+
+        encode-bin: func(bin: list<u8>) -> string;
+        decode-bin: func(text: string) -> result<list<u8>, component-error>;
     }
     
     use types.{component-error};

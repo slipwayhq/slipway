@@ -16,7 +16,7 @@ pub struct ResolvedFont {
     pub data: Vec<u8>,
 }
 
-pub fn try_resolve(
+pub fn font(
     execution_context: &ComponentExecutionContext,
     font_stack: String,
 ) -> Option<ResolvedFont> {
@@ -36,10 +36,10 @@ pub fn try_resolve(
         })
         .collect();
 
-    try_resolve_inner(families)
+    try_resolve_font_families(families)
 }
 
-fn try_resolve_inner(families: Vec<String>) -> Option<ResolvedFont> {
+fn try_resolve_font_families(families: Vec<String>) -> Option<ResolvedFont> {
     let context_mutex = get_context();
     let mut context = context_mutex
         .lock()
@@ -124,28 +124,28 @@ mod tests {
     #[test]
     fn it_should_resolve_common_font() {
         let families = vec!["Arial".to_string()];
-        let result = try_resolve_inner(families);
+        let result = try_resolve_font_families(families);
         assert!(result.is_some(), "Arial font should be resolvable");
     }
 
     #[test]
     fn it_should_resolve_generic_font() {
         let families = vec!["sans-serif".to_string()];
-        let result = try_resolve_inner(families);
+        let result = try_resolve_font_families(families);
         assert!(result.is_some(), "Sans-serif font should be resolvable");
     }
 
     #[test]
     fn it_should_return_none_for_non_existent_font() {
         let families = vec!["NonExistentFont".to_string()];
-        let result = try_resolve_inner(families);
+        let result = try_resolve_font_families(families);
         assert!(result.is_none(), "NonExistentFont should not be resolvable");
     }
 
     #[test]
     fn test_try_resolve_with_fallbacks() {
         let families = vec!["NonExistentFont".to_string(), "sans-serif".to_string()];
-        let result = try_resolve_inner(families);
+        let result = try_resolve_font_families(families);
         assert!(result.is_some(), "Fallback should be resolved");
     }
 }

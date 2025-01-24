@@ -20,7 +20,7 @@ impl Guest for Component {
 export!(Component);
 
 fn run_inner(input: Input) -> Result<String, ComponentError> {
-    let maybe_resolved_font = slipway_host::try_resolve_font(&input.font_stack);
+    let maybe_resolved_font = slipway_host::font(&input.font_stack);
 
     let output = Output {
         bin_length: maybe_resolved_font
