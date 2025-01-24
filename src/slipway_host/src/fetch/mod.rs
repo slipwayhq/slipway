@@ -1,7 +1,9 @@
 mod component;
+mod env;
 mod http;
 
 use slipway_engine::ComponentExecutionContext;
+use tracing::warn;
 use url::Url;
 
 #[derive(Debug, Default)]
@@ -107,6 +109,7 @@ pub fn fetch_bin(
     match scheme {
         "https" | "http" => http::fetch_http(execution_context, url, options),
         "component" => component::fetch_component_data(execution_context, &url, options),
+        "env" => env::fetch_env(execution_context, &url),
         _ => Err(RequestError::for_error(
             format!(
                 "Unsupported URL scheme for URL from component {}: {}",
@@ -173,4 +176,31 @@ pub fn load_text(
     )
     .map(|v| v.body)
     .map_err(Into::into)
+}
+
+pub fn env(execution_context: &ComponentExecutionContext, key: &str) -> Option<String> {
+    match fetch_bin(execution_context, &format!("env://{}", key), None) {
+        Ok(v) => Some(String::from_utf8_lossy(&v.body).into_owned()),
+        Err(e) => {
+            if let Some(response) = e.response {
+                if response.status_code == 404 {
+                    return None;
+                }
+            }
+
+            warn!(
+                "Failed to fetch environment variable \"{}\" for component \"{}\":",
+                key,
+                execution_context.call_chain.component_handle_trail(),
+            );
+
+            warn!("{}", e.message);
+
+            for i in e.inner {
+                warn!("{i}");
+            }
+
+            None
+        }
+    }
 }

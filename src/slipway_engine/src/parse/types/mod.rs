@@ -84,13 +84,15 @@ pub struct ComponentRigging {
 pub enum Permission {
     All,
 
-    Http(#[serde(default)] UrlPermission),
+    Http(UrlPermission),
 
-    Font(#[serde(default)] StringPermission),
+    Font(StringPermission),
+
+    Env(StringPermission),
 
     RegistryComponent(RegistryComponentPermission),
-    HttpComponent(#[serde(default)] UrlPermission),
-    LocalComponent(#[serde(default)] LocalComponentPermission),
+    HttpComponent(UrlPermission),
+    LocalComponent(LocalComponentPermission),
 }
 
 impl Permission {

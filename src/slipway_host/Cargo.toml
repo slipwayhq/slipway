@@ -17,6 +17,7 @@ tracing = { workspace = true }
 ureq = { workspace = true }
 url = { workspace = true }
 semver = { workspace = true }
+base64 = "0.22.1"
 
 [dev-dependencies]
 common_test_utils = { path = "../common_test_utils" }

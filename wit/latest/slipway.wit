@@ -56,6 +56,10 @@ world slipway {
         run: func(handle: string, input: string) -> result<string, component-error>;
         load-bin: func(handle: string, path: string) -> result<list<u8>, component-error>;
         load-text: func(handle: string, path: string) -> result<string, component-error>;
+        env: func(key: string) -> option<string>;
+
+        encode-bin: func(bin: list<u8>) -> string;
+        decode-bin: func(text: string) -> result<list<u8>, component-error>;
     }
     
     use types.{component-error};

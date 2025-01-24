@@ -26,7 +26,7 @@ pub fn try_resolve(
         .filter(|s| {
             if let Err(e) = crate::permissions::ensure_can_query_font(s, execution_context) {
                 warn!(
-                    "Removing font family {} from stack due to permissions: {}",
+                    "Removing font family \"{}\" from stack due to permissions: {}",
                     s, e.message
                 );
                 return false;

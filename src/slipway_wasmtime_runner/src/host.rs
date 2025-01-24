@@ -106,6 +106,18 @@ impl self::slipway_host::Host for SlipwayHost<'_, '_, '_> {
     fn load_text(&mut self, handle: String, path: String) -> Result<String, ComponentError> {
         ::slipway_host::fetch::load_text(self.execution_context, handle, path).map_err(Into::into)
     }
+
+    fn env(&mut self, key: String) -> Option<String> {
+        ::slipway_host::fetch::env(self.execution_context, &key)
+    }
+
+    fn encode_bin(&mut self, bin: Vec<u8>) -> String {
+        ::slipway_host::bin::encode_bin(self.execution_context, bin)
+    }
+
+    fn decode_bin(&mut self, text: String) -> Result<Vec<u8>, ComponentError> {
+        ::slipway_host::bin::decode_bin(self.execution_context, text).map_err(Into::into)
+    }
 }
 
 impl From<::slipway_host::fetch::RequestError> for RequestError {
