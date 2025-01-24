@@ -42,10 +42,10 @@ assemble-test-components configuration="debug": \
   (assemble-rust-component "font" configuration) \
   (assemble-rust-component "env" configuration) \
   && \
-  (tar-component-files "increment_ten") \
-  (tar-component-files "increment_json_schema") \
-  (tar-component-files "fragment") \
-  (tar-component-files "increment_js") \
+  (tar-component-files "increment_ten" configuration) \
+  (tar-component-files "increment_json_schema" configuration) \
+  (tar-component-files "fragment" configuration) \
+  (tar-component-files "increment_js" configuration) \
   
   mkdir -p artifacts/slipway_increment_ten
   cp src_components/target/increment-ten/wasm32-wasip2/{{configuration}}/slipway_increment_component.wasm artifacts/slipway_increment_ten/slipway_component.wasm
@@ -67,12 +67,12 @@ assemble-test-components configuration="debug": \
   cp src_components/slipway_increment_js_component/slipway_js_component.json artifacts/slipway_increment_js/slipway_js_component.json
   cp src_components/slipway_increment_js_component/run.js artifacts/slipway_increment_js/run.js
 
-tar-component-files name:
-  slipway package artifacts/slipway_{{name}}
+tar-component-files name configuration="debug":
+  src/target/{{configuration}}/slipway package artifacts/slipway_{{name}}
 
 assemble-rust-component name configuration="debug": \
   && \
-  (tar-component-files name) \
+  (tar-component-files name configuration) \
 
   mkdir -p artifacts/slipway_{{name}}
   cp src_components/target/wasm32-wasip2/{{configuration}}/slipway_{{name}}_component.wasm artifacts/slipway_{{name}}/slipway_component.wasm
