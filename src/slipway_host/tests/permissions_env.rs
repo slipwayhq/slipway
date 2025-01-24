@@ -83,7 +83,7 @@ fn permissions_load_env_single_env_permission() {
         panic!("Expected value to be returned");
     };
 
-    assert!(value.len() > 0);
+    assert!(!value.is_empty());
 }
 
 #[test]
@@ -108,7 +108,7 @@ fn permissions_load_env_env_prefix_permission() {
         panic!("Expected value to be returned");
     };
 
-    assert!(value.len() > 0);
+    assert!(!value.is_empty());
 }
 
 #[test]
@@ -131,7 +131,7 @@ fn permissions_load_env_any_env_permissions() {
         panic!("Expected value to be returned");
     };
 
-    assert!(value.len() > 0);
+    assert!(!value.is_empty());
 }
 
 fn create_rig(component_permissions: Permissions) -> Rig {
