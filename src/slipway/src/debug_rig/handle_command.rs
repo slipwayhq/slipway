@@ -124,7 +124,9 @@ mod tests {
         ComponentState, Rig, RigSession, Rigging, SlipwayReference,
     };
 
-    use common_test_utils::{get_slipway_test_components_path, SLIPWAY_INCREMENT_COMPONENT_NAME};
+    use common_test_utils::{
+        get_slipway_test_components_path, SLIPWAY_INCREMENT_COMPONENT_FOLDER_NAME,
+    };
 
     use crate::component_runners::get_component_runners;
 
@@ -462,7 +464,7 @@ mod tests {
         let (ch1, ch2, ch3) = component_handles();
 
         let increment_reference = SlipwayReference::Local {
-            path: PathBuf::from(SLIPWAY_INCREMENT_COMPONENT_NAME),
+            path: PathBuf::from(SLIPWAY_INCREMENT_COMPONENT_FOLDER_NAME),
         };
 
         // ch1 -> ch2 -> ch3

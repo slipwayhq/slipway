@@ -12,6 +12,6 @@
     "$ref": "output_schema.json"
   },
   "callouts": {
-    "test": "file:slipway.increment.0.0.1"
+    "test": "file:slipway.increment.0.0.1.tar"
   }
 }

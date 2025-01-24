@@ -48,7 +48,9 @@ mod tests {
         ComponentRigging, Rig, RigSession, Rigging, RunComponentError, RunError, SlipwayReference,
     };
 
-    use common_test_utils::{get_slipway_test_components_path, SLIPWAY_INCREMENT_COMPONENT_NAME};
+    use common_test_utils::{
+        get_slipway_test_components_path, SLIPWAY_INCREMENT_COMPONENT_FOLDER_NAME,
+    };
     use slipway_wasmtime_runner::WASMTIME_COMPONENT_RUNNER_IDENTIFIER;
 
     use crate::component_runners::get_component_runners;
@@ -61,7 +63,7 @@ mod tests {
                 component_handle.clone(),
                 ComponentRigging::for_test_with_reference(
                     SlipwayReference::Local {
-                        path: PathBuf::from(SLIPWAY_INCREMENT_COMPONENT_NAME),
+                        path: PathBuf::from(SLIPWAY_INCREMENT_COMPONENT_FOLDER_NAME),
                     },
                     Some(input),
                 ),

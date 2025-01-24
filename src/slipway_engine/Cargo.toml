@@ -21,7 +21,7 @@ tracing = { workspace = true }
 jsonschema = { version = "0.20.0", default-features = false }
 ureq = { workspace = true }
 anyhow = { workspace = true }
-tar = "0.4.42"
+tar = { workspace = true }
 dirs = "5.0.1"
 
 [features]
@@ -29,6 +29,6 @@ unstable-test-utils = []
 
 [dev-dependencies]
 tiny_http = "0.12.0"
-walkdir = "2.5.0"
+walkdir = { workspace = true }
 common_test_utils = { path = "../common_test_utils" }
 tempfile = "3.13.0"

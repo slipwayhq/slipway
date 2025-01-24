@@ -43,13 +43,9 @@ assemble-test-components configuration="debug": \
   (assemble-rust-component "env" configuration) \
   && \
   (tar-component-files "increment_ten") \
-  (rename-component-artifacts "increment_ten") \
   (tar-component-files "increment_json_schema") \
-  (rename-component-artifacts "increment_json_schema") \
   (tar-component-files "fragment") \
-  (rename-component-artifacts "fragment") \
   (tar-component-files "increment_js") \
-  (rename-component-artifacts "increment_js") \
   
   mkdir -p artifacts/slipway_increment_ten
   cp src_components/target/increment-ten/wasm32-wasip2/{{configuration}}/slipway_increment_component.wasm artifacts/slipway_increment_ten/slipway_component.wasm
@@ -72,21 +68,11 @@ assemble-test-components configuration="debug": \
   cp src_components/slipway_increment_js_component/run.js artifacts/slipway_increment_js/run.js
 
 tar-component-files name:
-  tar -cf artifacts/slipway_{{name}}.tar -C artifacts/slipway_{{name}} .
-
-rename-component-artifacts name:
-  # Rename the tarball with a name that includes the publisher, name and version.
-  publisher=$(jq -r '.publisher' artifacts/slipway_{{name}}/slipway_component.json) && \
-    name=$(jq -r '.name' artifacts/slipway_{{name}}/slipway_component.json) && \
-    version=$(jq -r '.version' artifacts/slipway_{{name}}/slipway_component.json) && \
-    new_filename="${publisher}.${name}.${version}" && \
-    mv artifacts/slipway_{{name}} "artifacts/$new_filename" && \
-    mv artifacts/slipway_{{name}}.tar "artifacts/$new_filename.tar"
+  slipway package artifacts/slipway_{{name}}
 
 assemble-rust-component name configuration="debug": \
   && \
   (tar-component-files name) \
-  (rename-component-artifacts name) \
 
   mkdir -p artifacts/slipway_{{name}}
   cp src_components/target/wasm32-wasip2/{{configuration}}/slipway_{{name}}_component.wasm artifacts/slipway_{{name}}/slipway_component.wasm

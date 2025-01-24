@@ -28,3 +28,5 @@ anyhow = "1.0.75"
 ureq = { version = "2.10.1", features = ["json"] }
 url = "2.4.1"
 tiny_http = "0.12.0"
+tar = "0.4.42"
+walkdir = "2.5.0"

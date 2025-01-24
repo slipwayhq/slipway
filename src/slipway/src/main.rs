@@ -4,6 +4,7 @@ mod canvas;
 mod component_runners;
 mod debug_rig;
 mod host_error;
+mod package;
 mod render_state;
 mod run_rig;
 mod to_view_model;
@@ -71,6 +72,15 @@ pub(crate) enum Commands {
         registry_url: Option<String>,
     },
 
+    /// Package up a Slipway component into a .tar file.
+    #[command(arg_required_else_help = true)]
+    Package {
+        path: PathBuf,
+
+        #[arg(short, long)]
+        log_level: Option<String>,
+    },
+
     /// Output the WIT (WASM Interface Type) definition, for building Slipway components.
     #[command()]
     Wit,
@@ -122,6 +132,10 @@ fn main() -> anyhow::Result<()> {
                 Permissions::allow_all(),
                 registry_url,
             )?;
+        }
+        Commands::Package { path, log_level } => {
+            configure_tracing(log_level);
+            package::package_component(&path)?;
         }
         Commands::Wit => {
             println!("{}", WASM_INTERFACE_TYPE_STR);

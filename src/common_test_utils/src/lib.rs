@@ -5,6 +5,7 @@ pub mod test_server;
 pub const SLIPWAY_TEST_COMPONENTS_PATH: &str = "./artifacts";
 
 pub const SLIPWAY_INCREMENT_COMPONENT_NAME: &str = "slipway.increment.0.0.1";
+pub const SLIPWAY_INCREMENT_COMPONENT_FOLDER_NAME: &str = "slipway_increment";
 pub const SLIPWAY_INCREMENT_COMPONENT_TAR_NAME: &str = "slipway.increment.0.0.1.tar";
 
 pub const SLIPWAY_FETCH_COMPONENT_NAME: &str = "slipway.fetch.0.0.1";
@@ -21,6 +22,8 @@ pub const SLIPWAY_ENV_COMPONENT_TAR_NAME: &str = "slipway.env.0.0.1.tar";
 
 pub const SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_NAME: &str =
     "slipway.increment_json_schema.0.0.1";
+pub const SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_FOLDER_NAME: &str =
+    "slipway_increment_json_schema";
 pub const SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_TAR_NAME: &str =
     "slipway.increment_json_schema.0.0.1.tar";
 
