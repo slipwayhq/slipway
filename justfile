@@ -22,6 +22,7 @@ build-components configuration="debug": && (assemble-test-components configurati
   cp wit/latest/slipway.wit src_components/slipway_increment_component/wit/slipway.wit
   cp wit/latest/slipway.wit src_components/slipway_component_file_component/wit/slipway.wit
   cp wit/latest/slipway.wit src_components/slipway_fetch_component/wit/slipway.wit
+  cp wit/latest/slipway.wit src_components/slipway_env_component/wit/slipway.wit
   cd src_components && \
     cargo build --target wasm32-wasip2 {{ if configuration == "release" { "--release" } else { "" } }} && \
     cargo build -p slipway_increment_component --features increment-ten --target-dir target/increment-ten --target wasm32-wasip2 {{ if configuration == "release" { "--release" } else { "" } }}
@@ -38,6 +39,7 @@ assemble-test-components configuration="debug": \
   (assemble-rust-component "component_file" configuration) \
   (assemble-rust-component "fetch" configuration) \
   (assemble-rust-component "font" configuration) \
+  (assemble-rust-component "env" configuration) \
   && \
   (tar-component-files "increment_ten") \
   (rename-component-artifacts "increment_ten") \

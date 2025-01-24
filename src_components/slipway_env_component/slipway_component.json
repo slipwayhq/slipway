@@ -1,0 +1,18 @@
+{
+  "publisher": "slipway",
+  "name": "env",
+  "description": "Does an env query.",
+  "version": "0.0.1",
+  "input": {
+    "properties": {
+      "key": { "type": "string" }
+    }
+  },
+  "output": {
+    "optionalProperties": {
+      "value": {
+        "type": "string"
+      }
+    }
+  }
+}
