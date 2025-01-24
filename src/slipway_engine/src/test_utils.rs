@@ -11,6 +11,7 @@ use crate::ComponentHandle;
 use crate::ComponentRigging;
 use crate::Name;
 use crate::Permission;
+use crate::Permissions;
 use crate::Publisher;
 use crate::Rig;
 use crate::Rigging;
@@ -60,6 +61,20 @@ impl ComponentRigging {
         }
     }
 
+    pub fn for_test_with_reference_permissions(
+        reference: SlipwayReference,
+        input: Option<Value>,
+        permissions: Permissions,
+    ) -> ComponentRigging {
+        ComponentRigging {
+            component: reference,
+            input,
+            allow: Some(permissions.allow.clone()),
+            deny: Some(permissions.deny.clone()),
+            callouts: None,
+        }
+    }
+
     pub fn for_test_with_reference_callout_override(
         reference: SlipwayReference,
         input: Option<Value>,
@@ -71,6 +86,26 @@ impl ComponentRigging {
             input,
             allow: Some(vec![Permission::All]),
             deny: None,
+            callouts: Some(
+                vec![(ch(callout_handle), callout_reference)]
+                    .into_iter()
+                    .collect(),
+            ),
+        }
+    }
+
+    pub fn for_test_with_reference_callout_override_permissions(
+        reference: SlipwayReference,
+        input: Option<Value>,
+        callout_handle: &str,
+        callout_reference: SlipwayReference,
+        permissions: Permissions,
+    ) -> ComponentRigging {
+        ComponentRigging {
+            component: reference,
+            input,
+            allow: Some(permissions.allow.clone()),
+            deny: Some(permissions.deny.clone()),
             callouts: Some(
                 vec![(ch(callout_handle), callout_reference)]
                     .into_iter()

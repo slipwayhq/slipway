@@ -4,7 +4,9 @@ use common::get_rig_output;
 use common_test_utils::{test_server::TestServer, SLIPWAY_FETCH_COMPONENT_TAR_NAME};
 use serde::Deserialize;
 use serde_json::json;
-use slipway_engine::{ComponentHandle, ComponentRigging, Rig, Rigging, SlipwayReference};
+use slipway_engine::{
+    ComponentHandle, ComponentRigging, Permissions, Rig, Rigging, SlipwayReference,
+};
 
 mod common;
 
@@ -62,7 +64,7 @@ fn run(file_type: &str, status_code: u16) {
         .collect(),
     });
 
-    let component_output = get_rig_output(rig, "test");
+    let component_output = get_rig_output(rig, "test", Permissions::allow_all()).unwrap();
     test_server.stop();
 
     let output = serde_json::from_value::<Output>(component_output.value.clone()).unwrap();
@@ -74,7 +76,9 @@ fn run(file_type: &str, status_code: u16) {
         assert_eq!(output.body_text, Some(BODY.to_string()));
         assert!(output.body_bin.is_none());
     } else {
-        assert!(output.body_text.is_none());
+        if status_code < 400 {
+            assert!(output.body_text.is_none());
+        }
         assert_eq!(output.body_bin, Some(BODY.as_bytes().to_vec()));
     };
 }

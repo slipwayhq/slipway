@@ -1,0 +1,63 @@
+package slipway:component@0.1.0;
+
+interface types {
+    record component-error {
+        message: string,
+        inner: list<string>
+    }
+}
+
+world slipway {
+    import slipway-host: interface {
+        use types.{component-error};
+    
+        record resolved-font {
+            family: string,
+            data: list<u8>,
+        }
+
+        try-resolve-font: func(font-stack: string) -> option<resolved-font>;
+
+        log-trace: func(message: string);
+        log-debug: func(message: string);
+        log-info: func(message: string);
+        log-warn: func(message: string);
+        log-error: func(message: string);
+
+        type header = tuple<string, string>;
+
+        record request-options {
+            method: option<string>,
+            body: option<list<u8>>,
+            headers: option<list<header>>,
+            timeout-ms: option<u32>,
+        }
+
+        record bin-response {
+            status-code: u16,
+            headers: list<header>,
+            body: list<u8>,
+        }
+
+        record text-response {
+            status-code: u16,
+            headers: list<header>,
+            body: string,
+        }
+
+        record request-error {
+            message: string,
+            inner: list<string>,
+            response: option<bin-response>
+        }
+
+        fetch-bin: func(url: string, options: option<request-options>) -> result<bin-response, request-error>;
+        fetch-text: func(url: string, options: option<request-options>) -> result<text-response, request-error>;
+        run: func(handle: string, input: string) -> result<string, component-error>;
+        load-bin: func(handle: string, path: string) -> result<list<u8>, component-error>;
+        load-text: func(handle: string, path: string) -> result<string, component-error>;
+    }
+    
+    use types.{component-error};
+    export run: func(input: string) -> result<string, component-error>;
+}

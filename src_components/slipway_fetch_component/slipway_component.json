@@ -19,7 +19,7 @@
   "output": {
     "properties": {
       "status_code": {
-        "type": "int32"
+        "type": "uint16"
       }
     },
     "optionalProperties": {

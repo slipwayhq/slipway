@@ -6,7 +6,9 @@ use common_test_utils::{
 };
 use serde::Deserialize;
 use serde_json::json;
-use slipway_engine::{ComponentHandle, ComponentRigging, Rig, Rigging, SlipwayReference};
+use slipway_engine::{
+    ComponentHandle, ComponentRigging, Permissions, Rig, Rigging, SlipwayReference,
+};
 
 mod common;
 
@@ -36,7 +38,7 @@ fn test_fetch_callout() {
         .collect(),
     });
 
-    let component_output = get_rig_output(rig, "test");
+    let component_output = get_rig_output(rig, "test", Permissions::allow_all()).unwrap();
     let output = serde_json::from_value::<Output>(component_output.value.clone()).unwrap();
 
     // Expected {"value":13} because increment_ten component adds 10 instead of 1.

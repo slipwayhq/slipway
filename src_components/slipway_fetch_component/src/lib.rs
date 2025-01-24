@@ -38,38 +38,41 @@ fn run_inner(input: Input) -> Result<String, ComponentError> {
         timeout_ms: Some(1000),
     };
 
-    fn map_err_to_output(e: RequestError) -> Output {
+    fn map_err_to_output(e: RequestError) -> Result<Output, ComponentError> {
         if let Some(response) = e.response {
-            Output {
+            Ok(Output {
                 status_code: response.status_code,
-                body_text: None,
-                body_bin: Some(response.body),
-            }
-        } else {
-            Output {
-                status_code: 0,
                 body_text: Some(e.message),
-                body_bin: None,
-            }
+                body_bin: Some(response.body),
+            })
+        } else {
+            Err(ComponentError {
+                message: e.message,
+                inner: e.inner,
+            })
         }
     }
 
     let output = match response_type {
         DataResultType::Text => slipway_host::fetch_text(&url, Some(&request_options))
-            .map(|r| Output {
-                status_code: r.status_code,
-                body_text: Some(r.body),
-                body_bin: None,
+            .map(|r| {
+                Ok(Output {
+                    status_code: r.status_code,
+                    body_text: Some(r.body),
+                    body_bin: None,
+                })
             })
             .unwrap_or_else(map_err_to_output),
         DataResultType::Binary => slipway_host::fetch_bin(&url, Some(&request_options))
-            .map(|r| Output {
-                status_code: r.status_code,
-                body_text: None,
-                body_bin: Some(r.body),
+            .map(|r| {
+                Ok(Output {
+                    status_code: r.status_code,
+                    body_text: None,
+                    body_bin: Some(r.body),
+                })
             })
             .unwrap_or_else(map_err_to_output),
-    };
+    }?;
 
     Ok(serde_json::to_string(&output).expect("Result should be serializable"))
 }

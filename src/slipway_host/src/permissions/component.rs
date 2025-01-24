@@ -130,8 +130,8 @@ pub fn ensure_can_use_component_reference(
 
     if !is_allowed {
         let message = format!(
-            "Component \"{}\" does not have permission to access component \"{}\"",
-            call_chain.component_handle_trail(),
+            "{} does not have permission to access component \"{}\"",
+            call_chain.rig_or_component_handle_trail_error_prefix(),
             component_reference
         );
         return Err(super::create_permission_error(message, &call_chain));

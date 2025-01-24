@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc, sync::Arc};
+use std::{collections::HashMap, rc::Rc, str::FromStr, sync::Arc};
 
 use crate::{
     errors::RigError, Component, ComponentCache, ComponentFiles, ComponentHandle, ComponentInput,
@@ -201,6 +201,14 @@ impl<'rig> CallChain<'rig> {
         trail
     }
 
+    pub fn rig_or_component_handle_trail_error_prefix(&self) -> String {
+        if self.component_handle.is_none() && self.previous.is_none() {
+            "Rig".to_string()
+        } else {
+            format!("Component \"{}\"", self.component_handle_trail())
+        }
+    }
+
     pub fn permission_trail(&self) -> Vec<CallChainLink<'rig>> {
         let mut result = vec![CallChainLink(
             self.component_handle,
@@ -232,7 +240,23 @@ impl<'rig> CallChain<'rig> {
     }
 
     pub fn current_component_handle(&self) -> &'rig ComponentHandle {
-        self.component_handle
-            .expect("No component handle in current call chain head")
+        match self.component_handle {
+            Some(handle) => handle,
+            None => match &self.previous {
+                Some(_) => INHERITED_HANDLE.get_or_init(|| {
+                    ComponentHandle::from_str(INHERITED_HANDLE_STR)
+                        .expect("Inherited handle placeholder should be a valid handle")
+                }),
+                None => ROOT_HANDLE.get_or_init(|| {
+                    ComponentHandle::from_str(ROOT_HANDLE_STR).expect("Root handle should be valid")
+                }),
+            },
+        }
     }
 }
+
+static INHERITED_HANDLE: std::sync::OnceLock<ComponentHandle> = std::sync::OnceLock::new();
+static ROOT_HANDLE: std::sync::OnceLock<ComponentHandle> = std::sync::OnceLock::new();
+
+const INHERITED_HANDLE_STR: &str = "__inherited";
+const ROOT_HANDLE_STR: &str = "__root";

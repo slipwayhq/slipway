@@ -13,6 +13,9 @@ pub const SLIPWAY_FETCH_COMPONENT_TAR_NAME: &str = "slipway.fetch.0.0.1.tar";
 pub const SLIPWAY_COMPONENT_FILE_COMPONENT_NAME: &str = "slipway.component_file.0.0.1";
 pub const SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME: &str = "slipway.component_file.0.0.1.tar";
 
+pub const SLIPWAY_FONT_COMPONENT_NAME: &str = "slipway.font.0.0.1";
+pub const SLIPWAY_FONT_COMPONENT_TAR_NAME: &str = "slipway.font.0.0.1.tar";
+
 pub const SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_NAME: &str =
     "slipway.increment_json_schema.0.0.1";
 pub const SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_TAR_NAME: &str =

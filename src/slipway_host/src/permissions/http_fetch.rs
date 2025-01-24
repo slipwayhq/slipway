@@ -42,8 +42,8 @@ fn ensure_can_fetch_url_inner(
 
     if !is_allowed {
         let message = format!(
-            "Component \"{}\" does not have permission to fetch url \"{}\"",
-            call_chain.component_handle_trail(),
+            "{} does not have permission to fetch url \"{}\"",
+            call_chain.rig_or_component_handle_trail_error_prefix(),
             url
         );
         return Err(super::create_permission_error(message, &call_chain));

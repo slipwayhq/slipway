@@ -37,6 +37,7 @@ assemble-test-components configuration="debug": \
   (assemble-rust-component "increment" configuration) \
   (assemble-rust-component "component_file" configuration) \
   (assemble-rust-component "fetch" configuration) \
+  (assemble-rust-component "font" configuration) \
   && \
   (tar-component-files "increment_ten") \
   (rename-component-artifacts "increment_ten") \

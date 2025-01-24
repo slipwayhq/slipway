@@ -5,7 +5,9 @@ use common_test_utils::{
     SLIPWAY_INCREMENT_COMPONENT_TAR_NAME, SLIPWAY_INCREMENT_TEN_COMPONENT_TAR_NAME,
 };
 use serde_json::json;
-use slipway_engine::{ComponentHandle, ComponentRigging, Rig, Rigging, SlipwayReference};
+use slipway_engine::{
+    ComponentHandle, ComponentRigging, Permissions, Rig, Rigging, SlipwayReference,
+};
 
 mod common;
 
@@ -43,7 +45,7 @@ fn run(ttl: u32, expected_result: u32) {
         .collect(),
     });
 
-    let output = get_rig_output(rig, "test");
+    let output = get_rig_output(rig, "test", Permissions::allow_all()).unwrap();
 
     assert_eq!(
         output.value,

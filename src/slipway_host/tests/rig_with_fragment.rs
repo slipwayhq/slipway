@@ -3,7 +3,9 @@ use std::str::FromStr;
 use common::get_rig_output;
 use common_test_utils::SLIPWAY_FRAGMENT_COMPONENT_TAR_NAME;
 use serde_json::json;
-use slipway_engine::{ComponentHandle, ComponentRigging, Rig, Rigging, SlipwayReference};
+use slipway_engine::{
+    ComponentHandle, ComponentRigging, Permissions, Rig, Rigging, SlipwayReference,
+};
 
 mod common;
 
@@ -26,7 +28,7 @@ fn run() {
         .collect(),
     });
 
-    let output = get_rig_output(rig, "frag");
+    let output = get_rig_output(rig, "frag", Permissions::allow_all()).unwrap();
 
     assert_eq!(
         output.value,
