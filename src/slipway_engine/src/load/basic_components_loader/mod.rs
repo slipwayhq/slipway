@@ -21,7 +21,7 @@ mod load_from_directory;
 mod load_from_tar;
 
 const DEFAULT_REGISTRY_LOOKUP_URL: &str =
-    "https://registry.slipwayhq.com/components/{publisher}/{name}/{version}";
+    "https://slipwayhq.com/components/{publisher}.{name}.{version}.tar";
 
 fn get_default_slipway_components_cache_dir() -> PathBuf {
     let home_dir = dirs::home_dir().expect("Home directory required for caching components");
@@ -29,19 +29,14 @@ fn get_default_slipway_components_cache_dir() -> PathBuf {
 }
 
 pub struct BasicComponentsLoader {
-    registry_lookup_url: Option<String>,
+    registry_lookup_urls: Vec<String>,
     local_base_directory: PathBuf,
     io_abstractions: Arc<dyn ComponentIOAbstractions>,
 }
 
-enum RegistrySelection {
-    None,
-    Default,
-    Custom(String),
-}
-
 pub struct BasicComponentsLoaderBuilder {
-    registry_lookup_url: RegistrySelection,
+    include_default_registry: bool,
+    registry_lookup_urls: Vec<String>,
     components_cache_path: Option<PathBuf>,
     local_base_directory: Option<PathBuf>,
     io_abstractions: Option<Arc<dyn ComponentIOAbstractions>>,
@@ -50,7 +45,8 @@ pub struct BasicComponentsLoaderBuilder {
 impl BasicComponentsLoaderBuilder {
     pub fn new() -> Self {
         Self {
-            registry_lookup_url: RegistrySelection::Default,
+            include_default_registry: true,
+            registry_lookup_urls: vec![],
             components_cache_path: None,
             local_base_directory: None,
             io_abstractions: None,
@@ -58,12 +54,19 @@ impl BasicComponentsLoaderBuilder {
     }
 
     pub fn registry_lookup_url(mut self, url: &str) -> Self {
-        self.registry_lookup_url = RegistrySelection::Custom(url.to_string());
+        self.registry_lookup_urls.push(url.to_string());
         self
     }
 
-    pub fn without_registry(mut self) -> Self {
-        self.registry_lookup_url = RegistrySelection::None;
+    pub fn registry_lookup_urls(mut self, urls: Vec<String>) -> Self {
+        for url in urls {
+            self.registry_lookup_urls.push(url);
+        }
+        self
+    }
+
+    pub fn without_default_registry(mut self) -> Self {
+        self.include_default_registry = false;
         self
     }
 
@@ -83,11 +86,11 @@ impl BasicComponentsLoaderBuilder {
     }
 
     pub fn build(self) -> BasicComponentsLoader {
-        let registry_lookup_url = match self.registry_lookup_url {
-            RegistrySelection::None => None,
-            RegistrySelection::Default => Some(DEFAULT_REGISTRY_LOOKUP_URL.to_string()),
-            RegistrySelection::Custom(url) => Some(url),
-        };
+        let mut registry_lookup_urls: Vec<_> = self.registry_lookup_urls;
+
+        if self.include_default_registry {
+            registry_lookup_urls.push(DEFAULT_REGISTRY_LOOKUP_URL.to_string());
+        }
 
         let components_cache_path = self
             .components_cache_path
@@ -102,7 +105,7 @@ impl BasicComponentsLoaderBuilder {
             .unwrap_or_else(|| Arc::new(ComponentIOAbstractionsImpl::new(components_cache_path)));
 
         BasicComponentsLoader {
-            registry_lookup_url,
+            registry_lookup_urls,
             io_abstractions,
             local_base_directory,
         }
@@ -199,52 +202,70 @@ impl BasicComponentsLoader {
                 name,
                 version,
             } => {
-                let registry_lookup_url =
-                    self.registry_lookup_url
-                        .as_ref()
-                        .ok_or(ComponentLoadError::new(
-                            component_reference,
-                            ComponentLoadErrorInner::FileLoadFailed {
-                                path: component_reference.to_string(),
-                                error: "No registry URL has been set.".to_string(),
-                            },
-                        ))?;
-
-                let resolved_registry_lookup_url = registry_lookup_url
-                    .replace("{publisher}", publisher)
-                    .replace("{name}", name)
-                    .replace("{version}", &version.to_string());
-
-                let processed_url =
-                    process_url_str(&resolved_registry_lookup_url).map_err(|e| {
-                        ComponentLoadError::new(
-                            component_reference,
-                            ComponentLoadErrorInner::FileLoadFailed {
-                                path: resolved_registry_lookup_url,
-                                error: format!(
-                                    "Failed to create component URL for registry.\n{}",
-                                    e
-                                ),
-                            },
-                        )
-                    })?;
-
-                let url_reference = match processed_url {
-                    ProcessedUrl::RelativePath(path) => SlipwayReference::Local { path },
-                    ProcessedUrl::AbsolutePath(path) => SlipwayReference::Local { path },
-                    ProcessedUrl::Http(url) => SlipwayReference::Http { url },
-                };
-
-                let result = self.load_component(&url_reference);
-
-                match result {
-                    Err(e) => Err(ComponentLoadError::new(component_reference, e.error)),
-                    Ok(c) => Ok(LoadedComponent::new(
-                        component_reference.clone(),
-                        c.definition,
-                        c.files,
-                    )),
+                if self.registry_lookup_urls.is_empty() {
+                    return Err(ComponentLoadError::new(
+                        component_reference,
+                        ComponentLoadErrorInner::FileLoadFailed {
+                            path: component_reference.to_string(),
+                            error: "No registry URL has been set.".to_string(),
+                        },
+                    ));
                 }
+
+                for registry_lookup_url in self.registry_lookup_urls.iter() {
+                    let resolved_registry_lookup_url = registry_lookup_url
+                        .replace("{publisher}", publisher)
+                        .replace("{name}", name)
+                        .replace("{version}", &version.to_string());
+
+                    let processed_url =
+                        process_url_str(&resolved_registry_lookup_url).map_err(|e| {
+                            ComponentLoadError::new(
+                                component_reference,
+                                ComponentLoadErrorInner::FileLoadFailed {
+                                    path: resolved_registry_lookup_url.clone(),
+                                    error: format!(
+                                        "Failed to create component URL for registry.\n{}",
+                                        e
+                                    ),
+                                },
+                            )
+                        })?;
+
+                    let url_reference = match processed_url {
+                        ProcessedUrl::RelativePath(path) => SlipwayReference::Local { path },
+                        ProcessedUrl::AbsolutePath(path) => SlipwayReference::Local { path },
+                        ProcessedUrl::Http(url) => SlipwayReference::Http { url },
+                    };
+
+                    let result = self.load_component(&url_reference);
+
+                    match result {
+                        Err(e) => {
+                            debug!(
+                                "Failed to load component \"{}\" from registry \"{}\"",
+                                component_reference, resolved_registry_lookup_url
+                            );
+                            debug!("Reason: {}\n", e.error);
+                            continue;
+                        }
+                        Ok(c) => {
+                            return Ok(LoadedComponent::new(
+                                component_reference.clone(),
+                                c.definition,
+                                c.files,
+                            ))
+                        }
+                    };
+                }
+
+                Err(ComponentLoadError::new(
+                    component_reference,
+                    ComponentLoadErrorInner::FileLoadFailed {
+                        path: component_reference.to_string(),
+                        error: "Component could not be loaded from any known registry.".to_string(),
+                    },
+                ))
             }
         }
     }
@@ -625,22 +646,30 @@ mod tests {
             fn load_file(
                 &self,
                 path: &Path,
-                _component_reference: &SlipwayReference,
+                component_reference: &SlipwayReference,
             ) -> Result<Box<dyn FileHandle>, ComponentLoadError> {
-                let data = self.files.get(path.to_string_lossy().as_ref()).unwrap();
+                let data = self
+                    .files
+                    .get(path.to_string_lossy().as_ref())
+                    .ok_or_else(|| ComponentLoadError {
+                        reference: Box::new(component_reference.clone()),
+                        error: ComponentLoadErrorInner::NotFound,
+                    })?;
                 Ok(Box::new(Cursor::new(data.clone())))
             }
 
             fn load_file_from_url(
                 &self,
-                _url: &Url,
-                _component_reference: &SlipwayReference,
+                url: &Url,
+                component_reference: &SlipwayReference,
             ) -> Result<PathBuf, ComponentLoadError> {
-                Ok(self
-                    .url_to_file_map
-                    .get(_url.as_str())
+                self.url_to_file_map
+                    .get(url.as_str())
                     .map(|s| PathBuf::from_str(s).unwrap())
-                    .unwrap())
+                    .ok_or_else(|| ComponentLoadError {
+                        reference: Box::new(component_reference.clone()),
+                        error: ComponentLoadErrorInner::NotFound,
+                    })
             }
 
             fn exists(&self, path: &Path) -> bool {
@@ -887,6 +916,43 @@ mod tests {
 
             let loader = BasicComponentsLoaderBuilder::new()
                 .registry_lookup_url(URL)
+                .io_abstractions(Arc::new(io_abstractions))
+                .build();
+
+            assert_result(
+                loader,
+                component_reference,
+                data,
+                "path/to/my_component.tar",
+            );
+        }
+
+        #[test_log::test]
+        fn it_should_load_from_registry_with_fallback() {
+            // This test does not test the actual downloading of the file, but rather the loading
+            // of the tar file once it has been downloaded.
+            const FIRST_URL: &str = "http://wrong.com/path/to/{publisher}.{name}.{version}.tar";
+            const SECOND_URL: &str = "http://example.com/path/to/{publisher}.{name}.{version}.tar";
+            let component_reference = SlipwayReference::Registry {
+                publisher: "p1".to_string(),
+                name: "n1".to_string(),
+                version: Version::parse("1.2.3").expect("Invalid version"),
+            };
+
+            let data = MockData::new();
+            let tar_data = create_tar(&data);
+
+            let io_abstractions = MockComponentIOAbstractions {
+                files: HashMap::from([("path/to/my_component.tar".to_string(), tar_data.clone())]),
+                url_to_file_map: HashMap::from([(
+                    "http://example.com/path/to/p1.n1.1.2.3.tar".to_string(),
+                    "path/to/my_component.tar".to_string(),
+                )]),
+            };
+
+            let loader = BasicComponentsLoaderBuilder::new()
+                .registry_lookup_url(FIRST_URL)
+                .registry_lookup_url(SECOND_URL)
                 .io_abstractions(Arc::new(io_abstractions))
                 .build();
 

@@ -117,7 +117,7 @@ pub(crate) fn debug_rig_from_component_file<W: Write>(
     component_path: std::path::PathBuf,
     input_path: Option<std::path::PathBuf>,
     engine_permissions: Permissions,
-    registry_url: Option<String>,
+    registry_urls: Vec<String>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Debugging {}", component_path.display())?;
     writeln!(w)?;
@@ -172,14 +172,14 @@ pub(crate) fn debug_rig_from_component_file<W: Write>(
         },
     };
 
-    debug_rig(w, rig, json_editor, engine_permissions, registry_url)
+    debug_rig(w, rig, json_editor, engine_permissions, registry_urls)
 }
 
 pub(crate) fn debug_rig_from_rig_file<W: Write>(
     w: &mut W,
     input: std::path::PathBuf,
     engine_permissions: Permissions,
-    registry_url: Option<String>,
+    registry_urls: Vec<String>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Debugging {}", input.display())?;
     writeln!(w)?;
@@ -190,7 +190,7 @@ pub(crate) fn debug_rig_from_rig_file<W: Write>(
 
     let json_editor = JsonEditorImpl::new();
 
-    debug_rig(w, rig, json_editor, engine_permissions, registry_url)
+    debug_rig(w, rig, json_editor, engine_permissions, registry_urls)
 }
 
 fn redirect_to_json_if_wasm(input: &std::path::Path) -> std::path::PathBuf {
@@ -208,14 +208,11 @@ fn debug_rig<W: Write>(
     rig: Rig,
     json_editor: impl JsonEditor,
     engine_permissions: Permissions,
-    registry_url: Option<String>,
+    registry_urls: Vec<String>,
 ) -> anyhow::Result<()> {
-    let components_loader = match registry_url {
-        None => BasicComponentsLoader::default(),
-        Some(url) => BasicComponentsLoader::builder()
-            .registry_lookup_url(&url)
-            .build(),
-    };
+    let components_loader = BasicComponentsLoader::builder()
+        .registry_lookup_urls(registry_urls)
+        .build();
 
     let component_cache = BasicComponentCache::primed(&rig, &components_loader)?;
     let session = RigSession::new(rig, &component_cache);

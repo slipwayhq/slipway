@@ -1,7 +1,7 @@
 default:
   just --list
   
-build configuration="debug": (build-components configuration) (build-src configuration)
+build configuration="debug": (build-src configuration) (build-components configuration)
 
 test *FLAGS: build
   cd src && cargo nextest run {{FLAGS}}

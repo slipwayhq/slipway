@@ -42,7 +42,7 @@ pub(crate) enum Commands {
         log_level: Option<String>,
 
         #[arg(short, long)]
-        registry_url: Option<String>,
+        registry_url: Vec<String>,
     },
 
     /// Debug a Slipway rig.
@@ -54,7 +54,7 @@ pub(crate) enum Commands {
         log_level: Option<String>,
 
         #[arg(short, long)]
-        registry_url: Option<String>,
+        registry_url: Vec<String>,
     },
 
     /// Debug a Slipway component.
@@ -69,7 +69,7 @@ pub(crate) enum Commands {
         log_level: Option<String>,
 
         #[arg(short, long)]
-        registry_url: Option<String>,
+        registry_url: Vec<String>,
     },
 
     /// Package up a Slipway component into a .tar file.
