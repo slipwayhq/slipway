@@ -5,6 +5,7 @@ mod component_runners;
 mod debug_rig;
 mod host_error;
 mod package;
+mod permissions;
 mod render_state;
 mod run_rig;
 mod to_view_model;
@@ -15,8 +16,8 @@ mod test_utils;
 
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
-use slipway_engine::Permissions;
+use clap::{Args, Parser, Subcommand};
+use permissions::CommonPermissionsArgs;
 use time::{format_description, OffsetDateTime};
 use tracing::Level;
 use tracing_subscriber::{fmt::time::FormatTime, FmtSubscriber};
@@ -38,11 +39,8 @@ pub(crate) enum Commands {
     Run {
         path: PathBuf,
 
-        #[arg(short, long)]
-        log_level: Option<String>,
-
-        #[arg(short, long)]
-        registry_url: Vec<String>,
+        #[command(flatten)]
+        common: CommonRunArgs,
     },
 
     /// Debug a Slipway rig.
@@ -50,11 +48,8 @@ pub(crate) enum Commands {
     Debug {
         path: PathBuf,
 
-        #[arg(short, long)]
-        log_level: Option<String>,
-
-        #[arg(short, long)]
-        registry_url: Vec<String>,
+        #[command(flatten)]
+        common: CommonRunArgs,
     },
 
     /// Debug a Slipway component.
@@ -65,11 +60,8 @@ pub(crate) enum Commands {
         #[arg(short, long)]
         input: Option<PathBuf>,
 
-        #[arg(short, long)]
-        log_level: Option<String>,
-
-        #[arg(short, long)]
-        registry_url: Vec<String>,
+        #[command(flatten)]
+        common: CommonRunArgs,
     },
 
     /// Package up a Slipway component into a .tar file.
@@ -86,50 +78,62 @@ pub(crate) enum Commands {
     Wit,
 }
 
+#[derive(Debug, Args)]
+struct CommonRunArgs {
+    #[arg(short, long)]
+    log_level: Option<String>,
+
+    #[arg(short, long)]
+    registry_url: Vec<String>,
+
+    #[command(flatten)]
+    permissions: CommonPermissionsArgs,
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
     set_ctrl_c_handler();
 
     match args.command {
-        Commands::Debug {
-            path,
-            log_level,
-            registry_url,
-        } => {
+        Commands::Debug { path, common } => {
+            let log_level = common.log_level;
+            let registry_url = common.registry_url;
             configure_tracing(log_level);
+            let permissions = common.permissions.into_permissions()?;
             debug_rig::debug_rig_from_rig_file(
                 &mut std::io::stdout(),
                 path,
-                Permissions::allow_all(),
+                (&permissions).into(),
                 registry_url,
             )?;
         }
         Commands::DebugComponent {
             path,
             input,
-            log_level,
-            registry_url,
+            common,
         } => {
+            let log_level = common.log_level;
+            let registry_url = common.registry_url;
             configure_tracing(log_level);
+            let permissions = common.permissions.into_permissions()?;
             debug_rig::debug_rig_from_component_file(
                 &mut std::io::stdout(),
                 path,
                 input,
-                Permissions::allow_all(),
+                (&permissions).into(),
                 registry_url,
             )?;
         }
-        Commands::Run {
-            path,
-            log_level,
-            registry_url,
-        } => {
+        Commands::Run { path, common } => {
+            let log_level = common.log_level;
+            let registry_url = common.registry_url;
             configure_tracing(log_level);
+            let permissions = common.permissions.into_permissions()?;
             run_rig::run_rig(
                 &mut std::io::stdout(),
                 path,
-                Permissions::allow_all(),
+                (&permissions).into(),
                 registry_url,
             )?;
         }

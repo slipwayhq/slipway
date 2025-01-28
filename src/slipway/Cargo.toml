@@ -31,6 +31,7 @@ time = { version = "0.3.37", features = ["formatting"] }
 url = { workspace = true }
 tar = { workspace = true }
 walkdir = { workspace = true }
+paste = "1.0.15"
 
 [dev-dependencies]
 common_test_utils = { path = "../common_test_utils" }
