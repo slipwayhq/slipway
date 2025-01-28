@@ -1,5 +1,5 @@
 {
-  "publisher": "slipway",
+  "publisher": "slipwayhq",
   "name": "test_rig",
   "version": "0.0.1",
   "description": "Calls a fragment which calls a callout",
@@ -7,7 +7,7 @@
   },
   "rigging": {
     "frag": {
-      "component": "slipway.fragment.0.0.1",
+      "component": "slipwayhq.fragment.0.0.1",
       "input": {
         "type": "callout_increment",
         "value": 0,

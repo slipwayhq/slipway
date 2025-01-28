@@ -1,5 +1,5 @@
 {
-  "publisher": "slipway",
+  "publisher": "slipwayhq",
   "name": "weather_renderer",
   "version": "0.0.1",
   "description": "Renders weather data into an image.",

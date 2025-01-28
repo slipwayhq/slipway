@@ -4,34 +4,34 @@ pub mod test_server;
 
 pub const SLIPWAY_TEST_COMPONENTS_PATH: &str = "./artifacts";
 
-pub const SLIPWAY_INCREMENT_COMPONENT_NAME: &str = "slipway.increment.0.0.1";
-pub const SLIPWAY_INCREMENT_COMPONENT_FOLDER_NAME: &str = "slipway_increment";
-pub const SLIPWAY_INCREMENT_COMPONENT_TAR_NAME: &str = "slipway.increment.0.0.1.tar";
+pub const SLIPWAY_INCREMENT_COMPONENT_NAME: &str = "slipwayhq.increment.0.0.1";
+pub const SLIPWAY_INCREMENT_COMPONENT_FOLDER_NAME: &str = "slipwayhq.increment";
+pub const SLIPWAY_INCREMENT_COMPONENT_TAR_NAME: &str = "slipwayhq.increment.0.0.1.tar";
 
-pub const SLIPWAY_FETCH_COMPONENT_NAME: &str = "slipway.fetch.0.0.1";
-pub const SLIPWAY_FETCH_COMPONENT_TAR_NAME: &str = "slipway.fetch.0.0.1.tar";
+pub const SLIPWAY_FETCH_COMPONENT_NAME: &str = "slipwayhq.fetch.0.0.1";
+pub const SLIPWAY_FETCH_COMPONENT_TAR_NAME: &str = "slipwayhq.fetch.0.0.1.tar";
 
-pub const SLIPWAY_COMPONENT_FILE_COMPONENT_NAME: &str = "slipway.component_file.0.0.1";
-pub const SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME: &str = "slipway.component_file.0.0.1.tar";
+pub const SLIPWAY_COMPONENT_FILE_COMPONENT_NAME: &str = "slipwayhq.component_file.0.0.1";
+pub const SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME: &str = "slipwayhq.component_file.0.0.1.tar";
 
-pub const SLIPWAY_FONT_COMPONENT_NAME: &str = "slipway.font.0.0.1";
-pub const SLIPWAY_FONT_COMPONENT_TAR_NAME: &str = "slipway.font.0.0.1.tar";
+pub const SLIPWAY_FONT_COMPONENT_NAME: &str = "slipwayhq.font.0.0.1";
+pub const SLIPWAY_FONT_COMPONENT_TAR_NAME: &str = "slipwayhq.font.0.0.1.tar";
 
-pub const SLIPWAY_ENV_COMPONENT_NAME: &str = "slipway.env.0.0.1";
-pub const SLIPWAY_ENV_COMPONENT_TAR_NAME: &str = "slipway.env.0.0.1.tar";
+pub const SLIPWAY_ENV_COMPONENT_NAME: &str = "slipwayhq.env.0.0.1";
+pub const SLIPWAY_ENV_COMPONENT_TAR_NAME: &str = "slipwayhq.env.0.0.1.tar";
 
 pub const SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_NAME: &str =
-    "slipway.increment_json_schema.0.0.1";
+    "slipwayhq.increment_json_schema.0.0.1";
 pub const SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_FOLDER_NAME: &str =
-    "slipway_increment_json_schema";
+    "slipwayhq.increment_json_schema";
 pub const SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_TAR_NAME: &str =
-    "slipway.increment_json_schema.0.0.1.tar";
+    "slipwayhq.increment_json_schema.0.0.1.tar";
 
-pub const SLIPWAY_INCREMENT_TEN_COMPONENT_NAME: &str = "slipway.increment_ten.0.0.1";
-pub const SLIPWAY_INCREMENT_TEN_COMPONENT_TAR_NAME: &str = "slipway.increment_ten.0.0.1.tar";
+pub const SLIPWAY_INCREMENT_TEN_COMPONENT_NAME: &str = "slipwayhq.increment_ten.0.0.1";
+pub const SLIPWAY_INCREMENT_TEN_COMPONENT_TAR_NAME: &str = "slipwayhq.increment_ten.0.0.1.tar";
 
-pub const SLIPWAY_FRAGMENT_COMPONENT_NAME: &str = "slipway.fragment.0.0.1";
-pub const SLIPWAY_FRAGMENT_COMPONENT_TAR_NAME: &str = "slipway.fragment.0.0.1.tar";
+pub const SLIPWAY_FRAGMENT_COMPONENT_NAME: &str = "slipwayhq.fragment.0.0.1";
+pub const SLIPWAY_FRAGMENT_COMPONENT_TAR_NAME: &str = "slipwayhq.fragment.0.0.1.tar";
 
 pub fn get_slipway_test_components_path() -> PathBuf {
     find_ancestor_path(PathBuf::from(SLIPWAY_TEST_COMPONENTS_PATH))

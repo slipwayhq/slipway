@@ -1,5 +1,5 @@
 {
-  "publisher": "slipway",
+  "publisher": "slipwayhq",
   "name": "test_rig",
   "version": "0.0.1",
   "description": "Calls a js component",
@@ -7,7 +7,7 @@
   },
   "rigging": {
     "single": {
-      "component": "slipway.test_js.0.0.1",
+      "component": "slipwayhq.test_js.0.0.1",
       "input": {
         "type": "increment",
         "value": 0

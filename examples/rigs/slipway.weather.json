@@ -1,5 +1,5 @@
 {
-  "publisher": "slipway",
+  "publisher": "slipwayhq",
   "name": "weather",
   "version": "0.0.1",
   "description": "A slipway rig which displays the weather",
@@ -9,14 +9,14 @@
   },
   "rigging": {
     "weather_url_resolver": {
-      "component": "slipway.weather_url_resolver.0.0.1",
+      "component": "slipwayhq.weather_url_resolver.0.0.1",
       "input": {
         "provider": "$.constants.weather_provider",
         "location": "$.constants.weather_location"
       }
     },
     "url_loader": {
-      "component": "slipway.url_loader.0.0.1",
+      "component": "slipwayhq.url_loader.0.0.1",
       "input": {
         "url": "$$.weather_url_resolver"
       },
@@ -26,14 +26,14 @@
       ]
     },
     "weather_transformer": {
-      "component": "slipway.weather_transformer.0.0.1",
+      "component": "slipwayhq.weather_transformer.0.0.1",
       "input": {
         "provider": "$.constants.weather_provider",
         "data": "$$.url_loader"
       }
     },
     "weather_renderer": {
-      "component": "slipway.weather_renderer.0.0.1",
+      "component": "slipwayhq.weather_renderer.0.0.1",
       "input": {
         "data": "$$.weather_transformer"
       }

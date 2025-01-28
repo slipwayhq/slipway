@@ -1,5 +1,5 @@
 {
-  "publisher": "slipway",
+  "publisher": "slipwayhq",
   "name": "weather_transformer",
   "description": "Transforms weather data from various providers into a standard format.",
   "version": "0.0.1",

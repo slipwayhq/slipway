@@ -53,7 +53,7 @@ fn create_callout_test_rig(ttl: u32, component_name: &str, result_type: &str) ->
             ComponentHandle::from_str("test").unwrap(),
             ComponentRigging::for_test_with_reference(
                 SlipwayReference::Local {
-                    path: format!("slipway.{component_name}.0.0.1.tar").into(),
+                    path: format!("slipwayhq.{component_name}.0.0.1.tar").into(),
                 },
                 Some(json!({
                     "type": "callout_increment",
@@ -86,7 +86,7 @@ fn create_callout_schema_test_rig(component_name: &str, call_type: &str) -> Rig 
             ComponentHandle::from_str("test").unwrap(),
             ComponentRigging::for_test_with_reference(
                 SlipwayReference::Local {
-                    path: format!("slipway.{component_name}.0.0.1.tar").into(),
+                    path: format!("slipwayhq.{component_name}.0.0.1.tar").into(),
                 },
                 Some(json!({
                     "type": call_type,

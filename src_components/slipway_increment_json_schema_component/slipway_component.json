@@ -1,5 +1,5 @@
 {
-  "publisher": "slipway",
+  "publisher": "slipwayhq",
   "name": "increment_json_schema",
   "description": "Does a simple JSON modification.",
   "version": "0.0.1",
@@ -12,6 +12,6 @@
     "$ref": "output_schema.json"
   },
   "callouts": {
-    "test": "file:slipway.increment.0.0.1.tar"
+    "test": "file:slipwayhq.increment.0.0.1.tar"
   }
 }

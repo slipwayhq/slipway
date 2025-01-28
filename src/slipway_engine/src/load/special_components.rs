@@ -7,7 +7,7 @@ use std::{str::FromStr, sync::Arc};
 
 use super::{prime_component_cache::parse_component_with_json, ComponentFiles};
 
-const SLIPWAY_PUBLISHER: &str = "slipway";
+const SLIPWAY_PUBLISHER: &str = "slipwayhq";
 
 pub fn load_special_component(reference: &SpecialComponentReference) -> LoadedComponent {
     let definition = get_special_definition(reference);

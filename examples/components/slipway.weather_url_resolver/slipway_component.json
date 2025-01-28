@@ -1,5 +1,5 @@
 {
-  "publisher": "slipway",
+  "publisher": "slipwayhq",
   "name": "weather_url_resolver",
   "version": "0.0.1",
   "description": "Converts a weather provider and location into a URL.",

@@ -1,5 +1,5 @@
 {
-  "publisher": "slipway",
+  "publisher": "slipwayhq",
   "name": "increment",
   "description": "Does a simple JSON modification.",
   "version": "0.0.1",
@@ -46,6 +46,6 @@
     }
   },
   "callouts": {
-    "increment": "file:slipway.increment.0.0.1.tar"
+    "increment": "file:slipwayhq.increment.0.0.1.tar"
   }
 }

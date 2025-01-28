@@ -72,7 +72,7 @@ mod tests {
     fn it_should_provide_a_sensible_message_when_component_reference_cannot_be_parsed() {
         let json = r#"
         {
-            "publisher": "slipway",
+            "publisher": "slipwayhq",
             "name": "weather",
             "version": "0.0.1",
             "rigging": {
@@ -103,7 +103,7 @@ mod tests {
     fn it_should_provide_a_sensible_message_when_duplicate_rigging_keys() {
         let json = r#"
         {
-            "publisher": "slipway",
+            "publisher": "slipwayhq",
             "name": "weather",
             "version": "0.0.1",
             "rigging": {
