@@ -16,7 +16,13 @@ mod test_utils;
 
 use std::path::PathBuf;
 
-use clap::{Args, Parser, Subcommand};
+use clap::{
+    builder::{
+        styling::{AnsiColor, Effects},
+        Styles,
+    },
+    Args, Parser, Subcommand,
+};
 use permissions::CommonPermissionsArgs;
 use time::{format_description, OffsetDateTime};
 use tracing::Level;
@@ -27,9 +33,19 @@ const WASM_INTERFACE_TYPE_STR: &str = include_str!("../../../wit/latest/slipway.
 #[derive(Debug, Parser)]
 #[command(name = "slipway")]
 #[command(about = "Slipway CLI", long_about = None)]
+#[command(color = clap::ColorChoice::Always)]
+#[command(styles = get_styles())]
 pub(crate) struct Cli {
     #[command(subcommand)]
     pub command: Commands,
+}
+
+fn get_styles() -> Styles {
+    Styles::styled()
+        .header(AnsiColor::Yellow.on_default() | Effects::BOLD)
+        .usage(AnsiColor::Green.on_default() | Effects::BOLD)
+        .literal(AnsiColor::Blue.on_default() | Effects::BOLD)
+        .placeholder(AnsiColor::Green.on_default())
 }
 
 #[derive(Debug, Subcommand)]
@@ -37,16 +53,22 @@ pub(crate) enum Commands {
     /// Run a Slipway rig.
     #[command(arg_required_else_help = true)]
     Run {
-        path: PathBuf,
+        /// The path to the rig file.
+        rig: PathBuf,
 
         #[command(flatten)]
         common: CommonRunArgs,
+
+        /// The optional folder path to save the rig outputs to.
+        #[arg(short, long)]
+        output: Option<std::path::PathBuf>,
     },
 
     /// Debug a Slipway rig.
     #[command(arg_required_else_help = true)]
     Debug {
-        path: PathBuf,
+        /// The path to the rig file.
+        rig: PathBuf,
 
         #[command(flatten)]
         common: CommonRunArgs,
@@ -55,8 +77,10 @@ pub(crate) enum Commands {
     /// Debug a Slipway component.
     #[command(arg_required_else_help = true)]
     DebugComponent {
-        path: PathBuf,
+        /// The path to the component file.
+        component: PathBuf,
 
+        /// The optional path to the file containing the component's input.
         #[arg(short, long)]
         input: Option<PathBuf>,
 
@@ -67,8 +91,10 @@ pub(crate) enum Commands {
     /// Package up a Slipway component into a .tar file.
     #[command(arg_required_else_help = true)]
     Package {
-        path: PathBuf,
+        /// The path to the directory containing the component files.
+        folder_path: PathBuf,
 
+        /// The log level (error, warn, info, debug, trace).
         #[arg(short, long)]
         log_level: Option<String>,
     },
@@ -80,10 +106,16 @@ pub(crate) enum Commands {
 
 #[derive(Debug, Args)]
 struct CommonRunArgs {
+    /// The log level (error, warn, info, debug, trace).
     #[arg(short, long)]
     log_level: Option<String>,
 
-    #[arg(short, long)]
+    /// The registry URL to interpolate and use in preference to the default registry.
+    /// This can be specified multiple times to search multiple registries in order.
+    /// For example:
+    ///   https://registry.example.com/{publisher}/{name}/{version}
+    ///   file:../slipway_{name}/artifacts/{publisher}.{name}.{version}.tar
+    #[arg(short, long, verbatim_doc_comment)]
     registry_url: Vec<String>,
 
     #[command(flatten)]
@@ -96,20 +128,20 @@ fn main() -> anyhow::Result<()> {
     set_ctrl_c_handler();
 
     match args.command {
-        Commands::Debug { path, common } => {
+        Commands::Debug { rig, common } => {
             let log_level = common.log_level;
             let registry_url = common.registry_url;
             configure_tracing(log_level);
             let permissions = common.permissions.into_permissions()?;
             debug_rig::debug_rig_from_rig_file(
                 &mut std::io::stdout(),
-                path,
+                rig,
                 (&permissions).into(),
                 registry_url,
             )?;
         }
         Commands::DebugComponent {
-            path,
+            component,
             input,
             common,
         } => {
@@ -119,27 +151,35 @@ fn main() -> anyhow::Result<()> {
             let permissions = common.permissions.into_permissions()?;
             debug_rig::debug_rig_from_component_file(
                 &mut std::io::stdout(),
-                path,
+                component,
                 input,
                 (&permissions).into(),
                 registry_url,
             )?;
         }
-        Commands::Run { path, common } => {
+        Commands::Run {
+            rig,
+            common,
+            output,
+        } => {
             let log_level = common.log_level;
             let registry_url = common.registry_url;
             configure_tracing(log_level);
             let permissions = common.permissions.into_permissions()?;
             run_rig::run_rig(
                 &mut std::io::stdout(),
-                path,
+                rig,
                 (&permissions).into(),
                 registry_url,
+                output,
             )?;
         }
-        Commands::Package { path, log_level } => {
+        Commands::Package {
+            folder_path,
+            log_level,
+        } => {
             configure_tracing(log_level);
-            package::package_component(&path)?;
+            package::package_component(&folder_path)?;
         }
         Commands::Wit => {
             println!("{}", WASM_INTERFACE_TYPE_STR);

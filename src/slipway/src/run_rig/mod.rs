@@ -1,4 +1,4 @@
-use std::{io::Write, sync::Arc};
+use std::{io::Write, path::PathBuf, sync::Arc};
 
 use anyhow::Context;
 use slipway_engine::{
@@ -17,6 +17,7 @@ pub(super) fn run_rig<W: Write>(
     input: std::path::PathBuf,
     engine_permissions: Permissions,
     registry_urls: Vec<String>,
+    save_path: Option<PathBuf>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Launching {}", input.display())?;
     writeln!(w)?;
@@ -32,7 +33,7 @@ pub(super) fn run_rig<W: Write>(
     let component_cache = BasicComponentCache::primed(&rig, &components_loader)?;
     let session = RigSession::new(rig, &component_cache);
 
-    let mut event_handler = SlipwayRunEventHandler { w };
+    let mut event_handler = SlipwayRunEventHandler { w, save_path };
     let component_runners = get_component_runners();
     let component_runners_slice = component_runners.as_slice();
 
@@ -49,6 +50,7 @@ pub(super) fn run_rig<W: Write>(
 
 struct SlipwayRunEventHandler<'w, W: Write> {
     w: &'w mut W,
+    save_path: Option<PathBuf>,
 }
 
 impl<'rig, 'cache, W: Write> RunEventHandler<'rig, 'cache, HostError>
@@ -79,6 +81,7 @@ impl<'rig, 'cache, W: Write> RunEventHandler<'rig, 'cache, HostError>
             writeln!(self.w)?;
             write_state_with_outputs(
                 self.w,
+                self.save_path.as_ref(),
                 event.state,
                 crate::render_state::PrintComponentOutputsType::LeafComponents,
             )?;

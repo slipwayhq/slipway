@@ -20,5 +20,16 @@ pub(super) fn handle_render_command<'rig>(
         SlipwayDebugError::UserError(format!("Component {} has no output", handle))
     })?;
 
+    if let Some(save_path) = save_path.as_ref() {
+        if let Some(parent) = save_path.parent() {
+            std::fs::create_dir_all(parent).map_err(|error| {
+                SlipwayDebugError::UserError(format!(
+                    "Failed to create directory for save path: {}",
+                    error
+                ))
+            })?;
+        }
+    }
+
     render_canvas(handle, output, save_path).map_err(SlipwayDebugError::CanvasError)
 }

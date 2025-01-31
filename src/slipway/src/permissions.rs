@@ -23,25 +23,31 @@ impl<'a> From<&'a Permissions> for slipway_engine::Permissions<'a> {
 }
 
 macro_rules! create_url_permissions {
-    ($permission_name: ident, $name:ident) => {
+    ($permission_name:ident, $name:ident, $doc_name:expr) => {
         paste! {
             #[derive(Debug, Args)]
             pub(super) struct $permission_name {
+                #[doc = "Allow any " $doc_name "s at the rig level."]
                 #[arg(long)]
                 [<allow_ $name>]: bool,
 
+                #[doc = "Allow a specific " $doc_name " at the rig level."]
                 #[arg(long)]
                 [<allow_ $name _exact>]: Vec<url::Url>,
 
+                #[doc = "Allow " $doc_name "s with the given prefix at the rig level."]
                 #[arg(long)]
                 [<allow_ $name _prefix>]: Vec<url::Url>,
 
+                #[doc = "Deny any " $doc_name "s at the rig level."]
                 #[arg(long)]
                 [<deny_ $name>]: bool,
 
+                #[doc = "Deny a specific " $doc_name " at the rig level."]
                 #[arg(long)]
                 [<deny_ $name _exact>]: Vec<url::Url>,
 
+                #[doc = "Deny " $doc_name "s with the given prefix at the rig level."]
                 #[arg(long)]
                 [<deny_ $name _prefix>]: Vec<url::Url>,
             }
@@ -50,31 +56,39 @@ macro_rules! create_url_permissions {
 }
 
 macro_rules! create_string_permissions {
-    ($permission_name: ident, $name:ident) => {
+    ($permission_name:ident, $name:ident, $doc_name:expr) => {
         paste! {
             #[derive(Debug, Args)]
             pub(super) struct $permission_name {
+                #[doc = "Allow any " $doc_name "s at the rig level."]
                 #[arg(long)]
                 [<allow_ $name>]: bool,
 
+                #[doc = "Allow a specific " $doc_name " at the rig level."]
                 #[arg(long)]
                 [<allow_ $name _exact>]: Vec<String>,
 
+                #[doc = "Allow " $doc_name "s with the given prefix at the rig level."]
                 #[arg(long)]
                 [<allow_ $name _prefix>]: Vec<String>,
 
+                #[doc = "Allow " $doc_name "s with the given suffix at the rig level."]
                 #[arg(long)]
                 [<allow_ $name _suffix>]: Vec<String>,
 
+                #[doc = "Deny any " $doc_name "s at the rig level."]
                 #[arg(long)]
                 [<deny_ $name>]: bool,
 
+                #[doc = "Deny a specific " $doc_name " at the rig level."]
                 #[arg(long)]
                 [<deny_ $name _exact>]: Vec<String>,
 
+                #[doc = "Deny " $doc_name "s with the given prefix at the rig level."]
                 #[arg(long)]
                 [<deny_ $name _prefix>]: Vec<String>,
 
+                #[doc = "Deny " $doc_name "s with the given suffix at the rig level."]
                 #[arg(long)]
                 [<deny_ $name _suffix>]: Vec<String>,
             }
@@ -83,19 +97,23 @@ macro_rules! create_string_permissions {
 }
 
 macro_rules! create_simple_string_permissions {
-    ($permission_name: ident, $name:ident) => {
+    ($permission_name:ident, $name:ident, $doc_name:expr) => {
         paste! {
             #[derive(Debug, Args)]
             pub(super) struct $permission_name {
+                #[doc = "Allow any " $doc_name "s at the rig level."]
                 #[arg(long)]
                 [<allow_ $name>]: bool,
 
+                #[doc = "Allow a specific " $doc_name " at the rig level."]
                 #[arg(long)]
                 [<allow_ $name _exact>]: Vec<String>,
 
+                #[doc = "Deny any " $doc_name "s at the rig level."]
                 #[arg(long)]
                 [<deny_ $name>]: bool,
 
+                #[doc = "Deny a specific " $doc_name " at the rig level."]
                 #[arg(long)]
                 [<deny_ $name _exact>]: Vec<String>,
             }
@@ -103,32 +121,55 @@ macro_rules! create_simple_string_permissions {
     };
 }
 
-create_url_permissions!(HttpPermissionArgs, http);
-create_string_permissions!(FontPermissionArgs, fonts);
-create_string_permissions!(EnvPermissionArgs, env);
-create_url_permissions!(HttpComponentPermissionArgs, http_components);
-create_simple_string_permissions!(LocalComponentPermissionArgs, local_components);
+create_url_permissions!(HttpPermissionArgs, http, "HTTP request");
+create_string_permissions!(FontPermissionArgs, fonts, "font");
+create_string_permissions!(EnvPermissionArgs, env, "environment variable");
+create_url_permissions!(
+    HttpComponentPermissionArgs,
+    http_components,
+    "HTTP component"
+);
+create_simple_string_permissions!(
+    LocalComponentPermissionArgs,
+    local_components,
+    "local component"
+);
 
 #[derive(Debug, Args)]
 pub(super) struct RegistryComponentPermissionArgs {
+    /// Allow any registry components at the rig level.
     #[arg(long)]
     allow_registry_components: bool,
 
-    #[arg(long)]
+    /// Allow the rig to use specific registry components.
+    /// This should be a string of the form "publisher.name.version_spec".
+    /// Each part is optional, but the dots must be present.
+    /// For example:
+    ///   "slipwayhq.render.1.0.0"
+    ///   "slipwayhq.render.>=1.0.0,<2.0.0"
+    ///   "slipwayhq.render."
+    ///   "slipwayhq.."
+    ///   ".render."
+    #[arg(long, verbatim_doc_comment)]
     allow_registry_components_exact: Vec<String>,
 
+    /// Deny any registry components at the rig level.
     #[arg(long)]
     deny_registry_components: bool,
 
-    #[arg(long)]
+    /// Deny the rig to use specific registry components.
+    /// See the corresponding allow permission for formatting.
+    #[arg(long, verbatim_doc_comment)]
     deny_registry_components_exact: Vec<String>,
 }
 
 #[derive(Debug, Args)]
 pub(super) struct CommonPermissionsArgs {
+    /// Allow all permissions at the rig level.
     #[arg(long)]
     allow_all: bool,
 
+    /// Deny all permissions at the rig level.
     #[arg(long)]
     deny_all: bool,
 

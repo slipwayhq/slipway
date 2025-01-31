@@ -5,7 +5,7 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
-clap = { version = "4.3.22", features = ["derive"] }
+clap = { version = "4.3.22", features = ["derive", "color"] }
 slipway_engine = { path = "../slipway_engine", features = [
     "unstable-test-utils",
 ] }

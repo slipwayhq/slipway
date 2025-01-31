@@ -56,50 +56,50 @@ struct DebugCli {
 
 #[derive(Subcommand)]
 enum DebuggerCommand {
-    /// Prints the component graph
+    /// Prints the component graph.
     Print {},
 
-    /// Run a component
+    /// Run a component.
     Run {
-        /// The component to run
+        /// The component to run.
         #[arg(required = true)]
         handle: String,
     },
 
-    /// Override or view the input of a component
+    /// Override or view the input of a component.
     Input {
-        /// The component to update
+        /// The component to update.
         #[arg(required = true)]
         handle: String,
 
-        /// Clear the input override
+        /// Clear the input override.
         #[arg(short, long, default_value = "false")]
         clear: bool,
     },
 
-    /// Override or view the output of a component
+    /// Override or view the output of a component.
     Output {
-        /// The component to update
+        /// The component to update.
         #[arg(required = true)]
         handle: String,
 
-        /// Clear the output override
+        /// Clear the output override.
         #[arg(short, long, default_value = "false")]
         clear: bool,
     },
 
-    /// Render the output of a component
+    /// Render the output of a component.
     Render {
-        /// The component to render
+        /// The component to render.
         #[arg(required = true)]
         handle: String,
 
-        /// The optional file path to save the rendered output
+        /// The optional file path to save the rendered output.
         #[arg(short, long)]
         save: Option<std::path::PathBuf>,
     },
 
-    /// Exit the debugger
+    /// Exit the debugger.
     Exit,
 }
 
