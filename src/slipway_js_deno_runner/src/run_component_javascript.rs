@@ -128,13 +128,13 @@ fn restore_input_prototypes(runtime: &mut JsRuntime) -> Result<(), RunComponentE
                 if (!obj || typeof obj !== 'object') return;
                 
                 if (Array.isArray(obj)) {
-                Object.setPrototypeOf(obj, Array.prototype);
+                    Object.setPrototypeOf(obj, Array.prototype);
                 } else {
-                Object.setPrototypeOf(obj, Object.prototype);
+                    Object.setPrototypeOf(obj, Object.prototype);
                 }
             
                 for (const key in obj) {
-                restorePrototypes(obj[key]);
+                    restorePrototypes(obj[key]);
                 }
             }
 

@@ -3,29 +3,28 @@ use slipway_engine::{
     ComponentExecutionData, ComponentRunner, RunComponentError, TryRunComponentResult,
 };
 
-mod deno_ops;
 mod run_component_javascript;
 
-const DENO_COMPONENT_RUNNER_IDENTIFIER: &str = "deno";
-const DENO_COMPONENT_DEFINITION_FILE_NAME: &str = "slipway_js_component.json";
+const BOA_COMPONENT_RUNNER_IDENTIFIER: &str = "js_boa";
+const BOA_COMPONENT_DEFINITION_FILE_NAME: &str = "slipway_js_component.json";
 
-pub struct DenoComponentRunner {}
+pub struct BoaComponentRunner {}
 
-impl ComponentRunner for DenoComponentRunner {
+impl ComponentRunner for BoaComponentRunner {
     fn identifier(&self) -> String {
-        DENO_COMPONENT_RUNNER_IDENTIFIER.to_string()
+        BOA_COMPONENT_RUNNER_IDENTIFIER.to_string()
     }
 
     fn run<'call>(
         &self,
         execution_data: &'call ComponentExecutionData<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError> {
-        let maybe_deno_definition = execution_data
+        let maybe_boa_definition = execution_data
             .context
             .files
-            .try_get_json::<DenoComponentDefinition>(DENO_COMPONENT_DEFINITION_FILE_NAME)?;
+            .try_get_json::<BoaComponentDefinition>(BOA_COMPONENT_DEFINITION_FILE_NAME)?;
 
-        let Some(deno_definition) = maybe_deno_definition else {
+        let Some(boa_definition) = maybe_boa_definition else {
             return Ok(TryRunComponentResult::CannotRun);
         };
 
@@ -33,7 +32,7 @@ impl ComponentRunner for DenoComponentRunner {
 
         let run_result = run_component_javascript::run_component_javascript(
             input,
-            deno_definition,
+            boa_definition,
             &execution_data.context,
         )?;
 
@@ -42,6 +41,6 @@ impl ComponentRunner for DenoComponentRunner {
 }
 
 #[derive(Debug, Deserialize)]
-struct DenoComponentDefinition {
+struct BoaComponentDefinition {
     scripts: Vec<String>,
 }

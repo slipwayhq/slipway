@@ -49,6 +49,8 @@ output may have been overridden, or the input may have changed).
 
 The final column shows the input and output sizes for each component."#
 )]
+#[command(color = clap::ColorChoice::Auto)]
+#[command(styles = super::get_styles())]
 struct DebugCli {
     #[command(subcommand)]
     command: DebuggerCommand,

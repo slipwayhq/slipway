@@ -1,13 +1,14 @@
 [package]
-name = "slipway_deno_runner"
+name = "slipway_js_boa_runner"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 
 [dependencies]
-deno_core = "0.325.0"
 slipway_engine = { path = "../slipway_engine", features = [] }
 slipway_host = { path = "../slipway_host", features = [] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
+boa_engine = "0.20.0"
+anyhow = { workspace = true }

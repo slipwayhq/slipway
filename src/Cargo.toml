@@ -6,7 +6,8 @@ members = [
     "slipway_wasmtime_runner",
     "slipway_host",
     "slipway_fragment_runner",
-    "slipway_deno_runner",
+    "slipway_js_deno_runner",
+    "slipway_js_boa_runner",
 ]
 resolver = "2"
 

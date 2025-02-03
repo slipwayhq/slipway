@@ -33,7 +33,7 @@ const WASM_INTERFACE_TYPE_STR: &str = include_str!("../../../wit/latest/slipway.
 #[derive(Debug, Parser)]
 #[command(name = "slipway")]
 #[command(about = "Slipway CLI", long_about = None)]
-#[command(color = clap::ColorChoice::Always)]
+#[command(color = clap::ColorChoice::Auto)]
 #[command(styles = get_styles())]
 pub(crate) struct Cli {
     #[command(subcommand)]
