@@ -90,7 +90,8 @@ impl SchemaResolver for ComponentJsonSchemaResolver {
                 let document: serde_json::Value = ureq::get(url.as_str())
                     .call()
                     .with_context(|| format!("Failed to load schema from {}", url))?
-                    .into_json()?;
+                    .into_body()
+                    .read_json()?;
                 Ok(Arc::new(document))
             }
             "file" => {

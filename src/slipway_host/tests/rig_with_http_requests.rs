@@ -32,8 +32,9 @@ fn run(file_type: &str, status_code: u16) {
         "/foo/bar".to_string(),
         "PUT".to_string(),
         vec![
-            ("Content-Type".to_string(), "application/json".to_string()),
-            ("Content-Length".to_string(), BODY.len().to_string()),
+            // Note ureq 3 converts header names to lower case.
+            ("content-type".to_string(), "application/json".to_string()),
+            ("content-length".to_string(), BODY.len().to_string()),
         ],
         BODY.to_string(),
         status_code,

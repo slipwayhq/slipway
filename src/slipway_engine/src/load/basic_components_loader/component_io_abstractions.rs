@@ -160,7 +160,7 @@ impl ComponentIOAbstractions for ComponentIOAbstractionsImpl {
             ));
         }
 
-        let mut reader = response.into_reader();
+        let mut reader = response.into_body().into_reader();
         let mut file = File::create(file_path.clone()).map_err(|e| {
             ComponentLoadError::new(
                 component_reference,

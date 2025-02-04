@@ -25,7 +25,7 @@ semver = { workspace = true }
 jtd = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = "0.3.18"
-viuer = { version = "0.8.1", features = ["sixel"] }
+viuer = { version = "0.9.1", features = ["sixel"] }
 base64 = "0.22.1"
 image = "0.25.2"
 time = { version = "0.3.37", features = ["formatting"] }
