@@ -23,11 +23,11 @@ pub struct SlipwayHost<'call, 'rig, 'runners> {
 
 impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
     pub fn new(
-        execution_data: &'call ComponentExecutionContext<'call, 'rig, 'runners>,
+        execution_context: &'call ComponentExecutionContext<'call, 'rig, 'runners>,
         wasi_ctx: WasiCtx,
     ) -> Self {
         Self {
-            execution_context: execution_data,
+            execution_context,
             wasi_ctx,
             wasi_table: ResourceTable::default(),
         }

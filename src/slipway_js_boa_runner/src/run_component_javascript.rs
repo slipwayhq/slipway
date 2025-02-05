@@ -7,7 +7,10 @@ use slipway_engine::{
 use boa_engine::{js_string, property::Attribute, Context, JsValue, Source};
 use tracing::debug;
 
-use crate::{BoaComponentDefinition, BOA_COMPONENT_DEFINITION_FILE_NAME};
+use crate::{
+    host::{prepare_canopy_host, SlipwayHost},
+    BoaComponentDefinition, BOA_COMPONENT_DEFINITION_FILE_NAME,
+};
 
 pub(super) fn run_component_javascript(
     input: &serde_json::Value,
@@ -22,7 +25,9 @@ pub(super) fn run_component_javascript(
     }
 
     let prepare_component_start = Instant::now();
+    let host = SlipwayHost::new(execution_context);
     let mut context = super::boa_environment::prepare_environment()?;
+    prepare_canopy_host(&host, &mut context)?;
     let prepare_component_duration = prepare_component_start.elapsed();
 
     let prepare_input_start = Instant::now();
@@ -55,7 +60,7 @@ fn set_input(context: &mut Context, input: &serde_json::Value) -> Result<(), Run
         .map_err(|e| RunComponentError::Other(format!("Failed to convert input object.\n{}", e)))?;
 
     context
-        .register_global_property(js_string!("input"), value, Attribute::all())
+        .register_global_property(js_string!("input"), value, Attribute::default())
         .expect("input property shouldn't exist");
 
     Ok(())

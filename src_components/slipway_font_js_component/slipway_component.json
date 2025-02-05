@@ -1,0 +1,18 @@
+{
+  "publisher": "slipwayhq",
+  "name": "font_js",
+  "description": "Does a font query.",
+  "version": "0.0.1",
+  "input": {
+    "properties": {
+      "font_stack": { "type": "string" }
+    }
+  },
+  "output": {
+    "properties": {
+      "bin_length": {
+        "type": "uint32"
+      }
+    }
+  }
+}

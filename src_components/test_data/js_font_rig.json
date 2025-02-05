@@ -1,0 +1,17 @@
+{
+  "publisher": "slipwayhq",
+  "name": "font_rig",
+  "version": "0.0.1",
+  "description": "Calls a js component",
+  "constants": {
+  },
+  "rigging": {
+    "single": {
+      "component": "slipwayhq.font_js.0.0.1",
+      "allow": [{ "permission": "font" }],
+      "input": {
+        "font_stack": "sans-serif"
+      }
+    }
+  }
+}  

@@ -4,6 +4,7 @@ use fontique::{
     Collection, CollectionOptions, FamilyId, GenericFamily, QueryFamily, QueryStatus, SourceCache,
     SourceCacheOptions,
 };
+use serde::Serialize;
 use slipway_engine::ComponentExecutionContext;
 use tracing::warn;
 
@@ -11,6 +12,7 @@ static CONTEXT: OnceLock<Mutex<FontContext>> = OnceLock::new();
 
 // We can't use the Wasmtime/WIT generated ResolvedFont here, as this crate is host independent,
 // so use our own struct.
+#[derive(Debug, Serialize)]
 pub struct ResolvedFont {
     pub family: String,
     pub data: Vec<u8>,
