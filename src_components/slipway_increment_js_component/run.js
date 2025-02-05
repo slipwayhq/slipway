@@ -19,3 +19,24 @@ function run() {
           throw new Error("Unexpected input type: " + input.type);
   }  
 }
+
+// function run() {
+//   console.trace("Trace from 'run' function.");
+  
+//   a();
+// }
+
+// function a() {
+//   b();
+// }
+
+
+// function b() {
+//   c();
+// }
+
+// function c() {
+//   console.trace("Trace from 'c' function.");
+// }
+
+// run();

@@ -10,5 +10,13 @@ slipway_host = { path = "../slipway_host", features = [] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
-boa_engine = { version = "0.20.0", features = ["annex-b", "experimental"] }
+boa_engine = { path = "../../../boa_fork/core/engine", features = [
+    "annex-b",
+    "experimental",
+] }
+boa_runtime = { path = "../../../boa_fork/core/runtime" }
+boa_macros = { path = "../../../boa_fork/core/macros" }
+boa_gc = { path = "../../../boa_fork/core/gc" }
+pollster = "0.4.0"
 anyhow = { workspace = true }
+indoc = { workspace = true }

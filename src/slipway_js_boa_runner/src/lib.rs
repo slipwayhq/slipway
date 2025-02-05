@@ -4,6 +4,7 @@ use slipway_engine::{
 };
 
 mod run_component_javascript;
+mod boa_environment;
 
 const BOA_COMPONENT_RUNNER_IDENTIFIER: &str = "js_boa";
 const BOA_COMPONENT_DEFINITION_FILE_NAME: &str = "slipway_js_component.json";

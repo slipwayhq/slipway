@@ -22,8 +22,7 @@ pub(super) fn run_component_javascript(
     }
 
     let prepare_component_start = Instant::now();
-    let mut context = Context::default();
-    prepare_environment(&mut context)?;
+    let mut context = super::boa_environment::prepare_environment()?;
     let prepare_component_duration = prepare_component_start.elapsed();
 
     let prepare_input_start = Instant::now();
@@ -51,43 +50,6 @@ pub(super) fn run_component_javascript(
     })
 }
 
-fn prepare_environment(context: &mut Context) -> Result<(), RunComponentError> {
-    context
-        .eval(Source::from_bytes(
-            r#"
-            function argsToMessage(...args) {
-                return args.map((arg) => JSON.stringify(arg)).join(" ");
-            }
-
-            console = {
-                trace: (...args) => {
-                    
-                },
-                debug: (...args) => {
-                    
-                },
-                log: (...args) => {
-                    
-                },
-                warn: (...args) => {
-                    
-                },
-                error: (...args) => {
-                    
-                },
-            };
-
-            global = {};
-            setTimeout = () => { };
-            clearTimeout = () => { };
-            "#,
-        ))
-        .map_err(|e| {
-            RunComponentError::Other(format!("Failed to prepare javascript environment.\n{}", e))
-        })?;
-    Ok(())
-}
-
 fn set_input(context: &mut Context, input: &serde_json::Value) -> Result<(), RunComponentError> {
     let value = JsValue::from_json(input, context)
         .map_err(|e| RunComponentError::Other(format!("Failed to convert input object.\n{}", e)))?;
@@ -101,8 +63,7 @@ fn set_input(context: &mut Context, input: &serde_json::Value) -> Result<(), Run
 
 fn restore_input_prototypes(context: &mut Context) -> Result<(), RunComponentError> {
     context
-        .eval(Source::from_bytes(
-            r#"
+        .eval(Source::from_bytes(indoc::indoc! {r#"
             function restorePrototypes(obj) {
                 if (!obj || typeof obj !== 'object') return;
 
@@ -118,8 +79,7 @@ fn restore_input_prototypes(context: &mut Context) -> Result<(), RunComponentErr
             }
 
             restorePrototypes(input);
-            "#,
-        ))
+            "#}))
         .map_err(|e| {
             RunComponentError::Other(format!("Failed to restore input object prototypes.\n{}", e))
         })?;
@@ -136,7 +96,7 @@ fn run_component_scripts(
         let content = execution_context.files.get_text(script_file)?;
 
         debug!(
-            "Running script \"{}\" with {} bytes",
+            "Running script \"{}\" ({} bytes) using Boa",
             script_file,
             content.len()
         );
@@ -146,6 +106,11 @@ fn run_component_scripts(
         })?);
     }
     let last_result = last_result.expect("At least one script should be executed");
+
+    context
+        .run_jobs()
+        .map_err(|e| RunComponentError::Other(format!("Failed to run async jobs\n{}", e)))?;
+
     Ok(last_result)
 }
 

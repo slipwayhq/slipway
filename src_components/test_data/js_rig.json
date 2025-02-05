@@ -7,7 +7,7 @@
   },
   "rigging": {
     "single": {
-      "component": "slipwayhq.test_js.0.0.1",
+      "component": "slipwayhq.increment_js.0.0.1",
       "input": {
         "type": "increment",
         "value": 0
