@@ -14,14 +14,11 @@ pub(super) fn fetch_component_data(
     url: &Url,
     options: Option<RequestOptions>,
 ) -> Result<BinResponse, RequestError> {
-    let handle_str = url.domain().ok_or(RequestError::for_error(
-        format!(
-            "No domain (component handle) found in url from component {}: {}",
-            execution_context.call_chain.component_handle_trail(),
-            url
-        ),
-        None,
-    ))?;
+    let handle_str = url.domain().ok_or(RequestError::message(format!(
+        "No domain (component handle) found in url from component {}: {}",
+        execution_context.call_chain.component_handle_trail(),
+        url
+    )))?;
 
     let handle = ComponentHandle::from_str(handle_str).map_err(|e| {
         RequestError::for_error(
@@ -30,7 +27,7 @@ pub(super) fn fetch_component_data(
                 handle_str,
                 execution_context.call_chain.component_handle_trail(),
             ),
-            Some(format!("{e}")),
+            e,
         )
     })?;
 

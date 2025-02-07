@@ -41,7 +41,7 @@ world slipway {
         record request-error {
             message: string,
             inner: list<string>,
-            response: option<bin-response>
+            response: option<text-response>
         }
 
         fetch-bin: func(url: string, options: option<request-options>) -> result<bin-response, request-error>;

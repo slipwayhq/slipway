@@ -34,18 +34,14 @@ pub(super) fn fetch_http(
 
     let response = match &opts.body {
         Some(body) => {
-            let request = request_builder.body(body).map_err(|e| RequestError {
-                message: "Creating HTTP request with body failed.".to_string(),
-                inner: vec![format!("{}", e)],
-                response: None,
+            let request = request_builder.body(body).map_err(|e| {
+                RequestError::for_error("Creating HTTP request with body failed.".to_string(), e)
             })?;
             agent.run(request)
         }
         None => {
-            let request = request_builder.body(()).map_err(|e| RequestError {
-                message: "Creating HTTP request failed.".to_string(),
-                inner: vec![format!("{}", e)],
-                response: None,
+            let request = request_builder.body(()).map_err(|e| {
+                RequestError::for_error("Creating HTTP request failed.".to_string(), e)
             })?;
             agent.run(request)
         }
@@ -60,11 +56,11 @@ pub(super) fn fetch_http(
                     name.to_string(),
                     value
                         .to_str()
-                        .map_err(|e| RequestError {
-                            message: "Failed to convert response header value to string."
-                                .to_string(),
-                            inner: vec![format!("{}", e)],
-                            response: None,
+                        .map_err(|e| {
+                            RequestError::for_error(
+                                "Failed to convert response header value to string.".to_string(),
+                                e,
+                            )
                         })?
                         .to_owned(),
                 ));
@@ -74,10 +70,8 @@ pub(super) fn fetch_http(
                 .into_body()
                 .into_reader()
                 .read_to_end(&mut body)
-                .map_err(|e| RequestError {
-                    message: "Reading HTTP response body failed.".to_string(),
-                    inner: vec![format!("{}", e)],
-                    response: None,
+                .map_err(|e| {
+                    RequestError::for_error("Reading HTTP response body failed.".to_string(), e)
                 })?;
 
             let bin_response = BinResponse {
@@ -89,17 +83,15 @@ pub(super) fn fetch_http(
             if status.is_success() {
                 Ok(bin_response)
             } else {
-                Err(RequestError {
-                    message: "Response status code did not indicate success.".to_string(),
-                    inner: vec![],
-                    response: Some(bin_response),
-                })
+                Err(RequestError::response(
+                    "Response status code did not indicate success.".to_string(),
+                    bin_response.into(),
+                ))
             }
         }
-        Err(err) => Err(RequestError {
-            message: err.to_string(),
-            inner: vec![],
-            response: None,
-        }),
+        Err(err) => Err(RequestError::for_error(
+            "HTTP request failed.".to_string(),
+            err,
+        )),
     }
 }

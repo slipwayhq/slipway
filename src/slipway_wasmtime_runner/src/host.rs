@@ -125,7 +125,7 @@ impl From<::slipway_host::fetch::RequestError> for RequestError {
         RequestError {
             message: e.message,
             inner: e.inner,
-            response: e.response.map(|r| BinResponse {
+            response: e.response.map(|r| TextResponse {
                 status_code: r.status_code,
                 headers: r.headers,
                 body: r.body,

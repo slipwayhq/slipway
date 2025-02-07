@@ -43,7 +43,7 @@ fn run_inner(input: Input) -> Result<String, ComponentError> {
             Ok(Output {
                 status_code: response.status_code,
                 body_text: Some(e.message),
-                body_bin: Some(response.body),
+                body_bin: Some(response.body.into_bytes()),
             })
         } else {
             Err(ComponentError {

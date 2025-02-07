@@ -10,14 +10,11 @@ pub(super) fn fetch_env(
     url: &Url,
 ) -> Result<BinResponse, RequestError> {
     let key = url.domain().ok_or_else(|| {
-        RequestError::for_error(
-            format!(
-                "No domain (env key) found in url from component \"{}\": {}",
-                execution_context.call_chain.component_handle_trail(),
-                url
-            ),
-            None,
-        )
+        RequestError::message(format!(
+            "No domain (env key) found in url from component \"{}\": {}",
+            execution_context.call_chain.component_handle_trail(),
+            url
+        ))
     })?;
 
     crate::permissions::ensure_can_fetch_env(key, execution_context)?;
@@ -39,7 +36,7 @@ pub(super) fn fetch_env(
                 key,
                 execution_context.call_chain.component_handle_trail()
             ),
-            Some(format!("{e}")),
+            e,
         )),
     }
 }

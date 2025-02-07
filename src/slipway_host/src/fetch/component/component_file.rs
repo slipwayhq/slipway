@@ -24,7 +24,7 @@ pub(super) fn get_component_file_bin(
                     "Failed to find component to load binary file at \"{}\"",
                     handle_trail(),
                 ),
-                Some(format!("{e}")),
+                e,
             )
         })?;
 
@@ -39,7 +39,7 @@ pub(super) fn get_component_file_bin(
                 path,
                 handle_trail(),
             ),
-            Some(format!("{e}")),
+            e,
         )
     })?;
 

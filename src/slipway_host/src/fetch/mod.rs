@@ -2,7 +2,7 @@ mod component;
 mod env;
 mod http;
 
-use std::str::FromStr;
+use std::{error::Error, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 use slipway_engine::{ComponentExecutionContext, ComponentHandle};
@@ -37,17 +37,37 @@ pub struct TextResponse {
 pub struct RequestError {
     pub message: String,
     pub inner: Vec<String>,
-    pub response: Option<BinResponse>,
+
+    // The body of an error response could technically be binary, but this is so rare that
+    // I would rather make the common case of it being text easier to handle, especially
+    // as the body often contains useful debugging information that is easily missed.
+    pub response: Option<TextResponse>,
 }
 
 impl RequestError {
-    pub fn for_error(message: String, error: Option<String>) -> RequestError {
+    pub fn response(message: String, response: TextResponse) -> RequestError {
         RequestError {
             message,
-            inner: match error {
-                None => vec![],
-                Some(e) => vec![format!("{}", e)],
-            },
+            inner: vec![
+                format!("Response status code: {}", response.status_code),
+                format!("Response body: {}", response.body),
+            ],
+            response: Some(response),
+        }
+    }
+
+    pub fn message(message: String) -> RequestError {
+        RequestError {
+            message,
+            inner: vec![],
+            response: None,
+        }
+    }
+
+    pub fn for_error(message: String, error: impl Error) -> RequestError {
+        RequestError {
+            message,
+            inner: vec![error.to_string()],
             response: None,
         }
     }
@@ -105,7 +125,7 @@ pub fn fetch_bin(
                 execution_context.call_chain.component_handle_trail(),
                 url_str,
             ),
-            Some(format!("{e}")),
+            e,
         )
     })?;
 
@@ -115,14 +135,11 @@ pub fn fetch_bin(
         "https" | "http" => http::fetch_http(execution_context, url, options),
         "component" => component::fetch_component_data(execution_context, &url, options),
         "env" => env::fetch_env(execution_context, &url),
-        _ => Err(RequestError::for_error(
-            format!(
-                "Unsupported URL scheme for URL from component {}: {}",
-                execution_context.call_chain.component_handle_trail(),
-                url_str
-            ),
-            None,
-        )),
+        _ => Err(RequestError::message(format!(
+            "Unsupported URL scheme for URL from component {}: {}",
+            execution_context.call_chain.component_handle_trail(),
+            url_str
+        ))),
     }
 }
 

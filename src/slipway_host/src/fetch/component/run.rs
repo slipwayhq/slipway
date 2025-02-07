@@ -25,7 +25,7 @@ pub(super) fn run_component_from_url(
                     execution_context.call_chain.component_handle_trail(),
                     url,
                 ),
-                Some(format!("{e}")),
+                e,
             )
         })?;
 
@@ -61,7 +61,7 @@ pub(super) fn run_component_from_url(
                     .component_handle_trail_for(&handle),
                 url,
             ),
-            Some(format!("{e}")),
+            e,
         )
     })?;
 
