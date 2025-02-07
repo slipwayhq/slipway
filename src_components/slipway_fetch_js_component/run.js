@@ -11,10 +11,12 @@ function run(input) {
 
   function mapErrToOutput(e) {
     if (e.response) {
+      let encoder = new TextEncoder();
+      var body_bin = Array.from(encoder.encode(e.response.body));
       return {
         status_code: e.response.status_code,
         body_text: e.message,
-        body_bin: e.response.body,
+        body_bin,
       };
     }
     throw e;

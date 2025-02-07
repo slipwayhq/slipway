@@ -2,7 +2,8 @@ use std::str::FromStr;
 
 use common::get_rig_output;
 use common_test_utils::{
-    SLIPWAY_FETCH_COMPONENT_TAR_NAME, SLIPWAY_INCREMENT_TEN_COMPONENT_TAR_NAME,
+    SLIPWAY_FETCH_COMPONENT_TAR_NAME, SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME,
+    SLIPWAY_INCREMENT_TEN_COMPONENT_TAR_NAME,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -13,13 +14,20 @@ use slipway_engine::{
 mod common;
 
 #[test_log::test]
-fn test_fetch_callout() {
+fn test_fetch_callout_wasm() {
+    test_fetch_callout(SLIPWAY_FETCH_COMPONENT_TAR_NAME);
+}
+#[test_log::test]
+fn test_fetch_callout_js() {
+    test_fetch_callout(SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME);
+}
+fn test_fetch_callout(component: &str) {
     let rig: Rig = Rig::for_test(Rigging {
         components: [(
             ComponentHandle::from_str("test").unwrap(),
             ComponentRigging::for_test_with_reference_callout_override(
                 SlipwayReference::Local {
-                    path: SLIPWAY_FETCH_COMPONENT_TAR_NAME.into(),
+                    path: component.into(),
                 },
                 Some(json!({
                     "url": format!("component://other?type=increment&value=3"),

@@ -6,7 +6,7 @@ use slipway_engine::{
 };
 use slipway_host::run::{no_event_handler, run_rig};
 
-use common::{create_components_loader, get_component_runners};
+use common::{assert_messages_contains, create_components_loader, get_component_runners};
 use serde_json::json;
 
 mod common;
@@ -31,6 +31,18 @@ fn test_callout_error() {
         &[
             "\"test -> increment -> increment -> increment\"",
             "slipway-increment-component-error",
+        ],
+    );
+}
+
+#[test_log::test]
+fn test_callout_error_js() {
+    let rig = create_callout_test_rig(3, "increment_js", "error");
+    assert_run_errors_with(
+        rig,
+        &[
+            "\"test -> increment -> increment -> increment\"",
+            "slipway-increment-js-component-error",
         ],
     );
 }
@@ -120,15 +132,7 @@ fn assert_run_errors_with(rig: Rig, expected_messages: &[&str]) {
             } => match error {
                 RunComponentError::RunCallReturnedError { message, inner } => {
                     for expected_message in expected_messages {
-                        if !message.contains(expected_message)
-                            && !inner.iter().any(|i| i.contains(expected_message))
-                        {
-                            println!("Error message: {}", message);
-                            for i in inner {
-                                println!("Inner error: {}", i);
-                            }
-                            panic!("Error message did not contain \"{}\"", expected_message);
-                        }
+                        assert_messages_contains(expected_message, message, inner);
                     }
                 }
                 RunComponentError::RunCallFailed { source } => {

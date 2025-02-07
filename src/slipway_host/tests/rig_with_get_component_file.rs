@@ -2,7 +2,8 @@ use std::str::FromStr;
 
 use common::get_rig_output;
 use common_test_utils::{
-    SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME, SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_TAR_NAME,
+    SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME, SLIPWAY_COMPONENT_FILE_JS_COMPONENT_TAR_NAME,
+    SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_TAR_NAME,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -18,22 +19,32 @@ const SCHEMA_STR: &str = include_str!(
 const SCHEMA_BYTES: &[u8] = SCHEMA_STR.as_bytes();
 
 #[test]
-fn get_component_file_text() {
-    run("text");
+fn get_component_file_text_wasm() {
+    run("text", SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME);
 }
 
 #[test]
-fn get_component_file_binary() {
-    run("binary");
+fn get_component_file_binary_wasm() {
+    run("binary", SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME);
 }
 
-fn run(file_type: &str) {
+#[test]
+fn get_component_file_text_js() {
+    run("text", SLIPWAY_COMPONENT_FILE_JS_COMPONENT_TAR_NAME);
+}
+
+#[test]
+fn get_component_file_binary_js() {
+    run("binary", SLIPWAY_COMPONENT_FILE_JS_COMPONENT_TAR_NAME);
+}
+
+fn run(file_type: &str, component: &str) {
     let rig: Rig = Rig::for_test(Rigging {
         components: [(
             ComponentHandle::from_str("test").unwrap(),
             ComponentRigging::for_test_with_reference_callout_override(
                 SlipwayReference::Local {
-                    path: SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME.into(),
+                    path: component.into(),
                 },
                 Some(json!({
                     "handle": "other",

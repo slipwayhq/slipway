@@ -37,7 +37,7 @@ function run(input) {
         }
       
     case "error":
-      throw new Error("This is a thrown error.");
+      throw new Error("slipway-increment-js-component-error.");
 
     default:
       throw new Error("Unexpected input type: " + input.type);

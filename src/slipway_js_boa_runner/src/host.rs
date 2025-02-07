@@ -509,7 +509,6 @@ where
 }
 
 fn js_error(message: String, context: &mut Context) -> JsError {
-    // JsNativeError::typ().with_message(message).into()
     js_error_from_component_error(ComponentError::for_error(message, None), context)
 }
 
@@ -522,13 +521,12 @@ fn js_error_from(
         ComponentError::for_error(message, Some(format!("{error}"))),
         context,
     )
-    // JsNativeError::typ()
-    //     .with_message(message)
-    //     .with_cause(JsError::from_rust(error))
-    //     .into()
 }
 
 fn js_error_from_request_error(error: RequestError, context: &mut Context) -> JsError {
+    // We're using opaque errors here because I couldn't get native errors to flow
+    // nicely through the JS layer, and because this way it is more consistent with
+    // the WASM errors.
     JsError::from_opaque(
         value_to_js_value(error, context).expect("RequestError should be serializable"),
     )
@@ -539,18 +537,3 @@ fn js_error_from_component_error(error: ComponentError, context: &mut Context) -
         value_to_js_value(error, context).expect("ComponentError should be serializable"),
     )
 }
-
-// fn js_error_from_list(mut errors: Vec<String>) -> Option<JsError> {
-//     if errors.is_empty() {
-//         return None;
-//     }
-
-//     let message = errors.remove(0);
-//     let mut js_error = JsNativeError::typ().with_message(message);
-
-//     if let Some(inner) = js_error_from_list(errors) {
-//         js_error = js_error.with_cause(inner);
-//     }
-
-//     Some(js_error.into())
-// }

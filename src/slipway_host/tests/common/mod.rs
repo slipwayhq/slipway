@@ -1,3 +1,4 @@
+use core::panic;
 use std::{rc::Rc, str::FromStr, sync::Arc};
 
 use common_test_utils::get_slipway_test_components_path;
@@ -48,4 +49,24 @@ pub fn get_rig_output(
         .expect("Output should be populated");
 
     Ok(Rc::clone(output))
+}
+
+#[allow(dead_code)]
+pub fn assert_messages_contains(expected: &str, message: &str, inner: &[String]) {
+    let mut found = false;
+    println!("Message: {}", message);
+    if message.contains(expected) {
+        found = true;
+    } else {
+        for i in inner {
+            println!("Inner: {}", i);
+            if i.contains(expected) {
+                found = true;
+                break;
+            }
+        }
+    }
+    if !found {
+        panic!("Expected message to contain \"{}\"", expected);
+    }
 }

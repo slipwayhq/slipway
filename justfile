@@ -44,9 +44,11 @@ assemble-test-components configuration="debug": \
   (assemble-rust-component "font" configuration) \
   (assemble-rust-component "env" configuration) \
   (assemble-js-component "increment_js" configuration) \
+  (assemble-js-component "component_file_js" configuration) \
   (assemble-js-component "fetch_js" configuration) \
   (assemble-js-component "fetch_error_js" configuration) \
   (assemble-js-component "font_js" configuration) \
+  (assemble-js-component "env_js" configuration) \
   && \
   (tar-component-files "increment_ten" configuration) \
   (tar-component-files "increment_json_schema" configuration) \

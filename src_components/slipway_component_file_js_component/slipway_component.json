@@ -1,7 +1,7 @@
 {
   "publisher": "slipwayhq",
-  "name": "component_file",
-  "description": "Requests a file from another component.",
+  "name": "component_file_js",
+  "description": "Requests a file from another component in js.",
   "version": "0.0.1",
   "input": {
     "properties": {

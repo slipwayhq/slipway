@@ -1,0 +1,18 @@
+{
+  "publisher": "slipwayhq",
+  "name": "env_js",
+  "description": "Does an env query in javascript.",
+  "version": "0.0.1",
+  "input": {
+    "properties": {
+      "key": { "type": "string" }
+    }
+  },
+  "output": {
+    "optionalProperties": {
+      "value": {
+        "type": "string"
+      }
+    }
+  }
+}

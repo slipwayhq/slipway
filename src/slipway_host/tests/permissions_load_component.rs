@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use common::get_rig_output;
+use common::{assert_messages_contains, get_rig_output};
 use common_test_utils::SLIPWAY_INCREMENT_COMPONENT_TAR_NAME;
 use serde_json::json;
 use slipway_engine::{
@@ -29,11 +29,13 @@ fn permissions_load_component_from_rig() {
         RunError::RunComponentFailed {
             component_handle,
             component_runner: _,
-            error: RunComponentError::RunCallReturnedError { message, inner: _ },
+            error: RunComponentError::RunCallReturnedError { message, inner },
         } => {
             assert_eq!(component_handle, ch("test"));
-            assert!(
-                message.contains("Component \"test\" does not have permission to access component")
+            assert_messages_contains(
+                "Component \"test\" does not have permission to access component",
+                &message,
+                &inner,
             );
         }
         _ => panic!("Expected permission error, got {:?}", error),
@@ -53,7 +55,7 @@ fn permissions_load_component_from_component() {
     match error {
         RunError::ComponentLoadFailed(ComponentLoadError {
             reference,
-            error: ComponentLoadErrorInner::PermissionDenied { message, inner: _ },
+            error: ComponentLoadErrorInner::PermissionDenied { message, inner },
         }) => {
             assert_eq!(
                 reference,
@@ -61,7 +63,11 @@ fn permissions_load_component_from_component() {
                     path: SLIPWAY_INCREMENT_COMPONENT_TAR_NAME.into(),
                 })
             );
-            assert!(message.contains("Rig does not have permission to access component"));
+            assert_messages_contains(
+                "Rig does not have permission to access component",
+                &message,
+                &inner,
+            );
         }
         _ => panic!("Expected permission error, got {:?}", error),
     }

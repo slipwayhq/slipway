@@ -1,7 +1,9 @@
 use std::str::FromStr;
 
-use common::get_rig_output;
-use common_test_utils::{test_server::TestServer, SLIPWAY_FETCH_COMPONENT_TAR_NAME};
+use common::{assert_messages_contains, get_rig_output};
+use common_test_utils::{
+    test_server::TestServer, SLIPWAY_FETCH_COMPONENT_TAR_NAME, SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME,
+};
 use serde_json::json;
 use slipway_engine::{
     utils::ch, ComponentHandle, ComponentRigging, LocalComponentPermission, Permission,
@@ -11,21 +13,41 @@ use slipway_engine::{
 mod common;
 
 #[test]
-fn permissions_http_no_allow() {
-    run(Permissions::allow(&vec![Permission::LocalComponent(
-        LocalComponentPermission::Any,
-    )]));
+fn permissions_http_no_allow_wasm() {
+    permissions_http_no_allow(SLIPWAY_FETCH_COMPONENT_TAR_NAME);
+}
+#[test]
+fn permissions_http_no_allow_js() {
+    permissions_http_no_allow(SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME);
+}
+fn permissions_http_no_allow(component: &str) {
+    run(
+        Permissions::allow(&vec![Permission::LocalComponent(
+            LocalComponentPermission::Any,
+        )]),
+        component,
+    );
 }
 
 #[test]
-fn permissions_http_deny() {
-    run(Permissions::new(
-        &vec![Permission::All],
-        &vec![Permission::Http(UrlPermission::Any {})],
-    ));
+fn permissions_http_deny_wasm() {
+    permissions_http_deny(SLIPWAY_FETCH_COMPONENT_TAR_NAME);
+}
+#[test]
+fn permissions_http_deny_js() {
+    permissions_http_deny(SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME);
+}
+fn permissions_http_deny(component: &str) {
+    run(
+        Permissions::new(
+            &vec![Permission::All],
+            &vec![Permission::Http(UrlPermission::Any {})],
+        ),
+        component,
+    );
 }
 
-fn run(permissions: Permissions) {
+fn run(permissions: Permissions, component: &str) {
     let test_server = TestServer::start_for_call(
         "/foo/bar".to_string(),
         "GET".to_string(),
@@ -41,7 +63,7 @@ fn run(permissions: Permissions) {
             ComponentHandle::from_str("test").unwrap(),
             ComponentRigging::for_test_with_reference(
                 SlipwayReference::Local {
-                    path: SLIPWAY_FETCH_COMPONENT_TAR_NAME.into(),
+                    path: component.into(),
                 },
                 Some(json!({
                     "url": format!("{}foo/bar", localhost_url),
@@ -66,10 +88,14 @@ fn run(permissions: Permissions) {
         RunError::RunComponentFailed {
             component_handle,
             component_runner: _,
-            error: RunComponentError::RunCallReturnedError { message, inner: _ },
+            error: RunComponentError::RunCallReturnedError { message, inner },
         } => {
             assert_eq!(component_handle, ch("test"));
-            assert!(message.contains("Component \"test\" does not have permission to fetch url"));
+            assert_messages_contains(
+                "Component \"test\" does not have permission to fetch url",
+                &message,
+                &inner,
+            );
         }
         _ => panic!("Expected permission error, got {:?}", error),
     }

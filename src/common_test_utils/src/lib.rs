@@ -16,12 +16,16 @@ pub const SLIPWAY_FETCH_ERROR_JS_COMPONENT_TAR_NAME: &str = "slipwayhq.fetch_err
 
 pub const SLIPWAY_COMPONENT_FILE_COMPONENT_NAME: &str = "slipwayhq.component_file.0.0.1";
 pub const SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME: &str = "slipwayhq.component_file.0.0.1.tar";
+pub const SLIPWAY_COMPONENT_FILE_JS_COMPONENT_TAR_NAME: &str =
+    "slipwayhq.component_file_js.0.0.1.tar";
 
 pub const SLIPWAY_FONT_COMPONENT_NAME: &str = "slipwayhq.font.0.0.1";
 pub const SLIPWAY_FONT_COMPONENT_TAR_NAME: &str = "slipwayhq.font.0.0.1.tar";
+pub const SLIPWAY_FONT_JS_COMPONENT_TAR_NAME: &str = "slipwayhq.font_js.0.0.1.tar";
 
 pub const SLIPWAY_ENV_COMPONENT_NAME: &str = "slipwayhq.env.0.0.1";
 pub const SLIPWAY_ENV_COMPONENT_TAR_NAME: &str = "slipwayhq.env.0.0.1.tar";
+pub const SLIPWAY_ENV_JS_COMPONENT_TAR_NAME: &str = "slipwayhq.env_js.0.0.1.tar";
 
 pub const SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_NAME: &str =
     "slipwayhq.increment_json_schema.0.0.1";
