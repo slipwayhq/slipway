@@ -35,7 +35,7 @@ pub(super) fn prepare_environment() -> Result<Context, RunComponentError> {
 
     context
         .eval(Source::from_bytes(indoc::indoc! {r#"
-            global= {};
+            global = {};
             setTimeout = () => {};
             clearTimeout = () => {};
             "#}))
@@ -54,17 +54,20 @@ impl Logger for BoaConsoleLogger {
         let indent = state.indent();
         trace!("{msg:>indent$}");
 
-        let stack_trace_dump = context
+        let stack_trace = context
             .stack_trace()
             .map(|frame| frame.code_block().name())
-            .filter(|name| !name.is_empty()) // The last frame has an empty name.
-            .collect::<Vec<_>>()
-            .into_iter()
             .map(JsString::to_std_string_escaped)
             .collect::<Vec<_>>();
 
-        for frame in stack_trace_dump {
-            trace!(" {frame:>indent$}");
+        let mut is_first = true;
+        for frame in stack_trace {
+            if is_first {
+                is_first = false;
+                trace!(" at {frame:>indent$}");
+            } else {
+                trace!("    {frame:>indent$}");
+            }
         }
 
         Ok(())
@@ -107,45 +110,6 @@ impl Logger for BoaConsoleLogger {
         Ok(())
     }
 }
-
-// #[derive(Default)]
-// pub struct SimpleJobQueue(RefCell<VecDeque<NativeJob>>);
-
-// impl std::fmt::Debug for SimpleJobQueue {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         f.debug_tuple("SimpleQueue").field(&"..").finish()
-//     }
-// }
-
-// impl SimpleJobQueue {
-//     /// Creates an empty `SimpleJobQueue`.
-//     #[must_use]
-//     pub fn new() -> Self {
-//         Self::default()
-//     }
-// }
-
-// impl JobQueue for SimpleJobQueue {
-//     fn enqueue_promise_job(&self, job: NativeJob, _: &mut Context) {
-//         self.0.borrow_mut().push_back(job);
-//     }
-
-//     fn run_jobs(&self, context: &mut Context) {
-//         let mut next_job = self.0.borrow_mut().pop_front();
-//         while let Some(job) = next_job {
-//             if job.call(context).is_err() {
-//                 self.0.borrow_mut().clear();
-//                 return;
-//             };
-//             next_job = self.0.borrow_mut().pop_front();
-//         }
-//     }
-
-//     fn enqueue_future_job(&self, future: FutureJob, context: &mut Context) {
-//         let job = pollster::block_on(future);
-//         self.enqueue_promise_job(job, context);
-//     }
-// }
 
 #[derive(Default)]
 struct Executor {

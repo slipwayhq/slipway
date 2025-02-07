@@ -145,19 +145,19 @@ fn check_rig_component_permissions<THostError>(
 
 pub fn run_component_callout(
     execution_context: &ComponentExecutionContext,
-    handle: ComponentHandle,
+    handle: &ComponentHandle,
     input: serde_json::Value,
-) -> Result<String, ComponentError> {
+) -> Result<serde_json::Value, ComponentError> {
     let _span_ = span!(Level::INFO, "callout").entered();
 
     let handle_trail = || -> String {
         execution_context
             .call_chain
-            .component_handle_trail_for(&handle)
+            .component_handle_trail_for(handle)
     };
 
     let result =
-        slipway_engine::run_component_callout::<anyhow::Error>(&handle, input, execution_context)
+        slipway_engine::run_component_callout::<anyhow::Error>(handle, input, execution_context)
             .map_err(|e| {
             let mut inner_errors = Vec::new();
             let message = format!("Failed to run component \"{}\"", handle_trail());
@@ -185,11 +185,5 @@ pub fn run_component_callout(
             }
         })?;
 
-    serde_json::to_string(&result.output).map_err(|e| ComponentError {
-        message: format!(
-            "Failed to serialize output JSON for callout \"{}\"",
-            handle_trail(),
-        ),
-        inner: vec![format!("{}", e)],
-    })
+    Ok(result.output)
 }

@@ -20,3 +20,4 @@ boa_gc = { path = "../../../boa_fork/core/gc" }
 pollster = "0.4.0"
 anyhow = { workspace = true }
 indoc = { workspace = true }
+paste = { workspace = true }

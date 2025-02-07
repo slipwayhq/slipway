@@ -1,7 +1,9 @@
 use std::str::FromStr;
 
 use common::get_rig_output;
-use common_test_utils::{test_server::TestServer, SLIPWAY_FETCH_COMPONENT_TAR_NAME};
+use common_test_utils::{
+    test_server::TestServer, SLIPWAY_FETCH_COMPONENT_TAR_NAME, SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME,
+};
 use serde::Deserialize;
 use serde_json::json;
 use slipway_engine::{
@@ -10,24 +12,39 @@ use slipway_engine::{
 
 mod common;
 
-#[test]
-fn http_text() {
-    run("text", 200);
+#[test_log::test]
+fn http_text_wasm() {
+    run("text", 200, SLIPWAY_FETCH_COMPONENT_TAR_NAME);
 }
 
-#[test]
-fn http_binary() {
-    run("binary", 200);
+#[test_log::test]
+fn http_binary_wasm() {
+    run("binary", 200, SLIPWAY_FETCH_COMPONENT_TAR_NAME);
 }
 
-#[test]
-fn http_text_error_status_code() {
-    run("text", 500);
+#[test_log::test]
+fn http_text_error_status_code_wasm() {
+    run("text", 500, SLIPWAY_FETCH_COMPONENT_TAR_NAME);
+}
+
+#[test_log::test]
+fn http_text_js() {
+    run("text", 200, SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME);
+}
+
+#[test_log::test]
+fn http_binary_js() {
+    run("binary", 200, SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME);
+}
+
+#[test_log::test]
+fn http_text_error_status_code_js() {
+    run("text", 500, SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME);
 }
 
 const BODY: &str = "test_body💖";
 
-fn run(file_type: &str, status_code: u16) {
+fn run(file_type: &str, status_code: u16, component: &str) {
     let test_server = TestServer::start_for_call(
         "/foo/bar".to_string(),
         "PUT".to_string(),
@@ -47,7 +64,7 @@ fn run(file_type: &str, status_code: u16) {
             ComponentHandle::from_str("test").unwrap(),
             ComponentRigging::for_test_with_reference(
                 SlipwayReference::Local {
-                    path: SLIPWAY_FETCH_COMPONENT_TAR_NAME.into(),
+                    path: component.into(),
                 },
                 Some(json!({
                     "url": format!("{}foo/bar", localhost_url),

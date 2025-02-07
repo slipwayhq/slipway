@@ -15,7 +15,7 @@ use slipway_engine::{
 };
 use url::Url;
 
-#[test]
+#[test_log::test]
 fn load_component_from_folder() {
     test_component(
         None,
@@ -25,7 +25,7 @@ fn load_component_from_folder() {
     );
 }
 
-#[test]
+#[test_log::test]
 fn load_component_from_folder_with_json_schema_refs() {
     test_component(
         None,
@@ -35,7 +35,7 @@ fn load_component_from_folder_with_json_schema_refs() {
     );
 }
 
-#[test]
+#[test_log::test]
 fn load_component_from_tar_with_json_schema_refs() {
     test_component(
         None,
@@ -45,7 +45,7 @@ fn load_component_from_tar_with_json_schema_refs() {
     );
 }
 
-#[test]
+#[test_log::test]
 fn load_component_from_url_with_json_schema_refs() {
     let test_server = TestServer::start_from_folder(get_slipway_test_components_path());
 
@@ -63,7 +63,7 @@ fn load_component_from_url_with_json_schema_refs() {
     test_server.stop();
 }
 
-#[test]
+#[test_log::test]
 fn load_component_from_registry_with_json_schema_refs() {
     let test_server = TestServer::start_from_folder(get_slipway_test_components_path());
 
@@ -120,6 +120,7 @@ fn test_component(localhost_url: Option<&str>, component_reference: SlipwayRefer
                 "{}{{publisher}}.{{name}}.{{version}}.tar",
                 localhost_url.unwrap_or("http://localhost/")
             ))
+            .without_default_registry()
             .components_cache_path(temp_dir.path())
             .build(),
     )

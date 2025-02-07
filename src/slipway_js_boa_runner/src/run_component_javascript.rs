@@ -4,7 +4,8 @@ use slipway_engine::{
     ComponentExecutionContext, RunComponentError, RunComponentResult, RunMetadata,
 };
 
-use boa_engine::{js_string, property::Attribute, Context, JsValue, Source};
+use boa_engine::{js_string, property::Attribute, Context, JsError, JsValue, Source};
+use slipway_host::ComponentError;
 use tracing::debug;
 
 use crate::{
@@ -106,9 +107,11 @@ fn run_component_scripts(
             content.len()
         );
 
-        last_result = Some(context.eval(Source::from_bytes(&*content)).map_err(|e| {
-            RunComponentError::Other(format!("Failed to run script \"{}\"\n{}", script_file, e))
-        })?);
+        last_result = Some(
+            context
+                .eval(Source::from_bytes(&*content))
+                .map_err(|e| convert_error(script_file, context, e))?,
+        );
     }
     let last_result = last_result.expect("At least one script should be executed");
 
@@ -126,4 +129,43 @@ fn convert_output(
     last_result
         .to_json(context)
         .map_err(|e| RunComponentError::Other(format!("Failed to convert output object.\n{}", e)))
+}
+
+fn convert_error(script_file: &str, context: &mut Context, error: JsError) -> RunComponentError {
+    let mut messages = Vec::new();
+    let mut inner = Some(&error);
+    while let Some(e) = inner {
+        if let Some(native) = e.as_native() {
+            messages.push(native.message().to_string());
+            inner = native.cause();
+        } else if let Some(opaque) = e.as_opaque() {
+            let maybe_json = opaque.to_json(context);
+            if let Ok(json) = maybe_json {
+                let maybe_component_error = serde_json::from_value::<ComponentError>(json);
+                if let Ok(component_error) = maybe_component_error {
+                    messages.push(component_error.message);
+                    messages.extend(component_error.inner);
+                } else {
+                    messages.push(format!(
+                        "Failed to convert error object to ComponentError: {:#?}",
+                        opaque
+                    ));
+                }
+            } else {
+                messages.push(format!(
+                    "Failed to convert error object to JSON: {:#?}",
+                    opaque
+                ));
+            };
+
+            inner = None;
+        } else {
+            panic!("unexpected error type from Boa: {:?}", e);
+        }
+    }
+
+    RunComponentError::RunCallReturnedError {
+        message: format!("Failed to run script \"{}\"", script_file),
+        inner: messages,
+    }
 }

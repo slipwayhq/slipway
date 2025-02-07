@@ -50,11 +50,24 @@ pub(super) fn run_component_from_url(
         apply_json_change::apply(&mut input, path.as_ref(), value);
     }
 
-    let result_str = run_component_callout(execution_context, handle, input)?;
+    let result = run_component_callout(execution_context, &handle, input)?;
+
+    let result_bytes = serde_json::to_vec(&result).map_err(|e| {
+        RequestError::for_error(
+            format!(
+                "Failed to serialize output JSON for callout {}, url: {}",
+                execution_context
+                    .call_chain
+                    .component_handle_trail_for(&handle),
+                url,
+            ),
+            Some(format!("{e}")),
+        )
+    })?;
 
     Ok(BinResponse {
         status_code: 200,
         headers: vec![("content-type".to_string(), "application/json".to_string())],
-        body: result_str.into_bytes(),
+        body: result_bytes,
     })
 }

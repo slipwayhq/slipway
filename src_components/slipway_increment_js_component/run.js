@@ -1,6 +1,6 @@
-run();
+run(input);
 
-function run() {
+function run(input) {
   switch (input.type) {
     case "increment":
       console.error("This is an error.");
@@ -12,11 +12,35 @@ function run() {
         value: input.value + 1
       };
     
-      case "throw":
-        throw new Error("This is a thrown error.");
+    case "callout_increment":
+        if (input.ttl === 0) {
+          if (input.result_type === "increment") {
+            return run({
+              type: "increment",
+              value: input.value
+            });
+          }
+          else {
+            return run({
+              type: input.result_type,
+            });
+          }
+        }
+        else {
+          var callout_input = {
+            type: "callout_increment",
+            value: input.value + 1,
+            ttl: input.ttl - 1,
+            result_type: input.result_type
+          };
+          return slipway_host.run("increment", callout_input);
+        }
+      
+    case "error":
+      throw new Error("This is a thrown error.");
 
-      default:
-          throw new Error("Unexpected input type: " + input.type);
+    default:
+      throw new Error("Unexpected input type: " + input.type);
   }  
 }
 

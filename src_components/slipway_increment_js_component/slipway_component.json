@@ -13,7 +13,25 @@
           }
         }
       },
-      "throw": {}
+      "callout_increment": {
+        "properties": {
+          "value": {
+            "type": "int32"
+          },
+          "ttl": {
+            "type": "uint32"
+          },
+          "result_type": {
+            "enum": ["increment", "error"]
+          }
+        },
+        "optionalProperties": {
+          "handle": {
+            "type": "string"
+          }
+        }
+      },
+      "error": {}
     }
   },
   "output": {
@@ -22,5 +40,8 @@
         "type": "int32"
       }
     }
+  },
+  "callouts": {
+    "increment": "file:slipwayhq.increment_js.0.0.1.tar"
   }
 }

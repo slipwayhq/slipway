@@ -119,6 +119,7 @@ impl FontContext {
         (&mut self.collection, &mut self.source_cache)
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;

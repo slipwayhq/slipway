@@ -6,10 +6,10 @@ default:
 build configuration="debug": (build-src configuration) (build-components configuration)
 
 test *FLAGS: build
-  cd src && cargo nextest run {{FLAGS}}
+  cd src && RUSTLOG=debug cargo nextest run --no-fail-fast {{FLAGS}}
 
 test-only *FLAGS:
-  cd src && cargo nextest run {{FLAGS}}
+  cd src && RUSTLOG=debug cargo nextest run --no-fail-fast {{FLAGS}}
 
 clean: clean-src clean-components (clean-artifacts "")
 
@@ -44,6 +44,8 @@ assemble-test-components configuration="debug": \
   (assemble-rust-component "font" configuration) \
   (assemble-rust-component "env" configuration) \
   (assemble-js-component "increment_js" configuration) \
+  (assemble-js-component "fetch_js" configuration) \
+  (assemble-js-component "fetch_error_js" configuration) \
   (assemble-js-component "font_js" configuration) \
   && \
   (tar-component-files "increment_ten" configuration) \

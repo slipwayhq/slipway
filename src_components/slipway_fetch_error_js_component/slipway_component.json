@@ -1,0 +1,8 @@
+{
+  "publisher": "slipwayhq",
+  "name": "fetch_error_js",
+  "description": "Attempts a fetch with a badly formatted request options.",
+  "version": "0.0.1",
+  "input": {},
+  "output": {}
+}

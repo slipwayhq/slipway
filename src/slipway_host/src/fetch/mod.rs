@@ -2,11 +2,16 @@ mod component;
 mod env;
 mod http;
 
-use slipway_engine::ComponentExecutionContext;
+use std::str::FromStr;
+
+use serde::{Deserialize, Serialize};
+use slipway_engine::{ComponentExecutionContext, ComponentHandle};
 use tracing::warn;
 use url::Url;
 
-#[derive(Debug, Default)]
+use crate::run::run_component_callout;
+
+#[derive(Debug, Default, Deserialize)]
 pub struct RequestOptions {
     pub method: Option<String>,
     pub headers: Option<Vec<(String, String)>>,
@@ -14,21 +19,21 @@ pub struct RequestOptions {
     pub timeout_ms: Option<u32>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct BinResponse {
     pub status_code: u16,
     pub headers: Vec<(String, String)>,
     pub body: Vec<u8>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TextResponse {
     pub status_code: u16,
     pub headers: Vec<(String, String)>,
     pub body: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RequestError {
     pub message: String,
     pub inner: Vec<String>,
@@ -131,7 +136,7 @@ pub fn fetch_text(
         .map_err(Into::into)
 }
 
-pub fn run(
+pub fn run_string(
     execution_context: &ComponentExecutionContext,
     handle: String,
     input: String,
@@ -148,6 +153,25 @@ pub fn run(
     )
     .map(|v| v.body)
     .map_err(Into::into)
+}
+
+pub fn run_json(
+    execution_context: &ComponentExecutionContext,
+    handle: String,
+    input: serde_json::Value,
+) -> Result<serde_json::Value, crate::ComponentError> {
+    let handle = ComponentHandle::from_str(&handle).map_err(|e| {
+        crate::ComponentError::for_error(
+            format!(
+                "Failed to parse component handle \"{}\" from \"{}\"",
+                handle,
+                execution_context.call_chain.component_handle_trail(),
+            ),
+            Some(format!("{e}")),
+        )
+    })?;
+
+    run_component_callout(execution_context, &handle, input).map_err(Into::into)
 }
 
 pub fn load_bin(

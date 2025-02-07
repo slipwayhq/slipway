@@ -94,7 +94,7 @@ impl self::slipway_host::Host for SlipwayHost<'_, '_, '_> {
     }
 
     fn run(&mut self, handle: String, input: String) -> Result<String, ComponentError> {
-        ::slipway_host::fetch::run(self.execution_context, handle, input)
+        ::slipway_host::fetch::run_string(self.execution_context, handle, input)
             .map(Into::into)
             .map_err(Into::into)
     }
