@@ -262,34 +262,38 @@ mod tests {
         assert_json_schema_errors(schema);
     }
 
-    #[test]
-    fn it_should_parse_json_schema_with_https_references() {
-        // Start a server to return the schema.
-        let test_server = TestServer::start_from_string_map(HashMap::from([(
-            "/name.json".to_string(),
-            r#"{ "type": "string" }"#.to_string(),
-        )]));
+    mod serial_tests {
+        use super::*;
 
-        let schema = serde_json::json!({
-            "$schema": "http://json-schema.org/draft-07/schema#",
-            "properties": {
-                "name": { "$ref": format!("{}name.json", test_server.localhost_url)},
-                "age": { "type": "number" },
-                "phones": {
-                    "type": "array",
-                    "items": { "type": "string" }
-                }
-            },
-            "required": ["name", "age"]
-        });
+        #[test]
+        fn it_should_parse_json_schema_with_https_references() {
+            // Start a server to return the schema.
+            let test_server = TestServer::start_from_string_map(HashMap::from([(
+                "/name.json".to_string(),
+                r#"{ "type": "string" }"#.to_string(),
+            )]));
 
-        let component_files = mock_component_files(HashMap::new());
+            let schema = serde_json::json!({
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "properties": {
+                    "name": { "$ref": format!("{}name.json", test_server.localhost_url)},
+                    "age": { "type": "number" },
+                    "phones": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                    }
+                },
+                "required": ["name", "age"]
+            });
 
-        let schema = parse_schema("test", schema, component_files).unwrap();
+            let component_files = mock_component_files(HashMap::new());
 
-        assert_json_schema_errors(schema);
+            let schema = parse_schema("test", schema, component_files).unwrap();
 
-        test_server.stop();
+            assert_json_schema_errors(schema);
+
+            test_server.stop();
+        }
     }
 
     fn create_json_schema_input_bad() -> serde_json::Value {

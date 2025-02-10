@@ -3,16 +3,23 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::mpsc;
 use std::sync::mpsc::Sender;
+use std::sync::LazyLock;
+use std::sync::Mutex;
+use std::sync::MutexGuard;
 use std::thread;
 use tiny_http::Method;
 use tiny_http::Response;
 use tiny_http::Server;
 
-const LOCALHOST_BINDING: &str = "0.0.0.0:0";
+static LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+
+const LOCALHOST_BINDING: &str = "127.0.0.1:0";
 
 // Simple test server used for testing things like schema HTTP resolution
 // is working as expected.
 pub struct TestServer {
+    #[allow(dead_code)]
+    mutex: MutexGuard<'static, ()>,
     stop_signal: Sender<char>,
     server_thread: Option<thread::JoinHandle<()>>,
     pub localhost_url: String,
@@ -35,6 +42,8 @@ fn get_localhost_url(server: &Server) -> String {
 
 impl TestServer {
     pub fn start_from_string_map(responses: HashMap<String, String>) -> Self {
+        let mutex = LOCK.lock().unwrap();
+
         let (tx, rx) = mpsc::channel();
 
         let server = Server::http(LOCALHOST_BINDING).unwrap();
@@ -66,6 +75,7 @@ impl TestServer {
         });
 
         TestServer {
+            mutex,
             stop_signal: tx,
             server_thread: Some(server_thread),
             localhost_url,
@@ -73,6 +83,9 @@ impl TestServer {
     }
 
     pub fn start_from_folder(folder: PathBuf) -> Self {
+        let mutex = LOCK.lock().unwrap();
+        let folder = crate::find_ancestor_path(folder.clone());
+
         let (tx, rx) = mpsc::channel();
 
         let server = Server::http(LOCALHOST_BINDING).unwrap();
@@ -85,11 +98,11 @@ impl TestServer {
 
             // Handle incoming requests
             if let Ok(Some(request)) = server.recv_timeout(std::time::Duration::from_millis(100)) {
-                let folder = crate::find_ancestor_path(folder.clone());
                 let file = folder.join(request.url().trim_start_matches('/'));
 
                 if !file.exists() {
-                    println!("Not found: {}", request.url());
+                    println!("Not found URL: {}", request.url());
+                    println!("Using file: {:?}", file);
                     request
                         .respond(Response::from_string("Not found").with_status_code(404))
                         .unwrap();
@@ -97,13 +110,14 @@ impl TestServer {
                 }
 
                 // Stream file as response
-                let file = std::fs::read(file).unwrap();
-                let response = Response::from_data(file);
+                let file = std::fs::File::open(file).unwrap();
+                let response = Response::from_file(file);
                 request.respond(response).unwrap();
             }
         });
 
         TestServer {
+            mutex,
             stop_signal: tx,
             server_thread: Some(server_thread),
             localhost_url,
@@ -117,6 +131,8 @@ impl TestServer {
         body: String,
         status_code: u16,
     ) -> Self {
+        let mutex = LOCK.lock().unwrap();
+
         let (tx, rx) = mpsc::channel();
 
         let server = Server::http(LOCALHOST_BINDING).unwrap();
@@ -163,6 +179,7 @@ impl TestServer {
         });
 
         TestServer {
+            mutex,
             stop_signal: tx,
             server_thread: Some(server_thread),
             localhost_url,
@@ -179,10 +196,10 @@ impl TestServer {
     }
 }
 
-// impl Drop for TestServer {
-//     fn drop(&mut self) {
-//         if self.server_thread.is_some() {
-//             panic!("TestServer was not stopped before being dropped");
-//         }
-//     }
-// }
+impl Drop for TestServer {
+    fn drop(&mut self) {
+        if self.server_thread.is_some() {
+            panic!("TestServer was not stopped before being dropped");
+        }
+    }
+}
