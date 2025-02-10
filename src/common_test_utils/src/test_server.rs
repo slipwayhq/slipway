@@ -110,8 +110,25 @@ impl TestServer {
                 }
 
                 // Stream file as response
-                let file = std::fs::File::open(file).unwrap();
-                let response = Response::from_file(file);
+                let bytes = std::fs::read(&file).unwrap();
+
+                {
+                    // We're getting intermittent failures where ureq complains that:
+                    // `response header is too big: 114795 > 65536` or similar. This is
+                    // dumping out the response for inspection.
+                    let response =
+                        Response::from_data(bytes.clone()).with_chunked_threshold(usize::MAX);
+                    let mut writer = std::io::Cursor::new(Vec::new());
+                    response
+                        .raw_print(&mut writer, tiny_http::HTTPVersion(1, 1), &[], false, None)
+                        .unwrap();
+                    let bytes = writer.get_ref();
+                    let bytes_short = &bytes[..std::cmp::min(1000, bytes.len())];
+                    let bytes_str = String::from_utf8_lossy(bytes_short);
+                    println!("Responding with: {:?}", bytes_str);
+                }
+
+                let response = Response::from_data(bytes).with_chunked_threshold(usize::MAX);
                 request.respond(response).unwrap();
             }
         });
