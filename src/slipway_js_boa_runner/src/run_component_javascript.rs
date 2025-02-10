@@ -141,15 +141,20 @@ fn convert_error(script_file: &str, context: &mut Context, error: JsError) -> Ru
         } else if let Some(opaque) = e.as_opaque() {
             let maybe_json = opaque.to_json(context);
             if let Ok(json) = maybe_json {
-                let maybe_component_error = serde_json::from_value::<ComponentError>(json);
+                let maybe_component_error = serde_json::from_value::<ComponentError>(json.clone());
                 if let Ok(component_error) = maybe_component_error {
                     messages.push(component_error.message);
                     messages.extend(component_error.inner);
+                } else if let Some(s) = json.as_str() {
+                    messages.push(s.to_string());
+                } else if let Some(o) = json.as_object() {
+                    if let Some(message) = o.get("message").and_then(|v| v.as_str()) {
+                        messages.push(message.to_string());
+                    } else {
+                        messages.push(format!("Unrecognized error: {:#?}", opaque));
+                    }
                 } else {
-                    messages.push(format!(
-                        "Failed to convert error object to ComponentError: {:#?}",
-                        opaque
-                    ));
+                    messages.push(format!("Unrecognized error: {:#?}", opaque));
                 }
             } else {
                 messages.push(format!(
