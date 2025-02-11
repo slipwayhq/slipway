@@ -1,19 +1,16 @@
-use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+use std::rc::Rc;
 
 use boa_runtime::{ConsoleState, Logger, RegisterOptions};
 
 use boa_engine::{
-    context::ContextBuilder,
-    job::{Job, JobExecutor, NativeAsyncJob, PromiseJob},
-    module::SimpleModuleLoader,
-    optimizer::OptimizerOptions,
-    Context, JsResult, JsString, Source,
+    context::ContextBuilder, module::SimpleModuleLoader, optimizer::OptimizerOptions, Context,
+    JsResult, JsString, Source,
 };
 use slipway_engine::RunComponentError;
 use tracing::{debug, error, info, trace, warn};
 
 pub(super) fn prepare_environment() -> Result<Context, RunComponentError> {
-    let executor = Rc::new(Executor::default());
+    let executor = Rc::new(super::async_environment::Queue::new());
     let loader = Rc::new(SimpleModuleLoader::new(".").map_err(|e| anyhow::anyhow!(e.to_string()))?);
 
     let mut context = ContextBuilder::new()
@@ -111,46 +108,46 @@ impl Logger for BoaConsoleLogger {
     }
 }
 
-#[derive(Default)]
-struct Executor {
-    promise_jobs: RefCell<VecDeque<PromiseJob>>,
-    async_jobs: RefCell<VecDeque<NativeAsyncJob>>,
-}
+// #[derive(Default)]
+// struct Executor {
+//     promise_jobs: RefCell<VecDeque<PromiseJob>>,
+//     async_jobs: RefCell<VecDeque<NativeAsyncJob>>,
+// }
 
-impl JobExecutor for Executor {
-    fn enqueue_job(&self, job: Job, _: &mut Context) {
-        match job {
-            Job::PromiseJob(job) => self.promise_jobs.borrow_mut().push_back(job),
-            Job::AsyncJob(job) => self.async_jobs.borrow_mut().push_back(job),
-            job => eprintln!("unsupported job type {job:?}"),
-        }
-    }
+// impl JobExecutor for Executor {
+//     fn enqueue_job(&self, job: Job, _: &mut Context) {
+//         match job {
+//             Job::PromiseJob(job) => self.promise_jobs.borrow_mut().push_back(job),
+//             Job::AsyncJob(job) => self.async_jobs.borrow_mut().push_back(job),
+//             job => eprintln!("unsupported job type {job:?}"),
+//         }
+//     }
 
-    fn run_jobs(&self, context: &mut Context) -> JsResult<()> {
-        loop {
-            if self.promise_jobs.borrow().is_empty() && self.async_jobs.borrow().is_empty() {
-                return Ok(());
-            }
+//     fn run_jobs(&self, context: &mut Context) -> JsResult<()> {
+//         loop {
+//             if self.promise_jobs.borrow().is_empty() && self.async_jobs.borrow().is_empty() {
+//                 return Ok(());
+//             }
 
-            let jobs = std::mem::take(&mut *self.promise_jobs.borrow_mut());
-            for job in jobs {
-                if let Err(e) = job.call(context) {
-                    eprintln!("Uncaught {e}");
-                }
-            }
+//             let jobs = std::mem::take(&mut *self.promise_jobs.borrow_mut());
+//             for job in jobs {
+//                 if let Err(e) = job.call(context) {
+//                     eprintln!("Uncaught {e}");
+//                 }
+//             }
 
-            let async_jobs = std::mem::take(&mut *self.async_jobs.borrow_mut());
-            for async_job in async_jobs {
-                if let Err(err) = pollster::block_on(async_job.call(&RefCell::new(context))) {
-                    eprintln!("Uncaught {err}");
-                }
-                let jobs = std::mem::take(&mut *self.promise_jobs.borrow_mut());
-                for job in jobs {
-                    if let Err(e) = job.call(context) {
-                        eprintln!("Uncaught {e}");
-                    }
-                }
-            }
-        }
-    }
-}
+//             let async_jobs = std::mem::take(&mut *self.async_jobs.borrow_mut());
+//             for async_job in async_jobs {
+//                 if let Err(err) = pollster::block_on(async_job.call(&RefCell::new(context))) {
+//                     eprintln!("Uncaught {err}");
+//                 }
+//                 let jobs = std::mem::take(&mut *self.promise_jobs.borrow_mut());
+//                 for job in jobs {
+//                     if let Err(e) = job.call(context) {
+//                         eprintln!("Uncaught {e}");
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }

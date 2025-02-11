@@ -9,8 +9,8 @@ use url::Url;
 
 use super::{BinResponse, RequestError, RequestOptions};
 
-pub(super) fn fetch_component_data(
-    execution_context: &ComponentExecutionContext,
+pub(super) async fn fetch_component_data(
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
     url: &Url,
     options: Option<RequestOptions>,
 ) -> Result<BinResponse, RequestError> {
@@ -36,7 +36,7 @@ pub(super) fn fetch_component_data(
     let path = url.path();
 
     match path {
-        "" | "/" => run::run_component_from_url(execution_context, handle, url, options),
+        "" | "/" => run::run_component_from_url(execution_context, handle, url, options).await,
         _ => component_file::get_component_file_bin(execution_context, handle, path),
     }
 }

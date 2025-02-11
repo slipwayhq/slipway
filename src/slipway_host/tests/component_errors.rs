@@ -11,8 +11,8 @@ use serde_json::json;
 
 mod common;
 
-#[test_log::test]
-fn test_callout_panic() {
+#[common_macros::slipway_test_async]
+async fn test_callout_panic() {
     let rig = create_callout_test_rig(3, "increment", "panic");
     assert_run_errors_with(
         rig,
@@ -20,11 +20,12 @@ fn test_callout_panic() {
             "\"test -> increment -> increment -> increment\"",
             "wasm backtrace",
         ],
-    );
+    )
+    .await;
 }
 
-#[test_log::test]
-fn test_callout_error() {
+#[common_macros::slipway_test_async]
+async fn test_callout_error() {
     let rig = create_callout_test_rig(3, "increment", "error");
     assert_run_errors_with(
         rig,
@@ -32,11 +33,12 @@ fn test_callout_error() {
             "\"test -> increment -> increment -> increment\"",
             "slipway-increment-component-error",
         ],
-    );
+    )
+    .await;
 }
 
-#[test_log::test]
-fn test_callout_error_js() {
+#[common_macros::slipway_test_async]
+async fn test_callout_error_js() {
     let rig = create_callout_test_rig(3, "increment_js", "error");
     assert_run_errors_with(
         rig,
@@ -44,11 +46,12 @@ fn test_callout_error_js() {
             "\"test -> increment -> increment -> increment\"",
             "slipway-increment-js-component-error",
         ],
-    );
+    )
+    .await;
 }
 
-#[test_log::test]
-fn test_fragment_callout_error() {
+#[common_macros::slipway_test_async]
+async fn test_fragment_callout_error() {
     let rig = create_callout_test_rig(3, "fragment", "error");
     assert_run_errors_with(
         rig,
@@ -56,7 +59,8 @@ fn test_fragment_callout_error() {
             "\"test -> first -> increment -> increment -> increment\"",
             "slipway-increment-component-error",
         ],
-    );
+    )
+    .await;
 }
 
 fn create_callout_test_rig(ttl: u32, component_name: &str, result_type: &str) -> Rig {
@@ -80,16 +84,16 @@ fn create_callout_test_rig(ttl: u32, component_name: &str, result_type: &str) ->
     })
 }
 
-#[test_log::test]
-fn test_invalid_callout_input() {
+#[common_macros::slipway_test_async]
+async fn test_invalid_callout_input() {
     let rig = create_callout_schema_test_rig("increment", "invalid_callout_input");
-    assert_run_errors_with(rig, &["\"test -> increment\"", r#""type": "foo""#]);
+    assert_run_errors_with(rig, &["\"test -> increment\"", r#""type": "foo""#]).await;
 }
 
-#[test_log::test]
-fn test_invalid_callout_output() {
+#[common_macros::slipway_test_async]
+async fn test_invalid_callout_output() {
     let rig = create_callout_schema_test_rig("increment", "invalid_callout_output");
-    assert_run_errors_with(rig, &["\"test -> increment\"", r#""value": "foo""#]);
+    assert_run_errors_with(rig, &["\"test -> increment\"", r#""value": "foo""#]).await;
 }
 
 fn create_callout_schema_test_rig(component_name: &str, call_type: &str) -> Rig {
@@ -110,7 +114,7 @@ fn create_callout_schema_test_rig(component_name: &str, call_type: &str) -> Rig 
     })
 }
 
-fn assert_run_errors_with(rig: Rig, expected_messages: &[&str]) {
+async fn assert_run_errors_with(rig: Rig, expected_messages: &[&str]) {
     let component_cache = BasicComponentCache::primed(&rig, &create_components_loader()).unwrap();
     let component_runners = get_component_runners();
     let call_chain = CallChain::full_trust_arc();
@@ -121,7 +125,8 @@ fn assert_run_errors_with(rig: Rig, expected_messages: &[&str]) {
         &mut no_event_handler(),
         &component_runners,
         call_chain,
-    );
+    )
+    .await;
 
     fn match_inner(error: &anyhow::Error, expected_messages: &[&str]) {
         match error.downcast_ref::<RunError<()>>().unwrap() {

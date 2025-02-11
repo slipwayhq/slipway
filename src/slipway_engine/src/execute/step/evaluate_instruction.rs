@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::{
     errors::RigError,
@@ -19,7 +19,7 @@ pub(super) fn evaluate_instruction<'rig, 'cache>(
         Instruction::SetInputOverride { handle, value } => {
             let mut state = state;
             let component_state = state.get_component_state_mut(&handle)?;
-            component_state.input_override = Some(Rc::new(ComponentInputOverride { value }));
+            component_state.input_override = Some(Arc::new(ComponentInputOverride { value }));
             Ok(state)
         }
         Instruction::ClearInputOverride { handle } => {
@@ -32,7 +32,7 @@ pub(super) fn evaluate_instruction<'rig, 'cache>(
             let mut state = state;
             let component_state = state.get_component_state_mut(&handle)?;
             let json_metadata = JsonMetadata::from_value(&value);
-            component_state.output_override = Some(Rc::new(ComponentOutputOverride {
+            component_state.output_override = Some(Arc::new(ComponentOutputOverride {
                 value,
                 json_metadata,
             }));
@@ -73,7 +73,7 @@ pub(super) fn evaluate_instruction<'rig, 'cache>(
 
             let json_metadata = JsonMetadata::from_value(&value);
             component_state.output_override = None;
-            component_state.execution_output = Some(Rc::new(ComponentOutput {
+            component_state.execution_output = Some(Arc::new(ComponentOutput {
                 value,
                 input_hash_used: input.json_metadata.hash.clone(),
                 json_metadata,

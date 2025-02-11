@@ -5,7 +5,7 @@ use url::Url;
 
 use super::{BinResponse, RequestError};
 
-pub(super) fn fetch_env(
+pub(super) fn fetch_env_url(
     execution_context: &ComponentExecutionContext,
     url: &Url,
 ) -> Result<BinResponse, RequestError> {
@@ -17,6 +17,13 @@ pub(super) fn fetch_env(
         ))
     })?;
 
+    fetch_env(execution_context, key)
+}
+
+pub(super) fn fetch_env(
+    execution_context: &ComponentExecutionContext,
+    key: &str,
+) -> Result<BinResponse, RequestError> {
     crate::permissions::ensure_can_fetch_env(key, execution_context)?;
 
     match std::env::var(key) {

@@ -4,7 +4,10 @@ use slipway_engine::{
     ComponentExecutionContext, RunComponentError, RunComponentResult, RunMetadata,
 };
 
-use boa_engine::{js_string, property::Attribute, Context, JsError, JsValue, Source};
+use boa_engine::{
+    builtins::promise::PromiseState, js_string, property::Attribute, Context, JsError, JsValue,
+    Script, Source,
+};
 use slipway_host::ComponentError;
 use tracing::debug;
 
@@ -13,10 +16,10 @@ use crate::{
     BoaComponentDefinition, BOA_COMPONENT_DEFINITION_FILE_NAME,
 };
 
-pub(super) fn run_component_javascript(
+pub(super) async fn run_component_javascript(
     input: &serde_json::Value,
     boa_definition: Arc<BoaComponentDefinition>,
-    execution_context: &ComponentExecutionContext,
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
 ) -> Result<RunComponentResult, RunComponentError> {
     if boa_definition.scripts.is_empty() {
         return Err(RunComponentError::Other(format!(
@@ -33,12 +36,11 @@ pub(super) fn run_component_javascript(
 
     let prepare_input_start = Instant::now();
     set_input(&mut context, input)?;
-    restore_input_prototypes(&mut context)?;
     let prepare_input_duration = prepare_input_start.elapsed();
 
     let call_start = Instant::now();
     let last_result =
-        run_component_scripts(&boa_definition.scripts, execution_context, &mut context)?;
+        run_component_scripts(&boa_definition.scripts, execution_context, &mut context).await?;
     let call_duration = call_start.elapsed();
 
     let process_output_start = Instant::now();
@@ -67,32 +69,7 @@ fn set_input(context: &mut Context, input: &serde_json::Value) -> Result<(), Run
     Ok(())
 }
 
-fn restore_input_prototypes(context: &mut Context) -> Result<(), RunComponentError> {
-    context
-        .eval(Source::from_bytes(indoc::indoc! {r#"
-            function restorePrototypes(obj) {
-                if (!obj || typeof obj !== 'object') return;
-
-                if (Array.isArray(obj)) {
-                    Object.setPrototypeOf(obj, Array.prototype);
-                } else {
-                    Object.setPrototypeOf(obj, Object.prototype);
-                }
-
-                for (const key in obj) {
-                    restorePrototypes(obj[key]);
-                }
-            }
-
-            restorePrototypes(input);
-            "#}))
-        .map_err(|e| {
-            RunComponentError::Other(format!("Failed to restore input object prototypes.\n{}", e))
-        })?;
-    Ok(())
-}
-
-fn run_component_scripts(
+async fn run_component_scripts(
     script_files: &[String],
     execution_context: &ComponentExecutionContext<'_, '_, '_>,
     context: &mut Context,
@@ -107,28 +84,55 @@ fn run_component_scripts(
             content.len()
         );
 
+        let script = Script::parse(Source::from_bytes(&*content), None, context)
+            .map_err(|e| convert_error(script_file, context, e))?;
+
         last_result = Some(
-            context
-                .eval(Source::from_bytes(&*content))
+            script
+                .evaluate_async(context)
+                .await
                 .map_err(|e| convert_error(script_file, context, e))?,
         );
     }
+
     let last_result = last_result.expect("At least one script should be executed");
 
     context
-        .run_jobs()
+        .run_jobs_async()
+        .await
         .map_err(|e| RunComponentError::Other(format!("Failed to run async jobs\n{}", e)))?;
 
-    Ok(last_result)
+    let promise = last_result.as_promise();
+
+    match promise {
+        Some(promise) => match promise.state() {
+            PromiseState::Pending => Err(RunComponentError::RunCallFailed {
+                source: anyhow::anyhow!("Promise is still pending"),
+            }),
+            PromiseState::Fulfilled(result) => Ok(result),
+            PromiseState::Rejected(error) => Err(convert_error(
+                script_files
+                    .last()
+                    .expect("At least one script file should exist"),
+                context,
+                JsError::from_opaque(error),
+            )),
+        },
+        None => Ok(last_result),
+    }
 }
 
 fn convert_output(
     context: &mut Context,
     last_result: JsValue,
 ) -> Result<serde_json::Value, RunComponentError> {
-    last_result
-        .to_json(context)
-        .map_err(|e| RunComponentError::Other(format!("Failed to convert output object.\n{}", e)))
+    if last_result.is_undefined() {
+        Ok(serde_json::Value::Null)
+    } else {
+        last_result.to_json(context).map_err(|e| {
+            RunComponentError::Other(format!("Failed to convert output object.\n{}", e))
+        })
+    }
 }
 
 fn convert_error(script_file: &str, context: &mut Context, error: JsError) -> RunComponentError {

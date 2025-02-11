@@ -8,7 +8,7 @@ use super::{
     errors::SlipwayDebugError, json_editor::JsonEditor, write_state, DebugCli, DebuggerCommand,
 };
 
-pub(super) fn handle_command<'rig, 'cache, W: Write>(
+pub(super) async fn handle_command<'rig, 'cache, W: Write>(
     w: &mut W,
     debug_cli: DebugCli,
     state: &RigExecutionState<'rig, 'cache>,
@@ -28,7 +28,8 @@ pub(super) fn handle_command<'rig, 'cache, W: Write>(
                 state,
                 component_runners,
                 call_chain,
-            )?;
+            )
+            .await?;
             HandleCommandResult::Continue(Some(new_state))
         }
         DebuggerCommand::Input { handle, clear } => {
@@ -132,30 +133,33 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn it_should_run_components_in_sequence() {
+    #[common_macros::slipway_test_async]
+    async fn it_should_run_components_in_sequence() {
         let w = &mut std::io::sink();
         let (ch1, ch2, ch3) = component_handles();
         let rig_parts = get_rig_parts();
         let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
-        verify_state(&state, (true, false, false), (false, false, false));
+        verify_state(&state, (true, false, false), (false, false, false)).await;
         assert_input_value(&state, &ch1, 1);
 
         // Run the first component.
-        state = handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {});
-        verify_state(&state, (true, true, false), (true, false, false));
+        state =
+            handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {}).await;
+        verify_state(&state, (true, true, false), (true, false, false)).await;
         assert_input_value(&state, &ch2, 2);
 
         // Run the second component.
-        state = handle_test_command(w, DebugCli::for_test("run ch2"), &state, &NoJsonEditor {});
-        verify_state(&state, (true, true, true), (true, true, false));
+        state =
+            handle_test_command(w, DebugCli::for_test("run ch2"), &state, &NoJsonEditor {}).await;
+        verify_state(&state, (true, true, true), (true, true, false)).await;
         assert_input_value(&state, &ch3, 3);
 
         // Run the third component.
-        state = handle_test_command(w, DebugCli::for_test("run ch3"), &state, &NoJsonEditor {});
-        verify_state(&state, (true, true, true), (true, true, true));
+        state =
+            handle_test_command(w, DebugCli::for_test("run ch3"), &state, &NoJsonEditor {}).await;
+        verify_state(&state, (true, true, true), (true, true, true)).await;
         assert_input_value(&state, &ch3, 3);
 
         let ch3_state = component(&state, &ch3);
@@ -165,8 +169,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn rerunning_component_should_clear_output_override() {
+    #[common_macros::slipway_test_async]
+    async fn rerunning_component_should_clear_output_override() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
         let rig_parts = get_rig_parts();
@@ -174,7 +178,8 @@ mod tests {
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
-        state = handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {});
+        state =
+            handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {}).await;
         assert_input_value(&state, &ch2, 2);
 
         // Override the output for ch1.
@@ -184,23 +189,24 @@ mod tests {
                 Ok(json!({ "value": 10 }))
             }),
         };
-        state = handle_test_command(w, DebugCli::for_test("output ch1"), &state, &editor);
+        state = handle_test_command(w, DebugCli::for_test("output ch1"), &state, &editor).await;
         assert_input_value(&state, &ch2, 10);
 
         // Re-running ch1 should clear output override.
-        state = handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {});
+        state =
+            handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {}).await;
         assert_input_value(&state, &ch2, 2);
     }
 
-    #[test]
-    fn running_output_clear_command_should_clear_output_override() {
+    #[common_macros::slipway_test_async]
+    async fn running_output_clear_command_should_clear_output_override() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
         let rig_parts = get_rig_parts();
         let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
-        verify_state(&state, (true, false, false), (false, false, false));
+        verify_state(&state, (true, false, false), (false, false, false)).await;
 
         // Override the output for ch1.
         let editor = MockJsonEditor {
@@ -209,10 +215,10 @@ mod tests {
                 Ok(json!({ "value": 10 }))
             }),
         };
-        state = handle_test_command(w, DebugCli::for_test("output ch1"), &state, &editor);
+        state = handle_test_command(w, DebugCli::for_test("output ch1"), &state, &editor).await;
         assert_input_value(&state, &ch2, 10);
 
-        verify_state(&state, (true, true, false), (false, false, false));
+        verify_state(&state, (true, true, false), (false, false, false)).await;
 
         // Re-running ch1 should clear output override.
         state = handle_test_command(
@@ -220,13 +226,14 @@ mod tests {
             DebugCli::for_test("output ch1 --clear"),
             &state,
             &NoJsonEditor {},
-        );
+        )
+        .await;
 
-        verify_state(&state, (true, false, false), (false, false, false));
+        verify_state(&state, (true, false, false), (false, false, false)).await;
     }
 
-    #[test]
-    fn running_output_command_twice_should_edit_overridden_output() {
+    #[common_macros::slipway_test_async]
+    async fn running_output_command_twice_should_edit_overridden_output() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
         let rig_parts = get_rig_parts();
@@ -234,7 +241,8 @@ mod tests {
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
-        state = handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {});
+        state =
+            handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {}).await;
         assert_input_value(&state, &ch2, 2);
 
         // Override the output for ch1.
@@ -244,7 +252,7 @@ mod tests {
                 Ok(json!({ "value": 10 }))
             }),
         };
-        state = handle_test_command(w, DebugCli::for_test("output ch1"), &state, &editor);
+        state = handle_test_command(w, DebugCli::for_test("output ch1"), &state, &editor).await;
         assert_input_value(&state, &ch2, 10);
 
         // Override the output for ch1.
@@ -254,12 +262,12 @@ mod tests {
                 Ok(json!({ "value": 100 }))
             }),
         };
-        state = handle_test_command(w, DebugCli::for_test("output ch1"), &state, &editor);
+        state = handle_test_command(w, DebugCli::for_test("output ch1"), &state, &editor).await;
         assert_input_value(&state, &ch2, 100);
     }
 
-    #[test]
-    fn running_output_command_without_changes_should_not_override_output() {
+    #[common_macros::slipway_test_async]
+    async fn running_output_command_without_changes_should_not_override_output() {
         let w = &mut std::io::sink();
         let (ch1, ch2, _) = component_handles();
         let rig_parts = get_rig_parts();
@@ -267,7 +275,8 @@ mod tests {
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
-        state = handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {});
+        state =
+            handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {}).await;
         assert_input_value(&state, &ch2, 2);
 
         // Run output command but don't change output.
@@ -277,7 +286,7 @@ mod tests {
                 Ok(json!({ "value": 2 }))
             }),
         };
-        state = handle_test_command(w, DebugCli::for_test("output ch1"), &state, &editor);
+        state = handle_test_command(w, DebugCli::for_test("output ch1"), &state, &editor).await;
         assert_input_value(&state, &ch2, 2);
 
         let ch1_state = component(&state, &ch1);
@@ -286,8 +295,8 @@ mod tests {
         assert!(&ch1_state.output_override.is_none());
     }
 
-    #[test]
-    fn it_should_override_inputs() {
+    #[common_macros::slipway_test_async]
+    async fn it_should_override_inputs() {
         let w = &mut std::io::sink();
         let (_, ch2, ch3) = component_handles();
         let rig_parts = get_rig_parts();
@@ -295,7 +304,8 @@ mod tests {
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
-        state = handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {});
+        state =
+            handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {}).await;
         assert_input_value(&state, &ch2, 2);
 
         // Run input command with new input.
@@ -308,15 +318,16 @@ mod tests {
                 Ok(json!({ "type": "increment", "value": 20 }))
             }),
         };
-        state = handle_test_command(w, DebugCli::for_test("input ch2"), &state, &editor);
+        state = handle_test_command(w, DebugCli::for_test("input ch2"), &state, &editor).await;
         assert_input_value(&state, &ch2, 20);
 
-        state = handle_test_command(w, DebugCli::for_test("run ch2"), &state, &NoJsonEditor {});
+        state =
+            handle_test_command(w, DebugCli::for_test("run ch2"), &state, &NoJsonEditor {}).await;
         assert_input_value(&state, &ch3, 21);
     }
 
-    #[test]
-    fn it_should_override_inputs_with_dependencies() {
+    #[common_macros::slipway_test_async]
+    async fn it_should_override_inputs_with_dependencies() {
         let w = &mut std::io::sink();
         let (_, ch2, ch3) = component_handles();
         let rig_parts = get_rig_parts();
@@ -324,8 +335,9 @@ mod tests {
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
-        state = handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {});
-        verify_state(&state, (true, true, false), (true, false, false));
+        state =
+            handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {}).await;
+        verify_state(&state, (true, true, false), (true, false, false)).await;
         assert_input_value(&state, &ch2, 2);
 
         // Run input command changing dependency of ch3 from ch2 to ch1.
@@ -338,14 +350,14 @@ mod tests {
                 Ok(json!({ "type": "increment", "value": "$$.ch1.value" }))
             }),
         };
-        state = handle_test_command(w, DebugCli::for_test("input ch3"), &state, &editor);
-        verify_state(&state, (true, true, true), (true, false, false));
+        state = handle_test_command(w, DebugCli::for_test("input ch3"), &state, &editor).await;
+        verify_state(&state, (true, true, true), (true, false, false)).await;
         assert_input_value(&state, &ch2, 2);
         assert_input_value(&state, &ch3, 2);
     }
 
-    #[test]
-    fn running_input_clear_command_should_clear_input_override() {
+    #[common_macros::slipway_test_async]
+    async fn running_input_clear_command_should_clear_input_override() {
         let w = &mut std::io::sink();
         let (ch1, _, _) = component_handles();
         let rig_parts = get_rig_parts();
@@ -361,7 +373,7 @@ mod tests {
                 Ok(json!({ "type": "increment", "value": 10 }))
             }),
         };
-        state = handle_test_command(w, DebugCli::for_test("input ch1"), &state, &editor);
+        state = handle_test_command(w, DebugCli::for_test("input ch1"), &state, &editor).await;
         assert_input_value(&state, &ch1, 10);
 
         state = handle_test_command(
@@ -369,12 +381,13 @@ mod tests {
             DebugCli::for_test("input ch1 --clear"),
             &state,
             &NoJsonEditor {},
-        );
+        )
+        .await;
         assert_input_value(&state, &ch1, 1);
     }
 
-    #[test]
-    fn running_input_command_twice_should_edit_overridden_input() {
+    #[common_macros::slipway_test_async]
+    async fn running_input_command_twice_should_edit_overridden_input() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
         let rig_parts = get_rig_parts();
@@ -382,7 +395,8 @@ mod tests {
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
-        state = handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {});
+        state =
+            handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {}).await;
         assert_input_value(&state, &ch2, 2);
 
         // Run input command with new input.
@@ -395,7 +409,7 @@ mod tests {
                 Ok(json!({ "type": "increment", "value": 20 }))
             }),
         };
-        state = handle_test_command(w, DebugCli::for_test("input ch2"), &state, &editor);
+        state = handle_test_command(w, DebugCli::for_test("input ch2"), &state, &editor).await;
         assert_input_value(&state, &ch2, 20);
 
         let editor = MockJsonEditor {
@@ -404,12 +418,12 @@ mod tests {
                 Ok(json!({ "type": "increment", "value": 200 }))
             }),
         };
-        state = handle_test_command(w, DebugCli::for_test("input ch2"), &state, &editor);
+        state = handle_test_command(w, DebugCli::for_test("input ch2"), &state, &editor).await;
         assert_input_value(&state, &ch2, 200);
     }
 
-    #[test]
-    fn running_input_command_without_changes_should_not_override_input() {
+    #[common_macros::slipway_test_async]
+    async fn running_input_command_without_changes_should_not_override_input() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
         let rig_parts = get_rig_parts();
@@ -417,7 +431,8 @@ mod tests {
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
-        state = handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {});
+        state =
+            handle_test_command(w, DebugCli::for_test("run ch1"), &state, &NoJsonEditor {}).await;
         assert_input_value(&state, &ch2, 2);
 
         // Run input command but don't change input.
@@ -430,7 +445,7 @@ mod tests {
                 Ok(json!({ "type": "increment", "value": "$$.ch1.value" }))
             }),
         };
-        state = handle_test_command(w, DebugCli::for_test("input ch2"), &state, &editor);
+        state = handle_test_command(w, DebugCli::for_test("input ch2"), &state, &editor).await;
         assert_input_value(&state, &ch2, 2);
 
         let ch2_state = component(&state, &ch2);
@@ -510,12 +525,12 @@ mod tests {
         }
     }
 
-    fn verify_state(
-        state: &Immutable<RigExecutionState>,
+    async fn verify_state(
+        state: &Immutable<RigExecutionState<'_, '_>>,
         inputs: (bool, bool, bool),
         outputs: (bool, bool, bool),
     ) {
-        run_print(state);
+        run_print(state).await;
 
         let ch1 = ch("ch1");
         let ch2 = ch("ch2");
@@ -530,7 +545,7 @@ mod tests {
         assert_eq!(component(state, &ch3).execution_output.is_some(), outputs.2);
     }
 
-    fn handle_test_command<'rig, 'cache>(
+    async fn handle_test_command<'rig, 'cache>(
         w: &mut std::io::Sink,
         debug_cli: DebugCli,
         state: &RigExecutionState<'rig, 'cache>,
@@ -545,6 +560,7 @@ mod tests {
             &component_runners,
             CallChain::full_trust_arc(),
         )
+        .await
         .unwrap()
         {
             HandleCommandResult::Continue(Some(state)) => state,
@@ -559,7 +575,7 @@ mod tests {
         state.component_states.get(handle).unwrap()
     }
 
-    fn run_print(state: &Immutable<RigExecutionState>) {
+    async fn run_print(state: &Immutable<RigExecutionState<'_, '_>>) {
         let mut v = Vec::new();
         match handle_command(
             &mut v,
@@ -571,6 +587,7 @@ mod tests {
             &[],
             CallChain::full_trust_arc(),
         )
+        .await
         .unwrap()
         {
             HandleCommandResult::Continue(None) => {}

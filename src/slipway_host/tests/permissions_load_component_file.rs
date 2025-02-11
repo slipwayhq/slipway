@@ -13,18 +13,18 @@ use slipway_engine::{
 
 mod common;
 
-#[test]
-fn permissions_load_component_file_wasm() {
-    permissions_load_component_file(SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn permissions_load_component_file_wasm() {
+    permissions_load_component_file(SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME).await;
 }
-#[test]
-fn permissions_load_component_file_js() {
-    permissions_load_component_file(SLIPWAY_COMPONENT_FILE_JS_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn permissions_load_component_file_js() {
+    permissions_load_component_file(SLIPWAY_COMPONENT_FILE_JS_COMPONENT_TAR_NAME).await;
 }
-fn permissions_load_component_file(component: &str) {
+async fn permissions_load_component_file(component: &str) {
     let rig = create_rig(Permissions::empty(), component);
 
-    let maybe_output = get_rig_output(rig, "test", Permissions::allow_all());
+    let maybe_output = get_rig_output(rig, "test", Permissions::allow_all()).await;
 
     let Err(error) = maybe_output else {
         panic!("Expected error, got {:?}", maybe_output);

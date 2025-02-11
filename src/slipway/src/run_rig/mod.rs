@@ -12,10 +12,10 @@ use crate::{
     render_state::{write_state, write_state_with_outputs},
 };
 
-pub(super) fn run_rig<W: Write>(
+pub(super) async fn run_rig<W: Write>(
     w: &mut W,
     input: std::path::PathBuf,
-    engine_permissions: Permissions,
+    engine_permissions: Permissions<'_>,
     registry_urls: Vec<String>,
     save_path: Option<PathBuf>,
 ) -> anyhow::Result<()> {
@@ -44,7 +44,9 @@ pub(super) fn run_rig<W: Write>(
         &mut event_handler,
         component_runners_slice,
         call_chain,
-    )?;
+    )
+    .await?;
+
     Ok(())
 }
 

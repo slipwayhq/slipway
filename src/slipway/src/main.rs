@@ -122,7 +122,8 @@ struct CommonRunArgs {
     permissions: CommonPermissionsArgs,
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
     set_ctrl_c_handler();
@@ -138,7 +139,8 @@ fn main() -> anyhow::Result<()> {
                 rig,
                 (&permissions).into(),
                 registry_url,
-            )?;
+            )
+            .await?;
         }
         Commands::DebugComponent {
             component,
@@ -155,7 +157,8 @@ fn main() -> anyhow::Result<()> {
                 input,
                 (&permissions).into(),
                 registry_url,
-            )?;
+            )
+            .await?;
         }
         Commands::Run {
             rig,
@@ -172,7 +175,8 @@ fn main() -> anyhow::Result<()> {
                 (&permissions).into(),
                 registry_url,
                 output,
-            )?;
+            )
+            .await?;
         }
         Commands::Package {
             folder_path,

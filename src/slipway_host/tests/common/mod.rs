@@ -1,5 +1,5 @@
 use core::panic;
-use std::{rc::Rc, str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc};
 
 use common_test_utils::get_slipway_test_components_path;
 use slipway_engine::{
@@ -24,11 +24,11 @@ pub fn create_components_loader() -> BasicComponentsLoader {
 }
 
 #[allow(dead_code)]
-pub fn get_rig_output(
+pub async fn get_rig_output(
     rig: Rig,
     output_handle_str: &str,
-    permissions: Permissions,
-) -> Result<Rc<ComponentOutput>, RunError<()>> {
+    permissions: Permissions<'_>,
+) -> Result<Arc<ComponentOutput>, RunError<()>> {
     let component_cache = BasicComponentCache::primed(&rig, &create_components_loader()).unwrap();
     let component_runners = get_component_runners();
     let call_chain = Arc::new(CallChain::new(permissions));
@@ -39,7 +39,8 @@ pub fn get_rig_output(
         &mut no_event_handler(),
         &component_runners,
         call_chain,
-    )?;
+    )
+    .await?;
 
     let output = result
         .component_outputs
@@ -48,7 +49,7 @@ pub fn get_rig_output(
         .as_ref()
         .expect("Output should be populated");
 
-    Ok(Rc::clone(output))
+    Ok(Arc::clone(output))
 }
 
 #[allow(dead_code)]

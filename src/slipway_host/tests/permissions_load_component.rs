@@ -12,14 +12,14 @@ use slipway_engine::{
 
 mod common;
 
-#[test]
-fn permissions_load_component_from_rig() {
+#[common_macros::slipway_test_async]
+async fn permissions_load_component_from_rig() {
     let rig = create_rig(Permissions::new(
         &vec![Permission::All],
         &vec![Permission::LocalComponent(LocalComponentPermission::Any {})],
     ));
 
-    let maybe_output = get_rig_output(rig, "test", Permissions::allow_all());
+    let maybe_output = get_rig_output(rig, "test", Permissions::allow_all()).await;
 
     let Err(error) = maybe_output else {
         panic!("Expected error, got {:?}", maybe_output);
@@ -42,11 +42,11 @@ fn permissions_load_component_from_rig() {
     }
 }
 
-#[test]
-fn permissions_load_component_from_component() {
+#[common_macros::slipway_test_async]
+async fn permissions_load_component_from_component() {
     let rig = create_rig(Permissions::allow_all());
 
-    let maybe_output = get_rig_output(rig, "test", Permissions::empty());
+    let maybe_output = get_rig_output(rig, "test", Permissions::empty()).await;
 
     let Err(error) = maybe_output else {
         panic!("Expected error, got {:?}", maybe_output);

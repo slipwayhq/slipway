@@ -1,6 +1,7 @@
 mod host;
 mod run_component_wasm;
 
+use async_trait::async_trait;
 pub use run_component_wasm::run_component_wasm;
 use slipway_engine::{
     ComponentExecutionData, ComponentRunner, RunComponentError, TryRunComponentResult,
@@ -11,12 +12,13 @@ pub const WASMTIME_COMPONENT_RUNNER_IDENTIFIER: &str = "wasmtime";
 
 pub struct WasmComponentRunner {}
 
+#[async_trait(?Send)]
 impl ComponentRunner for WasmComponentRunner {
     fn identifier(&self) -> String {
         WASMTIME_COMPONENT_RUNNER_IDENTIFIER.to_string()
     }
 
-    fn run<'call>(
+    async fn run<'call>(
         &self,
         execution_data: &'call ComponentExecutionData<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError> {
@@ -31,7 +33,7 @@ impl ComponentRunner for WasmComponentRunner {
 
         let input = &execution_data.input.value;
 
-        let run_result = run_component_wasm(input, wasm_bytes, &execution_data.context)?;
+        let run_result = run_component_wasm(input, wasm_bytes, &execution_data.context).await?;
 
         Ok(TryRunComponentResult::Ran { result: run_result })
     }

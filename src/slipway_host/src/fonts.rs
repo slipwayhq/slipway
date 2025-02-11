@@ -18,8 +18,9 @@ pub struct ResolvedFont {
     pub data: Vec<u8>,
 }
 
-pub fn font(
-    execution_context: &ComponentExecutionContext,
+// Async in case we add support resolving from, e.g. Google Fonts in the future.
+pub async fn font(
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
     font_stack: String,
 ) -> Option<ResolvedFont> {
     let families: Vec<String> = font_stack

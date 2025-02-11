@@ -7,13 +7,14 @@ use tracing::debug;
 
 use super::errors::SlipwayDebugError;
 
-pub(super) fn handle_run_command<'rig, 'cache>(
+pub(super) async fn handle_run_command<'rig, 'cache>(
     handle: &'rig ComponentHandle,
     state: &RigExecutionState<'rig, 'cache>,
     component_runners: &[Box<dyn ComponentRunner>],
     call_chain: Arc<CallChain<'rig>>,
 ) -> Result<Immutable<RigExecutionState<'rig, 'cache>>, SlipwayDebugError> {
-    let result = slipway_engine::run_component(handle, state, component_runners, call_chain)?;
+    let result =
+        slipway_engine::run_component(handle, state, component_runners, call_chain).await?;
 
     debug!(
         "Prepare input: {:.2?}",
@@ -79,8 +80,8 @@ mod tests {
             .build()
     }
 
-    #[test]
-    fn it_should_run_basic_component() {
+    #[common_macros::slipway_test_async]
+    async fn it_should_run_basic_component() {
         let handle = ch("test_component");
         let rig = create_rig(&handle, json!({ "type": "increment", "value": 42}));
 
@@ -96,6 +97,7 @@ mod tests {
             &component_runners,
             CallChain::full_trust_arc(),
         )
+        .await
         .unwrap();
 
         let component_state = state
@@ -113,8 +115,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn it_should_handle_component_that_panics() {
+    #[common_macros::slipway_test_async]
+    async fn it_should_handle_component_that_panics() {
         let handle = ch("test_component");
         let rig = create_rig(&handle, json!({ "type": "panic" }));
 
@@ -129,7 +131,8 @@ mod tests {
             &state,
             &component_runners,
             CallChain::full_trust_arc(),
-        );
+        )
+        .await;
 
         match maybe_state {
             Err(SlipwayDebugError::RunError(RunError::RunComponentFailed {
@@ -142,8 +145,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn it_should_handle_component_that_errors() {
+    #[common_macros::slipway_test_async]
+    async fn it_should_handle_component_that_errors() {
         let handle = ch("test_component");
         let rig = create_rig(&handle, json!({ "type": "error" }));
 
@@ -158,7 +161,8 @@ mod tests {
             &state,
             &component_runners,
             CallChain::full_trust_arc(),
-        );
+        )
+        .await;
 
         match maybe_state {
             Err(SlipwayDebugError::RunError(RunError::RunComponentFailed {

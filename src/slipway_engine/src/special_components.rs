@@ -1,5 +1,7 @@
 use std::time::{Duration, Instant};
 
+use async_trait::async_trait;
+
 use crate::{
     ComponentExecutionData, ComponentRunner, RunComponentError, RunComponentResult, RunMetadata,
     SlipwayReference, SpecialComponentReference, TryRunComponentResult,
@@ -9,12 +11,13 @@ pub const SPECIAL_COMPONENT_RUNNER_IDENTIFIER: &str = "special";
 
 pub struct SpecialComponentRunner {}
 
+#[async_trait(?Send)]
 impl ComponentRunner for SpecialComponentRunner {
     fn identifier(&self) -> String {
         SPECIAL_COMPONENT_RUNNER_IDENTIFIER.to_string()
     }
 
-    fn run<'call>(
+    async fn run<'call>(
         &self,
         execution_data: &'call ComponentExecutionData<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError> {

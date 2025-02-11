@@ -11,33 +11,35 @@ use slipway_engine::{
 
 mod common;
 
-#[test]
-fn permissions_load_env_no_component_permissions_wasm() {
-    permissions_load_env_no_component_permissions(SLIPWAY_ENV_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn permissions_load_env_no_component_permissions_wasm() {
+    permissions_load_env_no_component_permissions(SLIPWAY_ENV_COMPONENT_TAR_NAME).await;
 }
-#[test]
-fn permissions_load_env_no_component_permissions_js() {
-    permissions_load_env_no_component_permissions(SLIPWAY_ENV_JS_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn permissions_load_env_no_component_permissions_js() {
+    permissions_load_env_no_component_permissions(SLIPWAY_ENV_JS_COMPONENT_TAR_NAME).await;
 }
-fn permissions_load_env_no_component_permissions(component: &str) {
+async fn permissions_load_env_no_component_permissions(component: &str) {
     let rig = create_rig(Permissions::empty(), component);
 
-    let output = get_rig_output(rig, "test", Permissions::allow_all()).unwrap();
+    let output = get_rig_output(rig, "test", Permissions::allow_all())
+        .await
+        .unwrap();
 
     let output: Output = serde_json::from_value(output.value.clone()).unwrap();
 
     assert!(output.value.is_none());
 }
 
-#[test]
-fn permissions_load_env_no_rig_permissions_wasm() {
-    permissions_load_env_no_rig_permissions(SLIPWAY_ENV_COMPONENT_TAR_NAME);
+#[test_log::test(tokio::test(flavor = "current_thread"))]
+async fn permissions_load_env_no_rig_permissions_wasm() {
+    permissions_load_env_no_rig_permissions(SLIPWAY_ENV_COMPONENT_TAR_NAME).await;
 }
-#[test]
-fn permissions_load_env_no_rig_permissions_js() {
-    permissions_load_env_no_rig_permissions(SLIPWAY_ENV_JS_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn permissions_load_env_no_rig_permissions_js() {
+    permissions_load_env_no_rig_permissions(SLIPWAY_ENV_JS_COMPONENT_TAR_NAME).await;
 }
-fn permissions_load_env_no_rig_permissions(component: &str) {
+async fn permissions_load_env_no_rig_permissions(component: &str) {
     let rig = create_rig(Permissions::allow_all(), component);
 
     let output = get_rig_output(
@@ -47,6 +49,7 @@ fn permissions_load_env_no_rig_permissions(component: &str) {
             LocalComponentPermission::Any,
         )]),
     )
+    .await
     .unwrap();
 
     let output: Output = serde_json::from_value(output.value.clone()).unwrap();
@@ -54,15 +57,15 @@ fn permissions_load_env_no_rig_permissions(component: &str) {
     assert!(output.value.is_none());
 }
 
-#[test]
-fn permissions_load_env_other_env_permission_wasm() {
-    permissions_load_env_other_env_permission(SLIPWAY_ENV_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn permissions_load_env_other_env_permission_wasm() {
+    permissions_load_env_other_env_permission(SLIPWAY_ENV_COMPONENT_TAR_NAME).await;
 }
-#[test]
-fn permissions_load_env_other_env_permission_js() {
-    permissions_load_env_other_env_permission(SLIPWAY_ENV_JS_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn permissions_load_env_other_env_permission_js() {
+    permissions_load_env_other_env_permission(SLIPWAY_ENV_JS_COMPONENT_TAR_NAME).await;
 }
-fn permissions_load_env_other_env_permission(component: &str) {
+async fn permissions_load_env_other_env_permission(component: &str) {
     let rig = create_rig(Permissions::allow_all(), component);
 
     let output = get_rig_output(
@@ -75,6 +78,7 @@ fn permissions_load_env_other_env_permission(component: &str) {
             }),
         ]),
     )
+    .await
     .unwrap();
 
     let output: Output = serde_json::from_value(output.value.clone()).unwrap();
@@ -82,15 +86,15 @@ fn permissions_load_env_other_env_permission(component: &str) {
     assert!(output.value.is_none());
 }
 
-#[test]
-fn permissions_load_env_single_env_permission_wasm() {
-    permissions_load_env_single_env_permission(SLIPWAY_ENV_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn permissions_load_env_single_env_permission_wasm() {
+    permissions_load_env_single_env_permission(SLIPWAY_ENV_COMPONENT_TAR_NAME).await;
 }
-#[test]
-fn permissions_load_env_single_env_permission_js() {
-    permissions_load_env_single_env_permission(SLIPWAY_ENV_JS_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn permissions_load_env_single_env_permission_js() {
+    permissions_load_env_single_env_permission(SLIPWAY_ENV_JS_COMPONENT_TAR_NAME).await;
 }
-fn permissions_load_env_single_env_permission(component: &str) {
+async fn permissions_load_env_single_env_permission(component: &str) {
     let rig = create_rig(Permissions::allow_all(), component);
 
     let output = get_rig_output(
@@ -103,6 +107,7 @@ fn permissions_load_env_single_env_permission(component: &str) {
             }),
         ]),
     )
+    .await
     .unwrap();
 
     let output: Output = serde_json::from_value(output.value.clone()).unwrap();
@@ -114,15 +119,15 @@ fn permissions_load_env_single_env_permission(component: &str) {
     assert!(!value.is_empty());
 }
 
-#[test]
-fn permissions_load_env_env_prefix_permission_wasm() {
-    permissions_load_env_env_prefix_permission(SLIPWAY_ENV_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn permissions_load_env_env_prefix_permission_wasm() {
+    permissions_load_env_env_prefix_permission(SLIPWAY_ENV_COMPONENT_TAR_NAME).await;
 }
-#[test]
-fn permissions_load_env_env_prefix_permission_js() {
-    permissions_load_env_env_prefix_permission(SLIPWAY_ENV_JS_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn permissions_load_env_env_prefix_permission_js() {
+    permissions_load_env_env_prefix_permission(SLIPWAY_ENV_JS_COMPONENT_TAR_NAME).await;
 }
-fn permissions_load_env_env_prefix_permission(component: &str) {
+async fn permissions_load_env_env_prefix_permission(component: &str) {
     let rig = create_rig(Permissions::allow_all(), component);
 
     let output = get_rig_output(
@@ -135,6 +140,7 @@ fn permissions_load_env_env_prefix_permission(component: &str) {
             }),
         ]),
     )
+    .await
     .unwrap();
 
     let output: Output = serde_json::from_value(output.value.clone()).unwrap();
@@ -146,15 +152,15 @@ fn permissions_load_env_env_prefix_permission(component: &str) {
     assert!(!value.is_empty());
 }
 
-#[test]
-fn permissions_load_env_any_env_permissions_wasm() {
-    permissions_load_env_any_env_permissions(SLIPWAY_ENV_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn permissions_load_env_any_env_permissions_wasm() {
+    permissions_load_env_any_env_permissions(SLIPWAY_ENV_COMPONENT_TAR_NAME).await;
 }
-#[test]
-fn permissions_load_env_any_env_permissions_js() {
-    permissions_load_env_any_env_permissions(SLIPWAY_ENV_JS_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn permissions_load_env_any_env_permissions_js() {
+    permissions_load_env_any_env_permissions(SLIPWAY_ENV_JS_COMPONENT_TAR_NAME).await;
 }
-fn permissions_load_env_any_env_permissions(component: &str) {
+async fn permissions_load_env_any_env_permissions(component: &str) {
     let rig = create_rig(Permissions::allow_all(), component);
 
     let output = get_rig_output(
@@ -165,6 +171,7 @@ fn permissions_load_env_any_env_permissions(component: &str) {
             Permission::Env(StringPermission::Any {}),
         ]),
     )
+    .await
     .unwrap();
 
     let output: Output = serde_json::from_value(output.value.clone()).unwrap();

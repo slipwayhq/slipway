@@ -10,8 +10,8 @@ use slipway_engine::{
 
 mod common;
 
-#[test_log::test]
-fn deserialize_argument_error_propagation() {
+#[common_macros::slipway_test_async]
+async fn deserialize_argument_error_propagation() {
     let rig: Rig = Rig::for_test(Rigging {
         components: [(
             ComponentHandle::from_str("test").unwrap(),
@@ -26,7 +26,7 @@ fn deserialize_argument_error_propagation() {
         .collect(),
     });
 
-    let maybe_component_output = get_rig_output(rig, "test", Permissions::allow_all());
+    let maybe_component_output = get_rig_output(rig, "test", Permissions::allow_all()).await;
 
     let Err(error) = maybe_component_output else {
         panic!("Expected component to error");

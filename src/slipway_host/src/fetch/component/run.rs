@@ -5,8 +5,8 @@ use crate::run::run_component_callout;
 
 use super::{apply_json_change, BinResponse, RequestError, RequestOptions};
 
-pub(super) fn run_component_from_url(
-    execution_context: &ComponentExecutionContext,
+pub(super) async fn run_component_from_url(
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
     handle: ComponentHandle,
     url: &Url,
     options: Option<RequestOptions>,
@@ -50,7 +50,7 @@ pub(super) fn run_component_from_url(
         apply_json_change::apply(&mut input, path.as_ref(), value);
     }
 
-    let result = run_component_callout(execution_context, &handle, input)?;
+    let result = run_component_callout(execution_context, &handle, input).await?;
 
     let result_bytes = serde_json::to_vec(&result).map_err(|e| {
         RequestError::for_error(

@@ -4,6 +4,7 @@ mod http;
 
 use std::{error::Error, str::FromStr};
 
+use env::fetch_env;
 use serde::{Deserialize, Serialize};
 use slipway_engine::{ComponentExecutionContext, ComponentHandle};
 use tracing::warn;
@@ -113,8 +114,8 @@ impl From<BinResponse> for TextResponse {
     }
 }
 
-pub fn fetch_bin(
-    execution_context: &ComponentExecutionContext,
+pub async fn fetch_bin(
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
     url_str: &str,
     options: Option<RequestOptions>,
 ) -> Result<BinResponse, RequestError> {
@@ -133,8 +134,10 @@ pub fn fetch_bin(
 
     match scheme {
         "https" | "http" => http::fetch_http(execution_context, url, options),
-        "component" => component::fetch_component_data(execution_context, &url, options),
-        "env" => env::fetch_env(execution_context, &url),
+        "component" => component::fetch_component_data(execution_context, &url, options)
+            .await
+            .map_err(Into::into),
+        "env" => env::fetch_env_url(execution_context, &url),
         _ => Err(RequestError::message(format!(
             "Unsupported URL scheme for URL from component {}: {}",
             execution_context.call_chain.component_handle_trail(),
@@ -143,18 +146,19 @@ pub fn fetch_bin(
     }
 }
 
-pub fn fetch_text(
-    execution_context: &ComponentExecutionContext,
+pub async fn fetch_text(
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
     url_str: &str,
     options: Option<RequestOptions>,
 ) -> Result<TextResponse, RequestError> {
     fetch_bin(execution_context, url_str, options)
+        .await
         .map(Into::into)
         .map_err(Into::into)
 }
 
-pub fn run_string(
-    execution_context: &ComponentExecutionContext,
+pub async fn run_string(
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
     handle: String,
     input: String,
 ) -> Result<String, crate::ComponentError> {
@@ -168,12 +172,13 @@ pub fn run_string(
             timeout_ms: None,
         }),
     )
+    .await
     .map(|v| v.body)
     .map_err(Into::into)
 }
 
-pub fn run_json(
-    execution_context: &ComponentExecutionContext,
+pub async fn run_json(
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
     handle: String,
     input: serde_json::Value,
 ) -> Result<serde_json::Value, crate::ComponentError> {
@@ -188,11 +193,13 @@ pub fn run_json(
         )
     })?;
 
-    run_component_callout(execution_context, &handle, input).map_err(Into::into)
+    run_component_callout(execution_context, &handle, input)
+        .await
+        .map_err(Into::into)
 }
 
-pub fn load_bin(
-    execution_context: &ComponentExecutionContext,
+pub async fn load_bin(
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
     handle: String,
     path: String,
 ) -> Result<Vec<u8>, crate::ComponentError> {
@@ -201,12 +208,13 @@ pub fn load_bin(
         &format!("component://{}/{}", handle, path),
         None,
     )
+    .await
     .map(|v| v.body)
     .map_err(Into::into)
 }
 
-pub fn load_text(
-    execution_context: &ComponentExecutionContext,
+pub async fn load_text(
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
     handle: String,
     path: String,
 ) -> Result<String, crate::ComponentError> {
@@ -215,12 +223,13 @@ pub fn load_text(
         &format!("component://{}/{}", handle, path),
         None,
     )
+    .await
     .map(|v| v.body)
     .map_err(Into::into)
 }
 
 pub fn env(execution_context: &ComponentExecutionContext, key: &str) -> Option<String> {
-    match fetch_bin(execution_context, &format!("env://{}", key), None) {
+    match fetch_env(execution_context, key) {
         Ok(v) => Some(String::from_utf8_lossy(&v.body).into_owned()),
         Err(e) => {
             if let Some(response) = e.response {

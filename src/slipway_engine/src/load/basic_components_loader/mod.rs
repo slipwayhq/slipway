@@ -927,7 +927,7 @@ mod tests {
             );
         }
 
-        #[test_log::test]
+        #[common_macros::slipway_test]
         fn it_should_load_from_registry_with_fallback() {
             // This test does not test the actual downloading of the file, but rather the loading
             // of the tar file once it has been downloaded.

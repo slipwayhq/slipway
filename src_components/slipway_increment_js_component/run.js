@@ -1,6 +1,6 @@
 run(input);
 
-function run(input) {
+async function run(input) {
   switch (input.type) {
     case "increment":
       console.error("This is an error.");
@@ -33,7 +33,7 @@ function run(input) {
             ttl: input.ttl - 1,
             result_type: input.result_type
           };
-          return slipway_host.run("increment", callout_input);
+          return await slipway_host.run("increment", callout_input);
         }
       
     case "error":

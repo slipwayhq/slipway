@@ -4,8 +4,9 @@ use crate::{
     errors::{ComponentLoadError, RigError},
     CallChain, ComponentExecutionContext, ComponentHandle, RigExecutionState, RunMetadata,
 };
+use async_trait::async_trait;
 use thiserror::Error;
-use tracing::{span, Level};
+use tracing::{info_span, Instrument};
 
 use super::{
     component_execution_data::ComponentExecutionData,
@@ -47,10 +48,11 @@ pub enum RunComponentError {
     ComponentLoadFailed(#[from] ComponentLoadError),
 }
 
+#[async_trait(?Send)]
 pub trait ComponentRunner: Send + Sync {
     fn identifier(&self) -> String;
 
-    fn run<'call>(
+    async fn run<'call>(
         &self,
         execution_data: &'call ComponentExecutionData<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError>;
@@ -80,7 +82,7 @@ pub enum RunError<THostError> {
     HostError(THostError),
 }
 
-pub fn run_component<'rig, THostError>(
+pub async fn run_component<'rig, THostError>(
     handle: &ComponentHandle,
     state: &RigExecutionState<'rig, '_>,
     component_runners: &[Box<dyn ComponentRunner>],
@@ -89,13 +91,13 @@ pub fn run_component<'rig, THostError>(
     let execution_data =
         state.get_component_execution_data(handle, call_chain, component_runners)?;
 
-    run_component_inner(&execution_data)
+    run_component_inner(&execution_data).await
 }
 
-pub fn run_component_callout<THostError>(
+pub async fn run_component_callout<THostError>(
     handle: &ComponentHandle,
     input: serde_json::Value,
-    execution_context: &ComponentExecutionContext,
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
 ) -> Result<RunComponentResult, RunError<THostError>> {
     let execution_data =
         get_component_execution_data_for_callout(handle, input, execution_context)?;
@@ -106,7 +108,7 @@ pub fn run_component_callout<THostError>(
         handle,
     )?;
 
-    let result = run_component_inner(&execution_data)?;
+    let result = run_component_inner(&execution_data).await?;
 
     validate_component_io(
         ValidationData::Output(&result.output),
@@ -117,15 +119,16 @@ pub fn run_component_callout<THostError>(
     Ok(result)
 }
 
-fn run_component_inner<THostError>(
-    execution_data: &ComponentExecutionData,
+async fn run_component_inner<THostError>(
+    execution_data: &ComponentExecutionData<'_, '_, '_>,
 ) -> Result<RunComponentResult, RunError<THostError>> {
     let handle = format!("{}", execution_data.context.component_handle());
-    let _span_ = span!(Level::INFO, "component", %handle).entered();
 
     for runner in execution_data.context.component_runners {
         let result = runner
             .run(execution_data)
+            .instrument(info_span!("component", %handle))
+            .await
             .map_err(|e| RunError::RunComponentFailed {
                 component_handle: execution_data.context.component_handle().clone(),
                 component_runner: runner.identifier(),

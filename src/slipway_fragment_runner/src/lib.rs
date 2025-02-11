@@ -1,5 +1,6 @@
 use std::{str::FromStr, sync::Arc};
 
+use async_trait::async_trait;
 use slipway_engine::{
     prime_special_component, BasicComponentCache, Component, ComponentExecutionContext,
     ComponentExecutionData, ComponentHandle, ComponentRigging, ComponentRunner,
@@ -7,7 +8,7 @@ use slipway_engine::{
     SlipwayReference, SpecialComponentReference, TryRunComponentResult,
 };
 use slipway_host::run::{no_event_handler, run_rig};
-use tracing::{span, Level};
+use tracing::Instrument;
 
 pub const FRAGMENT_COMPONENT_RUNNER_IDENTIFIER: &str = "fragment";
 pub const INPUT_COMPONENT_HANDLE: &str = "input";
@@ -15,12 +16,13 @@ pub const OUTPUT_COMPONENT_HANDLE: &str = "output";
 
 pub struct FragmentComponentRunner {}
 
+#[async_trait(?Send)]
 impl ComponentRunner for FragmentComponentRunner {
     fn identifier(&self) -> String {
         FRAGMENT_COMPONENT_RUNNER_IDENTIFIER.to_string()
     }
 
-    fn run<'call>(
+    async fn run<'call>(
         &self,
         execution_data: &'call ComponentExecutionData<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError> {
@@ -30,8 +32,6 @@ impl ComponentRunner for FragmentComponentRunner {
             return Ok(TryRunComponentResult::CannotRun);
         };
 
-        let _span_ = span!(Level::INFO, "fragment").entered();
-
         let input = &execution_data.input.value;
 
         let run_result = run_component_fragment(
@@ -39,17 +39,19 @@ impl ComponentRunner for FragmentComponentRunner {
             Arc::clone(component_definition),
             rigging,
             &execution_data.context,
-        )?;
+        )
+        .instrument(tracing::info_span!("fragment"))
+        .await?;
 
         Ok(TryRunComponentResult::Ran { result: run_result })
     }
 }
 
-fn run_component_fragment(
+async fn run_component_fragment(
     input: &serde_json::Value,
     component_definition: Arc<Component<Schema>>,
     rigging: &Rigging,
-    execution_context: &ComponentExecutionContext,
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
 ) -> Result<RunComponentResult, RunComponentError> {
     let input_component_handle = ComponentHandle::from_str(INPUT_COMPONENT_HANDLE)
         .expect("Default input component handle should be valid.");
@@ -109,6 +111,7 @@ fn run_component_fragment(
         component_runners,
         call_chain,
     )
+    .await
     .map_err(|e| RunComponentError::RunCallFailed { source: e.into() })?;
 
     let output_state = run_result

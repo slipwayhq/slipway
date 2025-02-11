@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use serde::Deserialize;
 use slipway_engine::{
     ComponentExecutionData, ComponentRunner, RunComponentError, TryRunComponentResult,
@@ -11,12 +12,13 @@ const DENO_COMPONENT_DEFINITION_FILE_NAME: &str = "slipway_js_component.json";
 
 pub struct DenoComponentRunner {}
 
+#[async_trait(?Send)]
 impl ComponentRunner for DenoComponentRunner {
     fn identifier(&self) -> String {
         DENO_COMPONENT_RUNNER_IDENTIFIER.to_string()
     }
 
-    fn run<'call>(
+    async fn run<'call>(
         &self,
         execution_data: &'call ComponentExecutionData<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError> {

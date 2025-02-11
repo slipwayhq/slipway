@@ -114,11 +114,11 @@ impl DebugCli {
     }
 }
 
-pub(crate) fn debug_rig_from_component_file<W: Write>(
+pub(crate) async fn debug_rig_from_component_file<W: Write>(
     w: &mut W,
     component_path: std::path::PathBuf,
     input_path: Option<std::path::PathBuf>,
-    engine_permissions: Permissions,
+    engine_permissions: Permissions<'_>,
     registry_urls: Vec<String>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Debugging {}", component_path.display())?;
@@ -174,13 +174,13 @@ pub(crate) fn debug_rig_from_component_file<W: Write>(
         },
     };
 
-    debug_rig(w, rig, json_editor, engine_permissions, registry_urls)
+    debug_rig(w, rig, json_editor, engine_permissions, registry_urls).await
 }
 
-pub(crate) fn debug_rig_from_rig_file<W: Write>(
+pub(crate) async fn debug_rig_from_rig_file<W: Write>(
     w: &mut W,
     input: std::path::PathBuf,
-    engine_permissions: Permissions,
+    engine_permissions: Permissions<'_>,
     registry_urls: Vec<String>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Debugging {}", input.display())?;
@@ -192,7 +192,7 @@ pub(crate) fn debug_rig_from_rig_file<W: Write>(
 
     let json_editor = JsonEditorImpl::new();
 
-    debug_rig(w, rig, json_editor, engine_permissions, registry_urls)
+    debug_rig(w, rig, json_editor, engine_permissions, registry_urls).await
 }
 
 fn redirect_to_json_if_wasm(input: &std::path::Path) -> std::path::PathBuf {
@@ -205,11 +205,11 @@ fn redirect_to_json_if_wasm(input: &std::path::Path) -> std::path::PathBuf {
     }
 }
 
-fn debug_rig<W: Write>(
+async fn debug_rig<W: Write>(
     w: &mut W,
     rig: Rig,
     json_editor: impl JsonEditor,
-    engine_permissions: Permissions,
+    engine_permissions: Permissions<'_>,
     registry_urls: Vec<String>,
 ) -> anyhow::Result<()> {
     let components_loader = BasicComponentsLoader::builder()
@@ -264,7 +264,9 @@ fn debug_rig<W: Write>(
                         &json_editor,
                         &component_runners,
                         Arc::clone(&permissions_chain),
-                    ) {
+                    )
+                    .await
+                    {
                         Ok(HandleCommandResult::Continue(Some(s))) => {
                             state = s;
                             writeln!(w)?;

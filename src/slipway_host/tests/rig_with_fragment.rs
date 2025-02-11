@@ -9,8 +9,8 @@ use slipway_engine::{
 
 mod common;
 
-#[test]
-fn run() {
+#[common_macros::slipway_test_async]
+async fn run() {
     let rig: Rig = Rig::for_test(Rigging {
         components: [(
             ComponentHandle::from_str("frag").unwrap(),
@@ -28,7 +28,9 @@ fn run() {
         .collect(),
     });
 
-    let output = get_rig_output(rig, "frag", Permissions::allow_all()).unwrap();
+    let output = get_rig_output(rig, "frag", Permissions::allow_all())
+        .await
+        .unwrap();
 
     assert_eq!(
         output.value,

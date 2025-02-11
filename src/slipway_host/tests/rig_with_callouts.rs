@@ -11,27 +11,27 @@ use slipway_engine::{
 
 mod common;
 
-#[test]
-fn run_no_callout_wasm() {
-    run(0, 1, SLIPWAY_INCREMENT_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn run_no_callout_wasm() {
+    run(0, 1, SLIPWAY_INCREMENT_COMPONENT_TAR_NAME).await;
 }
 
-#[test]
-fn run_two_callouts_wasm() {
-    run(2, 3, SLIPWAY_INCREMENT_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn run_two_callouts_wasm() {
+    run(2, 3, SLIPWAY_INCREMENT_COMPONENT_TAR_NAME).await;
 }
 
-#[test]
-fn run_no_callout_js() {
-    run(0, 1, SLIPWAY_INCREMENT_JS_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn run_no_callout_js() {
+    run(0, 1, SLIPWAY_INCREMENT_JS_COMPONENT_TAR_NAME).await;
 }
 
-#[test]
-fn run_two_callouts_js() {
-    run(2, 3, SLIPWAY_INCREMENT_JS_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn run_two_callouts_js() {
+    run(2, 3, SLIPWAY_INCREMENT_JS_COMPONENT_TAR_NAME).await;
 }
 
-fn run(ttl: u32, expected_result: u32, component: &str) {
+async fn run(ttl: u32, expected_result: u32, component: &str) {
     // Note the callouts are defined in the component,
     // so we don't need to specify them here.
     let rig: Rig = Rig::for_test(Rigging {
@@ -53,7 +53,9 @@ fn run(ttl: u32, expected_result: u32, component: &str) {
         .collect(),
     });
 
-    let output = get_rig_output(rig, "test", Permissions::allow_all()).unwrap();
+    let output = get_rig_output(rig, "test", Permissions::allow_all())
+        .await
+        .unwrap();
 
     assert_eq!(
         output.value,

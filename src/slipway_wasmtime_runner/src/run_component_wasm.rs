@@ -7,10 +7,10 @@ use slipway_engine::{
 use wasmtime::*;
 use wasmtime_wasi::WasiCtxBuilder;
 
-pub fn run_component_wasm(
+pub async fn run_component_wasm(
     input: &serde_json::Value,
     wasm_bytes: Arc<Vec<u8>>,
-    execution_context: &ComponentExecutionContext,
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
 ) -> Result<RunComponentResult, RunComponentError> {
     let prepare_input_start = Instant::now();
 
@@ -22,12 +22,12 @@ pub fn run_component_wasm(
     let prepare_component_start = Instant::now();
 
     // Create an engine and store
-    let engine = Engine::default();
+    let engine = Engine::new(Config::new().async_support(true))?;
     let mut linker = wasmtime::component::Linker::new(&engine);
 
     // Add WASI to linker
     Slipway::add_to_linker(&mut linker, |state: &mut SlipwayHost| state)?;
-    wasmtime_wasi::add_to_linker_sync(&mut linker)?;
+    wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
     // Create a WASI context, including stdin and stdout pipes
     let stdout = OutputObserverStream::new(OutputObserverType::Stdout);
@@ -41,13 +41,13 @@ pub fn run_component_wasm(
     let component = wasmtime::component::Component::new(&engine, &*wasm_bytes)?;
 
     // Create the SlipwayComponent instance.
-    let slipway_component = Slipway::instantiate(&mut store, &component, &linker)?;
+    let slipway_component = Slipway::instantiate_async(&mut store, &component, &linker).await?;
 
     let prepare_component_duration = prepare_component_start.elapsed();
 
     // Call the function
     let call_start = Instant::now();
-    let call_result = slipway_component.call_run(&mut store, &input_string);
+    let call_result = slipway_component.call_run(&mut store, &input_string).await;
     let call_duration = call_start.elapsed();
 
     let process_output_start = Instant::now();

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc, str::FromStr, sync::Arc};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use crate::{
     errors::RigError, Component, ComponentCache, ComponentFiles, ComponentHandle, ComponentInput,
@@ -11,7 +11,7 @@ pub(crate) mod permissions;
 
 #[derive(Clone)]
 pub struct ComponentExecutionData<'call, 'rig, 'runners> {
-    pub input: Rc<ComponentInput>,
+    pub input: Arc<ComponentInput>,
     pub context: ComponentExecutionContext<'call, 'rig, 'runners>,
 }
 

@@ -1,6 +1,5 @@
 use std::{
     collections::{HashMap, HashSet},
-    rc::Rc,
     sync::Arc,
 };
 
@@ -84,7 +83,7 @@ impl<'rig, 'cache> RigExecutionState<'rig, 'cache> {
             component_runners,
             call_chain,
             outer_callouts,
-            Rc::clone(input),
+            Arc::clone(input),
         )
     }
 
@@ -154,7 +153,7 @@ where
 
     let json_metadata = JsonMetadata::from_value(&input);
 
-    let input = Rc::new(ComponentInput {
+    let input = Arc::new(ComponentInput {
         value: input,
         json_metadata,
     });
@@ -175,7 +174,7 @@ pub(super) fn get_component_execution_data<'call, 'rig, 'runners>(
     component_runners: &'runners [Box<dyn ComponentRunner>],
     call_chain: Arc<CallChain<'rig>>,
     outer_callouts: Option<&'rig Callouts>,
-    input: Rc<ComponentInput>,
+    input: Arc<ComponentInput>,
 ) -> Result<ComponentExecutionData<'call, 'rig, 'runners>, RigError>
 where
     'rig: 'call,

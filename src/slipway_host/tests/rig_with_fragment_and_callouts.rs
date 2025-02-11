@@ -9,22 +9,22 @@ use slipway_engine::{
 
 mod common;
 
-#[test]
-fn run_no_callout() {
-    run(0, 2);
+#[common_macros::slipway_test_async]
+async fn run_no_callout() {
+    run(0, 2).await;
 }
 
-#[test]
-fn run_one_callout() {
-    run(1, 3);
+#[common_macros::slipway_test_async]
+async fn run_one_callout() {
+    run(1, 3).await;
 }
 
-#[test]
-fn run_two_callouts() {
-    run(2, 4);
+#[common_macros::slipway_test_async]
+async fn run_two_callouts() {
+    run(2, 4).await;
 }
 
-fn run(ttl: u32, expected_result: u32) {
+async fn run(ttl: u32, expected_result: u32) {
     let rig: Rig = Rig::for_test(Rigging {
         components: [(
             ComponentHandle::from_str("frag").unwrap(),
@@ -44,7 +44,9 @@ fn run(ttl: u32, expected_result: u32) {
         .collect(),
     });
 
-    let output = get_rig_output(rig, "frag", Permissions::allow_all()).unwrap();
+    let output = get_rig_output(rig, "frag", Permissions::allow_all())
+        .await
+        .unwrap();
 
     assert_eq!(
         output.value,

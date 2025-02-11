@@ -33,6 +33,9 @@ url = { workspace = true }
 tar = { workspace = true }
 walkdir = { workspace = true }
 paste = { workspace = true }
+tokio = { workspace = true }
 
 [dev-dependencies]
 common_test_utils = { path = "../common_test_utils" }
+common_macros = { path = "../common_macros" }
+test-log = { workspace = true }

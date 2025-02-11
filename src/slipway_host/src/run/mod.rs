@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use slipway_engine::{
     errors::{ComponentLoadError, ComponentLoadErrorInner},
@@ -6,7 +6,7 @@ use slipway_engine::{
     ComponentRunner, Immutable, Instruction, RigExecutionState, RigSession, RunComponentError,
     RunError,
 };
-use tracing::{span, Level};
+use tracing::{info_span, Instrument};
 
 use crate::ComponentError;
 
@@ -43,14 +43,14 @@ pub trait RunEventHandler<'rig, 'cache, THostError> {
 }
 
 pub struct RunRigResult<'rig> {
-    pub component_outputs: HashMap<&'rig ComponentHandle, Option<Rc<ComponentOutput>>>,
+    pub component_outputs: HashMap<&'rig ComponentHandle, Option<Arc<ComponentOutput>>>,
 }
 
 pub fn no_event_handler<'rig, 'cache>() -> impl RunEventHandler<'rig, 'cache, ()> {
     sink_run_event_handler::SinkRunEventHandler::new()
 }
 
-pub fn run_rig<'rig, 'cache, 'runners, THostError>(
+pub async fn run_rig<'rig, 'cache, 'runners, THostError>(
     rig_session: &'rig RigSession<'cache>,
     event_handler: &mut impl RunEventHandler<'rig, 'cache, THostError>,
     component_runners: &'runners [Box<dyn ComponentRunner>],
@@ -95,7 +95,8 @@ where
                 })
                 .map_err(|e| RunError::HostError(e))?;
 
-            let result = run_component(handle, &state, component_runners, Arc::clone(&call_chain))?;
+            let result =
+                run_component(handle, &state, component_runners, Arc::clone(&call_chain)).await?;
 
             event_handler
                 .handle_component_run_end(ComponentRunEndEvent {
@@ -115,7 +116,7 @@ where
         component_outputs: state
             .component_states
             .iter()
-            .map(|(&k, v)| (k, v.execution_output.as_ref().map(Rc::clone)))
+            .map(|(&k, v)| (k, v.execution_output.as_ref().map(Arc::clone)))
             .collect(),
     })
 }
@@ -143,13 +144,11 @@ fn check_rig_component_permissions<THostError>(
     Ok(())
 }
 
-pub fn run_component_callout(
-    execution_context: &ComponentExecutionContext,
+pub async fn run_component_callout(
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
     handle: &ComponentHandle,
     input: serde_json::Value,
 ) -> Result<serde_json::Value, ComponentError> {
-    let _span_ = span!(Level::INFO, "callout").entered();
-
     let handle_trail = || -> String {
         execution_context
             .call_chain
@@ -158,6 +157,8 @@ pub fn run_component_callout(
 
     let result =
         slipway_engine::run_component_callout::<anyhow::Error>(handle, input, execution_context)
+            .instrument(info_span!("callout"))
+            .await
             .map_err(|e| {
             let mut inner_errors = Vec::new();
             let message = format!("Failed to run component \"{}\"", handle_trail());

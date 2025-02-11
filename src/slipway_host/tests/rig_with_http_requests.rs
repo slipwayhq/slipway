@@ -15,39 +15,39 @@ mod common;
 mod serial_tests {
     use super::*;
 
-    #[test_log::test]
-    fn http_text_wasm() {
-        run("text", 200, SLIPWAY_FETCH_COMPONENT_TAR_NAME);
+    #[common_macros::slipway_test_async]
+    async fn http_text_wasm() {
+        run("text", 200, SLIPWAY_FETCH_COMPONENT_TAR_NAME).await;
     }
 
-    #[test_log::test]
-    fn http_binary_wasm() {
-        run("binary", 200, SLIPWAY_FETCH_COMPONENT_TAR_NAME);
+    #[common_macros::slipway_test_async]
+    async fn http_binary_wasm() {
+        run("binary", 200, SLIPWAY_FETCH_COMPONENT_TAR_NAME).await;
     }
 
-    #[test_log::test]
-    fn http_text_error_status_code_wasm() {
-        run("text", 500, SLIPWAY_FETCH_COMPONENT_TAR_NAME);
+    #[common_macros::slipway_test_async]
+    async fn http_text_error_status_code_wasm() {
+        run("text", 500, SLIPWAY_FETCH_COMPONENT_TAR_NAME).await;
     }
 
-    #[test_log::test]
-    fn http_text_js() {
-        run("text", 200, SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME);
+    #[common_macros::slipway_test_async]
+    async fn http_text_js() {
+        run("text", 200, SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME).await;
     }
 
-    #[test_log::test]
-    fn http_binary_js() {
-        run("binary", 200, SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME);
+    #[common_macros::slipway_test_async]
+    async fn http_binary_js() {
+        run("binary", 200, SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME).await;
     }
 
-    #[test_log::test]
-    fn http_text_error_status_code_js() {
-        run("text", 500, SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME);
+    #[common_macros::slipway_test_async]
+    async fn http_text_error_status_code_js() {
+        run("text", 500, SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME).await;
     }
 
     const BODY: &str = "test_body💖";
 
-    fn run(file_type: &str, status_code: u16, component: &str) {
+    async fn run(file_type: &str, status_code: u16, component: &str) {
         let test_server = TestServer::start_for_call(
             "/foo/bar".to_string(),
             "PUT".to_string(),
@@ -85,7 +85,9 @@ mod serial_tests {
             .collect(),
         });
 
-        let component_output = get_rig_output(rig, "test", Permissions::allow_all()).unwrap();
+        let component_output = get_rig_output(rig, "test", Permissions::allow_all())
+            .await
+            .unwrap();
         test_server.stop();
 
         let output = serde_json::from_value::<Output>(component_output.value.clone()).unwrap();

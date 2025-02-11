@@ -13,15 +13,15 @@ use slipway_engine::{
 
 mod common;
 
-#[test_log::test]
-fn test_fetch_callout_wasm() {
-    test_fetch_callout(SLIPWAY_FETCH_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn test_fetch_callout_wasm() {
+    test_fetch_callout(SLIPWAY_FETCH_COMPONENT_TAR_NAME).await;
 }
-#[test_log::test]
-fn test_fetch_callout_js() {
-    test_fetch_callout(SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn test_fetch_callout_js() {
+    test_fetch_callout(SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME).await;
 }
-fn test_fetch_callout(component: &str) {
+async fn test_fetch_callout(component: &str) {
     let rig: Rig = Rig::for_test(Rigging {
         components: [(
             ComponentHandle::from_str("test").unwrap(),
@@ -46,7 +46,9 @@ fn test_fetch_callout(component: &str) {
         .collect(),
     });
 
-    let component_output = get_rig_output(rig, "test", Permissions::allow_all()).unwrap();
+    let component_output = get_rig_output(rig, "test", Permissions::allow_all())
+        .await
+        .unwrap();
     let output = serde_json::from_value::<Output>(component_output.value.clone()).unwrap();
 
     // Expected {"value":13} because increment_ten component adds 10 instead of 1.

@@ -1,7 +1,11 @@
 use super::primitives::Hash;
-use std::{collections::HashSet, rc::Rc};
+use std::{collections::HashSet, sync::Arc};
 
 use crate::{ComponentHandle, ComponentRigging, JsonMetadata, RunMetadata};
+
+// NOTE: The Arcs in this struct can actually be Rc, because we run in a single
+// threaded async runtime. However, because Wasmtime requires Send we are using
+// Arc to keep it happy.
 
 #[derive(Clone, Debug)]
 pub struct ComponentState<'rig> {
@@ -11,16 +15,16 @@ pub struct ComponentState<'rig> {
 
     /// The overridden input, with references unresolved. This overrides the input defined
     /// in the rigging.
-    pub input_override: Option<Rc<ComponentInputOverride>>,
+    pub input_override: Option<Arc<ComponentInputOverride>>,
 
     /// The overridden output. This overrides the `execution_output`.
-    pub output_override: Option<Rc<ComponentOutputOverride>>,
+    pub output_override: Option<Arc<ComponentOutputOverride>>,
 
     /// When a component is ready to be executed, this will contain the input with all references resolved.
-    pub execution_input: Option<Rc<ComponentInput>>,
+    pub execution_input: Option<Arc<ComponentInput>>,
 
     /// The output of the component after it has been executed.
-    pub execution_output: Option<Rc<ComponentOutput>>,
+    pub execution_output: Option<Arc<ComponentOutput>>,
 }
 
 impl ComponentState<'_> {

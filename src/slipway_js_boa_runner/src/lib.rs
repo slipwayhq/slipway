@@ -1,8 +1,10 @@
+use async_trait::async_trait;
 use serde::Deserialize;
 use slipway_engine::{
     ComponentExecutionData, ComponentRunner, RunComponentError, TryRunComponentResult,
 };
 
+mod async_environment;
 mod boa_environment;
 mod host;
 mod run_component_javascript;
@@ -12,12 +14,13 @@ const BOA_COMPONENT_DEFINITION_FILE_NAME: &str = "slipway_js_component.json";
 
 pub struct BoaComponentRunner {}
 
+#[async_trait(?Send)]
 impl ComponentRunner for BoaComponentRunner {
     fn identifier(&self) -> String {
         BOA_COMPONENT_RUNNER_IDENTIFIER.to_string()
     }
 
-    fn run<'call>(
+    async fn run<'call>(
         &self,
         execution_data: &'call ComponentExecutionData<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError> {
@@ -36,7 +39,8 @@ impl ComponentRunner for BoaComponentRunner {
             input,
             boa_definition,
             &execution_data.context,
-        )?;
+        )
+        .await?;
 
         Ok(TryRunComponentResult::Ran { result: run_result })
     }

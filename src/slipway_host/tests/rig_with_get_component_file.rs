@@ -18,27 +18,27 @@ const SCHEMA_STR: &str = include_str!(
 );
 const SCHEMA_BYTES: &[u8] = SCHEMA_STR.as_bytes();
 
-#[test]
-fn get_component_file_text_wasm() {
-    run("text", SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn get_component_file_text_wasm() {
+    run("text", SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME).await;
 }
 
-#[test]
-fn get_component_file_binary_wasm() {
-    run("binary", SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn get_component_file_binary_wasm() {
+    run("binary", SLIPWAY_COMPONENT_FILE_COMPONENT_TAR_NAME).await;
 }
 
-#[test]
-fn get_component_file_text_js() {
-    run("text", SLIPWAY_COMPONENT_FILE_JS_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn get_component_file_text_js() {
+    run("text", SLIPWAY_COMPONENT_FILE_JS_COMPONENT_TAR_NAME).await;
 }
 
-#[test]
-fn get_component_file_binary_js() {
-    run("binary", SLIPWAY_COMPONENT_FILE_JS_COMPONENT_TAR_NAME);
+#[common_macros::slipway_test_async]
+async fn get_component_file_binary_js() {
+    run("binary", SLIPWAY_COMPONENT_FILE_JS_COMPONENT_TAR_NAME).await;
 }
 
-fn run(file_type: &str, component: &str) {
+async fn run(file_type: &str, component: &str) {
     let rig: Rig = Rig::for_test(Rigging {
         components: [(
             ComponentHandle::from_str("test").unwrap(),
@@ -61,7 +61,9 @@ fn run(file_type: &str, component: &str) {
         .collect(),
     });
 
-    let component_output = get_rig_output(rig, "test", Permissions::allow_all()).unwrap();
+    let component_output = get_rig_output(rig, "test", Permissions::allow_all())
+        .await
+        .unwrap();
 
     let output = serde_json::from_value::<Output>(component_output.value.clone()).unwrap();
 

@@ -1,6 +1,11 @@
+use std::future::Future;
+
 use boa_engine::{
     js_string,
-    object::{builtins::JsArrayBuffer, ObjectInitializer},
+    object::{
+        builtins::{JsArrayBuffer, JsPromise},
+        ObjectInitializer,
+    },
     property::{Attribute, PropertyKey},
     Context, JsError, JsResult, JsValue, NativeFunction,
 };
@@ -41,17 +46,38 @@ where
             }};
         }
 
-        add_function!(font);
+        macro_rules! add_function_async {
+            ($name:ident) => {{
+                let f: Box<JsFunction> = Box::new(move |this, args, ctx| {
+                    let future = host_static.$name(this, args, ctx);
+                    // We know our future only holds references to data that lives longer than the Boa runtime,
+                    // but Boa needs the data to be static, so again we transmute to satisfy the requirements.
+                    let future = std::mem::transmute::<
+                        std::pin::Pin<Box<dyn Future<Output = JsResult<JsValue>> + '_>>,
+                        std::pin::Pin<Box<dyn Future<Output = JsResult<JsValue>> + 'static>>,
+                    >(Box::pin(future));
+                    Ok(JsPromise::from_future(future, ctx).into())
+                });
+
+                object_initializer.function(
+                    NativeFunction::from_closure(f),
+                    js_string!(stringify!($name)),
+                    1,
+                );
+            }};
+        }
+
         add_function!(log_trace);
         add_function!(log_debug);
         add_function!(log_info);
         add_function!(log_warn);
         add_function!(log_error);
-        add_function!(fetch_bin);
-        add_function!(fetch_text);
-        add_function!(run);
-        add_function!(load_bin);
-        add_function!(load_text);
+        add_function_async!(font);
+        add_function_async!(fetch_bin);
+        add_function_async!(fetch_text);
+        add_function_async!(run);
+        add_function_async!(load_bin);
+        add_function_async!(load_text);
         add_function!(env);
         add_function!(encode_bin);
         add_function!(decode_bin);
@@ -81,34 +107,6 @@ pub struct SlipwayHost<'call, 'rig, 'runners> {
 impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
     pub fn new(execution_context: &'call ComponentExecutionContext<'call, 'rig, 'runners>) -> Self {
         Self { execution_context }
-    }
-
-    pub fn font(
-        &self,
-        _this: &JsValue,
-        args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
-        if args.is_empty() {
-            return Ok(JsValue::null());
-        }
-
-        let font_stack = get_string_arg(args, 0, context)?;
-
-        let result = ::slipway_host::fonts::font(self.execution_context, font_stack);
-
-        JsValue::from_json(
-            &serde_json::to_value(&result)
-                .map_err(|e| js_error_from("Failed to serialize font".to_string(), e, context))?,
-            context,
-        )
-        .map_err(|e| {
-            js_error_from(
-                "Failed to convert font result to JsValue".to_string(),
-                e,
-                context,
-            )
-        })
     }
 
     pub fn log_trace(
@@ -176,81 +174,135 @@ impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
         Ok(JsValue::null())
     }
 
-    pub fn fetch_bin(
-        &self,
+    pub fn font<'a>(
+        &'a self,
         _this: &JsValue,
         args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
-        let (url, opts) = get_url_and_request_options(args, context)?;
+        context: &'a mut Context,
+    ) -> impl Future<Output = JsResult<JsValue>> + 'a {
+        let font_stack = get_string_arg(args, 0, context);
 
-        ::slipway_host::fetch::fetch_bin(self.execution_context, &url, opts)
-            .map_err(|e| js_error_from_request_error(e, context))
-            .and_then(|response| value_to_js_value(response, context))
-    }
+        async move {
+            let Ok(font_stack) = font_stack else {
+                return Ok(JsValue::null());
+            };
 
-    pub fn fetch_text(
-        &self,
-        _this: &JsValue,
-        args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
-        let (url, opts) = get_url_and_request_options(args, context)?;
+            let result = ::slipway_host::fonts::font(self.execution_context, font_stack).await;
 
-        ::slipway_host::fetch::fetch_text(self.execution_context, &url, opts)
-            .map_err(|e| js_error_from_request_error(e, context))
-            .and_then(|response| value_to_js_value(response, context))
-    }
-
-    pub fn run(
-        &self,
-        _this: &JsValue,
-        args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
-        if args.is_empty() {
-            return Err(js_error(
-                "Expected a handle of a component to run.".to_string(),
+            JsValue::from_json(
+                &serde_json::to_value(&result).map_err(|e| {
+                    js_error_from("Failed to serialize font".to_string(), e, context)
+                })?,
                 context,
-            ));
+            )
+            .map_err(|e| {
+                js_error_from(
+                    "Failed to convert font result to JsValue".to_string(),
+                    e,
+                    context,
+                )
+            })
         }
+    }
 
-        let handle = get_string_arg(args, 0, context)?;
+    pub fn fetch_bin<'a>(
+        &'a self,
+        _this: &JsValue,
+        args: &[JsValue],
+        context: &'a mut Context,
+    ) -> impl Future<Output = JsResult<JsValue>> + 'a {
+        let url_opts = get_url_and_request_options(args, context);
+
+        async move {
+            let (url, opts) = url_opts?;
+            ::slipway_host::fetch::fetch_bin(self.execution_context, &url, opts)
+                .await
+                .map_err(|e| js_error_from_request_error(e, context))
+                .and_then(|response| value_to_js_value(response, context))
+        }
+    }
+
+    pub fn fetch_text<'a>(
+        &'a self,
+        _this: &JsValue,
+        args: &[JsValue],
+        context: &'a mut Context,
+    ) -> impl Future<Output = JsResult<JsValue>> + 'a {
+        let url_opts = get_url_and_request_options(args, context);
+
+        async move {
+            let (url, opts) = url_opts?;
+            ::slipway_host::fetch::fetch_text(self.execution_context, &url, opts)
+                .await
+                .map_err(|e| js_error_from_request_error(e, context))
+                .and_then(|response| value_to_js_value(response, context))
+        }
+    }
+
+    pub fn run<'a>(
+        &'a self,
+        _this: &JsValue,
+        args: &[JsValue],
+        context: &'a mut Context,
+    ) -> impl Future<Output = JsResult<JsValue>> + 'a {
+        let handle = get_string_arg(args, 0, context);
         let input = if args.len() >= 2 {
-            get_json_arg(args, 1, context)?
+            get_json_arg(args, 1, context)
         } else {
-            serde_json::json!({})
+            Ok(serde_json::json!({}))
         };
 
-        ::slipway_host::fetch::run_json(self.execution_context, handle, input)
-            .map_err(|e| js_error_from_component_error(e, context))
-            .and_then(|response| value_to_js_value(response, context))
+        async move {
+            let Ok(handle) = handle else {
+                return Err(js_error(
+                    "Expected the component handle to run.".to_string(),
+                    context,
+                ));
+            };
+
+            let input = input?;
+
+            ::slipway_host::fetch::run_json(self.execution_context, handle, input)
+                .await
+                .map_err(|e| js_error_from_component_error(e, context))
+                .and_then(|response| value_to_js_value(response, context))
+        }
     }
 
-    pub fn load_bin(
-        &self,
+    pub fn load_bin<'a>(
+        &'a self,
         _this: &JsValue,
         args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
-        let (handle, path) = get_handle_and_path(args, context)?;
+        context: &'a mut Context,
+    ) -> impl Future<Output = JsResult<JsValue>> + 'a {
+        let handle_path = get_handle_and_path(args, context);
 
-        ::slipway_host::fetch::load_bin(self.execution_context, handle, path)
-            .map_err(|e| js_error_from_component_error(e, context))
-            .and_then(|response| value_to_js_value(response, context))
+        async move {
+            let (handle, path) = handle_path?;
+
+            ::slipway_host::fetch::load_bin(self.execution_context, handle, path)
+                .await
+                .map_err(|e| js_error_from_component_error(e, context))
+                .and_then(|response| value_to_js_value(response, context))
+        }
     }
 
-    pub fn load_text(
-        &self,
+    pub fn load_text<'a>(
+        &'a self,
         _this: &JsValue,
         args: &[JsValue],
-        context: &mut Context,
-    ) -> JsResult<JsValue> {
-        let (handle, path) = get_handle_and_path(args, context)?;
+        context: &'a mut Context,
+    ) -> impl Future<Output = JsResult<JsValue>> + 'a {
+        let handle_path = get_handle_and_path(args, context);
 
-        ::slipway_host::fetch::load_text(self.execution_context, handle, path)
-            .map_err(|e| js_error_from_component_error(e, context))
-            .and_then(|response| value_to_js_value(response, context))
+        async move {
+            let (handle, path) = handle_path?;
+
+            ::slipway_host::fetch::load_text(self.execution_context, handle, path)
+                .await
+                .map_err(|e| js_error_from_component_error(e, context))
+                .and_then(|response| value_to_js_value(response, context))
+        }
     }
 
     pub fn env(

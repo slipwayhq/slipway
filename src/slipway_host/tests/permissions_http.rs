@@ -15,42 +15,44 @@ mod common;
 mod serial_tests {
     use super::*;
 
-    #[test]
-    fn permissions_http_no_allow_wasm() {
-        permissions_http_no_allow(SLIPWAY_FETCH_COMPONENT_TAR_NAME);
+    #[common_macros::slipway_test_async]
+    async fn permissions_http_no_allow_wasm() {
+        permissions_http_no_allow(SLIPWAY_FETCH_COMPONENT_TAR_NAME).await;
     }
-    #[test]
-    fn permissions_http_no_allow_js() {
-        permissions_http_no_allow(SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME);
+    #[common_macros::slipway_test_async]
+    async fn permissions_http_no_allow_js() {
+        permissions_http_no_allow(SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME).await;
     }
-    fn permissions_http_no_allow(component: &str) {
+    async fn permissions_http_no_allow(component: &str) {
         run(
             Permissions::allow(&vec![Permission::LocalComponent(
                 LocalComponentPermission::Any,
             )]),
             component,
-        );
+        )
+        .await;
     }
 
-    #[test]
-    fn permissions_http_deny_wasm() {
-        permissions_http_deny(SLIPWAY_FETCH_COMPONENT_TAR_NAME);
+    #[common_macros::slipway_test_async]
+    async fn permissions_http_deny_wasm() {
+        permissions_http_deny(SLIPWAY_FETCH_COMPONENT_TAR_NAME).await;
     }
-    #[test]
-    fn permissions_http_deny_js() {
-        permissions_http_deny(SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME);
+    #[common_macros::slipway_test_async]
+    async fn permissions_http_deny_js() {
+        permissions_http_deny(SLIPWAY_FETCH_JS_COMPONENT_TAR_NAME).await;
     }
-    fn permissions_http_deny(component: &str) {
+    async fn permissions_http_deny(component: &str) {
         run(
             Permissions::new(
                 &vec![Permission::All],
                 &vec![Permission::Http(UrlPermission::Any {})],
             ),
             component,
-        );
+        )
+        .await;
     }
 
-    fn run(permissions: Permissions, component: &str) {
+    async fn run(permissions: Permissions<'_>, component: &str) {
         let test_server = TestServer::start_for_call(
             "/foo/bar".to_string(),
             "GET".to_string(),
@@ -81,7 +83,7 @@ mod serial_tests {
             .collect(),
         });
 
-        let maybe_output = get_rig_output(rig, "test", permissions);
+        let maybe_output = get_rig_output(rig, "test", permissions).await;
 
         let Err(error) = maybe_output else {
             panic!("Expected error, got {:?}", maybe_output);

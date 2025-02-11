@@ -11,3 +11,4 @@ slipway_host = { path = "../slipway_host", features = [] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
+async-trait = { workspace = true }

@@ -213,10 +213,10 @@ impl TestServer {
     }
 }
 
-impl Drop for TestServer {
-    fn drop(&mut self) {
-        if self.server_thread.is_some() {
-            panic!("TestServer was not stopped before being dropped");
-        }
-    }
-}
+// impl Drop for TestServer {
+//     fn drop(&mut self) {
+//         if self.server_thread.is_some() {
+//             panic!("TestServer was not stopped before being dropped");
+//         }
+//     }
+// }

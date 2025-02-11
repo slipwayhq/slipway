@@ -1,7 +1,7 @@
 use crate::{errors::RigError, ComponentHandle, ComponentInput, RigExecutionState};
 use std::{
     collections::{HashMap, HashSet},
-    rc::Rc,
+    sync::Arc,
 };
 
 use self::{
@@ -137,7 +137,7 @@ pub(super) fn evaluate_component_inputs<'rig, 'cache>(
     // Update the execution input of every component.
     for key in state.session.rig.rigging.components.keys() {
         let component_state = state.get_component_state_mut(key)?;
-        component_state.execution_input = execution_inputs.remove(key).map(Rc::new);
+        component_state.execution_input = execution_inputs.remove(key).map(Arc::new);
         component_state.dependencies.clone_from(
             dependency_map_refs
                 .get(key)

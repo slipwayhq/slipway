@@ -15,7 +15,7 @@ use slipway_engine::{
 };
 use url::Url;
 
-#[test_log::test]
+#[common_macros::slipway_test]
 fn load_component_from_folder() {
     test_component(
         None,
@@ -25,7 +25,7 @@ fn load_component_from_folder() {
     );
 }
 
-#[test_log::test]
+#[common_macros::slipway_test]
 fn load_component_from_folder_with_json_schema_refs() {
     test_component(
         None,
@@ -35,7 +35,7 @@ fn load_component_from_folder_with_json_schema_refs() {
     );
 }
 
-#[test_log::test]
+#[common_macros::slipway_test]
 fn load_component_from_tar_with_json_schema_refs() {
     test_component(
         None,
@@ -48,7 +48,7 @@ fn load_component_from_tar_with_json_schema_refs() {
 mod serial_tests {
     use super::*;
 
-    #[test_log::test]
+    #[common_macros::slipway_test]
     fn load_component_from_url_with_json_schema_refs() {
         let test_server = TestServer::start_from_folder(get_slipway_test_components_path());
 
@@ -66,7 +66,7 @@ mod serial_tests {
         test_server.stop();
     }
 
-    #[test_log::test]
+    #[common_macros::slipway_test]
     fn load_component_from_registry_with_json_schema_refs() {
         let test_server = TestServer::start_from_folder(get_slipway_test_components_path());
 
