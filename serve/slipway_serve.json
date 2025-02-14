@@ -1,0 +1,10 @@
+{
+  "log_level": "debug",
+  "registry_urls": [
+    "file:../slipway_{name}/artifacts/{publisher}.{name}.{version}.tar",
+    "file:../slipway_render/artifacts/{publisher}.{name}.{version}.tar"
+  ],
+  "allow": [
+    { "permission": "all" }
+  ]
+}

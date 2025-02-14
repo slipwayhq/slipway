@@ -1,4 +1,4 @@
-use std::{io::Write, sync::Arc};
+use std::{str::FromStr, sync::Arc};
 
 use anyhow::Context;
 use slipway_engine::{
@@ -34,7 +34,7 @@ pub(super) async fn run_rig(
     let component_cache = BasicComponentCache::primed(&rig, &components_loader)?;
     let session = RigSession::new(rig, &component_cache);
 
-    let mut writer = TracingWriter;
+    let mut writer = TracingWriter::new();
 
     let mut event_handler = SlipwayRunEventHandler::new(&mut writer, None);
     let component_runners = get_component_runners();
@@ -59,7 +59,7 @@ pub(super) async fn run_rig(
     let engine_permissions = Permissions::new(&allow, &deny);
     let call_chain = Arc::new(CallChain::new(engine_permissions));
 
-    slipway_host::run::run_rig(
+    let result = slipway_host::run::run_rig(
         &session,
         &mut event_handler,
         component_runners_slice,
@@ -67,7 +67,19 @@ pub(super) async fn run_rig(
     )
     .await?;
 
-    todo!();
+    result
+        .component_outputs
+        .get(&ComponentHandle::from_str("render").unwrap())
+        .as_ref()
+        .map_or_else(
+            || Err(anyhow::anyhow!("No output from rig")),
+            |output| {
+                Ok(RunRigResult {
+                    handle: ComponentHandle::from_str("render").unwrap(),
+                    output: output.as_ref().unwrap().value.clone(),
+                })
+            },
+        )
 }
 
 #[derive(Debug, Default, serde::Deserialize)]
@@ -84,20 +96,46 @@ pub(super) struct RunRigResult {
     pub output: serde_json::Value,
 }
 
-#[derive(Debug, Clone)]
-struct TracingWriter;
+#[derive(Debug)]
+struct TracingWriter {
+    buffer: String,
+}
 
-impl Write for TracingWriter {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        if let Ok(s) = std::str::from_utf8(buf) {
-            info!("{}", s);
-        } else {
-            info!("{:?}", buf);
+impl TracingWriter {
+    fn new() -> Self {
+        TracingWriter {
+            buffer: String::new(),
         }
-        Ok(buf.len()) // Simulate successful write
+    }
+}
+
+impl std::io::Write for TracingWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        match std::str::from_utf8(buf) {
+            Ok(s) => {
+                self.buffer.push_str(s);
+                while let Some(idx) = self.buffer.find('\n') {
+                    let line = self.buffer.drain(..=idx).collect::<String>();
+                    info!("{}", line.trim_end_matches('\n'));
+                }
+            }
+            Err(_) => {
+                // Fallback for non-UTF8 data
+                self.buffer.push_str(&format!("{:?}", buf));
+                while let Some(idx) = self.buffer.find('\n') {
+                    let line = self.buffer.drain(..=idx).collect::<String>();
+                    info!("{}", line.trim_end_matches('\n'));
+                }
+            }
+        }
+        Ok(buf.len())
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
+        if !self.buffer.is_empty() {
+            info!("{}", self.buffer);
+            self.buffer.clear();
+        }
         Ok(())
     }
 }

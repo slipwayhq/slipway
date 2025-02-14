@@ -34,7 +34,7 @@ tar = { workspace = true }
 walkdir = { workspace = true }
 paste = { workspace = true }
 tokio = { workspace = true }
-axum = { version = "0.8.1", features = ["macros"] }
+actix-web = "4.9.0"
 
 [dev-dependencies]
 common_test_utils = { path = "../common_test_utils" }

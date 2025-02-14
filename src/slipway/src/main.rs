@@ -130,28 +130,28 @@ struct CommonRunArgs {
     permissions: CommonPermissionsArgs,
 }
 
+enum RuntimeType {
+    TokioSingleThread,
+    Actix,
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
-    set_ctrl_c_handler();
-
-    let use_multi_threaded = match args.command {
-        Commands::Serve { .. } => true,
-        _ => false,
+    let runtime_type = if matches!(args.command, Commands::Serve { .. }) {
+        RuntimeType::Actix
+    } else {
+        RuntimeType::TokioSingleThread
     };
 
-    if use_multi_threaded {
-        let mtr = tokio::runtime::Builder::new_multi_thread().build()?;
-        mtr.block_on(async {
-            // Your async main logic goes here
-            main_multi_threaded(args).await
-        });
-    } else {
-        let str = tokio::runtime::Builder::new_current_thread().build()?;
-        str.block_on(async {
-            // Your async main logic goes here
-            main_single_threaded(args).await
-        });
+    match runtime_type {
+        RuntimeType::TokioSingleThread => {
+            let mtr = tokio::runtime::Builder::new_multi_thread().build()?;
+            mtr.block_on(async { main_single_threaded(args).await })?;
+        }
+        RuntimeType::Actix => {
+            actix_web::rt::System::new().block_on(async { main_actix_web(args).await })?;
+        }
     };
 
     Ok(())
@@ -228,15 +228,15 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn main_multi_threaded(args: Cli) -> anyhow::Result<()> {
-    set_ctrl_c_handler();
-
+async fn main_actix_web(args: Cli) -> anyhow::Result<()> {
+    // Note we're not setting a ctrl+c handler here because
+    // the server will handle it.
     match args.command {
         Commands::Serve { path } => {
             serve::serve(path).await?;
         }
         _ => {
-            panic!("Command is not supported in multi-threaded mode.");
+            panic!("Command is not supported in actix-web mode.");
         }
     }
 

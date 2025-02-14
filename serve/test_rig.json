@@ -1,0 +1,90 @@
+{
+  "publisher": "slipwayhq",
+  "name": "test_rig",
+  "version": "0.0.1",
+  "description": "A slipway rig which renders some UI",
+  "constants": {
+    "width": 800,
+    "height": 600
+  },
+  "rigging": {
+    "theme": {
+      "component": "slipwayhq.theme.0.0.1",
+      "input": {
+        "name": "color_light"
+      }
+    },
+    "modify_theme": {
+      "component": "slipwayhq.modify.0.0.1",
+      "input": {
+        "data": "$$.theme.hostConfig",
+        "instructions": [
+          {
+            "type": "set",
+            "path": "fontTypes.monospace.fontFamily",
+            "value": "Departure Mono"
+          }
+        ]
+      }
+    },
+    "render": {
+      "component": "slipwayhq.render.0.0.1",
+      "callouts": {
+        "echarts_demo": "slipwayhq.echarts_demo.0.0.1"
+      },
+      "allow": [
+        { "permission": "font" },
+        { "permission": "registry_component" }
+      ],
+      "input": {
+        "card": {
+          "type": "AdaptiveCard",
+          "version": "1.5",
+          "body": [
+            {
+              "type": "Container",
+              "style": "accent",
+              "separator": true,
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "The quick brown fox jumped over the lazy dog. I repeat, the quick brown fox jumped over the lazy dog. Once more, the quick brown fox jumped over the lazy dog.",
+                  "wrap": true
+                }
+              ]
+            },
+            {
+              "type": "Container",
+              "style": "accent",
+              "separator": false,
+              "items": [
+                {
+                  "type": "TextBlock",
+                  "text": "2"
+                }
+              ]
+            },
+            {
+              "type": "Container",
+              "style": "accent",
+              "height": "stretch",
+              "separator": true,
+              "items": [
+                {
+                  "type": "Image",
+                  "height": "stretch",
+                  "url": "component://echarts_demo?width=$width&height=$height"
+                }
+              ]
+            }
+          ]
+        },
+        "hostConfig": "$$.modify_theme.data",
+        "canvas": {
+          "width": "$.constants.width",
+          "height": "$.constants.height"
+        }
+      }
+    }
+  }
+}
