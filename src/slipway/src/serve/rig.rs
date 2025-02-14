@@ -28,6 +28,7 @@ pub(super) async fn run_rig(
     let rig = parse_rig_json(rig_json)?;
 
     let components_loader = BasicComponentsLoader::builder()
+        .local_base_directory(&state.root)
         .registry_lookup_urls(state.config.registry_urls.clone())
         .build();
 
@@ -67,19 +68,29 @@ pub(super) async fn run_rig(
     )
     .await?;
 
-    result
-        .component_outputs
-        .get(&ComponentHandle::from_str("render").unwrap())
-        .as_ref()
-        .map_or_else(
-            || Err(anyhow::anyhow!("No output from rig")),
-            |output| {
-                Ok(RunRigResult {
-                    handle: ComponentHandle::from_str("render").unwrap(),
-                    output: output.as_ref().unwrap().value.clone(),
-                })
-            },
-        )
+    get_component_output(result)
+}
+
+fn get_component_output(
+    result: slipway_host::run::RunRigResult<'_>,
+) -> Result<RunRigResult, anyhow::Error> {
+    const OUTPUT_COMPONENT_NAMES: [&str; 2] = ["render", "output"];
+
+    for name in OUTPUT_COMPONENT_NAMES.iter() {
+        let handle =
+            &ComponentHandle::from_str(name).context("Failed to parse output component name.")?;
+
+        if let Some(output) = result.component_outputs.get(handle) {
+            if let Some(output) = output.as_ref() {
+                return Ok(RunRigResult {
+                    handle: handle.clone(),
+                    output: output.value.clone(),
+                });
+            }
+        }
+    }
+
+    Err(anyhow::anyhow!("Failed to find output component."))
 }
 
 #[derive(Debug, Default, serde::Deserialize)]
