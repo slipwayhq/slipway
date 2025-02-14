@@ -14,6 +14,10 @@ pub fn parse_rig(input: &str) -> Result<Rig, RigError> {
     serde_json::from_str(input).map_err(|error| RigError::RigParseFailed { error })
 }
 
+pub fn parse_rig_json(input: serde_json::Value) -> Result<Rig, RigError> {
+    serde_json::from_value(input).map_err(|error| RigError::RigParseFailed { error })
+}
+
 pub fn parse_component(
     input: &str,
 ) -> Result<Component<serde_json::Value>, ComponentLoadErrorInner> {

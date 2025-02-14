@@ -8,6 +8,7 @@ mod package;
 mod permissions;
 mod render_state;
 mod run_rig;
+mod serve;
 mod to_view_model;
 mod utils;
 
@@ -88,6 +89,13 @@ pub(crate) enum Commands {
         common: CommonRunArgs,
     },
 
+    /// Serve HTTP requests.
+    #[command(arg_required_else_help = true)]
+    Serve {
+        /// The path to the server configuration files.
+        path: PathBuf,
+    },
+
     /// Package up a Slipway component into a .tar file.
     #[command(arg_required_else_help = true)]
     Package {
@@ -122,10 +130,34 @@ struct CommonRunArgs {
     permissions: CommonPermissionsArgs,
 }
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
+    set_ctrl_c_handler();
+
+    let use_multi_threaded = match args.command {
+        Commands::Serve { .. } => true,
+        _ => false,
+    };
+
+    if use_multi_threaded {
+        let mtr = tokio::runtime::Builder::new_multi_thread().build()?;
+        mtr.block_on(async {
+            // Your async main logic goes here
+            main_multi_threaded(args).await
+        });
+    } else {
+        let str = tokio::runtime::Builder::new_current_thread().build()?;
+        str.block_on(async {
+            // Your async main logic goes here
+            main_single_threaded(args).await
+        });
+    };
+
+    Ok(())
+}
+
+async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
     set_ctrl_c_handler();
 
     match args.command {
@@ -187,6 +219,24 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Wit => {
             println!("{}", WASM_INTERFACE_TYPE_STR);
+        }
+        Commands::Serve { path: _ } => {
+            panic!("Serve command is not supported in single-threaded mode.");
+        }
+    }
+
+    Ok(())
+}
+
+async fn main_multi_threaded(args: Cli) -> anyhow::Result<()> {
+    set_ctrl_c_handler();
+
+    match args.command {
+        Commands::Serve { path } => {
+            serve::serve(path).await?;
+        }
+        _ => {
+            panic!("Command is not supported in multi-threaded mode.");
         }
     }
 

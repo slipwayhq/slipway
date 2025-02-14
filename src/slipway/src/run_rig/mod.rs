@@ -50,9 +50,15 @@ pub(super) async fn run_rig<W: Write>(
     Ok(())
 }
 
-struct SlipwayRunEventHandler<'w, W: Write> {
+pub(super) struct SlipwayRunEventHandler<'w, W: Write> {
     w: &'w mut W,
     save_path: Option<PathBuf>,
+}
+
+impl<'w, W: Write> SlipwayRunEventHandler<'w, W> {
+    pub fn new(w: &'w mut W, save_path: Option<PathBuf>) -> Self {
+        Self { w, save_path }
+    }
 }
 
 impl<'rig, 'cache, W: Write> RunEventHandler<'rig, 'cache, HostError>
