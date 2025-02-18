@@ -297,20 +297,28 @@ async fn get_rig(
 
             let full_url = format!("{}://{}{}", scheme, host, path);
 
-            let authorization = req
-                .extensions()
-                .get::<RequestState>()
-                .and_then(|state| state.authorized_header.as_ref())
-                .map(|header| format!("&authorization={}", header))
-                .unwrap_or_default();
+            let mut qs = url::form_urlencoded::Serializer::new(String::new());
 
-            Ok(RigResponse::Html(format!(
-                r#"<html><body style="margin:0px"><img src="{}?format={}{authorization}"/></body></html>"#,
-                full_url,
+            qs.append_pair(
+                "format",
                 match query.format {
                     Some(RigResultFormat::JpegHtmlNoEmbed) => "jpeg",
                     _ => "png",
-                }
+                },
+            );
+
+            if let Some(authorization) = req
+                .extensions()
+                .get::<RequestState>()
+                .and_then(|state| state.authorized_header.as_ref())
+            {
+                qs.append_pair("authorization", authorization);
+            }
+
+            Ok(RigResponse::Html(format!(
+                r#"<html><body style="margin:0px"><img src="{}?{}"/></body></html>"#,
+                full_url,
+                qs.finish()
             )))
         }
         _ => get_rig_inner(path.rig_name, query.format, state).await,
