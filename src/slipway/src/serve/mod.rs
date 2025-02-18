@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -6,7 +7,7 @@ use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::http::header::ContentType;
 use actix_web::http::StatusCode;
 use actix_web::middleware::{from_fn, Next};
-use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{get, web, App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::Context;
 use serde::Deserialize;
 use slipway_engine::Permission;
@@ -23,6 +24,20 @@ struct ServeState {
     pub root: PathBuf,
     pub config: SlipwayServeConfig,
     pub expected_authorization_header: Option<String>,
+}
+
+impl ServeState {
+    pub fn new(
+        root: PathBuf,
+        config: SlipwayServeConfig,
+        expected_authorization_header: Option<String>,
+    ) -> Self {
+        Self {
+            root,
+            config,
+            expected_authorization_header,
+        }
+    }
 }
 
 #[derive(Debug, Default, serde::Deserialize, Clone)]
@@ -71,11 +86,7 @@ async fn serve_config(root: PathBuf, config: SlipwayServeConfig) -> anyhow::Resu
         warn!("No authorization header required for requests.");
     }
 
-    let state = web::Data::new(ServeState {
-        root,
-        config,
-        expected_authorization_header,
-    });
+    let state = web::Data::new(ServeState::new(root, config, expected_authorization_header));
 
     HttpServer::new(move || {
         App::new()
@@ -88,6 +99,11 @@ async fn serve_config(root: PathBuf, config: SlipwayServeConfig) -> anyhow::Resu
     .await?;
 
     Ok(())
+}
+
+#[derive(Clone)]
+struct RequestState {
+    pub authorized_header: Option<String>,
 }
 
 async fn auth_middleware(
@@ -103,15 +119,33 @@ async fn auth_middleware(
         let actual_authorization_header = req
             .headers()
             .get("Authorization")
-            .and_then(|v| v.to_str().ok());
+            .and_then(|v| v.to_str().map(Cow::Borrowed).ok())
+            .unwrap_or_else(|| {
+                let query_string = req.query_string();
+                // convert query string into a map
+                let query_map: std::collections::HashMap<_, _> =
+                    url::form_urlencoded::parse(query_string.as_bytes()).collect();
 
-        if actual_authorization_header != Some(expected_authorization_header) {
+                let query_auth = query_map.get("authorization");
+
+                query_auth.cloned().unwrap_or(Cow::Borrowed(""))
+            });
+
+        if actual_authorization_header.as_ref() != expected_authorization_header.as_str() {
             return Err(ServeError::UserFacing(
                 StatusCode::UNAUTHORIZED,
                 "Unauthorized".to_string(),
             )
             .into());
         }
+
+        req.extensions_mut().insert(RequestState {
+            authorized_header: Some(actual_authorization_header.into_owned()),
+        });
+    } else {
+        req.extensions_mut().insert(RequestState {
+            authorized_header: None,
+        });
     }
 
     next.call(req).await
@@ -263,8 +297,15 @@ async fn get_rig(
 
             let full_url = format!("{}://{}{}", scheme, host, path);
 
+            let authorization = req
+                .extensions()
+                .get::<RequestState>()
+                .and_then(|state| state.authorized_header.as_ref())
+                .map(|header| format!("&authorization={}", header))
+                .unwrap_or_default();
+
             Ok(RigResponse::Html(format!(
-                r#"<html><body style="margin:0px"><img src="{}?format={}"/></body></html>"#,
+                r#"<html><body style="margin:0px"><img src="{}?format={}{authorization}"/></body></html>"#,
                 full_url,
                 match query.format {
                     Some(RigResultFormat::JpegHtmlNoEmbed) => "jpeg",
