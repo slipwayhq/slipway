@@ -33,7 +33,11 @@ pub(super) async fn run_rig<W: Write>(
     let component_cache = BasicComponentCache::primed(&rig, &components_loader)?;
     let session = RigSession::new(rig, &component_cache);
 
-    let mut event_handler = SlipwayRunEventHandler { w, save_path };
+    let mut event_handler = SlipwayRunEventHandler::new(
+        w,
+        save_path,
+        crate::render_state::PrintComponentOutputsType::LeafComponents,
+    );
     let component_runners = get_component_runners();
     let component_runners_slice = component_runners.as_slice();
 
@@ -53,11 +57,20 @@ pub(super) async fn run_rig<W: Write>(
 pub(super) struct SlipwayRunEventHandler<'w, W: Write> {
     w: &'w mut W,
     save_path: Option<PathBuf>,
+    write_outputs_type: crate::render_state::PrintComponentOutputsType,
 }
 
 impl<'w, W: Write> SlipwayRunEventHandler<'w, W> {
-    pub fn new(w: &'w mut W, save_path: Option<PathBuf>) -> Self {
-        Self { w, save_path }
+    pub fn new(
+        w: &'w mut W,
+        save_path: Option<PathBuf>,
+        write_outputs_type: crate::render_state::PrintComponentOutputsType,
+    ) -> Self {
+        Self {
+            w,
+            save_path,
+            write_outputs_type,
+        }
     }
 }
 
@@ -91,7 +104,7 @@ impl<'rig, 'cache, W: Write> RunEventHandler<'rig, 'cache, HostError>
                 self.w,
                 self.save_path.as_ref(),
                 event.state,
-                crate::render_state::PrintComponentOutputsType::LeafComponents,
+                self.write_outputs_type,
             )?;
         } else {
             write_state(self.w, event.state)?;

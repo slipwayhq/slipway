@@ -1,24 +1,28 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use actix_web::body::BoxBody;
+use actix_web::body::{BoxBody, EitherBody, MessageBody};
+use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::http::header::ContentType;
 use actix_web::http::StatusCode;
-use actix_web::{get, web, App, Either, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::middleware::{from_fn, Next};
+use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::Context;
 use serde::Deserialize;
 use slipway_engine::Permission;
 
 use image::{DynamicImage, ImageFormat, RgbaImage};
 use std::io::Cursor;
-use tracing::info;
+use tracing::{info, warn};
 mod rig;
+use base64::prelude::*;
 use thiserror::Error;
 
 #[derive(Clone)]
 struct ServeState {
     pub root: PathBuf,
     pub config: SlipwayServeConfig,
+    pub expected_authorization_header: Option<String>,
 }
 
 #[derive(Debug, Default, serde::Deserialize, Clone)]
@@ -57,16 +61,60 @@ pub async fn serve(path: PathBuf) -> anyhow::Result<()> {
 async fn serve_config(root: PathBuf, config: SlipwayServeConfig) -> anyhow::Result<()> {
     super::configure_tracing(config.log_level.clone());
 
+    let expected_authorization_header = std::env::var("SLIPWAY_AUTHORIZATION_HEADER").ok();
+
     info!("Starting Slipway Serve with config: {:?}", config);
 
-    let state = web::Data::new(ServeState { root, config });
+    if expected_authorization_header.is_some() {
+        info!("Authorization header required for all requests.");
+    } else {
+        warn!("No authorization header required for requests.");
+    }
 
-    HttpServer::new(move || App::new().app_data(state.clone()).service(get_rig))
-        .bind(("127.0.0.1", 8080))?
-        .run()
-        .await?;
+    let state = web::Data::new(ServeState {
+        root,
+        config,
+        expected_authorization_header,
+    });
+
+    HttpServer::new(move || {
+        App::new()
+            .app_data(state.clone())
+            .wrap(from_fn(auth_middleware))
+            .service(get_rig)
+    })
+    .bind(("0.0.0.0", 8080))?
+    .run()
+    .await?;
 
     Ok(())
+}
+
+async fn auth_middleware(
+    req: ServiceRequest,
+    next: Next<impl MessageBody>,
+) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
+    let serve_state = req
+        .app_data::<web::Data<ServeState>>()
+        .expect("ServeState should exist.");
+
+    if let Some(expected_authorization_header) = serve_state.expected_authorization_header.as_ref()
+    {
+        let actual_authorization_header = req
+            .headers()
+            .get("Authorization")
+            .and_then(|v| v.to_str().ok());
+
+        if actual_authorization_header != Some(expected_authorization_header) {
+            return Err(ServeError::UserFacing(
+                StatusCode::UNAUTHORIZED,
+                "Unauthorized".to_string(),
+            )
+            .into());
+        }
+    }
+
+    next.call(req).await
 }
 
 #[derive(Debug, Error)]
@@ -93,9 +141,31 @@ impl actix_web::error::ResponseError for ServeError {
     }
 }
 
+enum RigResponse {
+    Image(ImageResponse),
+    Json(web::Json<serde_json::Value>),
+    Html(String),
+}
+
+impl Responder for RigResponse {
+    type Body = EitherBody<std::string::String>;
+
+    fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
+        match self {
+            RigResponse::Image(image) => image.respond_to(_req).map_into_right_body(),
+            RigResponse::Json(json) => json.respond_to(_req),
+            RigResponse::Html(html) => HttpResponse::Ok()
+                .content_type(ContentType::html())
+                .body(html)
+                .map_into_right_body(),
+        }
+    }
+}
+
 struct ImageResponse {
     image: RgbaImage,
     format: ImageFormat,
+    wrap_in_html: bool,
 }
 
 // Responder
@@ -103,6 +173,8 @@ impl Responder for ImageResponse {
     type Body = BoxBody;
 
     fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
+        let width = self.image.width();
+
         // Convert your RgbaImage to a DynamicImage.
         let dynamic = DynamicImage::ImageRgba8(self.image);
 
@@ -116,6 +188,17 @@ impl Responder for ImageResponse {
 
         // Extract the raw PNG bytes.
         let image_bytes = buf.into_inner();
+
+        if self.wrap_in_html {
+            let html = format!(
+                r#"<html><head><meta name="viewport" content="width={width}"></head><body style="margin:0px; width={width}px"><img src="data:image/png;base64,{}"/></body></html>"#,
+                BASE64_STANDARD.encode(&image_bytes)
+            );
+
+            return HttpResponse::Ok()
+                .content_type(ContentType::html())
+                .body(html);
+        }
 
         let body = image_bytes;
 
@@ -144,14 +227,19 @@ struct GetRigPath {
 #[derive(Deserialize)]
 struct GetRigQuery {
     #[serde(default)]
-    result_type: Option<RigResultType>,
+    format: Option<RigResultFormat>,
 }
 
 #[derive(Deserialize)]
-enum RigResultType {
+#[serde(rename_all = "snake_case")]
+enum RigResultFormat {
     Jpeg,
     Png,
     Json,
+    PngHtml,
+    JpegHtml,
+    PngHtmlNoEmbed,
+    JpegHtmlNoEmbed,
 }
 
 #[get("/rig/{rig_name}")]
@@ -159,18 +247,40 @@ async fn get_rig(
     path: web::Path<GetRigPath>,
     query: web::Query<GetRigQuery>,
     data: web::Data<ServeState>,
-) -> Result<Either<web::Json<serde_json::Value>, ImageResponse>, ServeError> {
+    req: HttpRequest,
+) -> Result<RigResponse, ServeError> {
     let path = path.into_inner();
     let query = query.into_inner();
     let state = data.into_inner();
-    get_rig_inner(path.rig_name, query.result_type, state).await
+
+    match query.format {
+        Some(RigResultFormat::PngHtmlNoEmbed) | Some(RigResultFormat::JpegHtmlNoEmbed) => {
+            let connection_info = req.connection_info();
+            let scheme = connection_info.scheme();
+            let host = connection_info.host();
+            let uri = req.uri();
+            let path = uri.path();
+
+            let full_url = format!("{}://{}{}", scheme, host, path);
+
+            Ok(RigResponse::Html(format!(
+                r#"<html><body style="margin:0px"><img src="{}?format={}"/></body></html>"#,
+                full_url,
+                match query.format {
+                    Some(RigResultFormat::JpegHtmlNoEmbed) => "jpeg",
+                    _ => "png",
+                }
+            )))
+        }
+        _ => get_rig_inner(path.rig_name, query.format, state).await,
+    }
 }
 
 async fn get_rig_inner(
     rig_name: String,
-    result_type: Option<RigResultType>,
+    result_format: Option<RigResultFormat>,
     state: Arc<ServeState>,
-) -> Result<Either<web::Json<serde_json::Value>, ImageResponse>, ServeError> {
+) -> Result<RigResponse, ServeError> {
     let rig_path = state.root.join(format!("{rig_name}.json"));
     let rig_json = match std::fs::File::open(&rig_path) {
         Ok(file) => serde_json::from_reader(file)
@@ -192,21 +302,29 @@ async fn get_rig_inner(
         .await
         .map_err(ServeError::InternalError)?;
 
-    match result_type {
-        None | Some(RigResultType::Png) | Some(RigResultType::Jpeg) => {
+    match result_format {
+        None
+        | Some(RigResultFormat::Png)
+        | Some(RigResultFormat::Jpeg)
+        | Some(RigResultFormat::PngHtml)
+        | Some(RigResultFormat::JpegHtml) => {
             let maybe_image = crate::canvas::get_canvas_image(&result.handle, &result.output);
 
             if let Ok(image) = maybe_image {
-                Ok(Either::Right(ImageResponse {
+                Ok(RigResponse::Image(ImageResponse {
                     image,
-                    format: match result_type {
-                        Some(RigResultType::Jpeg) => ImageFormat::Jpeg,
+                    format: match result_format {
+                        Some(RigResultFormat::Jpeg) => ImageFormat::Jpeg,
                         _ => ImageFormat::Png,
                     },
+                    wrap_in_html: matches!(
+                        result_format,
+                        Some(RigResultFormat::PngHtml) | Some(RigResultFormat::JpegHtml)
+                    ),
                 }))
             } else {
-                match result_type {
-                    None => Ok(Either::Left(web::Json(result.output))),
+                match result_format {
+                    None => Ok(RigResponse::Json(web::Json(result.output))),
                     _ => Err(ServeError::UserFacing(
                         StatusCode::BAD_REQUEST,
                         "Could not render first rig output as an image.".to_string(),
@@ -214,6 +332,9 @@ async fn get_rig_inner(
                 }
             }
         }
-        Some(RigResultType::Json) => Ok(Either::Left(web::Json(result.output))),
+        Some(RigResultFormat::Json) => Ok(RigResponse::Json(web::Json(result.output))),
+        Some(RigResultFormat::JpegHtmlNoEmbed) | Some(RigResultFormat::PngHtmlNoEmbed) => {
+            unreachable!();
+        }
     }
 }

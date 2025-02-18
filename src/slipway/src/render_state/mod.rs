@@ -100,6 +100,7 @@ fn write_component_output<W: Write>(
     Ok(())
 }
 
+#[derive(Debug, Clone, Copy)]
 pub(super) enum PrintComponentOutputsType {
     None,
     LeafComponents,

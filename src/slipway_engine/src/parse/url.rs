@@ -1,7 +1,7 @@
 use std::{borrow::Cow, path::PathBuf};
 
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::LazyLock;
 use tracing::warn;
 use url::Url;
 
@@ -12,8 +12,8 @@ pub enum ProcessedUrl {
     Http(Url),
 }
 
-static RELATIVE_FILE_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^file:(?<path>[^/].*)$").unwrap());
+static RELATIVE_FILE_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^file:(?<path>[^/].*)$").unwrap());
 
 const INCORRECT_FILE_PREFIX: &str = "file://";
 const CORRECT_FILE_PREFIX: &str = "file:///";

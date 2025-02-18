@@ -12,9 +12,9 @@
 
 use std::collections::HashMap;
 
-use once_cell::sync::Lazy;
 use semver::Version;
 use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
 use url::Url;
 
 use crate::errors::RigError;
@@ -224,9 +224,10 @@ pub struct RegistryComponentPermission {
 //     }
 // }
 
-pub(crate) static PERMISSIONS_ALL_VEC: Lazy<Vec<Permission>> = Lazy::new(|| vec![Permission::All]);
+pub(crate) static PERMISSIONS_ALL_VEC: LazyLock<Vec<Permission>> =
+    LazyLock::new(|| vec![Permission::All]);
 
-pub(crate) static PERMISSIONS_NONE_VEC: Lazy<Vec<Permission>> = Lazy::new(Vec::new);
+pub(crate) static PERMISSIONS_NONE_VEC: LazyLock<Vec<Permission>> = LazyLock::new(Vec::new);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(deny_unknown_fields)]

@@ -1,7 +1,7 @@
 use std::{collections::HashSet, str::FromStr};
 
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::LazyLock;
 
 use crate::{errors::RigError, parse::types::primitives::ComponentHandle};
 
@@ -14,7 +14,7 @@ use super::find_json_path_strings::FoundJsonPathString;
 /// an output reference, and add a dependency to that component, but that would add
 /// complexity to a niche scenario. This solution is simpler and only results in reduced
 /// parallelism in these unusual cases.
-static COMPONENT_DEPENDENCY_REGEX: Lazy<Regex> = Lazy::new(|| {
+static COMPONENT_DEPENDENCY_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^\$\.rigging\.(?<component_handle>\w+)\.(output|input)([\.\[]|$)").unwrap()
 });
 

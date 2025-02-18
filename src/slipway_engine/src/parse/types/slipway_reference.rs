@@ -5,17 +5,17 @@ use crate::{
         url::{process_url_str, ProcessedUrl},
     },
 };
-use once_cell::sync::Lazy;
 use regex::Regex;
 use semver::Version;
 use serde::{Deserialize, Deserializer, Serialize};
+use std::sync::LazyLock;
 use std::{fmt::Display, path::PathBuf, str::FromStr};
 use url::Url;
 
 use super::{REGISTRY_PUBLISHER_SEPARATOR, VERSION_SEPARATOR};
 
-pub(crate) static REGISTRY_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"^(?<publisher>\w+)\.(?<name>\w+)\.(?<version>.+)$").unwrap());
+pub(crate) static REGISTRY_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(?<publisher>\w+)\.(?<name>\w+)\.(?<version>.+)$").unwrap());
 
 static PASSTHROUGH_STRING: &str = "pass";
 

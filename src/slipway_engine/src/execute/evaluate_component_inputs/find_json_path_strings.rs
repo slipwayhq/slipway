@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
-use once_cell::sync::Lazy;
 use regex::Regex;
 use serde_json::Value;
+use std::sync::LazyLock;
 
 use super::simple_json_path::SimpleJsonPath;
 
@@ -17,7 +17,7 @@ const OPTIONAL_VALUE_PREFIX: &str = "$?";
 const ARRAY_VALUE_CHAR: &str = "*";
 const ARRAY_VALUE_PREFIX: &str = "$*";
 
-static COMPONENT_OUTPUT_SHORTCUT_REGEX: Lazy<Regex> = Lazy::new(|| {
+static COMPONENT_OUTPUT_SHORTCUT_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(&format!(
         r"^\$\$(?<value_specifier>[\{}\{}\{}])(?<component_handle>\w+)(?<rest>.*)$",
         REQUIRED_VALUE_CHAR, OPTIONAL_VALUE_CHAR, ARRAY_VALUE_CHAR,

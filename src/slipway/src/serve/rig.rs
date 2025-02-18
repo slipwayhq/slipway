@@ -37,7 +37,11 @@ pub(super) async fn run_rig(
 
     let mut writer = TracingWriter::new();
 
-    let mut event_handler = SlipwayRunEventHandler::new(&mut writer, None);
+    let mut event_handler = SlipwayRunEventHandler::new(
+        &mut writer,
+        None,
+        crate::render_state::PrintComponentOutputsType::None,
+    );
     let component_runners = get_component_runners();
     let component_runners_slice = component_runners.as_slice();
 
