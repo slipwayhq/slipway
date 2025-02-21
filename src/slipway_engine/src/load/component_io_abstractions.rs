@@ -35,7 +35,7 @@ pub(super) trait ComponentIOAbstractions: Send + Sync {
         component_reference: &SlipwayReference,
     ) -> Result<Box<dyn FileHandle>, ComponentLoadError>;
 
-    fn load_file_from_url(
+    fn cache_file_from_url(
         &self,
         url: &Url,
         component_reference: &SlipwayReference,
@@ -108,7 +108,7 @@ impl ComponentIOAbstractions for ComponentIOAbstractionsImpl {
         })?))
     }
 
-    fn load_file_from_url(
+    fn cache_file_from_url(
         &self,
         url: &Url,
         component_reference: &SlipwayReference,

@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
-use anyhow::Context;
 use jsonschema::{SchemaResolver, SchemaResolverError, Validator};
 use url::Url;
 
 use crate::{errors::ComponentLoadErrorInner, ComponentFiles};
 
-use super::types::Schema;
+use crate::parse::types::Schema;
 
 const DEFAULT_BASE_URL_PREFIX: &str = "file:///";
 
@@ -86,14 +85,13 @@ impl SchemaResolver for ComponentJsonSchemaResolver {
         _original_reference: &str,
     ) -> Result<Arc<serde_json::Value>, SchemaResolverError> {
         match url.scheme() {
-            "http" | "https" => {
-                let document: serde_json::Value = ureq::get(url.as_str())
-                    .call()
-                    .with_context(|| format!("Failed to load schema from {}", url))?
-                    .into_body()
-                    .read_json()?;
-                Ok(Arc::new(document))
-            }
+            "http" | "https" => Err(anyhow::anyhow!(
+                // We disallow this because firstly a component shouldn't require an internet connection
+                // just to validate it's input/output, and secondly because what is considered valid
+                // shouldn't change over time, which could happen if it referenced an external schema.
+                "Component schemas cannot reference external URLs: {}",
+                url
+            )),
             "file" => {
                 if let Ok(path) = url.to_file_path() {
                     Ok(self

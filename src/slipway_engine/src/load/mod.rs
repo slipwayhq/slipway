@@ -8,9 +8,14 @@ use crate::{
 };
 
 pub(super) mod basic_components_loader;
+mod component_io_abstractions;
+mod filename_from_url;
 mod is_safe_path;
+mod parse_schema;
 mod prime_component_cache;
 pub(super) mod special_components;
+
+pub use parse_schema::parse_schema;
 
 const SLIPWAY_COMPONENT_FILE_NAME: &str = "slipway_component.json";
 

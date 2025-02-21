@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use component_io_abstractions::{ComponentIOAbstractions, ComponentIOAbstractionsImpl};
+use super::component_io_abstractions::{ComponentIOAbstractions, ComponentIOAbstractionsImpl};
 use tracing::debug;
 
 use crate::{
@@ -15,8 +15,6 @@ use crate::{
 
 use super::{special_components::load_special_component, ComponentsLoader, LoadedComponent};
 
-mod component_io_abstractions;
-mod filename_from_url;
 mod load_from_directory;
 mod load_from_tar;
 
@@ -182,7 +180,7 @@ impl BasicComponentsLoader {
             SlipwayReference::Http { url } => {
                 let local_path = self
                     .io_abstractions
-                    .load_file_from_url(url, component_reference)?;
+                    .cache_file_from_url(url, component_reference)?;
 
                 let local_reference = SlipwayReference::Local { path: local_path };
 
@@ -279,7 +277,7 @@ mod tests {
         str::FromStr,
     };
 
-    use component_io_abstractions::FileHandle;
+    use super::super::component_io_abstractions::FileHandle;
 
     use super::*;
 
@@ -359,7 +357,7 @@ mod tests {
                 unimplemented!()
             }
 
-            fn load_file_from_url(
+            fn cache_file_from_url(
                 &self,
                 url: &Url,
                 _component_reference: &SlipwayReference,
@@ -535,7 +533,7 @@ mod tests {
                 unimplemented!()
             }
 
-            fn load_file_from_url(
+            fn cache_file_from_url(
                 &self,
                 _url: &Url,
                 _component_reference: &SlipwayReference,
@@ -658,7 +656,7 @@ mod tests {
                 Ok(Box::new(Cursor::new(data.clone())))
             }
 
-            fn load_file_from_url(
+            fn cache_file_from_url(
                 &self,
                 url: &Url,
                 component_reference: &SlipwayReference,

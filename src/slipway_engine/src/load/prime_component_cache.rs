@@ -7,11 +7,10 @@ use crate::{
     custom_iter_tools::CustomIterTools,
     errors::{ComponentLoadError, ComponentLoadErrorInner},
     load::ComponentsLoader,
-    parse::parse_schema,
     parse_component, Component, ComponentHandle, Rig, Schema, SlipwayReference,
 };
 
-use super::{BasicComponentCache, ComponentCache, ComponentFiles};
+use super::{parse_schema, BasicComponentCache, ComponentCache, ComponentFiles};
 
 pub(super) fn prime_component_cache(
     rig: &Rig,

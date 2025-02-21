@@ -180,7 +180,7 @@ pub fn schema_any() -> Schema {
 }
 
 pub fn schema_valid(schema_name: &str, json: serde_json::Value) -> Schema {
-    crate::parse::parse_schema(
+    crate::load::parse_schema(
         schema_name,
         json,
         Arc::new(ComponentFiles::new(Box::new(MockSchemaResolver {}))),

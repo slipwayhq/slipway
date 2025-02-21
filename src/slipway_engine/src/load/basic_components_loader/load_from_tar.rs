@@ -12,7 +12,7 @@ use crate::{
     ComponentFilesLoader, LoadedComponent, SlipwayReference,
 };
 
-use super::component_io_abstractions::{ComponentIOAbstractions, FileHandle};
+use super::super::component_io_abstractions::{ComponentIOAbstractions, FileHandle};
 
 type FileEntriesResult = (Box<dyn FileHandle>, HashMap<String, FileEntry>);
 

@@ -4,11 +4,8 @@ use crate::errors::{ComponentLoadErrorInner, RigError};
 
 use self::types::{Component, Rig};
 
-mod parse_schema;
 pub(crate) mod types;
 pub(crate) mod url;
-
-pub use parse_schema::parse_schema;
 
 pub fn parse_rig(input: &str) -> Result<Rig, RigError> {
     serde_json::from_str(input).map_err(|error| RigError::RigParseFailed { error })

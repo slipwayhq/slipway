@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use super::component_io_abstractions::ComponentIOAbstractions;
+use super::super::component_io_abstractions::ComponentIOAbstractions;
 
 use crate::{
     errors::{ComponentLoadError, ComponentLoadErrorInner},
