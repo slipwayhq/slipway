@@ -315,6 +315,10 @@ async fn get_rig(
                 qs.append_pair("authorization", authorization);
             }
 
+            // Used as a nonce to force Trmnl to reload the image.
+            let timestamp = chrono::Utc::now().format("%Y-%m-%d-%H-%M-%S").to_string();
+            qs.append_pair("timestamp", &timestamp);
+
             Ok(RigResponse::Html(format!(
                 r#"<html><body style="margin:0px"><img src="{}?{}"/></body></html>"#,
                 full_url,
