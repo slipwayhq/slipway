@@ -5,6 +5,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use async_trait::async_trait;
 use tar::Archive;
 
 use crate::{
@@ -16,12 +17,12 @@ use super::super::component_io_abstractions::{ComponentIOAbstractions, FileHandl
 
 type FileEntriesResult = (Box<dyn FileHandle>, HashMap<String, FileEntry>);
 
-pub(super) fn load_from_tar(
+pub(super) async fn load_from_tar(
     component_reference: &SlipwayReference,
     path: &Path,
     io_abstractions: Arc<dyn ComponentIOAbstractions>,
 ) -> Result<LoadedComponent, ComponentLoadError> {
-    let file: Box<dyn FileHandle> = io_abstractions.load_file(path, component_reference)?;
+    let file: Box<dyn FileHandle> = io_abstractions.load_file(path, component_reference).await?;
 
     let (mut file, all_files) = get_all_file_entries(file, component_reference, path)?;
 
@@ -75,6 +76,7 @@ struct TarComponentFilesLoader {
     data: Arc<TarComponentFileLoaderData>,
 }
 
+#[async_trait(?Send)]
 impl ComponentFilesLoader for TarComponentFilesLoader {
     fn get_component_reference(&self) -> &SlipwayReference {
         &self.data.component_reference
@@ -88,11 +90,14 @@ impl ComponentFilesLoader for TarComponentFilesLoader {
         ":"
     }
 
-    fn exists(&self, file_name: &str) -> Result<bool, ComponentLoadError> {
+    async fn exists(&self, file_name: &str) -> Result<bool, ComponentLoadError> {
         Ok(self.data.entries.contains_key(file_name))
     }
 
-    fn try_get_bin(&self, file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
+    async fn try_get_bin(
+        &self,
+        file_name: &str,
+    ) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
         let Some(entry) = self.data.entries.get(file_name) else {
             return Ok(None);
         };
@@ -114,7 +119,10 @@ impl ComponentFilesLoader for TarComponentFilesLoader {
         Ok(Some(Arc::new(data)))
     }
 
-    fn try_get_text(&self, file_name: &str) -> Result<Option<Arc<String>>, ComponentLoadError> {
+    async fn try_get_text(
+        &self,
+        file_name: &str,
+    ) -> Result<Option<Arc<String>>, ComponentLoadError> {
         let Some(entry) = self.data.entries.get(file_name) else {
             return Ok(None);
         };

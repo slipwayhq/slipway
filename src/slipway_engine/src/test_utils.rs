@@ -18,6 +18,7 @@ use crate::Rigging;
 use crate::Schema;
 use crate::SlipwayId;
 use crate::SlipwayReference;
+use async_trait::async_trait;
 use semver::Version;
 use serde_json::json;
 use serde_json::Value;
@@ -190,6 +191,7 @@ pub fn schema_valid(schema_name: &str, json: serde_json::Value) -> Schema {
 
 pub struct MockSchemaResolver {}
 
+#[async_trait(?Send)]
 impl ComponentFilesLoader for MockSchemaResolver {
     fn get_component_reference(&self) -> &SlipwayReference {
         unimplemented!();
@@ -199,15 +201,21 @@ impl ComponentFilesLoader for MockSchemaResolver {
         unimplemented!()
     }
 
-    fn exists(&self, _file_name: &str) -> Result<bool, ComponentLoadError> {
+    async fn exists(&self, _file_name: &str) -> Result<bool, ComponentLoadError> {
         unimplemented!()
     }
 
-    fn try_get_bin(&self, _file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
+    async fn try_get_bin(
+        &self,
+        _file_name: &str,
+    ) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
         Ok(Some(Arc::new(serde_json::to_vec(&json!({})).unwrap())))
     }
 
-    fn try_get_text(&self, _file_name: &str) -> Result<Option<Arc<String>>, ComponentLoadError> {
+    async fn try_get_text(
+        &self,
+        _file_name: &str,
+    ) -> Result<Option<Arc<String>>, ComponentLoadError> {
         unimplemented!()
     }
 }
@@ -233,6 +241,7 @@ fn no_component_files() -> Arc<ComponentFiles> {
     Arc::new(ComponentFiles::new(Box::new(NoComponentFiles {})))
 }
 
+#[async_trait(?Send)]
 impl ComponentFilesLoader for NoComponentFiles {
     fn get_component_reference(&self) -> &SlipwayReference {
         unimplemented!();
@@ -242,21 +251,28 @@ impl ComponentFilesLoader for NoComponentFiles {
         unimplemented!()
     }
 
-    fn exists(&self, _file_name: &str) -> Result<bool, ComponentLoadError> {
+    async fn exists(&self, _file_name: &str) -> Result<bool, ComponentLoadError> {
         unimplemented!()
     }
 
-    fn try_get_bin(&self, _file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
+    async fn try_get_bin(
+        &self,
+        _file_name: &str,
+    ) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
         unimplemented!()
     }
 
-    fn try_get_text(&self, _file_name: &str) -> Result<Option<Arc<String>>, ComponentLoadError> {
+    async fn try_get_text(
+        &self,
+        _file_name: &str,
+    ) -> Result<Option<Arc<String>>, ComponentLoadError> {
         unimplemented!()
     }
 }
 
+#[async_trait(?Send)]
 impl ComponentsLoader for MockComponentsLoader {
-    fn load_components(
+    async fn load_components(
         &self,
         component_references: &[SlipwayReference],
     ) -> Vec<Result<LoadedComponent, ComponentLoadError>> {
@@ -297,8 +313,9 @@ impl PermissiveMockComponentsLoader {
     }
 }
 
+#[async_trait(?Send)]
 impl ComponentsLoader for PermissiveMockComponentsLoader {
-    fn load_components(
+    async fn load_components(
         &self,
         component_references: &[SlipwayReference],
     ) -> Vec<Result<LoadedComponent, ComponentLoadError>> {
@@ -322,14 +339,18 @@ impl ComponentsLoader for PermissiveMockComponentsLoader {
 }
 
 impl BasicComponentCache {
-    pub fn for_test_with_schemas(
+    pub async fn for_test_with_schemas(
         rig: &Rig,
         schemas: HashMap<String, (Schema, Schema)>,
     ) -> BasicComponentCache {
-        BasicComponentCache::primed(rig, &MockComponentsLoader::new(schemas)).unwrap()
+        BasicComponentCache::primed(rig, &MockComponentsLoader::new(schemas))
+            .await
+            .unwrap()
     }
 
-    pub fn for_test_permissive(rig: &Rig) -> BasicComponentCache {
-        BasicComponentCache::primed(rig, &PermissiveMockComponentsLoader::new()).unwrap()
+    pub async fn for_test_permissive(rig: &Rig) -> BasicComponentCache {
+        BasicComponentCache::primed(rig, &PermissiveMockComponentsLoader::new())
+            .await
+            .unwrap()
     }
 }

@@ -12,7 +12,7 @@ use crate::{
 
 use super::{parse_schema, BasicComponentCache, ComponentCache, ComponentFiles};
 
-pub(super) fn prime_component_cache(
+pub(super) async fn prime_component_cache(
     rig: &Rig,
     components_loader: &impl ComponentsLoader,
 ) -> Result<BasicComponentCache, ComponentLoadError> {
@@ -22,7 +22,7 @@ pub(super) fn prime_component_cache(
 
     while !pending_component_references.is_empty() {
         let next = pending_component_references.drain().collect::<Vec<_>>();
-        let loaded_components = components_loader.load_components(&next);
+        let loaded_components = components_loader.load_components(&next).await;
         loaded_component_references.extend(next);
 
         for maybe_loaded_component in loaded_components {

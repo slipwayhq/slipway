@@ -15,12 +15,14 @@ mod parse_schema;
 mod prime_component_cache;
 pub(super) mod special_components;
 
+use async_trait::async_trait;
 pub use parse_schema::parse_schema;
 
 const SLIPWAY_COMPONENT_FILE_NAME: &str = "slipway_component.json";
 
+#[async_trait(?Send)]
 pub trait ComponentsLoader {
-    fn load_components(
+    async fn load_components(
         &self,
         component_references: &[SlipwayReference],
     ) -> Vec<Result<LoadedComponent, ComponentLoadError>>;
@@ -43,27 +45,36 @@ impl ComponentFiles {
         self.inner.get_component_path()
     }
 
-    pub fn exists(&self, file_name: &str) -> Result<bool, ComponentLoadError> {
-        self.inner.exists(file_name)
+    pub async fn exists(&self, file_name: &str) -> Result<bool, ComponentLoadError> {
+        self.inner.exists(file_name).await
     }
 
-    pub fn try_get_bin(&self, file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
-        self.inner.try_get_bin(file_name)
+    pub async fn try_get_bin(
+        &self,
+        file_name: &str,
+    ) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
+        self.inner.try_get_bin(file_name).await
     }
 
-    pub fn try_get_text(&self, file_name: &str) -> Result<Option<Arc<String>>, ComponentLoadError> {
-        self.inner.try_get_text(file_name)
+    pub async fn try_get_text(
+        &self,
+        file_name: &str,
+    ) -> Result<Option<Arc<String>>, ComponentLoadError> {
+        self.inner.try_get_text(file_name).await
     }
 
     pub fn get_component_file_separator(&self) -> &str {
         self.inner.get_component_file_separator()
     }
 
-    pub fn try_get_json<T>(&self, file_name: &str) -> Result<Option<Arc<T>>, ComponentLoadError>
+    pub async fn try_get_json<T>(
+        &self,
+        file_name: &str,
+    ) -> Result<Option<Arc<T>>, ComponentLoadError>
     where
         T: serde::de::DeserializeOwned,
     {
-        let buffer = self.try_get_bin(file_name)?;
+        let buffer = self.try_get_bin(file_name).await?;
 
         match buffer {
             None => Ok(None),
@@ -88,21 +99,24 @@ impl ComponentFiles {
         }
     }
 
-    pub fn get_json<T>(&self, file_name: &str) -> Result<Arc<T>, ComponentLoadError>
+    pub async fn get_json<T>(&self, file_name: &str) -> Result<Arc<T>, ComponentLoadError>
     where
         T: serde::de::DeserializeOwned,
     {
-        self.try_get_json::<T>(file_name)?
+        self.try_get_json::<T>(file_name)
+            .await?
             .ok_or_else(|| self.get_file_not_found_error(file_name))
     }
 
-    pub fn get_bin(&self, file_name: &str) -> Result<Arc<Vec<u8>>, ComponentLoadError> {
-        self.try_get_bin(file_name)?
+    pub async fn get_bin(&self, file_name: &str) -> Result<Arc<Vec<u8>>, ComponentLoadError> {
+        self.try_get_bin(file_name)
+            .await?
             .ok_or_else(|| self.get_file_not_found_error(file_name))
     }
 
-    pub fn get_text(&self, file_name: &str) -> Result<Arc<String>, ComponentLoadError> {
-        self.try_get_text(file_name)?
+    pub async fn get_text(&self, file_name: &str) -> Result<Arc<String>, ComponentLoadError> {
+        self.try_get_text(file_name)
+            .await?
             .ok_or_else(|| self.get_file_not_found_error(file_name))
     }
 
@@ -124,12 +138,20 @@ impl ComponentFiles {
 
 // We return Arcs here so that the implementors can cache files in memory if they want to.
 // This was originally the case with the WebAssembly files, but currently we don't do any caching.
+#[async_trait(?Send)]
 pub trait ComponentFilesLoader: Send + Sync {
     fn get_component_reference(&self) -> &SlipwayReference;
     fn get_component_path(&self) -> &Path;
-    fn exists(&self, file_name: &str) -> Result<bool, ComponentLoadError>;
-    fn try_get_bin(&self, file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError>;
-    fn try_get_text(&self, file_name: &str) -> Result<Option<Arc<String>>, ComponentLoadError>;
+
+    async fn exists(&self, file_name: &str) -> Result<bool, ComponentLoadError>;
+    async fn try_get_bin(
+        &self,
+        file_name: &str,
+    ) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError>;
+    async fn try_get_text(
+        &self,
+        file_name: &str,
+    ) -> Result<Option<Arc<String>>, ComponentLoadError>;
 
     fn get_component_file_separator(&self) -> &str {
         "/"
@@ -186,8 +208,11 @@ impl BasicComponentCache {
         }
     }
 
-    pub fn primed(rig: &Rig, loader: &impl ComponentsLoader) -> Result<Self, ComponentLoadError> {
-        prime_component_cache::prime_component_cache(rig, loader)
+    pub async fn primed(
+        rig: &Rig,
+        loader: &impl ComponentsLoader,
+    ) -> Result<Self, ComponentLoadError> {
+        prime_component_cache::prime_component_cache(rig, loader).await
     }
 
     pub fn for_primed(components: HashMap<SlipwayReference, PrimedComponent>) -> Self {

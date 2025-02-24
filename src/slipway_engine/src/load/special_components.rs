@@ -1,3 +1,5 @@
+use async_trait::async_trait;
+
 use crate::{
     ComponentFilesLoader, LoadedComponent, PrimedComponent, SlipwayReference,
     SpecialComponentReference,
@@ -60,6 +62,7 @@ struct NoFiles {
     reference: SlipwayReference,
 }
 
+#[async_trait(?Send)]
 impl ComponentFilesLoader for NoFiles {
     fn get_component_reference(&self) -> &SlipwayReference {
         &self.reference
@@ -69,18 +72,18 @@ impl ComponentFilesLoader for NoFiles {
         std::path::Path::new(".")
     }
 
-    fn exists(&self, _file_name: &str) -> Result<bool, crate::errors::ComponentLoadError> {
+    async fn exists(&self, _file_name: &str) -> Result<bool, crate::errors::ComponentLoadError> {
         Ok(false)
     }
 
-    fn try_get_bin(
+    async fn try_get_bin(
         &self,
         _file_name: &str,
     ) -> Result<Option<std::sync::Arc<Vec<u8>>>, crate::errors::ComponentLoadError> {
         Ok(None)
     }
 
-    fn try_get_text(
+    async fn try_get_text(
         &self,
         _file_name: &str,
     ) -> Result<Option<std::sync::Arc<String>>, crate::errors::ComponentLoadError> {

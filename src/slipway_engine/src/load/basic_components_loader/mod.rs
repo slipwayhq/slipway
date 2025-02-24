@@ -5,6 +5,8 @@ use std::{
 };
 
 use super::component_io_abstractions::{ComponentIOAbstractions, ComponentIOAbstractionsImpl};
+use async_trait::async_trait;
+use futures::future::join_all;
 use tracing::debug;
 
 use crate::{
@@ -128,72 +130,30 @@ impl Default for BasicComponentsLoader {
     }
 }
 
+#[async_trait(?Send)]
 impl ComponentsLoader for BasicComponentsLoader {
-    fn load_components(
+    async fn load_components(
         &self,
         component_references: &[SlipwayReference],
     ) -> Vec<Result<LoadedComponent, ComponentLoadError>> {
-        component_references
-            .iter()
-            .map(|r| self.load_component(r))
-            .collect()
+        let futures = component_references.iter().map(|r| self.load_component(r));
+        join_all(futures).await
     }
 }
 
 impl BasicComponentsLoader {
-    fn load_component(
+    async fn load_component(
         &self,
         component_reference: &SlipwayReference,
     ) -> Result<LoadedComponent, ComponentLoadError> {
         debug!("Loading component: {}", component_reference);
         match component_reference {
             SlipwayReference::Special(inner) => Ok(load_special_component(inner)),
-            SlipwayReference::Local { path } => {
-                let path = if path.is_relative() {
-                    Cow::Owned(self.local_base_directory.join(path))
-                } else {
-                    Cow::Borrowed(path)
-                };
-
-                if self.io_abstractions.is_dir(&path) {
-                    load_from_directory::load_from_directory(
-                        component_reference,
-                        &path,
-                        Arc::clone(&self.io_abstractions),
-                    )
-                } else if path.extension() == Some("tar".as_ref()) {
-                    load_from_tar::load_from_tar(
-                        component_reference,
-                        &path,
-                        Arc::clone(&self.io_abstractions),
-                    )
-                } else {
-                    Err(ComponentLoadError::new(
-                        component_reference,
-                        ComponentLoadErrorInner::FileLoadFailed {
-                            path: path.to_string_lossy().to_string(),
-                            error: "Only directories and tar files are supported".to_string(),
-                        },
-                    ))
-                }
+            SlipwayReference::Local { path: _ } => {
+                self.load_local_component(component_reference).await
             }
-            SlipwayReference::Http { url } => {
-                let local_path = self
-                    .io_abstractions
-                    .cache_file_from_url(url, component_reference)?;
-
-                let local_reference = SlipwayReference::Local { path: local_path };
-
-                let result = self.load_component(&local_reference);
-
-                match result {
-                    Err(e) => Err(ComponentLoadError::new(component_reference, e.error)),
-                    Ok(c) => Ok(LoadedComponent::new(
-                        component_reference.clone(),
-                        c.definition,
-                        c.files,
-                    )),
-                }
+            SlipwayReference::Http { url: _ } => {
+                self.load_http_component(component_reference).await
             }
             SlipwayReference::Registry {
                 publisher,
@@ -230,13 +190,20 @@ impl BasicComponentsLoader {
                             )
                         })?;
 
-                    let url_reference = match processed_url {
-                        ProcessedUrl::RelativePath(path) => SlipwayReference::Local { path },
-                        ProcessedUrl::AbsolutePath(path) => SlipwayReference::Local { path },
-                        ProcessedUrl::Http(url) => SlipwayReference::Http { url },
+                    let result = match processed_url {
+                        ProcessedUrl::RelativePath(path) => {
+                            self.load_local_component(&SlipwayReference::Local { path })
+                                .await
+                        }
+                        ProcessedUrl::AbsolutePath(path) => {
+                            self.load_local_component(&SlipwayReference::Local { path })
+                                .await
+                        }
+                        ProcessedUrl::Http(url) => {
+                            self.load_http_component(&SlipwayReference::Http { url })
+                                .await
+                        }
                     };
-
-                    let result = self.load_component(&url_reference);
 
                     match result {
                         Err(e) => {
@@ -267,6 +234,78 @@ impl BasicComponentsLoader {
             }
         }
     }
+
+    async fn load_http_component(
+        &self,
+        component_reference: &SlipwayReference,
+    ) -> Result<LoadedComponent, ComponentLoadError> {
+        let SlipwayReference::Http { url } = component_reference else {
+            panic!(
+                "Expected SlipwayReference::Http, got: {:?}",
+                component_reference
+            );
+        };
+
+        let local_path = self
+            .io_abstractions
+            .cache_file_from_url(url, component_reference)
+            .await?;
+
+        let local_reference = SlipwayReference::Local { path: local_path };
+
+        let result = self.load_local_component(&local_reference).await;
+
+        match result {
+            Err(e) => Err(ComponentLoadError::new(component_reference, e.error)),
+            Ok(c) => Ok(LoadedComponent::new(
+                component_reference.clone(),
+                c.definition,
+                c.files,
+            )),
+        }
+    }
+
+    async fn load_local_component(
+        &self,
+        component_reference: &SlipwayReference,
+    ) -> Result<LoadedComponent, ComponentLoadError> {
+        let SlipwayReference::Local { path } = component_reference else {
+            panic!(
+                "Expected SlipwayReference::Local, got: {:?}",
+                component_reference
+            );
+        };
+
+        let path = if path.is_relative() {
+            Cow::Owned(self.local_base_directory.join(path))
+        } else {
+            Cow::Borrowed(path)
+        };
+
+        if self.io_abstractions.is_dir(&path).await {
+            load_from_directory::load_from_directory(
+                component_reference,
+                &path,
+                Arc::clone(&self.io_abstractions),
+            )
+            .await
+        } else if path.extension() == Some("tar".as_ref()) {
+            load_from_tar::load_from_tar(
+                component_reference,
+                &path,
+                Arc::clone(&self.io_abstractions),
+            )
+            .await
+        } else {
+            Err(ComponentLoadError::new(
+                component_reference,
+                ComponentLoadErrorInner::FileLoadFailed {
+                    path: path.to_string_lossy().to_string(),
+                    error: "Only directories and tar files are supported".to_string(),
+                },
+            ))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -284,6 +323,7 @@ mod tests {
     mod local_directory {
         use std::ffi::OsStr;
 
+        use common_macros::slipway_test_async;
         use url::Url;
 
         use super::*;
@@ -301,8 +341,9 @@ mod tests {
             url_to_file: HashMap<String, String>,
         }
 
+        #[async_trait(?Send)]
         impl ComponentIOAbstractions for MockComponentIOAbstractions {
-            fn load_bin(
+            async fn load_bin(
                 &self,
                 path: &Path,
                 component_reference: &SlipwayReference,
@@ -329,7 +370,7 @@ mod tests {
                     ))
             }
 
-            fn load_text(
+            async fn load_text(
                 &self,
                 path: &Path,
                 component_reference: &SlipwayReference,
@@ -349,7 +390,7 @@ mod tests {
                     .cloned()
             }
 
-            fn load_file(
+            async fn load_file(
                 &self,
                 _path: &Path,
                 _component_reference: &SlipwayReference,
@@ -357,7 +398,7 @@ mod tests {
                 unimplemented!()
             }
 
-            fn cache_file_from_url(
+            async fn cache_file_from_url(
                 &self,
                 url: &Url,
                 _component_reference: &SlipwayReference,
@@ -366,27 +407,28 @@ mod tests {
                 Ok(PathBuf::from_str(file_path_str).unwrap())
             }
 
-            fn exists(&self, path: &Path) -> bool {
+            async fn exists(&self, path: &Path) -> bool {
                 self.map.bin.contains_key(path.to_string_lossy().as_ref())
                     || self.map.text.contains_key(path.to_string_lossy().as_ref())
             }
 
-            fn is_dir(&self, path: &Path) -> bool {
+            async fn is_dir(&self, path: &Path) -> bool {
                 path == self.component_path
             }
         }
 
-        #[test]
-        fn it_should_load_all_component_files_from_relative_directory() {
+        #[slipway_test_async]
+        async fn it_should_load_all_component_files_from_relative_directory() {
             let component_reference = SlipwayReference::Local {
                 path: PathBuf::from_str("path/to/my_component").unwrap(),
             };
 
-            run_load_all_component_files_tests(component_reference, "path/to/my_component", None);
+            run_load_all_component_files_tests(component_reference, "path/to/my_component", None)
+                .await;
         }
 
-        #[test]
-        fn it_should_load_all_component_files_from_relative_to_base_directory() {
+        #[slipway_test_async]
+        async fn it_should_load_all_component_files_from_relative_to_base_directory() {
             let component_reference = SlipwayReference::Local {
                 path: PathBuf::from_str("path/to/my_component").unwrap(),
             };
@@ -395,11 +437,12 @@ mod tests {
                 component_reference,
                 "some/other/path/to/my_component",
                 Some("some/other"),
-            );
+            )
+            .await;
         }
 
-        #[test]
-        fn it_should_load_all_component_files_from_relative_to_absolute_base_directory() {
+        #[slipway_test_async]
+        async fn it_should_load_all_component_files_from_relative_to_absolute_base_directory() {
             let component_reference = SlipwayReference::Local {
                 path: PathBuf::from_str("path/to/my_component").unwrap(),
             };
@@ -408,11 +451,12 @@ mod tests {
                 component_reference,
                 "/some/other/path/to/my_component",
                 Some("/some/other"),
-            );
+            )
+            .await;
         }
 
-        #[test]
-        fn it_should_load_all_component_files_from_absolute_directory() {
+        #[slipway_test_async]
+        async fn it_should_load_all_component_files_from_absolute_directory() {
             let component_reference = SlipwayReference::Local {
                 path: PathBuf::from_str("/path/to/my_component").unwrap(),
             };
@@ -421,10 +465,11 @@ mod tests {
                 component_reference,
                 "/path/to/my_component",
                 Some("/some/other"),
-            );
+            )
+            .await;
         }
 
-        fn run_load_all_component_files_tests(
+        async fn run_load_all_component_files_tests(
             component_reference: SlipwayReference,
             path_to_component: &str,
             local_base_directory: Option<&str>,
@@ -465,7 +510,7 @@ mod tests {
 
             let loader = loader_builder.build();
 
-            let result = loader.load_components(&[component_reference]);
+            let result = loader.load_components(&[component_reference]).await;
 
             assert_eq!(result.len(), 1);
 
@@ -476,16 +521,21 @@ mod tests {
                 *loaded
                     .files
                     .get_json::<serde_json::Value>("file1.json")
+                    .await
                     .unwrap(),
                 serde_json::from_str::<serde_json::Value>(file1_content).unwrap()
             );
             assert_eq!(
-                *loaded.files.get_bin("bin_file.bin").unwrap(),
+                *loaded.files.get_bin("bin_file.bin").await.unwrap(),
                 binary_content
             );
 
             // Test that loading asking for `file2.json` fails:
-            match loaded.files.get_json::<serde_json::Value>("file2.json") {
+            match loaded
+                .files
+                .get_json::<serde_json::Value>("file2.json")
+                .await
+            {
                 Ok(_) => panic!("file2.json should not be found"),
                 Err(e) => match e {
                     ComponentLoadError {
@@ -502,8 +552,9 @@ mod tests {
         /// Mock component file loader that always returns the same content for any file.
         struct MockComponentAnyFileIOAbstractions {}
 
+        #[async_trait(?Send)]
         impl ComponentIOAbstractions for MockComponentAnyFileIOAbstractions {
-            fn load_bin(
+            async fn load_bin(
                 &self,
                 path: &Path,
                 _component_reference: &SlipwayReference,
@@ -516,7 +567,7 @@ mod tests {
                 }
             }
 
-            fn load_text(
+            async fn load_text(
                 &self,
                 path: &Path,
                 _component_reference: &SlipwayReference,
@@ -525,7 +576,7 @@ mod tests {
                 Ok("{}".to_string())
             }
 
-            fn load_file(
+            async fn load_file(
                 &self,
                 _path: &Path,
                 _component_reference: &SlipwayReference,
@@ -533,7 +584,7 @@ mod tests {
                 unimplemented!()
             }
 
-            fn cache_file_from_url(
+            async fn cache_file_from_url(
                 &self,
                 _url: &Url,
                 _component_reference: &SlipwayReference,
@@ -541,17 +592,17 @@ mod tests {
                 unimplemented!()
             }
 
-            fn exists(&self, _path: &Path) -> bool {
+            async fn exists(&self, _path: &Path) -> bool {
                 true
             }
 
-            fn is_dir(&self, _path: &Path) -> bool {
+            async fn is_dir(&self, _path: &Path) -> bool {
                 true
             }
         }
 
-        #[test]
-        fn it_only_allow_file_loading_from_component_directory() {
+        #[slipway_test_async]
+        async fn it_only_allow_file_loading_from_component_directory() {
             let component_reference = SlipwayReference::Local {
                 path: PathBuf::from_str("path/to/my_component").unwrap(),
             };
@@ -562,7 +613,7 @@ mod tests {
                 .io_abstractions(Arc::new(io_abstractions))
                 .build();
 
-            let result = loader.load_components(&[component_reference]);
+            let result = loader.load_components(&[component_reference]).await;
 
             assert_eq!(result.len(), 1);
 
@@ -572,12 +623,17 @@ mod tests {
                 *loaded
                     .files
                     .get_json::<serde_json::Value>("file.json")
+                    .await
                     .unwrap(),
                 serde_json::Value::Object(serde_json::Map::new())
             );
 
             // Test that loading from an absolute path fails
-            match loaded.files.get_json::<serde_json::Value>("/bin/file.json") {
+            match loaded
+                .files
+                .get_json::<serde_json::Value>("/bin/file.json")
+                .await
+            {
                 Ok(_) => panic!("loading absolute file should fail"),
                 Err(e) => match e {
                     ComponentLoadError {
@@ -591,7 +647,11 @@ mod tests {
             }
 
             // Test that loading from outside the component fails
-            match loaded.files.get_json::<serde_json::Value>("../file.json") {
+            match loaded
+                .files
+                .get_json::<serde_json::Value>("../file.json")
+                .await
+            {
                 Ok(_) => panic!("loading outside component file should fail"),
                 Err(e) => match e {
                     ComponentLoadError {
@@ -609,6 +669,7 @@ mod tests {
     mod local_and_remote_tar {
         use std::io::Cursor;
 
+        use common_macros::slipway_test_async;
         use semver::Version;
         use tar::{Builder, Header};
         use url::Url;
@@ -622,8 +683,9 @@ mod tests {
 
         impl FileHandle for Cursor<Vec<u8>> {}
 
+        #[async_trait(?Send)]
         impl ComponentIOAbstractions for MockComponentIOAbstractions {
-            fn load_text(
+            async fn load_text(
                 &self,
                 path: &Path,
                 _component_reference: &SlipwayReference,
@@ -632,7 +694,7 @@ mod tests {
                 unimplemented!();
             }
 
-            fn load_bin(
+            async fn load_bin(
                 &self,
                 path: &Path,
                 _component_reference: &SlipwayReference,
@@ -641,7 +703,7 @@ mod tests {
                 unimplemented!();
             }
 
-            fn load_file(
+            async fn load_file(
                 &self,
                 path: &Path,
                 component_reference: &SlipwayReference,
@@ -656,7 +718,7 @@ mod tests {
                 Ok(Box::new(Cursor::new(data.clone())))
             }
 
-            fn cache_file_from_url(
+            async fn cache_file_from_url(
                 &self,
                 url: &Url,
                 component_reference: &SlipwayReference,
@@ -670,11 +732,11 @@ mod tests {
                     })
             }
 
-            fn exists(&self, path: &Path) -> bool {
+            async fn exists(&self, path: &Path) -> bool {
                 self.files.contains_key(path.to_string_lossy().as_ref())
             }
 
-            fn is_dir(&self, path: &Path) -> bool {
+            async fn is_dir(&self, path: &Path) -> bool {
                 self.files.iter().all(|(p, _)| p != &path.to_string_lossy())
             }
         }
@@ -735,13 +797,13 @@ mod tests {
             buffer.into_inner()
         }
 
-        fn assert_result(
+        async fn assert_result(
             loader: BasicComponentsLoader,
             component_reference: SlipwayReference,
             data: MockData,
             expected_component_path: &str,
         ) {
-            let result = loader.load_components(&[component_reference]);
+            let result = loader.load_components(&[component_reference]).await;
 
             assert_eq!(result.len(), 1);
 
@@ -752,16 +814,21 @@ mod tests {
                 *loaded
                     .files
                     .get_json::<serde_json::Value>("file1.json")
+                    .await
                     .unwrap(),
                 serde_json::from_str::<serde_json::Value>(data.file1_content).unwrap()
             );
             assert_eq!(
-                *loaded.files.get_bin("bin_file.bin").unwrap(),
+                *loaded.files.get_bin("bin_file.bin").await.unwrap(),
                 data.bin_content
             );
 
             // Test that loading asking for `file2.json` fails:
-            match loaded.files.get_json::<serde_json::Value>("file2.json") {
+            match loaded
+                .files
+                .get_json::<serde_json::Value>("file2.json")
+                .await
+            {
                 Ok(_) => panic!("file2.json should not be found"),
                 Err(e) => match e {
                     ComponentLoadError {
@@ -775,8 +842,8 @@ mod tests {
             }
         }
 
-        #[test]
-        fn it_should_load_all_component_files_from_relative_tar() {
+        #[slipway_test_async]
+        async fn it_should_load_all_component_files_from_relative_tar() {
             let component_reference = SlipwayReference::Local {
                 path: PathBuf::from_str("path/to/my_component.tar").unwrap(),
             };
@@ -798,11 +865,12 @@ mod tests {
                 component_reference,
                 data,
                 "path/to/my_component.tar",
-            );
+            )
+            .await;
         }
 
-        #[test]
-        fn it_should_load_all_component_files_from_relative_to_base_tar() {
+        #[slipway_test_async]
+        async fn it_should_load_all_component_files_from_relative_to_base_tar() {
             let component_reference = SlipwayReference::Local {
                 path: PathBuf::from_str("path/to/my_component.tar").unwrap(),
             };
@@ -828,11 +896,12 @@ mod tests {
                 component_reference,
                 data,
                 "some/other/path/to/my_component.tar",
-            );
+            )
+            .await;
         }
 
-        #[test]
-        fn it_should_load_all_component_files_from_absolute_tar() {
+        #[slipway_test_async]
+        async fn it_should_load_all_component_files_from_absolute_tar() {
             let component_reference = SlipwayReference::Local {
                 path: PathBuf::from_str("/path/to/my_component.tar").unwrap(),
             };
@@ -855,11 +924,12 @@ mod tests {
                 component_reference,
                 data,
                 "/path/to/my_component.tar",
-            );
+            )
+            .await;
         }
 
-        #[test]
-        fn it_should_load_from_url() {
+        #[slipway_test_async]
+        async fn it_should_load_from_url() {
             // This test does not test the actual downloading of the file, but rather the loading
             // of the tar file once it has been downloaded.
             const URL: &str = "http://example.com/path/to/my_component.tar";
@@ -887,11 +957,12 @@ mod tests {
                 component_reference,
                 data,
                 "path/to/my_component.tar",
-            );
+            )
+            .await;
         }
 
-        #[test]
-        fn it_should_load_from_registry() {
+        #[slipway_test_async]
+        async fn it_should_load_from_registry() {
             // This test does not test the actual downloading of the file, but rather the loading
             // of the tar file once it has been downloaded.
             const URL: &str = "http://example.com/path/to/{publisher}.{name}.{version}.tar";
@@ -922,11 +993,12 @@ mod tests {
                 component_reference,
                 data,
                 "path/to/my_component.tar",
-            );
+            )
+            .await;
         }
 
-        #[common_macros::slipway_test]
-        fn it_should_load_from_registry_with_fallback() {
+        #[slipway_test_async]
+        async fn it_should_load_from_registry_with_fallback() {
             // This test does not test the actual downloading of the file, but rather the loading
             // of the tar file once it has been downloaded.
             const FIRST_URL: &str = "http://wrong.com/path/to/{publisher}.{name}.{version}.tar";
@@ -959,11 +1031,12 @@ mod tests {
                 component_reference,
                 data,
                 "path/to/my_component.tar",
-            );
+            )
+            .await;
         }
 
-        #[test]
-        fn it_should_load_from_local_registry() {
+        #[slipway_test_async]
+        async fn it_should_load_from_local_registry() {
             const URL: &str = "file:path/to/{publisher}.{name}.{version}.tar";
             let component_reference = SlipwayReference::Registry {
                 publisher: "p1".to_string(),
@@ -984,7 +1057,7 @@ mod tests {
                 .io_abstractions(Arc::new(io_abstractions))
                 .build();
 
-            assert_result(loader, component_reference, data, "path/to/p1.n1.1.2.3.tar");
+            assert_result(loader, component_reference, data, "path/to/p1.n1.1.2.3.tar").await;
         }
     }
 }

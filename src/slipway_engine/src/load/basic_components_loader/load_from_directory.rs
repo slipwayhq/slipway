@@ -4,6 +4,8 @@ use std::{
     sync::Arc,
 };
 
+use async_trait::async_trait;
+
 use super::super::component_io_abstractions::ComponentIOAbstractions;
 
 use crate::{
@@ -12,13 +14,15 @@ use crate::{
     ComponentFiles, ComponentFilesLoader, LoadedComponent, SlipwayReference,
 };
 
-pub(super) fn load_from_directory(
+pub(super) async fn load_from_directory(
     component_reference: &SlipwayReference,
     path: &Path,
     io_abstractions: Arc<dyn ComponentIOAbstractions>,
 ) -> Result<LoadedComponent, ComponentLoadError> {
     let definition_path = path.join(SLIPWAY_COMPONENT_FILE_NAME);
-    let definition_string = io_abstractions.load_text(&definition_path, component_reference)?;
+    let definition_string = io_abstractions
+        .load_text(&definition_path, component_reference)
+        .await?;
 
     let component_files = Arc::new(ComponentFiles::new(Box::new(
         DirectoryComponentFilesLoader::new(
@@ -84,6 +88,7 @@ impl DirectoryComponentFilesLoader {
     }
 }
 
+#[async_trait(?Send)]
 impl ComponentFilesLoader for DirectoryComponentFilesLoader {
     fn get_component_reference(&self) -> &SlipwayReference {
         &self.component_reference
@@ -93,35 +98,43 @@ impl ComponentFilesLoader for DirectoryComponentFilesLoader {
         &self.directory
     }
 
-    fn exists(&self, file_name: &str) -> Result<bool, ComponentLoadError> {
+    async fn exists(&self, file_name: &str) -> Result<bool, ComponentLoadError> {
         let path = self.get_valid_file_path(file_name)?;
-        Ok(self.io_abstractions.exists(&path))
+        Ok(self.io_abstractions.exists(&path).await)
     }
 
-    fn try_get_bin(&self, file_name: &str) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
+    async fn try_get_bin(
+        &self,
+        file_name: &str,
+    ) -> Result<Option<Arc<Vec<u8>>>, ComponentLoadError> {
         let path = self.get_valid_file_path(file_name)?;
 
-        if !self.io_abstractions.exists(&path) {
+        if !self.io_abstractions.exists(&path).await {
             return Ok(None);
         }
 
         let file_contents = self
             .io_abstractions
-            .load_bin(&path, &self.component_reference)?;
+            .load_bin(&path, &self.component_reference)
+            .await?;
 
         Ok(Some(Arc::new(file_contents)))
     }
 
-    fn try_get_text(&self, file_name: &str) -> Result<Option<Arc<String>>, ComponentLoadError> {
+    async fn try_get_text(
+        &self,
+        file_name: &str,
+    ) -> Result<Option<Arc<String>>, ComponentLoadError> {
         let path = self.get_valid_file_path(file_name)?;
 
-        if !self.io_abstractions.exists(&path) {
+        if !self.io_abstractions.exists(&path).await {
             return Ok(None);
         }
 
         let file_contents = self
             .io_abstractions
-            .load_text(&path, &self.component_reference)?;
+            .load_text(&path, &self.component_reference)
+            .await?;
 
         Ok(Some(Arc::new(file_contents)))
     }

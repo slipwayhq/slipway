@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use url::Url;
 
 use crate::errors::ComponentLoadErrorInner;
@@ -16,34 +17,35 @@ pub(super) trait FileHandle: Read + Seek + Send {}
 
 impl FileHandle for File {}
 
+#[async_trait(?Send)]
 pub(super) trait ComponentIOAbstractions: Send + Sync {
-    fn load_text(
+    async fn load_text(
         &self,
         path: &Path,
         component_reference: &SlipwayReference,
     ) -> Result<String, ComponentLoadError>;
 
-    fn load_bin(
+    async fn load_bin(
         &self,
         path: &Path,
         component_reference: &SlipwayReference,
     ) -> Result<Vec<u8>, ComponentLoadError>;
 
-    fn load_file(
+    async fn load_file(
         &self,
         path: &Path,
         component_reference: &SlipwayReference,
     ) -> Result<Box<dyn FileHandle>, ComponentLoadError>;
 
-    fn cache_file_from_url(
+    async fn cache_file_from_url(
         &self,
         url: &Url,
         component_reference: &SlipwayReference,
     ) -> Result<PathBuf, ComponentLoadError>;
 
-    fn exists(&self, path: &Path) -> bool;
+    async fn exists(&self, path: &Path) -> bool;
 
-    fn is_dir(&self, path: &Path) -> bool;
+    async fn is_dir(&self, path: &Path) -> bool;
 }
 
 #[derive(Clone)]
@@ -59,8 +61,9 @@ impl ComponentIOAbstractionsImpl {
     }
 }
 
+#[async_trait(?Send)]
 impl ComponentIOAbstractions for ComponentIOAbstractionsImpl {
-    fn load_bin(
+    async fn load_bin(
         &self,
         path: &Path,
         component_reference: &SlipwayReference,
@@ -76,7 +79,7 @@ impl ComponentIOAbstractions for ComponentIOAbstractionsImpl {
         })
     }
 
-    fn load_text(
+    async fn load_text(
         &self,
         path: &Path,
         component_reference: &SlipwayReference,
@@ -92,7 +95,7 @@ impl ComponentIOAbstractions for ComponentIOAbstractionsImpl {
         })
     }
 
-    fn load_file(
+    async fn load_file(
         &self,
         path: &Path,
         component_reference: &SlipwayReference,
@@ -108,7 +111,7 @@ impl ComponentIOAbstractions for ComponentIOAbstractionsImpl {
         })?))
     }
 
-    fn cache_file_from_url(
+    async fn cache_file_from_url(
         &self,
         url: &Url,
         component_reference: &SlipwayReference,
@@ -189,11 +192,11 @@ impl ComponentIOAbstractions for ComponentIOAbstractionsImpl {
         Ok(file_path)
     }
 
-    fn exists(&self, path: &Path) -> bool {
+    async fn exists(&self, path: &Path) -> bool {
         path.exists()
     }
 
-    fn is_dir(&self, path: &Path) -> bool {
+    async fn is_dir(&self, path: &Path) -> bool {
         path.is_dir()
     }
 }
