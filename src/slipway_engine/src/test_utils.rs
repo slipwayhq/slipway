@@ -180,18 +180,19 @@ pub fn schema_any() -> Schema {
     }
 }
 
-pub fn schema_valid(schema_name: &str, json: serde_json::Value) -> Schema {
+pub async fn schema_valid(schema_name: &str, json: serde_json::Value) -> Schema {
     crate::load::parse_schema(
         schema_name,
         json,
         Arc::new(ComponentFiles::new(Box::new(MockSchemaResolver {}))),
     )
+    .await
     .expect("schema should be valid")
 }
 
 pub struct MockSchemaResolver {}
 
-#[async_trait(?Send)]
+#[async_trait]
 impl ComponentFilesLoader for MockSchemaResolver {
     fn get_component_reference(&self) -> &SlipwayReference {
         unimplemented!();
@@ -241,7 +242,7 @@ fn no_component_files() -> Arc<ComponentFiles> {
     Arc::new(ComponentFiles::new(Box::new(NoComponentFiles {})))
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl ComponentFilesLoader for NoComponentFiles {
     fn get_component_reference(&self) -> &SlipwayReference {
         unimplemented!();

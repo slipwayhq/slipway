@@ -25,7 +25,8 @@ impl ComponentRunner for WasmComponentRunner {
         let maybe_wasm_bytes = execution_data
             .context
             .files
-            .try_get_bin(SLIPWAY_COMPONENT_WASM_FILE_NAME)?;
+            .try_get_bin(SLIPWAY_COMPONENT_WASM_FILE_NAME)
+            .await?;
 
         let Some(wasm_bytes) = maybe_wasm_bytes else {
             return Ok(TryRunComponentResult::CannotRun);

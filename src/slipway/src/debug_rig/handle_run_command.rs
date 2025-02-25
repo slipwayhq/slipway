@@ -43,6 +43,7 @@ pub(super) async fn handle_run_command<'rig, 'cache>(
 mod tests {
     use std::path::PathBuf;
 
+    use common_macros::slipway_test_async;
     use serde_json::json;
     use slipway_engine::{
         utils::ch, BasicComponentCache, BasicComponentsLoader, BasicComponentsLoaderBuilder,
@@ -80,13 +81,14 @@ mod tests {
             .build()
     }
 
-    #[common_macros::slipway_test_async]
+    #[slipway_test_async]
     async fn it_should_run_basic_component() {
         let handle = ch("test_component");
         let rig = create_rig(&handle, json!({ "type": "increment", "value": 42}));
 
-        let component_cache =
-            BasicComponentCache::primed(&rig, &create_components_loader()).unwrap();
+        let component_cache = BasicComponentCache::primed(&rig, &create_components_loader())
+            .await
+            .unwrap();
         let rig_session = RigSession::new(rig, &component_cache);
         let mut state = rig_session.initialize().unwrap();
         let component_runners = get_component_runners();
@@ -115,13 +117,14 @@ mod tests {
         }
     }
 
-    #[common_macros::slipway_test_async]
+    #[slipway_test_async]
     async fn it_should_handle_component_that_panics() {
         let handle = ch("test_component");
         let rig = create_rig(&handle, json!({ "type": "panic" }));
 
-        let component_cache =
-            BasicComponentCache::primed(&rig, &create_components_loader()).unwrap();
+        let component_cache = BasicComponentCache::primed(&rig, &create_components_loader())
+            .await
+            .unwrap();
         let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let component_runners = get_component_runners();
@@ -145,13 +148,14 @@ mod tests {
         }
     }
 
-    #[common_macros::slipway_test_async]
+    #[slipway_test_async]
     async fn it_should_handle_component_that_errors() {
         let handle = ch("test_component");
         let rig = create_rig(&handle, json!({ "type": "error" }));
 
-        let component_cache =
-            BasicComponentCache::primed(&rig, &create_components_loader()).unwrap();
+        let component_cache = BasicComponentCache::primed(&rig, &create_components_loader())
+            .await
+            .unwrap();
         let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let component_runners = get_component_runners();

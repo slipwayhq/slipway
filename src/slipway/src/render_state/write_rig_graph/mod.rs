@@ -460,6 +460,7 @@ impl ComponentColors {
 mod tests {
     use std::time::Duration;
 
+    use common_macros::slipway_test_async;
     use serde_json::json;
     use slipway_engine::{
         utils::ch, BasicComponentCache, ComponentRigging, Instruction, Rig, RigSession, Rigging,
@@ -470,8 +471,8 @@ mod tests {
 
     use super::*;
 
-    #[test]
-    fn it_should_indicate_component_states() {
+    #[slipway_test_async]
+    async fn it_should_indicate_component_states() {
         // ■ ant
         // ├─◩ bird
         // └─│─◩ cat
@@ -493,7 +494,7 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = BasicComponentCache::for_test_permissive(&rig);
+        let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
         let rig_session = RigSession::new(rig, &component_cache);
         let mut state = rig_session.initialize().unwrap();
 
@@ -616,8 +617,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn it_should_indicate_hash_states() {
+    #[slipway_test_async]
+    async fn it_should_indicate_hash_states() {
         // ■ ant               ┆  44136fa3 ➜ 6b86b273  ┆   2 bytes ➜ 1 byte   ┆  3s  of 10s
         // ├─■ bird            ┆  015abd7f ! 5feceb66  ┆   7 bytes ! 1 byte   ┆  3s  of 10s
         // └─│─■ cat           ┆  015abd7f ! 5feceb66  ┆   7 bytes ! 1 byte
@@ -639,7 +640,7 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = BasicComponentCache::for_test_permissive(&rig);
+        let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
         let rig_session = RigSession::new(rig, &component_cache);
         let mut state = rig_session.initialize().unwrap();
 

@@ -11,10 +11,10 @@ use slipway_engine::{
 
 use crate::{deno_ops::DECLS, DenoComponentDefinition, DENO_COMPONENT_DEFINITION_FILE_NAME};
 
-pub(super) fn run_component_javascript(
+pub(super) async fn run_component_javascript(
     input: &serde_json::Value,
     deno_definition: Arc<DenoComponentDefinition>,
-    execution_context: &ComponentExecutionContext,
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
 ) -> Result<RunComponentResult, RunComponentError> {
     if deno_definition.scripts.is_empty() {
         return Err(RunComponentError::Other(format!(
@@ -35,7 +35,7 @@ pub(super) fn run_component_javascript(
 
     let call_start = Instant::now();
     let last_result =
-        run_component_scripts(&deno_definition.scripts, execution_context, &mut runtime)?;
+        run_component_scripts(&deno_definition.scripts, execution_context, &mut runtime).await?;
     let call_duration = call_start.elapsed();
 
     let process_output_start = Instant::now();
@@ -145,14 +145,14 @@ fn restore_input_prototypes(runtime: &mut JsRuntime) -> Result<(), RunComponentE
     Ok(())
 }
 
-fn run_component_scripts(
+async fn run_component_scripts(
     script_files: &[String],
     execution_context: &ComponentExecutionContext<'_, '_, '_>,
     runtime: &mut JsRuntime,
 ) -> Result<v8::Global<v8::Value>, RunComponentError> {
     let mut last_result = None;
     for script_file in script_files.iter().cloned() {
-        let content = execution_context.files.get_text(&script_file)?;
+        let content = execution_context.files.get_text(&script_file).await?;
         let static_name: &'static str = Box::leak(script_file.into_boxed_str()); // TODO: Remove this leak.
         last_result = Some(
             runtime

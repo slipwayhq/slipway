@@ -1,5 +1,6 @@
 use std::{path::PathBuf, str::FromStr};
 
+use common_macros::slipway_test_async;
 use serde_json::json;
 
 use common_test_utils::{
@@ -15,41 +16,44 @@ use slipway_engine::{
 };
 use url::Url;
 
-#[common_macros::slipway_test]
-fn load_component_from_folder() {
+#[slipway_test_async]
+async fn load_component_from_folder() {
     test_component(
         None,
         SlipwayReference::Local {
             path: PathBuf::from(SLIPWAY_INCREMENT_COMPONENT_FOLDER_NAME),
         },
-    );
+    )
+    .await;
 }
 
-#[common_macros::slipway_test]
-fn load_component_from_folder_with_json_schema_refs() {
+#[slipway_test_async]
+async fn load_component_from_folder_with_json_schema_refs() {
     test_component(
         None,
         SlipwayReference::Local {
             path: PathBuf::from(SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_FOLDER_NAME),
         },
-    );
+    )
+    .await;
 }
 
-#[common_macros::slipway_test]
-fn load_component_from_tar_with_json_schema_refs() {
+#[slipway_test_async]
+async fn load_component_from_tar_with_json_schema_refs() {
     test_component(
         None,
         SlipwayReference::Local {
             path: PathBuf::from(SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_TAR_NAME),
         },
-    );
+    )
+    .await;
 }
 
 mod serial_tests {
     use super::*;
 
-    #[common_macros::slipway_test]
-    fn load_component_from_url_with_json_schema_refs() {
+    #[slipway_test_async]
+    async fn load_component_from_url_with_json_schema_refs() {
         let test_server = TestServer::start_from_folder(get_slipway_test_components_path());
 
         test_component(
@@ -61,13 +65,14 @@ mod serial_tests {
                 ))
                 .unwrap(),
             },
-        );
+        )
+        .await;
 
         test_server.stop();
     }
 
-    #[common_macros::slipway_test]
-    fn load_component_from_registry_with_json_schema_refs() {
+    #[slipway_test_async]
+    async fn load_component_from_registry_with_json_schema_refs() {
         let test_server = TestServer::start_from_folder(get_slipway_test_components_path());
 
         let reference =
@@ -82,7 +87,7 @@ mod serial_tests {
             _ => panic!("Expected registry reference"),
         }
 
-        test_component(Some(&test_server.localhost_url), reference);
+        test_component(Some(&test_server.localhost_url), reference).await;
 
         test_server.stop();
     }
@@ -111,7 +116,7 @@ fn create_rig(component_reference: SlipwayReference) -> (Rig, ComponentHandle) {
     (rig, handle)
 }
 
-fn test_component(localhost_url: Option<&str>, component_reference: SlipwayReference) {
+async fn test_component(localhost_url: Option<&str>, component_reference: SlipwayReference) {
     let (rig, handle) = create_rig(component_reference);
 
     // Use a random cache directory, and local registry URL.
@@ -128,6 +133,7 @@ fn test_component(localhost_url: Option<&str>, component_reference: SlipwayRefer
             .components_cache_path(temp_dir.path())
             .build(),
     )
+    .await
     .unwrap();
 
     // Initialize the rig session.

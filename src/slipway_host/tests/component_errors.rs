@@ -115,7 +115,9 @@ fn create_callout_schema_test_rig(component_name: &str, call_type: &str) -> Rig 
 }
 
 async fn assert_run_errors_with(rig: Rig, expected_messages: &[&str]) {
-    let component_cache = BasicComponentCache::primed(&rig, &create_components_loader()).unwrap();
+    let component_cache = BasicComponentCache::primed(&rig, &create_components_loader())
+        .await
+        .unwrap();
     let component_runners = get_component_runners();
     let call_chain = CallChain::full_trust_arc();
     let session = RigSession::new(rig, &component_cache);

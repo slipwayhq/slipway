@@ -24,7 +24,7 @@ pub fn load_special_component(reference: &SpecialComponentReference) -> LoadedCo
     }
 }
 
-pub fn prime_special_component(reference: &SpecialComponentReference) -> PrimedComponent {
+pub async fn prime_special_component(reference: &SpecialComponentReference) -> PrimedComponent {
     let full_reference = SlipwayReference::Special(reference.clone());
     let definition = get_special_definition(reference);
     let files = Arc::new(ComponentFiles::new(Box::new(NoFiles {
@@ -32,6 +32,7 @@ pub fn prime_special_component(reference: &SpecialComponentReference) -> PrimedC
     })));
 
     let definition = parse_component_with_json(&full_reference, definition, Arc::clone(&files))
+        .await
         .expect("Special component should be valid");
 
     PrimedComponent {
@@ -62,7 +63,7 @@ struct NoFiles {
     reference: SlipwayReference,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl ComponentFilesLoader for NoFiles {
     fn get_component_reference(&self) -> &SlipwayReference {
         &self.reference

@@ -341,7 +341,7 @@ mod tests {
             url_to_file: HashMap<String, String>,
         }
 
-        #[async_trait(?Send)]
+        #[async_trait]
         impl ComponentIOAbstractions for MockComponentIOAbstractions {
             async fn load_bin(
                 &self,
@@ -552,7 +552,7 @@ mod tests {
         /// Mock component file loader that always returns the same content for any file.
         struct MockComponentAnyFileIOAbstractions {}
 
-        #[async_trait(?Send)]
+        #[async_trait]
         impl ComponentIOAbstractions for MockComponentAnyFileIOAbstractions {
             async fn load_bin(
                 &self,
@@ -683,7 +683,7 @@ mod tests {
 
         impl FileHandle for Cursor<Vec<u8>> {}
 
-        #[async_trait(?Send)]
+        #[async_trait]
         impl ComponentIOAbstractions for MockComponentIOAbstractions {
             async fn load_text(
                 &self,

@@ -29,7 +29,9 @@ pub async fn get_rig_output(
     output_handle_str: &str,
     permissions: Permissions<'_>,
 ) -> Result<Arc<ComponentOutput>, RunError<()>> {
-    let component_cache = BasicComponentCache::primed(&rig, &create_components_loader()).unwrap();
+    let component_cache = BasicComponentCache::primed(&rig, &create_components_loader())
+        .await
+        .unwrap();
     let component_runners = get_component_runners();
     let call_chain = Arc::new(CallChain::new(permissions));
     let session = RigSession::new(rig, &component_cache);

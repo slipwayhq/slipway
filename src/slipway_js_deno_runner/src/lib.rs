@@ -25,7 +25,8 @@ impl ComponentRunner for DenoComponentRunner {
         let maybe_deno_definition = execution_data
             .context
             .files
-            .try_get_json::<DenoComponentDefinition>(DENO_COMPONENT_DEFINITION_FILE_NAME)?;
+            .try_get_json::<DenoComponentDefinition>(DENO_COMPONENT_DEFINITION_FILE_NAME)
+            .await?;
 
         let Some(deno_definition) = maybe_deno_definition else {
             return Ok(TryRunComponentResult::CannotRun);
@@ -37,7 +38,8 @@ impl ComponentRunner for DenoComponentRunner {
             input,
             deno_definition,
             &execution_data.context,
-        )?;
+        )
+        .await?;
 
         Ok(TryRunComponentResult::Ran { result: run_result })
     }

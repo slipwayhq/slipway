@@ -17,7 +17,7 @@ pub(super) trait FileHandle: Read + Seek + Send {}
 
 impl FileHandle for File {}
 
-#[async_trait(?Send)]
+#[async_trait]
 pub(super) trait ComponentIOAbstractions: Send + Sync {
     async fn load_text(
         &self,
@@ -61,7 +61,7 @@ impl ComponentIOAbstractionsImpl {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl ComponentIOAbstractions for ComponentIOAbstractionsImpl {
     async fn load_bin(
         &self,

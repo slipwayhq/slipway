@@ -28,7 +28,7 @@ pub(super) async fn prime_component_cache(
         for maybe_loaded_component in loaded_components {
             let loaded_component = maybe_loaded_component?;
 
-            let definition = parse_loaded_component_definition(&loaded_component)?;
+            let definition = parse_loaded_component_definition(&loaded_component).await?;
 
             let new_references = {
                 let mut all_references = get_component_distinct_references(&definition);
@@ -49,7 +49,7 @@ pub(super) async fn prime_component_cache(
     Ok(component_cache)
 }
 
-pub(super) fn parse_loaded_component_definition(
+pub(super) async fn parse_loaded_component_definition(
     loaded_component: &super::LoadedComponent,
 ) -> Result<Component<Schema>, ComponentLoadError> {
     let parsed_definition = handle_component_load_error(
@@ -61,23 +61,24 @@ pub(super) fn parse_loaded_component_definition(
         &loaded_component.reference,
         parsed_definition,
         Arc::clone(&loaded_component.files),
-    )?;
+    )
+    .await?;
 
     Ok(definition)
 }
 
-pub(super) fn parse_component_with_json(
+pub(super) async fn parse_component_with_json(
     reference: &SlipwayReference,
     parsed_definition: Component<serde_json::Value>,
     files: Arc<ComponentFiles>,
 ) -> Result<Component<Schema>, ComponentLoadError> {
     let input = handle_component_load_error(
         reference,
-        parse_schema("input", parsed_definition.input, Arc::clone(&files)),
+        parse_schema("input", parsed_definition.input, Arc::clone(&files)).await,
     )?;
     let output = handle_component_load_error(
         reference,
-        parse_schema("output", parsed_definition.output, Arc::clone(&files)),
+        parse_schema("output", parsed_definition.output, Arc::clone(&files)).await,
     )?;
     let definition = Component::<Schema> {
         publisher: parsed_definition.publisher,

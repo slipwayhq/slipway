@@ -88,7 +88,7 @@ impl DirectoryComponentFilesLoader {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl ComponentFilesLoader for DirectoryComponentFilesLoader {
     fn get_component_reference(&self) -> &SlipwayReference {
         &self.component_reference

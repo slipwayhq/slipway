@@ -79,6 +79,8 @@ mod tests {
     }
 
     mod step {
+        use common_macros::slipway_test_async;
+
         use crate::{errors::RigError, BasicComponentCache, RigSession};
 
         use super::*;
@@ -142,11 +144,12 @@ mod tests {
             })
         }
 
-        #[test]
-        fn initialize_should_populate_execution_inputs_of_components_that_can_run_immediately() {
+        #[slipway_test_async]
+        async fn initialize_should_populate_execution_inputs_of_components_that_can_run_immediately(
+        ) {
             let rig = create_rig();
 
-            let component_cache = BasicComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
             let rig_session = RigSession::new(rig, &component_cache);
 
             let execution_state = rig_session.initialize().unwrap();
@@ -154,11 +157,11 @@ mod tests {
             assert_expected_components_ready(&execution_state, &["c", "i", "j", "k"]);
         }
 
-        #[test]
-        fn it_should_populate_references_to_other_parts_of_rig() {
+        #[slipway_test_async]
+        async fn it_should_populate_references_to_other_parts_of_rig() {
             let rig = create_rig();
 
-            let component_cache = BasicComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
             let rig_session = RigSession::new(rig, &component_cache);
 
             let s = rig_session.initialize().unwrap();
@@ -175,11 +178,11 @@ mod tests {
             );
         }
 
-        #[test]
-        fn it_should_allow_setting_the_output_on_a_component_which_can_execute() {
+        #[slipway_test_async]
+        async fn it_should_allow_setting_the_output_on_a_component_which_can_execute() {
             let rig = create_rig();
 
-            let component_cache = BasicComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
@@ -195,11 +198,11 @@ mod tests {
             );
         }
 
-        #[test]
-        fn it_should_not_allow_setting_the_output_on_a_component_which_cannot_execute() {
+        #[slipway_test_async]
+        async fn it_should_not_allow_setting_the_output_on_a_component_which_cannot_execute() {
             let rig = create_rig();
 
-            let component_cache = BasicComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
             let rig_session = RigSession::new(rig, &component_cache);
 
             let s = rig_session.initialize().unwrap();
@@ -222,11 +225,11 @@ mod tests {
             }
         }
 
-        #[test]
-        fn it_should_allow_optional_json_path_references_missing_resolved_values() {
+        #[slipway_test_async]
+        async fn it_should_allow_optional_json_path_references_missing_resolved_values() {
             let rig = create_rig();
 
-            let component_cache = BasicComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
@@ -243,11 +246,11 @@ mod tests {
             );
         }
 
-        #[test]
-        fn it_should_not_allow_required_json_path_references_missing_resolved_values() {
+        #[slipway_test_async]
+        async fn it_should_not_allow_required_json_path_references_missing_resolved_values() {
             let rig = create_rig();
 
-            let component_cache = BasicComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
             let rig_session = RigSession::new(rig, &component_cache);
 
             let s = rig_session.initialize().unwrap();
@@ -270,11 +273,12 @@ mod tests {
             }
         }
 
-        #[test]
-        fn it_should_resolve_references_to_other_inputs_using_the_resolved_referenced_input() {
+        #[slipway_test_async]
+        async fn it_should_resolve_references_to_other_inputs_using_the_resolved_referenced_input()
+        {
             let rig = create_rig();
 
-            let component_cache = BasicComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
@@ -292,11 +296,11 @@ mod tests {
             );
         }
 
-        #[test]
-        fn it_should_step_though_entire_graph() {
+        #[slipway_test_async]
+        async fn it_should_step_though_entire_graph() {
             let rig = create_rig();
 
-            let component_cache = BasicComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
@@ -340,6 +344,8 @@ mod tests {
     }
 
     mod input_override {
+        use common_macros::slipway_test_async;
+
         use crate::{custom_iter_tools::CustomIterTools, BasicComponentCache, RigSession};
 
         use super::*;
@@ -401,11 +407,11 @@ mod tests {
             assert_eq!(actual_handles, expected_handles);
         }
 
-        #[test]
-        fn setting_input_override_should_affect_dependencies() {
+        #[slipway_test_async]
+        async fn setting_input_override_should_affect_dependencies() {
             let rig = create_rig();
 
-            let component_cache = BasicComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
@@ -457,11 +463,11 @@ mod tests {
             );
         }
 
-        #[test]
-        fn setting_input_override_should_update_input_hash() {
+        #[slipway_test_async]
+        async fn setting_input_override_should_update_input_hash() {
             let rig = create_rig();
 
-            let component_cache = BasicComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
@@ -563,6 +569,8 @@ mod tests {
     }
 
     mod output_override {
+        use common_macros::slipway_test_async;
+
         use crate::{BasicComponentCache, RigSession};
 
         use super::*;
@@ -586,11 +594,11 @@ mod tests {
             })
         }
 
-        #[test]
-        fn setting_output_override_should_affect_execution_states() {
+        #[slipway_test_async]
+        async fn setting_output_override_should_affect_execution_states() {
             let rig = create_rig();
 
-            let component_cache = BasicComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
@@ -618,11 +626,11 @@ mod tests {
             assert_eq!(s.valid_execution_order, vec![&ch("c"), &ch("b"), &ch("a")]);
         }
 
-        #[test]
-        fn setting_output_should_use_input_hash() {
+        #[slipway_test_async]
+        async fn setting_output_should_use_input_hash() {
             let rig = create_rig();
 
-            let component_cache = BasicComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
@@ -677,11 +685,11 @@ mod tests {
             }
         }
 
-        #[test]
-        fn setting_output_should_update_dependent_input_hashes() {
+        #[slipway_test_async]
+        async fn setting_output_should_update_dependent_input_hashes() {
             let rig = create_rig();
 
-            let component_cache = BasicComponentCache::for_test_permissive(&rig);
+            let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
             let rig_session = RigSession::new(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();

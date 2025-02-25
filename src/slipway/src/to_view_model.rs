@@ -130,6 +130,7 @@ pub(super) struct ComponentViewModel<'rig> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use common_macros::slipway_test_async;
     use serde_json::json;
     use slipway_engine::{
         utils::ch, BasicComponentCache, ComponentRigging, Rig, RigSession, Rigging,
@@ -147,8 +148,8 @@ mod tests {
             .expect("Component should exist")
     }
 
-    #[test]
-    fn it_should_generate_sensible_shortcuts() {
+    #[slipway_test_async]
+    async fn it_should_generate_sensible_shortcuts() {
         let rig = Rig::for_test(Rigging {
             components: [
                 ComponentRigging::for_test("cat", None),
@@ -161,7 +162,7 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = BasicComponentCache::for_test_permissive(&rig);
+        let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
         let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let view_model = to_view_model(&state);
@@ -174,8 +175,8 @@ mod tests {
         assert_eq!(get_component(&view_model, ch("dog")).shortcut, "d");
     }
 
-    #[test]
-    fn it_should_set_group_and_row_indexes() {
+    #[slipway_test_async]
+    async fn it_should_set_group_and_row_indexes() {
         // Dependency graph:
         // a
         // |
@@ -201,7 +202,7 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = BasicComponentCache::for_test_permissive(&rig);
+        let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
         let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let view_model = to_view_model(&state);
@@ -234,8 +235,8 @@ mod tests {
         assert_eq!(f.row_index, 0);
     }
 
-    #[test]
-    fn it_should_set_input_and_output_indexes() {
+    #[slipway_test_async]
+    async fn it_should_set_input_and_output_indexes() {
         // Dependency graph:
         // a
         // |\
@@ -262,7 +263,7 @@ mod tests {
             .collect(),
         });
 
-        let component_cache = BasicComponentCache::for_test_permissive(&rig);
+        let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
         let rig_session = RigSession::new(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let view_model = to_view_model(&state);

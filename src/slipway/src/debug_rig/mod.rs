@@ -216,7 +216,7 @@ async fn debug_rig<W: Write>(
         .registry_lookup_urls(registry_urls)
         .build();
 
-    let component_cache = BasicComponentCache::primed(&rig, &components_loader)?;
+    let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
     let session = RigSession::new(rig, &component_cache);
     let mut state = session.initialize()?;
 

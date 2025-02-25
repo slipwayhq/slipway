@@ -99,7 +99,7 @@ async fn run_component_fragment(
     let call_chain = Arc::clone(&execution_context.call_chain);
 
     let original_component_cache = execution_context.component_cache;
-    let new_component_cache = get_component_cache_with_pass_component();
+    let new_component_cache = get_component_cache_with_pass_component().await;
     let component_cache =
         MultiComponentCache::new(vec![original_component_cache, &new_component_cache]);
 
@@ -134,9 +134,9 @@ async fn run_component_fragment(
     Ok(result)
 }
 
-fn get_component_cache_with_pass_component() -> BasicComponentCache {
+async fn get_component_cache_with_pass_component() -> BasicComponentCache {
     let pass_reference = SpecialComponentReference::Pass;
-    let pass_component = prime_special_component(&pass_reference);
+    let pass_component = prime_special_component(&pass_reference).await;
     BasicComponentCache::for_primed(
         vec![(
             SlipwayReference::Special(pass_reference.clone()),

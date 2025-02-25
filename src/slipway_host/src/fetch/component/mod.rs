@@ -37,6 +37,6 @@ pub(super) async fn fetch_component_data(
 
     match path {
         "" | "/" => run::run_component_from_url(execution_context, handle, url, options).await,
-        _ => component_file::get_component_file_bin(execution_context, handle, path),
+        _ => component_file::get_component_file_bin(execution_context, handle, path).await,
     }
 }

@@ -32,7 +32,7 @@ pub(super) async fn run_rig(
         .registry_lookup_urls(state.config.registry_urls.clone())
         .build();
 
-    let component_cache = BasicComponentCache::primed(&rig, &components_loader)?;
+    let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
     let session = RigSession::new(rig, &component_cache);
 
     let mut writer = TracingWriter::new();

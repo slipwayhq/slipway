@@ -76,7 +76,7 @@ async fn run_component_scripts(
 ) -> Result<JsValue, RunComponentError> {
     let mut last_result = None;
     for script_file in script_files.iter() {
-        let content = execution_context.files.get_text(script_file)?;
+        let content = execution_context.files.get_text(script_file).await?;
 
         debug!(
             "Running script \"{}\" ({} bytes) using Boa",

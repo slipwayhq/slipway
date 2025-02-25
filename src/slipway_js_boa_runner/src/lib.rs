@@ -27,7 +27,8 @@ impl ComponentRunner for BoaComponentRunner {
         let maybe_boa_definition = execution_data
             .context
             .files
-            .try_get_json::<BoaComponentDefinition>(BOA_COMPONENT_DEFINITION_FILE_NAME)?;
+            .try_get_json::<BoaComponentDefinition>(BOA_COMPONENT_DEFINITION_FILE_NAME)
+            .await?;
 
         let Some(boa_definition) = maybe_boa_definition else {
             return Ok(TryRunComponentResult::CannotRun);

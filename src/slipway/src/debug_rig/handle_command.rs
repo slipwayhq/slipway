@@ -119,6 +119,7 @@ fn get_handle<'rig>(
 mod tests {
     use std::path::PathBuf;
 
+    use common_macros::slipway_test_async;
     use serde_json::json;
     use slipway_engine::{
         utils::ch, BasicComponentCache, BasicComponentsLoaderBuilder, ComponentRigging,
@@ -133,11 +134,11 @@ mod tests {
 
     use super::*;
 
-    #[common_macros::slipway_test_async]
+    #[slipway_test_async]
     async fn it_should_run_components_in_sequence() {
         let w = &mut std::io::sink();
         let (ch1, ch2, ch3) = component_handles();
-        let rig_parts = get_rig_parts();
+        let rig_parts = get_rig_parts().await;
         let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
@@ -169,11 +170,11 @@ mod tests {
         );
     }
 
-    #[common_macros::slipway_test_async]
+    #[slipway_test_async]
     async fn rerunning_component_should_clear_output_override() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
-        let rig_parts = get_rig_parts();
+        let rig_parts = get_rig_parts().await;
         let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
@@ -198,11 +199,11 @@ mod tests {
         assert_input_value(&state, &ch2, 2);
     }
 
-    #[common_macros::slipway_test_async]
+    #[slipway_test_async]
     async fn running_output_clear_command_should_clear_output_override() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
-        let rig_parts = get_rig_parts();
+        let rig_parts = get_rig_parts().await;
         let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
@@ -232,11 +233,11 @@ mod tests {
         verify_state(&state, (true, false, false), (false, false, false)).await;
     }
 
-    #[common_macros::slipway_test_async]
+    #[slipway_test_async]
     async fn running_output_command_twice_should_edit_overridden_output() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
-        let rig_parts = get_rig_parts();
+        let rig_parts = get_rig_parts().await;
         let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
@@ -266,11 +267,11 @@ mod tests {
         assert_input_value(&state, &ch2, 100);
     }
 
-    #[common_macros::slipway_test_async]
+    #[slipway_test_async]
     async fn running_output_command_without_changes_should_not_override_output() {
         let w = &mut std::io::sink();
         let (ch1, ch2, _) = component_handles();
-        let rig_parts = get_rig_parts();
+        let rig_parts = get_rig_parts().await;
         let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
@@ -295,11 +296,11 @@ mod tests {
         assert!(&ch1_state.output_override.is_none());
     }
 
-    #[common_macros::slipway_test_async]
+    #[slipway_test_async]
     async fn it_should_override_inputs() {
         let w = &mut std::io::sink();
         let (_, ch2, ch3) = component_handles();
-        let rig_parts = get_rig_parts();
+        let rig_parts = get_rig_parts().await;
         let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
@@ -326,11 +327,11 @@ mod tests {
         assert_input_value(&state, &ch3, 21);
     }
 
-    #[common_macros::slipway_test_async]
+    #[slipway_test_async]
     async fn it_should_override_inputs_with_dependencies() {
         let w = &mut std::io::sink();
         let (_, ch2, ch3) = component_handles();
-        let rig_parts = get_rig_parts();
+        let rig_parts = get_rig_parts().await;
         let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
@@ -356,11 +357,11 @@ mod tests {
         assert_input_value(&state, &ch3, 2);
     }
 
-    #[common_macros::slipway_test_async]
+    #[slipway_test_async]
     async fn running_input_clear_command_should_clear_input_override() {
         let w = &mut std::io::sink();
         let (ch1, _, _) = component_handles();
-        let rig_parts = get_rig_parts();
+        let rig_parts = get_rig_parts().await;
         let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
@@ -386,11 +387,11 @@ mod tests {
         assert_input_value(&state, &ch1, 1);
     }
 
-    #[common_macros::slipway_test_async]
+    #[slipway_test_async]
     async fn running_input_command_twice_should_edit_overridden_input() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
-        let rig_parts = get_rig_parts();
+        let rig_parts = get_rig_parts().await;
         let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
@@ -422,11 +423,11 @@ mod tests {
         assert_input_value(&state, &ch2, 200);
     }
 
-    #[common_macros::slipway_test_async]
+    #[slipway_test_async]
     async fn running_input_command_without_changes_should_not_override_input() {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
-        let rig_parts = get_rig_parts();
+        let rig_parts = get_rig_parts().await;
         let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
@@ -475,7 +476,7 @@ mod tests {
         component_cache: BasicComponentCache,
     }
 
-    fn get_rig_parts() -> RigParts {
+    async fn get_rig_parts() -> RigParts {
         let (ch1, ch2, ch3) = component_handles();
 
         let increment_reference = SlipwayReference::Local {
@@ -517,6 +518,7 @@ mod tests {
                 .local_base_directory(&get_slipway_test_components_path())
                 .build(),
         )
+        .await
         .unwrap();
 
         RigParts {

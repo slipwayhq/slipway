@@ -4,8 +4,8 @@ use slipway_engine::{ComponentExecutionContext, ComponentHandle};
 
 use super::{BinResponse, RequestError};
 
-pub(super) fn get_component_file_bin(
-    execution_context: &ComponentExecutionContext,
+pub(super) async fn get_component_file_bin(
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
     handle: ComponentHandle,
     path: &str,
 ) -> Result<BinResponse, RequestError> {
@@ -32,7 +32,7 @@ pub(super) fn get_component_file_bin(
 
     let path = sanitize_slashes(path);
 
-    let bin = component.files.get_bin(path.as_ref()).map_err(|e| {
+    let bin = component.files.get_bin(path.as_ref()).await.map_err(|e| {
         RequestError::for_error(
             format!(
                 "Failed to load file \"{}\" file from component \"{}\"",

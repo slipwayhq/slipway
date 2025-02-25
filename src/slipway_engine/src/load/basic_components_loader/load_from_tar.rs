@@ -76,7 +76,7 @@ struct TarComponentFilesLoader {
     data: Arc<TarComponentFileLoaderData>,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl ComponentFilesLoader for TarComponentFilesLoader {
     fn get_component_reference(&self) -> &SlipwayReference {
         &self.data.component_reference

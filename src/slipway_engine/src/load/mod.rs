@@ -138,7 +138,7 @@ impl ComponentFiles {
 
 // We return Arcs here so that the implementors can cache files in memory if they want to.
 // This was originally the case with the WebAssembly files, but currently we don't do any caching.
-#[async_trait(?Send)]
+#[async_trait]
 pub trait ComponentFilesLoader: Send + Sync {
     fn get_component_reference(&self) -> &SlipwayReference;
     fn get_component_path(&self) -> &Path;

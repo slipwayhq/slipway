@@ -57,7 +57,7 @@ pub fn validate_component_io(
         ValidationResult::JsonSchema(result) => {
             if let Err(errors) = result {
                 Some(SchemaValidationFailures::JsonSchema(
-                    errors.map(|e| e.into()).collect(),
+                    errors.into_iter().map(|e| e.into()).collect(),
                 ))
             } else {
                 None
@@ -96,17 +96,20 @@ where
             schema,
             original: _,
         } => {
-            let validation_result = schema.validate(data);
-            // .map_err(|es| es.into_iter().map(|e| e.into()).collect());
-
-            ValidationResult::JsonSchema(validation_result)
+            let validation_result = schema.iter_errors(data);
+            let errors: Vec<_> = validation_result.collect();
+            ValidationResult::JsonSchema(if errors.is_empty() {
+                Ok(())
+            } else {
+                Err(errors)
+            })
         }
     }
 }
 
 pub enum ValidationResult<'data> {
     JsonTypeDef(Result<Vec<jtd::ValidationErrorIndicator<'data>>, jtd::ValidateError>),
-    JsonSchema(Result<(), jsonschema::ErrorIterator<'data>>),
+    JsonSchema(Result<(), Vec<jsonschema::ValidationError<'data>>>),
 }
 
 pub(super) enum ValidationData<'data> {
@@ -117,6 +120,7 @@ pub(super) enum ValidationData<'data> {
 #[cfg(test)]
 mod tests {
 
+    use common_macros::slipway_test_async;
     use serde_json::json;
 
     use crate::{
@@ -144,8 +148,8 @@ mod tests {
         })
     }
 
-    #[test]
-    fn it_should_validate_component_input() {
+    #[slipway_test_async]
+    async fn it_should_validate_component_input() {
         let rig = create_rig();
 
         let component_cache = BasicComponentCache::for_test_with_schemas(
@@ -168,14 +172,16 @@ mod tests {
                                     },
                                 }
                             }),
-                        ),
+                        )
+                        .await,
                         schema_any(),
                     ),
                 ),
             ]
             .into_iter()
             .collect(),
-        );
+        )
+        .await;
 
         let rig_session = RigSession::new(rig, &component_cache);
 
@@ -197,8 +203,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn it_should_fail_to_validate_invalid_component_input() {
+    #[slipway_test_async]
+    async fn it_should_fail_to_validate_invalid_component_input() {
         let rig = create_rig();
 
         let component_cache = BasicComponentCache::for_test_with_schemas(
@@ -221,14 +227,16 @@ mod tests {
                                     },
                                 }
                             }),
-                        ),
+                        )
+                        .await,
                         schema_any(),
                     ),
                 ),
             ]
             .into_iter()
             .collect(),
-        );
+        )
+        .await;
 
         let rig_session = RigSession::new(rig, &component_cache);
 
@@ -252,10 +260,10 @@ mod tests {
                 match validation_failures {
                     SchemaValidationFailures::JsonTypeDef(validation_failures) => {
                         assert_eq!(validation_failures.len(), 1);
-                        assert_eq!(validation_failures[0].instance_path_str(), "a_output.foo");
+                        assert_eq!(validation_failures[0].instance_path(), "/a_output/foo");
                         assert_eq!(
-                            validation_failures[0].schema_path_str(),
-                            "properties.a_output.properties.foo.type"
+                            validation_failures[0].schema_path(),
+                            "/properties/a_output/properties/foo/type"
                         );
                     }
                     _ => panic!("Expected JsonTypeDef validation failures"),
@@ -270,8 +278,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn it_should_validate_component_output() {
+    #[slipway_test_async]
+    async fn it_should_validate_component_output() {
         let rig = create_rig();
 
         let component_cache = BasicComponentCache::for_test_with_schemas(
@@ -290,14 +298,16 @@ mod tests {
                                     }
                                 }
                             }),
-                        ),
+                        )
+                        .await,
                     ),
                 ),
                 ("b".to_string(), (schema_any(), schema_any())),
             ]
             .into_iter()
             .collect(),
-        );
+        )
+        .await;
 
         let rig_session = RigSession::new(rig, &component_cache);
 
@@ -318,8 +328,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn it_should_fail_to_validate_invalid_component_output() {
+    #[slipway_test_async]
+    async fn it_should_fail_to_validate_invalid_component_output() {
         let rig = create_rig();
 
         let component_cache = BasicComponentCache::for_test_with_schemas(
@@ -338,14 +348,16 @@ mod tests {
                                     }
                                 }
                             }),
-                        ),
+                        )
+                        .await,
                     ),
                 ),
                 ("b".to_string(), (schema_any(), schema_any())),
             ]
             .into_iter()
             .collect(),
-        );
+        )
+        .await;
 
         let rig_session = RigSession::new(rig, &component_cache);
 
@@ -369,11 +381,8 @@ mod tests {
                 match validation_failures {
                     SchemaValidationFailures::JsonTypeDef(validation_failures) => {
                         assert_eq!(validation_failures.len(), 1);
-                        assert_eq!(validation_failures[0].instance_path_str(), "foo");
-                        assert_eq!(
-                            validation_failures[0].schema_path_str(),
-                            "properties.foo.type"
-                        );
+                        assert_eq!(validation_failures[0].instance_path(), "/foo");
+                        assert_eq!(validation_failures[0].schema_path(), "/properties/foo/type");
                     }
                     _ => panic!("Expected JsonTypeDef validation failures"),
                 }
@@ -383,8 +392,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn it_should_validate_component_input_with_json_schema() {
+    #[slipway_test_async]
+    async fn it_should_validate_component_input_with_json_schema() {
         let rig = create_rig();
 
         let component_cache = BasicComponentCache::for_test_with_schemas(
@@ -412,14 +421,16 @@ mod tests {
                                 "required": ["a_output"],
                                 "additionalProperties": false
                             }),
-                        ),
+                        )
+                        .await,
                         schema_any(),
                     ),
                 ),
             ]
             .into_iter()
             .collect(),
-        );
+        )
+        .await;
 
         let rig_session = RigSession::new(rig, &component_cache);
 
@@ -441,8 +452,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn it_should_fail_to_validate_invalid_component_input_with_json_schema() {
+    #[slipway_test_async]
+    async fn it_should_fail_to_validate_invalid_component_input_with_json_schema() {
         let rig = create_rig();
 
         let component_cache = BasicComponentCache::for_test_with_schemas(
@@ -470,14 +481,16 @@ mod tests {
                                 "required": ["a_output"],
                                 "additionalProperties": false
                             }),
-                        ),
+                        )
+                        .await,
                         schema_any(),
                     ),
                 ),
             ]
             .into_iter()
             .collect(),
-        );
+        )
+        .await;
 
         let rig_session = RigSession::new(rig, &component_cache);
 
@@ -501,10 +514,10 @@ mod tests {
                 match validation_failures {
                     SchemaValidationFailures::JsonSchema(validation_failures) => {
                         assert_eq!(validation_failures.len(), 1);
-                        assert_eq!(validation_failures[0].instance_path_str(), "a_output.foo");
+                        assert_eq!(validation_failures[0].instance_path(), "/a_output/foo");
                         assert_eq!(
-                            validation_failures[0].schema_path_str(),
-                            "properties.a_output.properties.foo.type"
+                            validation_failures[0].schema_path(),
+                            "/properties/a_output/properties/foo/type"
                         );
                     }
                     _ => panic!("Expected JsonTypeDef validation failures"),

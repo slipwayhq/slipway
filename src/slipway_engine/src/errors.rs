@@ -143,16 +143,8 @@ impl fmt::Display for ValidationType {
 }
 
 pub trait SchemaValidationFailure {
-    fn instance_path(&self) -> &Vec<String>;
-    fn schema_path(&self) -> &Vec<String>;
-
-    fn instance_path_str(&self) -> String {
-        self.instance_path().join(".")
-    }
-
-    fn schema_path_str(&self) -> String {
-        self.schema_path().join(".")
-    }
+    fn instance_path(&self) -> String;
+    fn schema_path(&self) -> String;
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -165,12 +157,12 @@ pub struct JsonTypeDefValidationFailure {
 }
 
 impl SchemaValidationFailure for JsonTypeDefValidationFailure {
-    fn instance_path(&self) -> &Vec<String> {
-        &self.instance_path
+    fn instance_path(&self) -> String {
+        format!("/{}", self.instance_path.join("/"))
     }
 
-    fn schema_path(&self) -> &Vec<String> {
-        &self.schema_path
+    fn schema_path(&self) -> String {
+        format!("/{}", self.schema_path.join("/"))
     }
 }
 
@@ -179,8 +171,8 @@ impl fmt::Display for JsonTypeDefValidationFailure {
         write!(
             f,
             "Instance path: {}\nSchema path: {}",
-            self.instance_path_str(),
-            self.schema_path_str()
+            self.instance_path(),
+            self.schema_path()
         )
     }
 }
@@ -201,29 +193,29 @@ pub struct JsonSchemaValidationFailure {
     pub kind: Arc<ValidationErrorKind>,
 
     /// Path to the value that failed validation.
-    pub instance_path: Vec<String>,
+    pub instance_path: String,
 
     /// Path to the JSON Schema keyword that failed validation.
-    pub schema_path: Vec<String>,
+    pub schema_path: String,
 }
 
 impl<'a> From<jsonschema::ValidationError<'a>> for JsonSchemaValidationFailure {
     fn from(error: jsonschema::ValidationError<'a>) -> Self {
         JsonSchemaValidationFailure {
             kind: Arc::new(error.kind),
-            instance_path: error.instance_path.into_vec(),
-            schema_path: error.schema_path.into_vec(),
+            instance_path: error.instance_path.to_string(),
+            schema_path: error.schema_path.to_string(),
         }
     }
 }
 
 impl SchemaValidationFailure for JsonSchemaValidationFailure {
-    fn instance_path(&self) -> &Vec<String> {
-        &self.instance_path
+    fn instance_path(&self) -> String {
+        self.instance_path.clone()
     }
 
-    fn schema_path(&self) -> &Vec<String> {
-        &self.schema_path
+    fn schema_path(&self) -> String {
+        self.schema_path.clone()
     }
 }
 
@@ -233,8 +225,8 @@ impl fmt::Display for JsonSchemaValidationFailure {
             f,
             "Kind: {:#?}\nInstance path: {}\nSchema path: {}",
             self.kind,
-            self.instance_path_str(),
-            self.schema_path_str()
+            self.instance_path(),
+            self.schema_path()
         )
     }
 }
