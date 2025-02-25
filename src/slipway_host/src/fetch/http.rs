@@ -1,13 +1,12 @@
-use std::io::Read;
-
+use reqwest::{Client, ClientBuilder};
 use slipway_engine::ComponentExecutionContext;
-use ureq::{http::Request, Agent};
+use std::time::Duration;
 use url::Url;
 
 use crate::fetch::{BinResponse, RequestError, RequestOptions};
 
-pub(super) fn fetch_http(
-    execution_context: &ComponentExecutionContext,
+pub(super) async fn fetch_http(
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
     url: Url,
     options: Option<RequestOptions>,
 ) -> Result<BinResponse, RequestError> {
@@ -15,16 +14,22 @@ pub(super) fn fetch_http(
 
     let opts = options.unwrap_or_default();
 
-    let mut agent_builder = ureq::Agent::config_builder().http_status_as_error(false);
+    let mut client_builder = ClientBuilder::new();
     if let Some(ms) = opts.timeout_ms {
-        let timeout = Some(std::time::Duration::from_millis(ms as u64));
-        agent_builder = agent_builder.timeout_global(timeout);
+        client_builder = client_builder.timeout(Duration::from_millis(ms as u64));
     }
-    let agent: Agent = agent_builder.build().into();
+    let client: Client = client_builder
+        .build()
+        .map_err(|e| RequestError::for_error("Failed to build HTTP client.".to_string(), e))?;
 
-    let mut request_builder = Request::builder()
-        .method(opts.method.as_deref().unwrap_or("GET"))
-        .uri(url.as_str());
+    let mut request_builder = client.request(
+        opts.method
+            .as_deref()
+            .unwrap_or("GET")
+            .parse()
+            .map_err(|e| RequestError::for_error("Invalid HTTP method.".to_string(), e))?,
+        url,
+    );
 
     if let Some(headers) = &opts.headers {
         for (name, value) in headers {
@@ -32,66 +37,40 @@ pub(super) fn fetch_http(
         }
     }
 
-    let response = match &opts.body {
-        Some(body) => {
-            let request = request_builder.body(body).map_err(|e| {
-                RequestError::for_error("Creating HTTP request with body failed.".to_string(), e)
-            })?;
-            agent.run(request)
-        }
-        None => {
-            let request = request_builder.body(()).map_err(|e| {
-                RequestError::for_error("Creating HTTP request failed.".to_string(), e)
-            })?;
-            agent.run(request)
-        }
+    if let Some(body) = &opts.body {
+        request_builder = request_builder.body(body.clone());
+    }
+
+    let response = request_builder
+        .send()
+        .await
+        .map_err(|e| RequestError::for_error("HTTP request failed.".to_string(), e))?;
+
+    let status = response.status();
+    let mut headers = vec![];
+    for (key, value) in response.headers().iter() {
+        let val_str = value.to_str().map_err(|e| {
+            RequestError::for_error("Failed to convert header to string.".to_string(), e)
+        })?;
+        headers.push((key.to_string(), val_str.to_string()));
+    }
+
+    let body = response.bytes().await.map_err(|e| {
+        RequestError::for_error("Reading HTTP response body failed.".to_string(), e)
+    })?;
+
+    let bin_response = BinResponse {
+        status_code: status.as_u16(),
+        headers,
+        body: body.to_vec(),
     };
 
-    match response {
-        Ok(response) => {
-            let status = response.status();
-            let mut headers = vec![];
-            for (name, value) in response.headers() {
-                headers.push((
-                    name.to_string(),
-                    value
-                        .to_str()
-                        .map_err(|e| {
-                            RequestError::for_error(
-                                "Failed to convert response header value to string.".to_string(),
-                                e,
-                            )
-                        })?
-                        .to_owned(),
-                ));
-            }
-            let mut body = vec![];
-            response
-                .into_body()
-                .into_reader()
-                .read_to_end(&mut body)
-                .map_err(|e| {
-                    RequestError::for_error("Reading HTTP response body failed.".to_string(), e)
-                })?;
-
-            let bin_response = BinResponse {
-                status_code: status.as_u16(),
-                headers,
-                body,
-            };
-
-            if status.is_success() {
-                Ok(bin_response)
-            } else {
-                Err(RequestError::response(
-                    "Response status code did not indicate success.".to_string(),
-                    bin_response.into(),
-                ))
-            }
-        }
-        Err(err) => Err(RequestError::for_error(
-            "HTTP request failed.".to_string(),
-            err,
-        )),
+    if status.is_success() {
+        Ok(bin_response)
+    } else {
+        Err(RequestError::response(
+            "Response status code did not indicate success.".to_string(),
+            bin_response.into(),
+        ))
     }
 }

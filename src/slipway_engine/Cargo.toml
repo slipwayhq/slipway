@@ -20,13 +20,14 @@ tracing = { workspace = true }
 jsonschema = { version = "0.29.0", default-features = false, features = [
     "resolve-async",
 ] }
-ureq = { workspace = true }
 anyhow = { workspace = true }
 tar = { workspace = true }
 dirs = "5.0.1"
 tokio = { workspace = true }
 futures = { workspace = true }
 fluent-uri = "0.3.2"
+tokio-util = "0.7.13"
+reqwest = { workspace = true }
 
 [features]
 unstable-test-utils = []

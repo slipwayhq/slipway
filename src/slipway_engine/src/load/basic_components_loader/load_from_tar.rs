@@ -1,19 +1,21 @@
 use std::{
     collections::HashMap,
-    io::SeekFrom,
+    io::{Read, SeekFrom},
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use async_trait::async_trait;
 use tar::Archive;
+use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
 use crate::{
-    errors::ComponentLoadError, load::SLIPWAY_COMPONENT_FILE_NAME, ComponentFiles,
-    ComponentFilesLoader, LoadedComponent, SlipwayReference,
+    errors::{ComponentLoadError, ComponentLoadErrorInner},
+    load::{component_io_abstractions::FileHandle, SLIPWAY_COMPONENT_FILE_NAME},
+    ComponentFiles, ComponentFilesLoader, LoadedComponent, SlipwayReference,
 };
 
-use super::super::component_io_abstractions::{ComponentIOAbstractions, FileHandle};
+use super::super::component_io_abstractions::ComponentIOAbstractions;
 
 type FileEntriesResult = (Box<dyn FileHandle>, HashMap<String, FileEntry>);
 
@@ -22,9 +24,9 @@ pub(super) async fn load_from_tar(
     path: &Path,
     io_abstractions: Arc<dyn ComponentIOAbstractions>,
 ) -> Result<LoadedComponent, ComponentLoadError> {
-    let file: Box<dyn FileHandle> = io_abstractions.load_file(path, component_reference).await?;
+    let file = io_abstractions.load_file(path, component_reference).await?;
 
-    let (mut file, all_files) = get_all_file_entries(file, component_reference, path)?;
+    let (mut file, all_files) = get_all_file_entries(file, component_reference, path).await?;
 
     let Some(definition_entry) = all_files.get(SLIPWAY_COMPONENT_FILE_NAME) else {
         return Err(ComponentLoadError::new(
@@ -40,7 +42,7 @@ pub(super) async fn load_from_tar(
     };
 
     let definition_string = map_tar_io_error(
-        read_file_string_entry(definition_entry, &mut *file),
+        read_file_string_entry(definition_entry, &mut *file).await,
         component_reference,
         path,
         SLIPWAY_COMPONENT_FILE_NAME,
@@ -48,7 +50,7 @@ pub(super) async fn load_from_tar(
     )?;
 
     let loader_data = Arc::new(TarComponentFileLoaderData {
-        file: Mutex::new(file),
+        file: tokio::sync::Mutex::new(file),
         entries: all_files,
         component_reference: component_reference.clone(),
         path: path.to_owned(),
@@ -66,7 +68,7 @@ pub(super) async fn load_from_tar(
 }
 
 struct TarComponentFileLoaderData {
-    file: Mutex<Box<dyn FileHandle>>,
+    file: tokio::sync::Mutex<Box<dyn FileHandle>>,
     entries: HashMap<String, FileEntry>,
     component_reference: SlipwayReference,
     path: PathBuf,
@@ -102,14 +104,10 @@ impl ComponentFilesLoader for TarComponentFilesLoader {
             return Ok(None);
         };
 
-        let mut file = self
-            .data
-            .file
-            .lock()
-            .expect("should be able to acquire lock on tar file");
+        let mut file = self.data.file.lock().await;
 
         let data = map_tar_io_error(
-            read_file_entry(entry, &mut **file),
+            read_file_entry(entry, &mut **file).await,
             &self.data.component_reference,
             &self.data.path,
             file_name,
@@ -127,14 +125,10 @@ impl ComponentFilesLoader for TarComponentFilesLoader {
             return Ok(None);
         };
 
-        let mut file = self
-            .data
-            .file
-            .lock()
-            .expect("should be able to acquire lock on tar file");
+        let mut file = self.data.file.lock().await;
 
         let data = map_tar_io_error(
-            read_file_string_entry(entry, &mut **file),
+            read_file_string_entry(entry, &mut **file).await,
             &self.data.component_reference,
             &self.data.path,
             file_name,
@@ -145,58 +139,107 @@ impl ComponentFilesLoader for TarComponentFilesLoader {
     }
 }
 
-fn get_all_file_entries(
+struct AsyncToSyncReader {
+    async_reader: Box<dyn FileHandle>,
+    rt_handle: tokio::runtime::Handle,
+}
+
+impl AsyncToSyncReader {
+    fn into_inner(self) -> Box<dyn FileHandle> {
+        self.async_reader
+    }
+}
+
+impl Read for AsyncToSyncReader {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        self.rt_handle.block_on(self.async_reader.read(buf))
+    }
+}
+
+fn async_read_to_sync(reader: Box<dyn FileHandle>) -> AsyncToSyncReader {
+    let rt_handle = tokio::runtime::Handle::current();
+    AsyncToSyncReader {
+        async_reader: reader,
+        rt_handle,
+    }
+}
+
+async fn get_all_file_entries(
     file: Box<dyn FileHandle>,
     component_reference: &SlipwayReference,
     path: &Path,
 ) -> Result<FileEntriesResult, ComponentLoadError> {
-    let mut a = Archive::new(file);
-    let mut all_files = HashMap::new();
-    for file in map_io_error(
-        a.entries(),
-        component_reference,
-        path,
-        "Failed to get TAR file entries",
-    )? {
-        // Make sure there wasn't an I/O error
-        let file = map_io_error(
-            file,
-            component_reference,
-            path,
-            "Failed to get file handle within TAR file",
-        )?;
+    // Convert to a blocking std::fs::File.
+    let std_file = async_read_to_sync(file);
 
-        // Inspect metadata about the file
-        let entry_path = map_io_error(
-            file.header().path(),
-            component_reference,
-            path,
-            "Failed to get file entry path",
-        )?;
+    let component_reference_clone = component_reference.clone();
+    let path = path.to_owned();
 
-        // Remove the leading "./" from the path if it exists.
-        let file_path_raw = entry_path.to_string_lossy().to_string();
-        let file_path = match file_path_raw.strip_prefix("./") {
-            Some(stripped) => stripped,
-            None => &file_path_raw,
+    // Offload the blocking tar extraction to a separate thread.
+    let (file, all_files) = tokio::task::spawn_blocking(move || {
+        let mut a = Archive::new(std_file);
+        let mut all_files = HashMap::new();
+        for file in map_io_error(
+            a.entries(),
+            &component_reference_clone,
+            &path,
+            "Failed to get TAR file entries",
+        )? {
+            // Make sure there wasn't an I/O error
+            let file = map_io_error(
+                file,
+                &component_reference_clone,
+                &path,
+                "Failed to get file handle within TAR file",
+            )?;
+
+            // Inspect metadata about the file
+            let entry_path = map_io_error(
+                file.header().path(),
+                &component_reference_clone,
+                &path,
+                "Failed to get file entry path",
+            )?;
+
+            // Remove the leading "./" from the path if it exists.
+            let file_path_raw = entry_path.to_string_lossy().to_string();
+            let file_path = match file_path_raw.strip_prefix("./") {
+                Some(stripped) => stripped,
+                None => &file_path_raw,
+            }
+            .to_string();
+
+            let length = map_tar_io_error(
+                file.header().entry_size(),
+                &component_reference_clone,
+                &path,
+                &file_path,
+                "Failed to get file length",
+            )?;
+            let offset = file.raw_file_position();
+
+            let file_entry = FileEntry { offset, length };
+
+            all_files.insert(file_path, file_entry);
         }
-        .to_string();
 
-        let length = map_tar_io_error(
-            file.header().entry_size(),
+        Ok((a.into_inner().into_inner(), all_files))
+    })
+    .await
+    .map_err(|e| {
+        let message = if e.is_panic() {
+            format!("Panic in thread while reading TAR file entries\n{e}")
+        } else if e.is_cancelled() {
+            format!("Thread was cancelled while reading TAR file entries\n{e}")
+        } else {
+            format!("Thread failed while reading TAR file entries:\n{e}")
+        };
+        ComponentLoadError::new(
             component_reference,
-            path,
-            &file_path,
-            "Failed to get file length",
-        )?;
-        let offset = file.raw_file_position();
+            ComponentLoadErrorInner::ThreadJoinFailed { message },
+        )
+    })??;
 
-        let file_entry = FileEntry { offset, length };
-
-        all_files.insert(file_path, file_entry);
-    }
-
-    let file = a.into_inner();
     Ok((file, all_files))
 }
 
@@ -240,39 +283,39 @@ struct FileEntry {
     length: u64,
 }
 
-fn read_file<R: FileHandle>(
+async fn read_file<R: FileHandle>(
     name: &str,
     file: &mut R,
     entries: &HashMap<String, FileEntry>,
 ) -> Result<Vec<u8>, std::io::Error> {
     let entry = entries.get(name).expect("Entry is not in archive");
-    read_file_entry(entry, file)
+    read_file_entry(entry, file).await
 }
 
-fn read_file_as_string<R: FileHandle>(
+async fn read_file_as_string<R: FileHandle>(
     name: &str,
     file: &mut R,
     entries: &HashMap<String, FileEntry>,
 ) -> Result<String, std::io::Error> {
     let entry = entries.get(name).expect("Entry is not in archive");
-    let buffer = read_file_entry(entry, file)?;
+    let buffer = read_file_entry(entry, file).await?;
     Ok(String::from_utf8(buffer).expect("File is not valid UTF-8"))
 }
 
-fn read_file_string_entry(
+async fn read_file_string_entry(
     entry: &FileEntry,
     file: &mut dyn FileHandle,
 ) -> Result<String, std::io::Error> {
-    let buffer = read_file_entry(entry, file)?;
+    let buffer = read_file_entry(entry, file).await?;
     Ok(String::from_utf8(buffer).expect("File is not valid UTF-8"))
 }
 
-fn read_file_entry(
+async fn read_file_entry(
     entry: &FileEntry,
     file: &mut dyn FileHandle,
 ) -> Result<Vec<u8>, std::io::Error> {
     let mut buffer = vec![0; entry.length as usize];
-    file.seek(SeekFrom::Start(entry.offset))?;
-    file.read_exact(&mut buffer)?;
+    file.seek(SeekFrom::Start(entry.offset)).await?;
+    file.read_exact(&mut buffer).await?;
     Ok(buffer)
 }

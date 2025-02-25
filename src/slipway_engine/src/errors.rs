@@ -125,6 +125,9 @@ pub enum ComponentLoadErrorInner {
 
     #[error("Rig has insufficient permissions to load component:\n{message}")]
     PermissionDenied { message: String, inner: Vec<String> },
+
+    #[error("Failed to join threads.\n{message}")]
+    ThreadJoinFailed { message: String },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

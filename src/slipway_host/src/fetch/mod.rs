@@ -133,7 +133,7 @@ pub async fn fetch_bin(
     let scheme = url.scheme();
 
     match scheme {
-        "https" | "http" => http::fetch_http(execution_context, url, options),
+        "https" | "http" => http::fetch_http(execution_context, url, options).await,
         "component" => component::fetch_component_data(execution_context, &url, options)
             .await
             .map_err(Into::into),

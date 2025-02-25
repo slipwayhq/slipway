@@ -316,8 +316,6 @@ mod tests {
         str::FromStr,
     };
 
-    use super::super::component_io_abstractions::FileHandle;
-
     use super::*;
 
     mod local_directory {
@@ -325,6 +323,8 @@ mod tests {
 
         use common_macros::slipway_test_async;
         use url::Url;
+
+        use crate::load::component_io_abstractions::FileHandle;
 
         use super::*;
 
@@ -674,6 +674,8 @@ mod tests {
         use tar::{Builder, Header};
         use url::Url;
 
+        use crate::load::component_io_abstractions::FileHandle;
+
         use super::*;
 
         struct MockComponentIOAbstractions {
@@ -681,7 +683,7 @@ mod tests {
             url_to_file_map: HashMap<String, String>,
         }
 
-        impl FileHandle for Cursor<Vec<u8>> {}
+        impl FileHandle for tokio::io::BufReader<Cursor<Vec<u8>>> {}
 
         #[async_trait]
         impl ComponentIOAbstractions for MockComponentIOAbstractions {
@@ -715,7 +717,9 @@ mod tests {
                         reference: Box::new(component_reference.clone()),
                         error: ComponentLoadErrorInner::NotFound,
                     })?;
-                Ok(Box::new(Cursor::new(data.clone())))
+                Ok(Box::new(tokio::io::BufReader::new(Cursor::new(
+                    data.clone(),
+                ))))
             }
 
             async fn cache_file_from_url(

@@ -14,7 +14,7 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
-ureq = { workspace = true }
+reqwest = { workspace = true }
 url = { workspace = true }
 semver = { workspace = true }
 base64 = "0.22.1"

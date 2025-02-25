@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use tokio_util::io::StreamReader;
 use url::Url;
 
 use crate::errors::ComponentLoadErrorInner;
@@ -7,15 +8,16 @@ use crate::errors::ComponentLoadError;
 
 use crate::SlipwayReference;
 
-use std::fs::File;
-use std::io::Read;
-use std::io::Seek;
+use futures::TryStreamExt;
 use std::path::Path;
 use std::path::PathBuf;
 
-pub(super) trait FileHandle: Read + Seek + Send {}
+pub(super) trait FileHandle:
+    tokio::io::AsyncRead + tokio::io::AsyncSeek + Unpin + Send
+{
+}
 
-impl FileHandle for File {}
+impl FileHandle for tokio::fs::File {}
 
 #[async_trait]
 pub(super) trait ComponentIOAbstractions: Send + Sync {
@@ -68,7 +70,7 @@ impl ComponentIOAbstractions for ComponentIOAbstractionsImpl {
         path: &Path,
         component_reference: &SlipwayReference,
     ) -> Result<Vec<u8>, ComponentLoadError> {
-        std::fs::read(path).map_err(|e| {
+        tokio::fs::read(path).await.map_err(|e| {
             ComponentLoadError::new(
                 component_reference,
                 ComponentLoadErrorInner::FileLoadFailed {
@@ -84,7 +86,7 @@ impl ComponentIOAbstractions for ComponentIOAbstractionsImpl {
         path: &Path,
         component_reference: &SlipwayReference,
     ) -> Result<String, ComponentLoadError> {
-        std::fs::read_to_string(path).map_err(|e| {
+        tokio::fs::read_to_string(path).await.map_err(|e| {
             ComponentLoadError::new(
                 component_reference,
                 ComponentLoadErrorInner::FileLoadFailed {
@@ -100,15 +102,17 @@ impl ComponentIOAbstractions for ComponentIOAbstractionsImpl {
         path: &Path,
         component_reference: &SlipwayReference,
     ) -> Result<Box<dyn FileHandle>, ComponentLoadError> {
-        Ok(Box::new(std::fs::File::open(path).map_err(|e| {
-            ComponentLoadError::new(
-                component_reference,
-                ComponentLoadErrorInner::FileLoadFailed {
-                    path: path.to_string_lossy().to_string(),
-                    error: e.to_string(),
-                },
-            )
-        })?))
+        Ok(Box::new(tokio::fs::File::open(path).await.map_err(
+            |e| {
+                ComponentLoadError::new(
+                    component_reference,
+                    ComponentLoadErrorInner::FileLoadFailed {
+                        path: path.to_string_lossy().to_string(),
+                        error: e.to_string(),
+                    },
+                )
+            },
+        )?))
     }
 
     async fn cache_file_from_url(
@@ -125,22 +129,24 @@ impl ComponentIOAbstractions for ComponentIOAbstractionsImpl {
 
         // Create the directory if it doesn't exist
         if !file_path.parent().unwrap().exists() {
-            std::fs::create_dir_all(file_path.parent().unwrap()).map_err(|e| {
-                ComponentLoadError::new(
-                    component_reference,
-                    ComponentLoadErrorInner::FileLoadFailed {
-                        path: file_path.to_string_lossy().to_string(),
-                        error: format!(
-                            "Error creating local components directory at {}.\n{}",
-                            self.local_component_cache_path.to_string_lossy(),
-                            e
-                        ),
-                    },
-                )
-            })?;
+            tokio::fs::create_dir_all(file_path.parent().unwrap())
+                .await
+                .map_err(|e| {
+                    ComponentLoadError::new(
+                        component_reference,
+                        ComponentLoadErrorInner::FileLoadFailed {
+                            path: file_path.to_string_lossy().to_string(),
+                            error: format!(
+                                "Error creating local components directory at {}.\n{}",
+                                self.local_component_cache_path.to_string_lossy(),
+                                e
+                            ),
+                        },
+                    )
+                })?;
         }
 
-        let response = ureq::get(url.as_str()).call().map_err(|e| {
+        let response = reqwest::get(url.as_str()).await.map_err(|e| {
             ComponentLoadError::new(
                 component_reference,
                 ComponentLoadErrorInner::FileLoadFailed {
@@ -163,19 +169,25 @@ impl ComponentIOAbstractions for ComponentIOAbstractionsImpl {
             ));
         }
 
-        let mut reader = response.into_body().into_reader();
-        let mut file = File::create(file_path.clone()).map_err(|e| {
-            ComponentLoadError::new(
-                component_reference,
-                ComponentLoadErrorInner::FileLoadFailed {
-                    path: file_path.to_string_lossy().to_string(),
-                    error: format!("Error creating file.\n{}", e),
-                },
-            )
-        })?;
+        let stream = response.bytes_stream();
+        let mut reader = StreamReader::new(
+            stream.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e)),
+        );
+
+        let mut file = tokio::fs::File::create(file_path.clone())
+            .await
+            .map_err(|e| {
+                ComponentLoadError::new(
+                    component_reference,
+                    ComponentLoadErrorInner::FileLoadFailed {
+                        path: file_path.to_string_lossy().to_string(),
+                        error: format!("Error creating file.\n{}", e),
+                    },
+                )
+            })?;
 
         // Stream the response directly to the file
-        std::io::copy(&mut reader, &mut file).map_err(|e| {
+        tokio::io::copy(&mut reader, &mut file).await.map_err(|e| {
             ComponentLoadError::new(
                 component_reference,
                 ComponentLoadErrorInner::FileLoadFailed {
