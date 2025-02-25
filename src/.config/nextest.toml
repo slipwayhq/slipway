@@ -1,7 +1,7 @@
-[test-groups]
-serial-tests = { max-threads = 1 }
+# [test-groups]
+# serial-tests = { max-threads = 1 }
 
-[[profile.default.overrides]]
-filter = 'test(serial_tests::)'
-test-group = 'serial-tests'
-retries = { backoff = "fixed", count = 4, delay = "1s" }
+# [[profile.default.overrides]]
+# filter = 'test(serial_tests::)'
+# test-group = 'serial-tests'
+# retries = { backoff = "fixed", count = 4, delay = "1s" }

@@ -52,7 +52,6 @@ mod serial_tests {
             "/foo/bar".to_string(),
             "PUT".to_string(),
             vec![
-                // Note ureq 3 converts header names to lower case.
                 ("content-type".to_string(), "application/json".to_string()),
                 ("content-length".to_string(), BODY.len().to_string()),
             ],
