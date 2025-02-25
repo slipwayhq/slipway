@@ -17,9 +17,9 @@ pub(super) async fn run_rig(
     rig_json: serde_json::Value,
 ) -> anyhow::Result<RunRigResult> {
     let config_path = state.root.join(format!("{rig_name}.config.json"));
-    let config = match std::fs::File::open(&config_path) {
-        Ok(file) => {
-            serde_json::from_reader(file).context("Failed to parse Slipway Serve config file.")?
+    let config = match tokio::fs::read(&config_path).await {
+        Ok(bytes) => {
+            serde_json::from_slice(&bytes).context("Failed to parse Slipway Serve config file.")?
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => RigConfig::default(),
         Err(e) => return Err(e).context("Failed to load Slipway Serve config file.")?,

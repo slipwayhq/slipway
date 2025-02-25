@@ -22,7 +22,8 @@ pub(super) async fn run_rig<W: Write>(
     writeln!(w, "Launching {}", input.display())?;
     writeln!(w)?;
 
-    let file_contents = std::fs::read_to_string(input.clone())
+    let file_contents = tokio::fs::read_to_string(input.clone())
+        .await
         .with_context(|| format!("Failed to read component from {}", input.display()))?;
     let rig = parse_rig(&file_contents)?;
 
