@@ -146,7 +146,10 @@ fn main() -> anyhow::Result<()> {
 
     match runtime_type {
         RuntimeType::TokioSingleThread => {
-            let mtr = tokio::runtime::Builder::new_multi_thread().build()?;
+            let mtr = tokio::runtime::Builder::new_multi_thread()
+                .enable_io()
+                .enable_time()
+                .build()?;
             mtr.block_on(async { main_single_threaded(args).await })?;
         }
         RuntimeType::Actix => {
