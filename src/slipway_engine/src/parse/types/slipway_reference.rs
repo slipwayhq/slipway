@@ -17,7 +17,7 @@ use super::{REGISTRY_PUBLISHER_SEPARATOR, VERSION_SEPARATOR};
 pub(crate) static REGISTRY_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(?<publisher>\w+)\.(?<name>\w+)\.(?<version>.+)$").unwrap());
 
-static PASSTHROUGH_STRING: &str = "pass";
+static PASSTHROUGH_STRING: &str = "passthrough";
 
 static SINK_STRING: &str = "sink";
 
@@ -143,7 +143,7 @@ mod tests {
 
         #[test]
         fn it_should_serialize_and_deserialize_pass() {
-            let s = r"pass";
+            let s = r"passthrough";
             let json = quote(s);
 
             let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
