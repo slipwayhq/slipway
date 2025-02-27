@@ -1,3 +1,10 @@
+# Slipway
+
+Slipway is an application written in Rust which allows the user to render useful information
+using reusable components which can be displayed on any device you like.
+
+For more information please see [our website](https://slipwayhq.com/).
+
 # Project Structure
 
 ## `/src`
