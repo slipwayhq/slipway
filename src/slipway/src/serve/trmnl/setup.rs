@@ -22,10 +22,5 @@ pub(crate) async fn trmnl_setup(
             )
         })?;
 
-    let friendly_id = create_friendly_id();
-
-    Ok(web::Json(serde_json::json!({
-        "id": id,
-        "friendly_id": friendly_id,
-    })))
+    todo!();
 }

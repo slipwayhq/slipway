@@ -153,9 +153,6 @@ pub(crate) async fn debug_rig_from_component_file<W: Write>(
     writeln!(w)?;
 
     let rig = Rig {
-        publisher: Publisher::from_str("test").expect("generated rig publisher should be valid"),
-        name: Name::from_str("test").expect("generated rig name should be valid"),
-        version: semver::Version::parse("0.0.1").expect("generated rig version should be valid"),
         description: None,
         constants: None,
         rigging: Rigging {

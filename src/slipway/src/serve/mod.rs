@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use actix_web::body::{BoxBody, EitherBody, MessageBody};
@@ -24,6 +25,9 @@ mod repository;
 mod run_rig;
 pub(super) mod trmnl;
 use sha2::{Digest, Sha256};
+
+use crate::permissions::PermissionsOwned;
+use crate::primitives::RigName;
 
 fn hash_string(input: &str) -> String {
     let mut hasher = Sha256::new();
@@ -64,10 +68,7 @@ struct SlipwayServeConfig {
     registry_urls: Vec<String>,
 
     #[serde(default)]
-    allow: Vec<Permission>,
-
-    #[serde(default)]
-    deny: Vec<Permission>,
+    rig_permissions: HashMap<RigName, PermissionsOwned>,
 
     #[serde(default)]
     repository: RepositoryConfig,

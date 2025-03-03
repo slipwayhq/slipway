@@ -1,20 +1,29 @@
+use std::sync::LazyLock;
+
 use anyhow::Context;
 use clap::Args;
 use paste::paste;
+use serde::Deserialize;
 use slipway_engine::{
     LocalComponentPermission, Permission, RegistryComponentPermission, StringPermission,
     UrlPermission,
 };
 use url::Url;
 
-#[derive(Debug)]
-pub(super) struct Permissions {
+pub(super) static PERMISSIONS_EMPTY: LazyLock<PermissionsOwned> =
+    LazyLock::new(|| PermissionsOwned {
+        allow: vec![],
+        deny: vec![],
+    });
+
+#[derive(Debug, Clone, Deserialize)]
+pub(super) struct PermissionsOwned {
     pub allow: Vec<Permission>,
     pub deny: Vec<Permission>,
 }
 
-impl<'a> From<&'a Permissions> for slipway_engine::Permissions<'a> {
-    fn from(permissions: &'a Permissions) -> slipway_engine::Permissions<'a> {
+impl<'a> From<&'a PermissionsOwned> for slipway_engine::Permissions<'a> {
+    fn from(permissions: &'a PermissionsOwned) -> slipway_engine::Permissions<'a> {
         slipway_engine::Permissions {
             allow: &permissions.allow,
             deny: &permissions.deny,
@@ -193,7 +202,7 @@ pub(super) struct CommonPermissionsArgs {
 }
 
 impl CommonPermissionsArgs {
-    pub fn into_permissions(self) -> anyhow::Result<Permissions> {
+    pub fn into_permissions(self) -> anyhow::Result<PermissionsOwned> {
         let mut allow = Vec::new();
         let mut deny = Vec::new();
 
@@ -281,7 +290,7 @@ impl CommonPermissionsArgs {
             self.registry_components.deny_registry_components_exact,
         )?;
 
-        Ok(Permissions { allow, deny })
+        Ok(PermissionsOwned { allow, deny })
     }
 }
 

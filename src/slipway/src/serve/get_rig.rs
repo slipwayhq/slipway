@@ -92,7 +92,7 @@ async fn get_rig_inner(
 ) -> Result<RigResponse, ServeError> {
     let rig = state.repository.get_rig(&rig_name).await?;
 
-    let result = super::run_rig::run_rig(state, rig)
+    let result = super::run_rig::run_rig(state, rig, &rig_name)
         .await
         .map_err(ServeError::Internal)?;
 

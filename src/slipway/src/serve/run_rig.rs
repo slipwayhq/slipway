@@ -2,16 +2,23 @@ use std::{str::FromStr, sync::Arc};
 
 use anyhow::Context;
 use slipway_engine::{
-    BasicComponentCache, BasicComponentsLoader, CallChain, ComponentHandle, Permission,
-    Permissions, Rig, RigSession,
+    BasicComponentCache, BasicComponentsLoader, CallChain, ComponentHandle, Permission, Rig,
+    RigSession,
 };
 use tracing::info;
 
-use crate::{component_runners::get_component_runners, run_rig::SlipwayRunEventHandler};
+use crate::{
+    component_runners::get_component_runners, permissions::PERMISSIONS_EMPTY, primitives::RigName,
+    run_rig::SlipwayRunEventHandler,
+};
 
 use super::ServeState;
 
-pub(super) async fn run_rig(state: Arc<ServeState>, rig: Rig) -> anyhow::Result<RunRigResult> {
+pub(super) async fn run_rig(
+    state: Arc<ServeState>,
+    rig: Rig,
+    rig_name: &RigName,
+) -> anyhow::Result<RunRigResult> {
     let components_loader = BasicComponentsLoader::builder()
         .local_base_directory(&state.root)
         .registry_lookup_urls(state.config.registry_urls.clone())
@@ -30,11 +37,13 @@ pub(super) async fn run_rig(state: Arc<ServeState>, rig: Rig) -> anyhow::Result<
     let component_runners = get_component_runners();
     let component_runners_slice = component_runners.as_slice();
 
-    let allow = &state.config.allow;
-    let deny = &state.config.deny;
+    let rig_permissions = state
+        .config
+        .rig_permissions
+        .get(&rig_name)
+        .unwrap_or_else(|| &PERMISSIONS_EMPTY);
 
-    let engine_permissions = Permissions::new(&allow, &deny);
-    let call_chain = Arc::new(CallChain::new(engine_permissions));
+    let call_chain = Arc::new(CallChain::new(rig_permissions.into()));
 
     let result = slipway_host::run::run_rig(
         &session,
