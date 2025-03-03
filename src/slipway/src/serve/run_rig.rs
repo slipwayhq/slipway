@@ -2,8 +2,8 @@ use std::{str::FromStr, sync::Arc};
 
 use anyhow::Context;
 use slipway_engine::{
-    parse_rig_json, BasicComponentCache, BasicComponentsLoader, CallChain, ComponentHandle,
-    Permission, Permissions, RigSession,
+    BasicComponentCache, BasicComponentsLoader, CallChain, ComponentHandle, Permission,
+    Permissions, Rig, RigSession,
 };
 use tracing::info;
 
@@ -11,22 +11,7 @@ use crate::{component_runners::get_component_runners, run_rig::SlipwayRunEventHa
 
 use super::ServeState;
 
-pub(super) async fn run_rig(
-    state: Arc<ServeState>,
-    rig_name: &str,
-    rig_json: serde_json::Value,
-) -> anyhow::Result<RunRigResult> {
-    let config_path = state.root.join(format!("{rig_name}.config.json"));
-    let config = match tokio::fs::read(&config_path).await {
-        Ok(bytes) => {
-            serde_json::from_slice(&bytes).context("Failed to parse Slipway Serve config file.")?
-        }
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => RigConfig::default(),
-        Err(e) => return Err(e).context("Failed to load Slipway Serve config file.")?,
-    };
-
-    let rig = parse_rig_json(rig_json)?;
-
+pub(super) async fn run_rig(state: Arc<ServeState>, rig: Rig) -> anyhow::Result<RunRigResult> {
     let components_loader = BasicComponentsLoader::builder()
         .local_base_directory(&state.root)
         .registry_lookup_urls(state.config.registry_urls.clone())
@@ -45,21 +30,8 @@ pub(super) async fn run_rig(
     let component_runners = get_component_runners();
     let component_runners_slice = component_runners.as_slice();
 
-    let allow = state
-        .config
-        .allow
-        .iter()
-        .chain(config.allow.iter())
-        .cloned()
-        .collect();
-
-    let deny = state
-        .config
-        .deny
-        .iter()
-        .chain(config.deny.iter())
-        .cloned()
-        .collect();
+    let allow = &state.config.allow;
+    let deny = &state.config.deny;
 
     let engine_permissions = Permissions::new(&allow, &deny);
     let call_chain = Arc::new(CallChain::new(engine_permissions));

@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 
 use std::ops::Deref;
+use std::sync::LazyLock;
 
 pub use execute::component_execution_data::permissions::*;
 pub use execute::component_execution_data::*;
@@ -22,6 +23,7 @@ pub use parse::types::slipway_id::*;
 pub use parse::types::slipway_reference::*;
 pub use parse::types::*;
 pub use parse::*;
+use regex::Regex;
 pub use special_components::*;
 pub mod custom_iter_tools;
 pub mod errors;
@@ -51,3 +53,8 @@ impl<T> Deref for Immutable<T> {
         &self.value
     }
 }
+
+pub const SLIPWAY_ALPHANUMERIC_NAME_REGEX_STR: &str = r"^[a-z0-9_]+$";
+pub static SLIPWAY_ALPHANUMERIC_NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(SLIPWAY_ALPHANUMERIC_NAME_REGEX_STR).expect("Regex should be valid")
+});

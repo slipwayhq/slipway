@@ -1,7 +1,5 @@
 use crate::errors::RigError;
-use core::fmt;
-use regex::Regex;
-use serde::{Deserialize, Deserializer, Serialize};
+use crate::SLIPWAY_ALPHANUMERIC_NAME_REGEX_STR;
 use std::str::FromStr;
 
 const MAXIMUM_PUBLISHER_LENGTH: usize = 64;
@@ -10,8 +8,8 @@ const MAXIMUM_DESCRIPTION_LENGTH: usize = 256;
 const MAXIMUM_COMPONENT_HANDLE_LENGTH: usize = 256;
 const MAXIMUM_SESSION_HANDLE_LENGTH: usize = 65536;
 
-crate::utils::create_validated_string_struct!(pub Publisher, Some(r"^\w+$"), Some(1), MAXIMUM_PUBLISHER_LENGTH);
-crate::utils::create_validated_string_struct!(pub Name, Some(r"^\w+$"), Some(1), MAXIMUM_NAME_LENGTH);
+crate::utils::create_validated_string_struct!(pub Publisher, Some(SLIPWAY_ALPHANUMERIC_NAME_REGEX_STR), Some(1), MAXIMUM_PUBLISHER_LENGTH);
+crate::utils::create_validated_string_struct!(pub Name, Some(SLIPWAY_ALPHANUMERIC_NAME_REGEX_STR), Some(1), MAXIMUM_NAME_LENGTH);
 crate::utils::create_validated_string_struct!(pub Description, None, None, MAXIMUM_DESCRIPTION_LENGTH);
 crate::utils::create_validated_string_struct!(
     pub ComponentHandle,
@@ -22,6 +20,7 @@ crate::utils::create_validated_string_struct!(
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     trait SlipwayErrorTrait {

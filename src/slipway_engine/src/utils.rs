@@ -1,15 +1,16 @@
+#[macro_export]
 macro_rules! create_validated_string_struct {
     ($vis:vis $name:ident, $pattern:expr, $min_length:expr, $max_length:expr) => {
         #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
         $vis struct $name(pub String);
 
-        impl fmt::Display for $name {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 write!(f, "{}", self.0)
             }
         }
 
-        impl FromStr for $name {
+        impl std::str::FromStr for $name {
             type Err = RigError;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -38,7 +39,7 @@ macro_rules! create_validated_string_struct {
                 }
 
                 if let Some(pattern) = $pattern {
-                    let regex = Regex::new(pattern).unwrap();
+                    let regex = regex::Regex::new(pattern).expect("Regex should be valid");
                     if !regex.is_match(&s) {
                         return Err(RigError::InvalidSlipwayPrimitive {
                             primitive_type: stringify!($name).to_string(),
@@ -51,16 +52,16 @@ macro_rules! create_validated_string_struct {
             }
         }
 
-        impl Serialize for $name {
+        impl serde::Serialize for $name {
             fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
                 serializer.collect_str(self)
             }
         }
 
-        impl<'de> Deserialize<'de> for $name {
+        impl<'de> serde::Deserialize<'de> for $name {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where
-                D: Deserializer<'de>,
+                D: serde::Deserializer<'de>,
             {
                 let s = String::deserialize(deserializer)?;
                 $name::from_str(&s).map_err(serde::de::Error::custom)
@@ -71,7 +72,7 @@ macro_rules! create_validated_string_struct {
 
 use std::{collections::HashSet, str::FromStr};
 
-pub(crate) use create_validated_string_struct;
+pub use create_validated_string_struct;
 
 use crate::ComponentHandle;
 

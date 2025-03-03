@@ -6,6 +6,7 @@ mod debug_rig;
 mod host_error;
 mod package;
 mod permissions;
+mod primitives;
 mod render_state;
 mod run_rig;
 mod serve;
@@ -25,6 +26,8 @@ use clap::{
     Args, Parser, Subcommand,
 };
 use permissions::CommonPermissionsArgs;
+use primitives::{DeviceName, PlaylistName, RigName};
+use slipway_engine::SLIPWAY_ALPHANUMERIC_NAME_REGEX;
 use time::{format_description, OffsetDateTime};
 use tracing::Level;
 use tracing_subscriber::{fmt::time::FormatTime, FmtSubscriber};
@@ -94,6 +97,9 @@ pub(crate) enum Commands {
     Serve {
         /// The path to the server configuration files.
         path: PathBuf,
+
+        #[command(subcommand)]
+        subcommand: Option<ServeCommands>,
     },
 
     /// Package up a Slipway component into a .tar file.
@@ -110,6 +116,51 @@ pub(crate) enum Commands {
     /// Output the WIT (WASM Interface Type) definition, for building Slipway components.
     #[command()]
     Wit,
+}
+
+#[derive(Debug, Subcommand)]
+enum ServeCommands {
+    /// Add a device to use when serving HTTP requests.
+    #[command(arg_required_else_help = true)]
+    AddDevice {
+        /// The ID the device uses to register itself (typically a MAC address).
+        #[arg(long)]
+        id: String,
+
+        /// A memorable name for the device.
+        #[arg(short, long)]
+        name: DeviceName,
+
+        /// The optional playlist to use for the device
+        /// (lowercase alphanumeric plus underscores).
+        #[arg(short, long)]
+        playlist: Option<PlaylistName>,
+    },
+
+    /// Add a playlist to use when serving HTTP requests.
+    #[command(arg_required_else_help = true)]
+    AddPlaylist {
+        /// A name for the playlist (lowercase alphanumeric plus underscores).
+        #[arg(short, long)]
+        name: PlaylistName,
+
+        /// The optional name of the rig to populate the playlist with
+        /// (lowercase alphanumeric plus underscores).
+        #[arg(short, long)]
+        rig: Option<RigName>,
+    },
+
+    /// Add a rig to use when serving HTTP requests.
+    #[command(arg_required_else_help = true)]
+    AddRig {
+        /// A name for the rig (lowercase alphanumeric plus underscores).
+        #[arg(short, long)]
+        name: slipway_engine::Name,
+
+        /// A publisher for the rig (lowercase alphanumeric plus underscores).
+        #[arg(short, long, default_value = "self")]
+        publisher: slipway_engine::Publisher,
+    },
 }
 
 #[derive(Debug, Args)]
@@ -138,7 +189,13 @@ enum RuntimeType {
 fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
-    let runtime_type = if matches!(args.command, Commands::Serve { .. }) {
+    let runtime_type = if matches!(
+        args.command,
+        Commands::Serve {
+            subcommand: None,
+            ..
+        }
+    ) {
         RuntimeType::Actix
     } else {
         RuntimeType::TokioSingleThread
@@ -223,8 +280,23 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
         Commands::Wit => {
             println!("{}", WASM_INTERFACE_TYPE_STR);
         }
-        Commands::Serve { path: _ } => {
-            panic!("Serve command is not supported in single-threaded mode.");
+        Commands::Serve { path, subcommand } => {
+            match subcommand {
+                Some(ServeCommands::AddDevice { id, name, playlist }) => {
+                    serve::commands::add_device(path, id, name, playlist).await?;
+                }
+                Some(ServeCommands::AddPlaylist { name, rig }) => {
+                    println!("Adding playlist with name: {}", name);
+                    //serve::trmnl::add_playlist(serve_path, name, rig).await?;
+                }
+                Some(ServeCommands::AddRig { name, publisher }) => {
+                    println!("Adding rig with name: {}", name);
+                    //serve::trmnl::add_rig(serve_path, name, publisher).await?;
+                }
+                None => {
+                    panic!("Serve command with no subcommand is not supported in single-threaded mode.");
+                }
+            }
         }
     }
 
@@ -235,7 +307,10 @@ async fn main_actix_web(args: Cli) -> anyhow::Result<()> {
     // Note we're not setting a ctrl+c handler here because
     // the server will handle it.
     match args.command {
-        Commands::Serve { path } => {
+        Commands::Serve {
+            path,
+            subcommand: None,
+        } => {
             serve::serve(path).await?;
         }
         _ => {

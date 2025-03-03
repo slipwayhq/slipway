@@ -5,15 +5,15 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
-async-trait = "0.1.73"
+async-trait = { workspace = true }
 jsonpath-rust = "0.7.0"
 jtd = { workspace = true }
-regex = "1.9.5"
+regex = { workspace = true }
 semver = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = { version = "3.5.1", default-features = false, features = ["std"] }
-sha2 = "0.10.8"
+sha2 = { workspace = true }
 thiserror = { workspace = true }
 url = { workspace = true }
 tracing = { workspace = true }

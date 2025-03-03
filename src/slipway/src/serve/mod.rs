@@ -1,29 +1,42 @@
 use std::borrow::Cow;
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::path::{Path, PathBuf};
 
 use actix_web::body::{BoxBody, EitherBody, MessageBody};
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::http::header::ContentType;
 use actix_web::http::StatusCode;
 use actix_web::middleware::{from_fn, Next};
-use actix_web::{get, web, App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::Context;
+use repository::ServeRepository;
 use serde::Deserialize;
 use slipway_engine::Permission;
 
+use base64::prelude::*;
 use image::{DynamicImage, ImageFormat, RgbaImage};
 use std::io::Cursor;
-use tracing::{info, warn};
-mod rig;
-use base64::prelude::*;
 use thiserror::Error;
+use tracing::{info, warn};
 
-#[derive(Clone)]
+pub(super) mod commands;
+mod get_rig;
+mod repository;
+mod run_rig;
+pub(super) mod trmnl;
+use sha2::{Digest, Sha256};
+
+fn hash_string(input: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(input);
+    let result = hasher.finalize();
+    format!("{:x}", result)
+}
+
 struct ServeState {
     pub root: PathBuf,
     pub config: SlipwayServeConfig,
     pub expected_authorization_header: Option<String>,
+    pub repository: Box<dyn ServeRepository>,
 }
 
 impl ServeState {
@@ -31,16 +44,18 @@ impl ServeState {
         root: PathBuf,
         config: SlipwayServeConfig,
         expected_authorization_header: Option<String>,
+        repository: Box<dyn ServeRepository>,
     ) -> Self {
         Self {
             root,
             config,
             expected_authorization_header,
+            repository,
         }
     }
 }
 
-#[derive(Debug, Default, serde::Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Default)]
 struct SlipwayServeConfig {
     #[serde(default)]
     log_level: Option<String>,
@@ -53,13 +68,26 @@ struct SlipwayServeConfig {
 
     #[serde(default)]
     deny: Vec<Permission>,
+
+    #[serde(default)]
+    repository: RepositoryConfig,
+}
+
+#[derive(Deserialize, Debug, Clone, Default)]
+#[serde(rename_all = "snake_case")]
+enum RepositoryConfig {
+    #[default]
+    ReadOnlyFilesystem,
 }
 
 pub async fn serve(path: PathBuf) -> anyhow::Result<()> {
-    let root = path.to_owned();
+    let config = load_serve_config(&path).await?;
+    serve_with_config(path, config).await?;
+    Ok(())
+}
 
-    let config_path = path.join("slipway_serve.json");
-
+async fn load_serve_config(root_path: &Path) -> Result<SlipwayServeConfig, anyhow::Error> {
+    let config_path = root_path.join("slipway_serve.json");
     let config = match tokio::fs::read(&config_path).await {
         Ok(bytes) => {
             serde_json::from_slice(&bytes).context("Failed to parse Slipway Serve config file.")?
@@ -67,13 +95,18 @@ pub async fn serve(path: PathBuf) -> anyhow::Result<()> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => SlipwayServeConfig::default(),
         Err(e) => return Err(e).context("Failed to load Slipway Serve config file.")?,
     };
-
-    serve_config(root, config).await?;
-
-    Ok(())
+    Ok(config)
 }
 
-async fn serve_config(root: PathBuf, config: SlipwayServeConfig) -> anyhow::Result<()> {
+fn create_repository(root_path: &Path, config: &RepositoryConfig) -> Box<dyn ServeRepository> {
+    match config {
+        RepositoryConfig::ReadOnlyFilesystem => Box::new(
+            repository::file_system::FileSystemRepository::new(root_path.to_owned()),
+        ),
+    }
+}
+
+async fn serve_with_config(root: PathBuf, config: SlipwayServeConfig) -> anyhow::Result<()> {
     super::configure_tracing(config.log_level.clone());
 
     let expected_authorization_header = std::env::var("SLIPWAY_AUTHORIZATION_HEADER").ok();
@@ -86,13 +119,17 @@ async fn serve_config(root: PathBuf, config: SlipwayServeConfig) -> anyhow::Resu
         warn!("No authorization header required for requests.");
     }
 
-    let state = web::Data::new(ServeState::new(root, config, expected_authorization_header));
-
     HttpServer::new(move || {
         App::new()
-            .app_data(state.clone())
+            .app_data(web::Data::new(ServeState::new(
+                root.clone(),
+                config.clone(),
+                expected_authorization_header.clone(),
+                create_repository(&root, &config.repository),
+            )))
             .wrap(from_fn(auth_middleware))
-            .service(get_rig)
+            .service(get_rig::get_rig)
+            .service(trmnl::trmnl_setup)
     })
     .bind(("0.0.0.0", 8080))?
     .run()
@@ -154,7 +191,7 @@ async fn auth_middleware(
 #[derive(Debug, Error)]
 enum ServeError {
     #[error("internal error: {0}")]
-    InternalError(anyhow::Error),
+    Internal(anyhow::Error),
 
     #[error("{1}")]
     UserFacing(StatusCode, String),
@@ -169,7 +206,7 @@ impl actix_web::error::ResponseError for ServeError {
 
     fn status_code(&self) -> StatusCode {
         match *self {
-            ServeError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            ServeError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
             ServeError::UserFacing(status_code, _) => status_code,
         }
     }
@@ -250,144 +287,5 @@ impl Responder for ImageResponse {
         };
 
         response.body(body)
-    }
-}
-
-#[derive(Deserialize)]
-struct GetRigPath {
-    rig_name: String,
-}
-
-#[derive(Deserialize)]
-struct GetRigQuery {
-    #[serde(default)]
-    format: Option<RigResultFormat>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "snake_case")]
-enum RigResultFormat {
-    Jpeg,
-    Png,
-    Json,
-    PngHtml,
-    JpegHtml,
-    PngHtmlNoEmbed,
-    JpegHtmlNoEmbed,
-}
-
-#[get("/rig/{rig_name}")]
-async fn get_rig(
-    path: web::Path<GetRigPath>,
-    query: web::Query<GetRigQuery>,
-    data: web::Data<ServeState>,
-    req: HttpRequest,
-) -> Result<RigResponse, ServeError> {
-    let path = path.into_inner();
-    let query = query.into_inner();
-    let state = data.into_inner();
-
-    match query.format {
-        Some(RigResultFormat::PngHtmlNoEmbed) | Some(RigResultFormat::JpegHtmlNoEmbed) => {
-            let connection_info = req.connection_info();
-            let scheme = connection_info.scheme();
-            let host = connection_info.host();
-            let uri = req.uri();
-            let path = uri.path();
-
-            let full_url = format!("{}://{}{}", scheme, host, path);
-
-            let mut qs = url::form_urlencoded::Serializer::new(String::new());
-
-            qs.append_pair(
-                "format",
-                match query.format {
-                    Some(RigResultFormat::JpegHtmlNoEmbed) => "jpeg",
-                    _ => "png",
-                },
-            );
-
-            if let Some(authorization) = req
-                .extensions()
-                .get::<RequestState>()
-                .and_then(|state| state.authorized_header.as_ref())
-            {
-                qs.append_pair("authorization", authorization);
-            }
-
-            // Used as a nonce to force Trmnl to reload the image.
-            let timestamp = chrono::Utc::now().format("%Y-%m-%d-%H-%M-%S").to_string();
-            qs.append_pair("timestamp", &timestamp);
-
-            Ok(RigResponse::Html(format!(
-                r#"<html><body style="margin:0px"><img src="{}?{}"/></body></html>"#,
-                full_url,
-                qs.finish()
-            )))
-        }
-        _ => get_rig_inner(path.rig_name, query.format, state).await,
-    }
-}
-
-async fn get_rig_inner(
-    rig_name: String,
-    result_format: Option<RigResultFormat>,
-    state: Arc<ServeState>,
-) -> Result<RigResponse, ServeError> {
-    let rig_path = state.root.join(format!("{rig_name}.json"));
-    let rig_json = match tokio::fs::read(&rig_path).await {
-        Ok(bytes) => serde_json::from_slice(&bytes)
-            .context(format!(
-                "Failed to parse Slipway Rig \"{:?}\" as JSON.",
-                rig_path
-            ))
-            .map_err(ServeError::InternalError)?,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            return Err(ServeError::UserFacing(
-                StatusCode::NOT_FOUND,
-                format!("Failed to find Slipway Rig {:?}.", rig_path),
-            ))
-        }
-        Err(e) => return Err(ServeError::InternalError(e.into())),
-    };
-
-    let result = rig::run_rig(state, &rig_name, rig_json)
-        .await
-        .map_err(ServeError::InternalError)?;
-
-    match result_format {
-        None
-        | Some(RigResultFormat::Png)
-        | Some(RigResultFormat::Jpeg)
-        | Some(RigResultFormat::PngHtml)
-        | Some(RigResultFormat::JpegHtml) => {
-            let maybe_image = crate::canvas::get_canvas_image(&result.handle, &result.output);
-
-            if let Ok(image) = maybe_image {
-                Ok(RigResponse::Image(ImageResponse {
-                    image,
-                    format: match result_format {
-                        Some(RigResultFormat::Jpeg) => ImageFormat::Jpeg,
-                        _ => ImageFormat::Png,
-                    },
-                    wrap_in_html: matches!(
-                        result_format,
-                        Some(RigResultFormat::PngHtml) | Some(RigResultFormat::JpegHtml)
-                    ),
-                }))
-            } else {
-                match result_format {
-                    None => Ok(RigResponse::Json(web::Json(result.output))),
-                    _ => Err(ServeError::UserFacing(
-                        StatusCode::BAD_REQUEST,
-                        "Could not render first rig output as an image.".to_string(),
-                    )),
-                }
-            }
-        }
-        Some(RigResultFormat::Json) => Ok(RigResponse::Json(web::Json(result.output))),
-        Some(RigResultFormat::JpegHtmlNoEmbed) | Some(RigResultFormat::PngHtmlNoEmbed) => {
-            unreachable!();
-        }
     }
 }
