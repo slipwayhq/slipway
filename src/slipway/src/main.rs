@@ -156,10 +156,6 @@ enum ServeCommands {
         /// A name for the rig (lowercase alphanumeric plus underscores).
         #[arg(short, long)]
         name: slipway_engine::Name,
-
-        /// A publisher for the rig (lowercase alphanumeric plus underscores).
-        #[arg(short, long, default_value = "self")]
-        publisher: slipway_engine::Publisher,
     },
 }
 
@@ -289,7 +285,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
                     println!("Adding playlist with name: {}", name);
                     //serve::trmnl::add_playlist(serve_path, name, rig).await?;
                 }
-                Some(ServeCommands::AddRig { name, publisher }) => {
+                Some(ServeCommands::AddRig { name }) => {
                     println!("Adding rig with name: {}", name);
                     //serve::trmnl::add_rig(serve_path, name, publisher).await?;
                 }

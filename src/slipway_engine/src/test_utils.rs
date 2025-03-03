@@ -31,9 +31,6 @@ pub const TEST_PUBLISHER: &str = "test_publisher";
 impl Rig {
     pub fn for_test(rigging: Rigging) -> Rig {
         Rig {
-            publisher: Publisher::from_str(TEST_PUBLISHER).unwrap(),
-            name: Name::from_str("test_name").unwrap(),
-            version: Version::from_str("0.1.0").unwrap(),
             description: None,
             constants: Some(json!({"test_constant": "test_constant_value"})),
             rigging,

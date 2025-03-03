@@ -46,18 +46,9 @@ fn parse_component_version(version_string: &str) -> Result<Version, RigError> {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Rig {
-    pub publisher: Publisher,
-    pub name: Name,
-    pub version: Version,
     pub description: Option<Description>,
     pub constants: Option<serde_json::Value>,
     pub rigging: Rigging,
-}
-
-impl Rig {
-    pub fn get_id(&self) -> SlipwayId {
-        SlipwayId::new(&self.publisher, &self.name, &self.version)
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]

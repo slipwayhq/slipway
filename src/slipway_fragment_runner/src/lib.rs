@@ -87,9 +87,6 @@ async fn run_component_fragment(
     );
 
     let rig = Rig {
-        publisher: component_definition.publisher.clone(),
-        name: component_definition.name.clone(),
-        version: component_definition.version.clone(),
         description: None,
         constants: component_definition.constants.clone(),
         rigging: rigging_with_input,
