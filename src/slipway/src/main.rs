@@ -163,7 +163,7 @@ enum ServeCommands {
     AddRig {
         /// A name for the rig (lowercase alphanumeric plus underscores).
         #[arg(short, long)]
-        name: slipway_engine::Name,
+        name: RigName,
     },
 }
 
@@ -284,38 +284,29 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
         Commands::Wit => {
             println!("{}", WASM_INTERFACE_TYPE_STR);
         }
-        Commands::Serve { path, subcommand } => {
-            match subcommand {
-                Some(ServeCommands::AddDevice {
-                    id,
-                    friendly_id,
-                    hashed_api_key,
-                    name,
-                    playlist,
-                }) => {
-                    serve::commands::add_device(
-                        path,
-                        id,
-                        friendly_id,
-                        hashed_api_key,
-                        name,
-                        playlist,
-                    )
+        Commands::Serve { path, subcommand } => match subcommand {
+            Some(ServeCommands::AddDevice {
+                id,
+                friendly_id,
+                hashed_api_key,
+                name,
+                playlist,
+            }) => {
+                serve::commands::add_device(path, id, friendly_id, hashed_api_key, name, playlist)
                     .await?;
-                }
-                Some(ServeCommands::AddPlaylist { name, rig: _ }) => {
-                    println!("Adding playlist with name: {}", name);
-                    //serve::trmnl::add_playlist(serve_path, name, rig).await?;
-                }
-                Some(ServeCommands::AddRig { name }) => {
-                    println!("Adding rig with name: {}", name);
-                    //serve::trmnl::add_rig(serve_path, name, publisher).await?;
-                }
-                None => {
-                    panic!("Serve command with no subcommand is not supported in single-threaded mode.");
-                }
             }
-        }
+            Some(ServeCommands::AddPlaylist { name, rig }) => {
+                serve::commands::add_playlist(path, name, rig).await?;
+            }
+            Some(ServeCommands::AddRig { name }) => {
+                serve::commands::add_rig(path, name).await?;
+            }
+            None => {
+                panic!(
+                    "Serve command with no subcommand is not supported in single-threaded mode."
+                );
+            }
+        },
     }
 
     Ok(())
