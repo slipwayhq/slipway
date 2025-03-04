@@ -9,7 +9,7 @@ use termion::{color, style};
 
 use slipway_engine::{
     parse_rig, BasicComponentCache, BasicComponentsLoader, CallChain, ComponentHandle,
-    ComponentRigging, Name, Permissions, Publisher, Rig, RigSession, Rigging, SlipwayReference,
+    ComponentRigging, Permissions, Rig, RigSession, Rigging, SlipwayReference,
 };
 
 use crate::component_runners::get_component_runners;

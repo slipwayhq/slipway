@@ -27,7 +27,6 @@ use clap::{
 };
 use permissions::CommonPermissionsArgs;
 use primitives::{DeviceName, PlaylistName, RigName};
-use slipway_engine::SLIPWAY_ALPHANUMERIC_NAME_REGEX;
 use time::{format_description, OffsetDateTime};
 use tracing::Level;
 use tracing_subscriber::{fmt::time::FormatTime, FmtSubscriber};
@@ -119,6 +118,7 @@ pub(crate) enum Commands {
 }
 
 #[derive(Debug, Subcommand)]
+#[allow(clippy::enum_variant_names)]
 enum ServeCommands {
     /// Add a device to use when serving HTTP requests.
     #[command(arg_required_else_help = true)]
@@ -126,6 +126,14 @@ enum ServeCommands {
         /// The ID the device uses to register itself (typically a MAC address).
         #[arg(long)]
         id: String,
+
+        /// The friendly ID generated for this device by the server.
+        #[arg(short, long)]
+        friendly_id: String,
+
+        /// The hashed version of the API key the device uses to authenticate itself.
+        #[arg(short('k'), long)]
+        hashed_api_key: String,
 
         /// A memorable name for the device.
         #[arg(short, long)]
@@ -278,10 +286,24 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
         }
         Commands::Serve { path, subcommand } => {
             match subcommand {
-                Some(ServeCommands::AddDevice { id, name, playlist }) => {
-                    serve::commands::add_device(path, id, name, playlist).await?;
+                Some(ServeCommands::AddDevice {
+                    id,
+                    friendly_id,
+                    hashed_api_key,
+                    name,
+                    playlist,
+                }) => {
+                    serve::commands::add_device(
+                        path,
+                        id,
+                        friendly_id,
+                        hashed_api_key,
+                        name,
+                        playlist,
+                    )
+                    .await?;
                 }
-                Some(ServeCommands::AddPlaylist { name, rig }) => {
+                Some(ServeCommands::AddPlaylist { name, rig: _ }) => {
                     println!("Adding playlist with name: {}", name);
                     //serve::trmnl::add_playlist(serve_path, name, rig).await?;
                 }

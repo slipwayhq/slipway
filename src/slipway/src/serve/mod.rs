@@ -11,7 +11,6 @@ use actix_web::{web, App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Re
 use anyhow::Context;
 use repository::ServeRepository;
 use serde::Deserialize;
-use slipway_engine::Permission;
 
 use base64::prelude::*;
 use image::{DynamicImage, ImageFormat, RgbaImage};
@@ -34,6 +33,14 @@ fn hash_string(input: &str) -> String {
     hasher.update(input);
     let result = hasher.finalize();
     format!("{:x}", result)
+}
+
+fn create_friendly_id() -> String {
+    nanoid::nanoid!(6)
+}
+
+fn create_api_key() -> String {
+    nanoid::nanoid!(64)
 }
 
 struct ServeState {
@@ -194,8 +201,11 @@ enum ServeError {
     #[error("internal error: {0}")]
     Internal(anyhow::Error),
 
-    #[error("{1}")]
+    #[error("{0}: {1}")]
     UserFacing(StatusCode, String),
+
+    #[error("{0}: {1}")]
+    UserFacingJson(StatusCode, serde_json::Value),
 }
 
 impl actix_web::error::ResponseError for ServeError {
@@ -209,6 +219,7 @@ impl actix_web::error::ResponseError for ServeError {
         match *self {
             ServeError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
             ServeError::UserFacing(status_code, _) => status_code,
+            ServeError::UserFacingJson(status_code, _) => status_code,
         }
     }
 }

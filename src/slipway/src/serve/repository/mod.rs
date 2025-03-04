@@ -1,5 +1,6 @@
 use actix_web::http::StatusCode;
 use async_trait::async_trait;
+use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
 
 use crate::primitives::{DeviceName, PlaylistName, RigName};
@@ -39,11 +40,21 @@ fn try_load<T>(maybe_result: Result<T, ServeError>) -> Result<Option<T>, ServeEr
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(super) struct Device {
+    pub id: String,
     pub friendly_id: String,
     pub hashed_api_key: String,
     pub name: DeviceName,
+
+    #[serde(default)]
     pub playlist: Option<PlaylistName>,
+
     pub context: serde_json::Value,
+
+    #[serde(default)]
+    pub reset_firmware: bool,
+
+    #[serde(default)]
+    pub allow_setup_until: Option<DateTime<FixedOffset>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -40,7 +40,7 @@ pub(super) async fn run_rig(
     let rig_permissions = state
         .config
         .rig_permissions
-        .get(&rig_name)
+        .get(rig_name)
         .unwrap_or_else(|| &PERMISSIONS_EMPTY);
 
     let call_chain = Arc::new(CallChain::new(rig_permissions.into()));
