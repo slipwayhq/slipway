@@ -1,18 +1,22 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use actix_web::http::StatusCode;
 use anyhow::Context;
 use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Serialize};
+use tracing::warn;
 
 use crate::{
-    primitives::{PlaylistName, RigName},
+    primitives::{DeviceName, PlaylistName, RigName},
     serve::ServeError,
 };
 
 use super::{Device, Playlist, ServeRepository};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct FileSystemRepository {
     root_path: PathBuf,
 }
@@ -35,15 +39,6 @@ impl ServeRepository for FileSystemRepository {
         write_to_file(&path, "Rig", value).await
     }
 
-    async fn get_device(&self, id: &str) -> Result<Device, ServeError> {
-        let path = get_device_path(&self.root_path, id);
-        load_from_file(&path, "Device").await
-    }
-    async fn set_device(&self, id: &str, value: &Device) -> Result<(), ServeError> {
-        let path = get_device_path(&self.root_path, id);
-        write_to_file(&path, "Device", value).await
-    }
-
     async fn get_playlist(&self, name: &PlaylistName) -> Result<Playlist, ServeError> {
         let path = get_playlist_path(&self.root_path, name);
         load_from_file(&path, "Playlist").await
@@ -53,56 +48,58 @@ impl ServeRepository for FileSystemRepository {
         let path = get_playlist_path(&self.root_path, name);
         write_to_file(&path, "Playlist", value).await
     }
+    async fn get_device(&self, name: &DeviceName) -> Result<Device, ServeError> {
+        let path = get_device_path(&self.root_path, name);
+        load_from_file(&path, "Device").await
+    }
+    async fn set_device(&self, name: &DeviceName, value: &Device) -> Result<(), ServeError> {
+        let path = get_device_path(&self.root_path, name);
+        write_to_file(&path, "Device", value).await
+    }
 
-    // async fn create_device(
-    //     &self,
-    //     id: &str,
-    //     friendly_id: &str,
-    //     api_key: &str,
-    // ) -> Result<Option<Device>, ServeError> {
-    //     let device = Device {
-    //         friendly_id: friendly_id.to_string(),
-    //         api_key: api_key.to_string(),
-    //         name: "<name_of_device>".to_string(),
-    //         playlist: "<desired_playlist>".to_string(),
-    //         context: serde_json::json!({
-    //             "description": "The context will be passed into the rigs.",
-    //         }),
-    //     };
-
-    //     let path = get_device_path(&self.root_path, id);
-
-    //     warn!("A request to create a device was received.");
-    //     warn!("The device has the ID \"{id}\".");
-    //     warn!("If you wish to allow this device, create the following file:");
-    //     warn!("{path:?}");
-    //     warn!(
-    //         "Suggested initial file content:\n{}",
-    //         serde_json::to_string_pretty(&device).expect("Device should serialize to JSON")
-    //     );
-    //     warn!("Don't forget to re-deploy if necessary.");
-
-    //     Ok(None)
-    // }
+    async fn list_devices(&self) -> Result<Vec<DeviceName>, ServeError> {
+        list_devices(&self.root_path).await
+    }
 }
 
-// pub(crate) async fn write_empty_playlist_if_not_exist(
-//     root_path: &Path,
-//     name: &str,
-// ) -> anyhow::Result<()> {
-//     let path = get_playlist_path(root_path, name);
+async fn list_devices(root_path: &Path) -> Result<Vec<DeviceName>, ServeError> {
+    let search_path = root_path.join("device");
 
-//     // Check if file exists using tokio
-//     if tokio::fs::metadata(&path).await.is_ok() {
-//         return Ok(());
-//     }
+    let mut devices = vec![];
 
-//     let playlist = Playlist { items: vec![] };
+    let mut dir = tokio::fs::read_dir(search_path)
+        .await
+        .context("Failed to read device directory.")
+        .map_err(ServeError::Internal)?;
 
-//     let bytes = serde_json::to_vec_pretty(&playlist).expect("Playlist should serialize to JSON");
-//     tokio::fs::write(&path, &bytes).await?;
-//     Ok(())
-// }
+    while let Some(entry) = dir
+        .next_entry()
+        .await
+        .context("Failed to read next device in device directory.")
+        .map_err(ServeError::Internal)?
+    {
+        let path = entry.path();
+        if path.is_file() {
+            // get file name without extension
+            if let Some(file_stem) = path.file_stem() {
+                let maybe_device_name = DeviceName::from_str(file_stem.to_string_lossy().as_ref());
+                match maybe_device_name {
+                    Ok(device_name) => devices.push(device_name),
+                    Err(e) => {
+                        warn!(
+                            "Failed to parse device name from file name: {:?}.\nError: {:?}",
+                            path, e
+                        );
+                    }
+                }
+            } else {
+                warn!("Failed to get file stem from device file path: {:?}", path);
+            }
+        }
+    }
+
+    Ok(devices)
+}
 
 async fn load_from_file<T: DeserializeOwned>(
     path: &Path,
@@ -152,10 +149,6 @@ fn get_playlist_path(root_path: &Path, name: &PlaylistName) -> PathBuf {
     root_path.join(format!("playlist/{}.json", name))
 }
 
-fn get_device_path(root_path: &Path, id: &str) -> PathBuf {
-    // Replace any characters that are not alphanumeric or a dash with an underscore.
-    let file_safe_id = id
-        .replace(|c: char| !c.is_alphanumeric(), "_")
-        .to_lowercase();
-    root_path.join(format!("device/{}.json", file_safe_id))
+fn get_device_path(root_path: &Path, name: &DeviceName) -> PathBuf {
+    root_path.join(format!("device/{}.json", name))
 }

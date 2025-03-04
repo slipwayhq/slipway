@@ -9,20 +9,25 @@ use actix_web::http::StatusCode;
 use actix_web::middleware::{from_fn, Next};
 use actix_web::{web, App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::Context;
+use chrono_tz::Tz;
 use repository::ServeRepository;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use base64::prelude::*;
 use image::{DynamicImage, ImageFormat, RgbaImage};
 use std::io::Cursor;
 use thiserror::Error;
 use tracing::{info, warn};
+use url::Url;
 
+mod bmp;
 pub(super) mod commands;
-mod get_rig;
+mod devices;
+mod playlists;
 mod repository;
-mod run_rig;
+mod rigs;
 pub(super) mod trmnl;
+
 use sha2::{Digest, Sha256};
 
 use crate::permissions::PermissionsOwned;
@@ -43,6 +48,7 @@ fn create_api_key() -> String {
     nanoid::nanoid!(64)
 }
 
+#[derive(Debug)]
 struct ServeState {
     pub root: PathBuf,
     pub config: SlipwayServeConfig,
@@ -73,6 +79,9 @@ struct SlipwayServeConfig {
 
     #[serde(default)]
     registry_urls: Vec<String>,
+
+    #[serde(default)]
+    timezone: Option<Tz>,
 
     #[serde(default)]
     rig_permissions: HashMap<RigName, PermissionsOwned>,
@@ -135,9 +144,22 @@ async fn serve_with_config(root: PathBuf, config: SlipwayServeConfig) -> anyhow:
                 expected_authorization_header.clone(),
                 create_repository(&root, &config.repository),
             )))
-            .wrap(from_fn(auth_middleware))
-            .service(get_rig::get_rig)
-            .service(trmnl::trmnl_setup)
+            .service(
+                // Trmnl services.
+                web::scope("/api")
+                    .wrap(from_fn(trmnl_auth_middleware))
+                    .service(trmnl::trmnl_setup)
+                    .service(trmnl::trmnl_display)
+                    .service(trmnl::trmnl_log),
+            )
+            .service(
+                // Non-Trmnl services.
+                web::scope("/")
+                    .wrap(from_fn(auth_middleware))
+                    .service(rigs::get_rig::get_rig)
+                    .service(playlists::get_playlist::get_playlist)
+                    .service(devices::get_device::get_device),
+            )
     })
     .bind(("0.0.0.0", 8080))?
     .run()
@@ -149,8 +171,10 @@ async fn serve_with_config(root: PathBuf, config: SlipwayServeConfig) -> anyhow:
 #[derive(Clone)]
 struct RequestState {
     pub authorized_header: Option<String>,
+    pub required_authorization_header: Option<String>,
 }
 
+/// Non-Trmnl endpoints use an optional Authorization header for authentication.
 async fn auth_middleware(
     req: ServiceRequest,
     next: Next<impl MessageBody>,
@@ -186,12 +210,33 @@ async fn auth_middleware(
 
         req.extensions_mut().insert(RequestState {
             authorized_header: Some(actual_authorization_header.into_owned()),
+            required_authorization_header: Some(expected_authorization_header.clone()),
         });
     } else {
         req.extensions_mut().insert(RequestState {
             authorized_header: None,
+            required_authorization_header: None,
         });
     }
+
+    next.call(req).await
+}
+
+/// Trmnl endpoints use an API key for authentication, but when we return a URL to the
+/// device we need to include the API key in the URL. This middleware ensures that the
+/// API key populated in the RequestState if it is required.
+async fn trmnl_auth_middleware(
+    req: ServiceRequest,
+    next: Next<impl MessageBody>,
+) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
+    let serve_state = req
+        .app_data::<web::Data<ServeState>>()
+        .expect("ServeState should exist.");
+
+    req.extensions_mut().insert(RequestState {
+        authorized_header: None,
+        required_authorization_header: serve_state.expected_authorization_header.clone(),
+    });
 
     next.call(req).await
 }
@@ -227,50 +272,81 @@ impl actix_web::error::ResponseError for ServeError {
 enum RigResponse {
     Image(ImageResponse),
     Json(web::Json<serde_json::Value>),
-    Html(String),
+    Url(UrlResponse),
 }
 
 impl Responder for RigResponse {
     type Body = EitherBody<std::string::String>;
 
-    fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
+    fn respond_to(self, req: &HttpRequest) -> HttpResponse<Self::Body> {
         match self {
-            RigResponse::Image(image) => image.respond_to(_req).map_into_right_body(),
-            RigResponse::Json(json) => json.respond_to(_req),
-            RigResponse::Html(html) => HttpResponse::Ok()
-                .content_type(ContentType::html())
-                .body(html)
-                .map_into_right_body(),
+            RigResponse::Image(image) => image.respond_to(req).map_into_right_body(),
+            RigResponse::Json(json) => json.respond_to(req),
+            RigResponse::Url(url) => url.respond_to(req).map_into_right_body(),
         }
+    }
+}
+
+struct PlaylistResponse {
+    refresh_rate_seconds: u32,
+    rig_response: RigResponse,
+}
+
+impl Responder for PlaylistResponse {
+    type Body = EitherBody<std::string::String>;
+
+    fn respond_to(self, req: &HttpRequest) -> HttpResponse<Self::Body> {
+        let mut response = match self {
+            RigResponse::Image(image) => image.respond_to(req).map_into_right_body(),
+            RigResponse::Json(json) => json.respond_to(req),
+            RigResponse::Url(url) => url.respond_to(req).map_into_right_body(),
+        };
+
+        response
+            .headers_mut()
+            .append("Refresh-Rate", self.refresh_rate_seconds.to_string());
+
+        response
+    }
+}
+
+struct UrlResponse {
+    url: Url,
+}
+
+impl Responder for UrlResponse {
+    type Body = BoxBody;
+
+    fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
+        let url = self.url;
+        let html = format!(
+            r#"<html><body style="margin:0px"><img src="{}"/></body></html>"#,
+            url
+        );
+
+        return HttpResponse::Ok()
+            .content_type(ContentType::html())
+            .body(html);
     }
 }
 
 struct ImageResponse {
     image: RgbaImage,
-    format: ImageFormat,
+    format: RigResultImageFormat,
     wrap_in_html: bool,
 }
 
-// Responder
 impl Responder for ImageResponse {
     type Body = BoxBody;
 
     fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
         let width = self.image.width();
 
-        // Convert your RgbaImage to a DynamicImage.
-        let dynamic = DynamicImage::ImageRgba8(self.image);
-
-        // Create a buffer to hold the output bytes.
-        let mut buf = Cursor::new(Vec::new());
-
-        // Write the image as PNG into the buffer.
-        dynamic
-            .write_to(&mut buf, self.format)
-            .expect("Failed to encode image.");
-
-        // Extract the raw PNG bytes.
-        let image_bytes = buf.into_inner();
+        let image_bytes = match self.format {
+            RigResultImageFormat::Jpeg => get_image_bytes(self.image, ImageFormat::Jpeg),
+            RigResultImageFormat::Png => get_image_bytes(self.image, ImageFormat::Png),
+            RigResultImageFormat::Bmp1Bit => bmp::encode_1bit_bmp(self.image),
+        };
 
         if self.wrap_in_html {
             let html = format!(
@@ -285,19 +361,60 @@ impl Responder for ImageResponse {
 
         let body = image_bytes;
 
-        // Create response and set content type
         let mut response = HttpResponse::Ok();
 
         match self.format {
-            ImageFormat::Jpeg => {
+            RigResultImageFormat::Jpeg => {
                 response.content_type(ContentType::jpeg());
             }
-            ImageFormat::Png => {
+            RigResultImageFormat::Png => {
                 response.content_type(ContentType::png());
             }
-            _ => {}
+            RigResultImageFormat::Bmp1Bit => {
+                response.content_type("image/bmp");
+            }
         };
 
         response.body(body)
     }
+}
+
+fn get_image_bytes(image: RgbaImage, format: ImageFormat) -> Vec<u8> {
+    let dynamic = DynamicImage::ImageRgba8(image);
+
+    let mut buf = Cursor::new(Vec::new());
+
+    dynamic
+        .write_to(&mut buf, format)
+        .expect("Failed to encode image.");
+
+    buf.into_inner()
+}
+
+#[derive(Deserialize, Serialize, Default)]
+#[serde(rename_all = "snake_case")]
+enum RigResultImageFormat {
+    Jpeg,
+
+    #[default]
+    Png,
+
+    Bmp1Bit,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+enum RigResultPresentation {
+    /// Return an image.
+    #[default]
+    Image,
+
+    /// Return the JSON output of the rig.
+    Json,
+
+    /// Return the image encoded as a data URL.
+    DataUrl,
+
+    /// Return a URL which will generate the image.
+    Url,
 }

@@ -12,9 +12,9 @@ use crate::{
     run_rig::SlipwayRunEventHandler,
 };
 
-use super::ServeState;
+use super::super::ServeState;
 
-pub(super) async fn run_rig(
+pub async fn run_rig(
     state: Arc<ServeState>,
     rig: Rig,
     rig_name: &RigName,
@@ -87,7 +87,7 @@ struct RigConfig {
     deny: Vec<Permission>,
 }
 
-pub(super) struct RunRigResult {
+pub struct RunRigResult {
     pub handle: ComponentHandle,
     pub output: serde_json::Value,
 }

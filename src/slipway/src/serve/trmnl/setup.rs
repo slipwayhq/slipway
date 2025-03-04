@@ -1,34 +1,24 @@
 use actix_web::{get, http::StatusCode, web, HttpRequest, Responder};
-use tracing::warn;
+use tracing::{instrument, warn};
 
-use crate::serve::{create_api_key, create_friendly_id, hash_string, ServeError, ServeState};
+use crate::serve::{
+    create_api_key, create_friendly_id, hash_string, trmnl::get_device_id, ServeError, ServeState,
+};
 
 #[get("/setup")]
+#[instrument(name = "trmnl_setup")]
 pub(crate) async fn trmnl_setup(
     data: web::Data<ServeState>,
     req: HttpRequest,
 ) -> Result<impl Responder, ServeError> {
-    let id = req
-        .headers()
-        .get("ID")
-        .ok_or(ServeError::UserFacing(
-            StatusCode::BAD_REQUEST,
-            "Missing ID header. This typically contains the device's MAC address.".to_string(),
-        ))?
-        .to_str()
-        .map_err(|e| {
-            ServeError::UserFacing(
-                StatusCode::BAD_REQUEST,
-                format!("Failed to parse ID header as a string: {}", e),
-            )
-        })?;
+    let id = get_device_id(&req)?;
 
-    warn!("{ADD_DEVICE_PREFIX}A request to setup a device with ID \"{id}\" was received.");
+    warn!("A request to setup a device with ID \"{id}\" was received.");
 
-    let maybe_device = data.repository.try_get_device(id).await?;
+    let maybe_device = data.repository.try_get_device_by_id(id).await?;
 
     if let Some(_device) = maybe_device {
-        warn!("{ADD_DEVICE_PREFIX} This device already exists, so the request was ignored.");
+        warn!("This device already exists, so the request was ignored.");
 
         // Already set up, so act as though the device doesn't exist.
         return Err(ServeError::UserFacingJson(
@@ -49,21 +39,23 @@ pub(crate) async fn trmnl_setup(
     let hashed_api_key = hash_string(&api_key);
     let friendly_id = create_friendly_id();
 
-    const ADD_DEVICE_PREFIX: &str = "ADD DEVICE: ";
-
-    warn!("{ADD_DEVICE_PREFIX}Random credentials have been generated for the device.");
-    warn!("{ADD_DEVICE_PREFIX}If you wish to allow this device, run the following command from your Slipway serve root:");
-    warn!("{ADD_DEVICE_PREFIX}");
-    warn!("{ADD_DEVICE_PREFIX}  slipway serve . add-device --id \"{id}\" \\");
-    warn!("{ADD_DEVICE_PREFIX}    --friendly-id \"{friendly_id}\" \\");
-    warn!("{ADD_DEVICE_PREFIX}    --hashed-api-key \"{hashed_api_key}\" \\");
-    warn!("{ADD_DEVICE_PREFIX}    --name <NAME> --playlist <PLAYLIST?>");
-    warn!("{ADD_DEVICE_PREFIX}");
-    warn!("{ADD_DEVICE_PREFIX}Then re-deploy the server if necessary.");
-    warn!("{ADD_DEVICE_PREFIX}The API key sent to the device was \"{api_key}\".");
-    warn!("{ADD_DEVICE_PREFIX}The API key is not stored by the server. If you need a record of it, store it securely.");
-    warn!("{ADD_DEVICE_PREFIX}If you do not wish to allow this device then you can safely ignore this message.");
-    warn!("{ADD_DEVICE_PREFIX}See the Slipway documentation for more information.");
+    warn!("Random credentials have been generated for the device.");
+    warn!(
+        "If you wish to allow this device, run the following command from your Slipway serve root:"
+    );
+    warn!("");
+    warn!("  slipway serve . add-device --id \"{id}\" \\");
+    warn!("    --friendly-id \"{friendly_id}\" \\");
+    warn!("    --hashed-api-key \"{hashed_api_key}\" \\");
+    warn!("    --name <NAME> --playlist <PLAYLIST?>");
+    warn!("");
+    warn!("Then re-deploy the server if necessary.");
+    warn!("The API key sent to the device was \"{api_key}\".");
+    warn!(
+        "The API key is not stored by the server. If you need a record of it, store it securely."
+    );
+    warn!("If you do not wish to allow this device then you can safely ignore this message.");
+    warn!("See the Slipway documentation for more information.");
 
     Ok(web::Json(serde_json::json!({
         "status": 200,
