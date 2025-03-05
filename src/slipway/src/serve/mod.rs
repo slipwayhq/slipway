@@ -3,14 +3,14 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use actix_web::body::{BoxBody, EitherBody, MessageBody};
-use actix_web::dev::{ServiceRequest, ServiceResponse};
+use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
 use actix_web::http::header::{ContentType, HeaderName, HeaderValue};
 use actix_web::http::StatusCode;
 use actix_web::middleware::{from_fn, Next};
 use actix_web::{web, App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::Context;
 use chrono_tz::Tz;
-use repository::ServeRepository;
+use repository::{Device, Playlist, ServeRepository};
 use serde::{Deserialize, Serialize};
 
 use base64::prelude::*;
@@ -20,6 +20,8 @@ use thiserror::Error;
 use tracing::{info, warn};
 use url::Url;
 
+#[cfg(test)]
+mod api_tests;
 mod bmp;
 pub(super) mod commands;
 mod devices;
@@ -31,7 +33,9 @@ pub(super) mod trmnl;
 use sha2::{Digest, Sha256};
 
 use crate::permissions::PermissionsOwned;
-use crate::primitives::RigName;
+use crate::primitives::{DeviceName, PlaylistName, RigName};
+
+const REFRESH_RATE_HEADER: &str = "refresh-rate";
 
 fn hash_string(input: &str) -> String {
     let mut hasher = Sha256::new();
@@ -94,7 +98,12 @@ struct SlipwayServeConfig {
 #[serde(rename_all = "snake_case")]
 enum RepositoryConfig {
     #[default]
-    ReadOnlyFilesystem,
+    Filesystem,
+    Memory {
+        devices: HashMap<DeviceName, Device>,
+        playlists: HashMap<PlaylistName, Playlist>,
+        rigs: HashMap<RigName, slipway_engine::Rig>,
+    },
 }
 
 pub async fn serve(path: PathBuf) -> anyhow::Result<()> {
@@ -117,9 +126,18 @@ async fn load_serve_config(root_path: &Path) -> Result<SlipwayServeConfig, anyho
 
 fn create_repository(root_path: &Path, config: &RepositoryConfig) -> Box<dyn ServeRepository> {
     match config {
-        RepositoryConfig::ReadOnlyFilesystem => Box::new(
+        RepositoryConfig::Filesystem => Box::new(
             repository::file_system::FileSystemRepository::new(root_path.to_owned()),
         ),
+        RepositoryConfig::Memory {
+            devices,
+            playlists,
+            rigs,
+        } => Box::new(repository::memory::MemoryRepository::new(
+            devices.clone(),
+            playlists.clone(),
+            rigs.clone(),
+        )),
     }
 }
 
@@ -137,35 +155,54 @@ async fn serve_with_config(root: PathBuf, config: SlipwayServeConfig) -> anyhow:
     }
 
     HttpServer::new(move || {
-        App::new()
-            .app_data(web::Data::new(ServeState::new(
-                root.clone(),
-                config.clone(),
-                expected_authorization_header.clone(),
-                create_repository(&root, &config.repository),
-            )))
-            .service(
-                // Trmnl services.
-                web::scope("/api")
-                    .wrap(from_fn(trmnl_auth_middleware))
-                    .service(trmnl::trmnl_setup)
-                    .service(trmnl::trmnl_display)
-                    .service(trmnl::trmnl_log),
-            )
-            .service(
-                // Non-Trmnl services.
-                web::scope("/")
-                    .wrap(from_fn(auth_middleware))
-                    .service(rigs::get_rig::get_rig)
-                    .service(playlists::get_playlist::get_playlist)
-                    .service(devices::get_device::get_device),
-            )
+        create_app(
+            root.clone(),
+            config.clone(),
+            expected_authorization_header.clone(),
+        )
     })
     .bind(("0.0.0.0", 8080))?
     .run()
     .await?;
 
     Ok(())
+}
+
+fn create_app(
+    root: PathBuf,
+    config: SlipwayServeConfig,
+    expected_authorization_header: Option<String>,
+) -> App<
+    impl ServiceFactory<
+        ServiceRequest,
+        Config = (),
+        Response = ServiceResponse<impl MessageBody>,
+        Error = actix_web::Error,
+        InitError = (),
+    >,
+> {
+    let repository = create_repository(&root, &config.repository);
+
+    App::new()
+        .app_data(web::Data::new(ServeState::new(
+            root,
+            config,
+            expected_authorization_header,
+            repository,
+        )))
+        .service(
+            // Trmnl services.
+            web::scope("/api")
+                .wrap(from_fn(trmnl_auth_middleware))
+                .service(trmnl::trmnl_setup)
+                .service(trmnl::trmnl_display)
+                .service(trmnl::trmnl_log),
+        )
+        // Non-Trmnl services.
+        .wrap(from_fn(auth_middleware))
+        .service(rigs::get_rig::get_rig)
+        .service(playlists::get_playlist::get_playlist)
+        .service(devices::get_device::get_device)
 }
 
 #[derive(Clone)]
@@ -303,7 +340,7 @@ impl Responder for PlaylistResponse {
         };
 
         response.headers_mut().append(
-            HeaderName::from_static("Refresh-Rate"),
+            HeaderName::from_static(REFRESH_RATE_HEADER),
             HeaderValue::from_str(&self.refresh_rate_seconds.to_string())
                 .expect("Refresh rate header value should be valid."),
         );
@@ -424,4 +461,13 @@ enum RigResultPresentation {
 
     /// Return a URL which will generate the image.
     Url,
+}
+
+#[derive(Deserialize)]
+struct FormatQuery {
+    #[serde(default)]
+    image_format: Option<RigResultImageFormat>,
+
+    #[serde(default)]
+    format: Option<RigResultPresentation>,
 }

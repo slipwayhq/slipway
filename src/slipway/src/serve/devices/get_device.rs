@@ -6,7 +6,7 @@ use serde::Deserialize;
 use tracing::{debug_span, info_span, Instrument};
 
 use crate::primitives::DeviceName;
-use crate::serve::{PlaylistResponse, RigResultImageFormat, RigResultPresentation};
+use crate::serve::{FormatQuery, PlaylistResponse, RigResultImageFormat, RigResultPresentation};
 
 use super::super::{ServeError, ServeState};
 
@@ -17,11 +17,8 @@ struct GetDevicePath {
 
 #[derive(Deserialize)]
 struct GetDeviceQuery {
-    #[serde(default)]
-    format: Option<RigResultImageFormat>,
-
-    #[serde(default)]
-    presentation: Option<RigResultPresentation>,
+    #[serde(flatten)]
+    output: FormatQuery,
 }
 
 #[get("/device/{device_name}")]
@@ -36,8 +33,8 @@ pub async fn get_device(
     let state = data.into_inner();
 
     let device_name = &path.device_name;
-    let format = query.format.unwrap_or_default();
-    let presentation = query.presentation.unwrap_or_default();
+    let format = query.output.image_format.unwrap_or_default();
+    let presentation = query.output.format.unwrap_or_default();
 
     get_device_response(device_name, format, presentation, state, req)
         .instrument(info_span!("device", %device_name))

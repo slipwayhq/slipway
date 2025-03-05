@@ -10,6 +10,7 @@ use crate::primitives::{DeviceName, PlaylistName, RigName};
 use super::ServeError;
 
 pub(super) mod file_system;
+pub(super) mod memory;
 
 #[async_trait(?Send)]
 pub(super) trait ServeRepository: std::fmt::Debug {
@@ -58,7 +59,7 @@ fn try_load<T>(maybe_result: Result<T, ServeError>) -> Result<Option<T>, ServeEr
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub(super) struct Device {
     pub id: String,
     pub friendly_id: String,
@@ -74,12 +75,12 @@ pub(super) struct Device {
     pub reset_firmware: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub(super) struct Playlist {
     pub items: Vec<PlaylistItem>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub(super) struct PlaylistItem {
     #[serde(flatten)]
     pub span: Option<PlaylistTimeSpan>,
@@ -88,7 +89,7 @@ pub(super) struct PlaylistItem {
     pub rig: RigName,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged, rename_all = "snake_case")]
 pub(super) enum Refresh {
     Seconds { seconds: u32 },
@@ -97,7 +98,7 @@ pub(super) enum Refresh {
     Cron { cron: String },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged, rename_all = "snake_case")]
 pub(super) enum PlaylistTimeSpan {
     From { from: NaiveTime },

@@ -10,7 +10,7 @@ use super::{
         repository::{Playlist, PlaylistItem, PlaylistTimeSpan},
         ServeState,
     },
-    get_next_refresh_time,
+    evaluate_refresh_time::get_next_refresh_time,
 };
 
 pub(super) struct PlaylistResult {
