@@ -1,9 +1,13 @@
 use std::{collections::HashSet, sync::Arc};
 
+use anyhow::Context;
 use chrono::{DateTime, Datelike, TimeZone, Utc, Weekday};
 use chrono_tz::Tz;
 
-use crate::primitives::{PlaylistName, RigName};
+use crate::{
+    primitives::{PlaylistName, RigName},
+    serve::repository::Refresh,
+};
 
 use super::super::{
     repository::{Playlist, PlaylistItem, PlaylistTimeSpan},
@@ -25,10 +29,33 @@ pub(super) async fn evaluate_playlist(
 
     let playlist_item = find_active_playlist_item(&playlist, now);
 
-    Ok(playlist_item.map(|v| PlaylistResult {
-        refresh_rate_seconds: v.refresh_rate_seconds,
-        rig: v.rig.clone(),
-    }))
+    match playlist_item {
+        Some(playlist_item) => {
+            let refresh_rate_seconds = get_refresh_rate_seconds(now, &playlist_item.refresh)?;
+            let rig = playlist_item.rig.clone();
+            Ok(Some(PlaylistResult {
+                refresh_rate_seconds,
+                rig,
+            }))
+        }
+        None => Ok(None),
+    }
+}
+
+fn get_refresh_rate_seconds(now: DateTime<Tz>, refresh: &Refresh) -> anyhow::Result<u32> {
+    match refresh {
+        Refresh::Seconds { seconds } => Ok(*seconds),
+        Refresh::Minutes { minutes } => Ok(minutes * 60),
+        Refresh::Hours { hours } => Ok(hours * 60 * 60),
+        Refresh::Cron { cron } => {
+            let cron_evaluator = croner::Cron::new(cron);
+            let next = cron_evaluator
+                .find_next_occurrence(&now, false)
+                .with_context(|| format!("Failed to evaluate cron schedule: {cron}"))?;
+            let duration = next - now;
+            Ok(duration.num_seconds() as u32)
+        }
+    }
 }
 
 fn find_active_playlist_item(playlist: &Playlist, now: DateTime<Tz>) -> Option<&PlaylistItem> {

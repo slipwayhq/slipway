@@ -86,8 +86,18 @@ pub(super) struct PlaylistItem {
     pub days: Option<HashSet<Weekday>>,
 
     /// The refresh rate to send back to the device for the next update.
-    pub refresh_rate_seconds: u32,
+    pub refresh: Refresh,
+
     pub rig: RigName,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged, rename_all = "snake_case")]
+pub(super) enum Refresh {
+    Seconds { seconds: u32 },
+    Minutes { minutes: u32 },
+    Hours { hours: u32 },
+    Cron { cron: String },
 }
 
 #[derive(Serialize, Deserialize, Debug)]

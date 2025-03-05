@@ -9,7 +9,6 @@ use crate::primitives::RigName;
 use crate::serve::{RigResultImageFormat, RigResultPresentation, UrlResponse};
 
 use super::super::{ImageResponse, RequestState, RigResponse, ServeError, ServeState};
-use image::ImageFormat;
 
 #[derive(Deserialize)]
 struct GetRigPath {
@@ -92,7 +91,7 @@ pub async fn get_rig_response(
 
             qs.append_pair(
                 "format",
-                &serde_json::to_value(&format)
+                serde_json::to_value(&format)
                     .expect("Format should serialize")
                     .as_str()
                     .expect("Format should be a string"),

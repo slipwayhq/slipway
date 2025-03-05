@@ -7,7 +7,7 @@ use serde::Deserialize;
 use crate::primitives::PlaylistName;
 use crate::serve::{PlaylistResponse, RigResultImageFormat, RigResultPresentation};
 
-use super::super::{RigResponse, ServeError, ServeState};
+use super::super::{ServeError, ServeState};
 
 #[derive(Deserialize)]
 struct GetPlaylistPath {

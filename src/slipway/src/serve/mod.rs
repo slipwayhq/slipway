@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use actix_web::body::{BoxBody, EitherBody, MessageBody};
 use actix_web::dev::{ServiceRequest, ServiceResponse};
-use actix_web::http::header::ContentType;
+use actix_web::http::header::{ContentType, HeaderName, HeaderValue};
 use actix_web::http::StatusCode;
 use actix_web::middleware::{from_fn, Next};
 use actix_web::{web, App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder};
@@ -296,15 +296,17 @@ impl Responder for PlaylistResponse {
     type Body = EitherBody<std::string::String>;
 
     fn respond_to(self, req: &HttpRequest) -> HttpResponse<Self::Body> {
-        let mut response = match self {
+        let mut response = match self.rig_response {
             RigResponse::Image(image) => image.respond_to(req).map_into_right_body(),
             RigResponse::Json(json) => json.respond_to(req),
             RigResponse::Url(url) => url.respond_to(req).map_into_right_body(),
         };
 
-        response
-            .headers_mut()
-            .append("Refresh-Rate", self.refresh_rate_seconds.to_string());
+        response.headers_mut().append(
+            HeaderName::from_static("Refresh-Rate"),
+            HeaderValue::from_str(&self.refresh_rate_seconds.to_string())
+                .expect("Refresh rate header value should be valid."),
+        );
 
         response
     }
@@ -324,9 +326,9 @@ impl Responder for UrlResponse {
             url
         );
 
-        return HttpResponse::Ok()
+        HttpResponse::Ok()
             .content_type(ContentType::html())
-            .body(html);
+            .body(html)
     }
 }
 
@@ -342,10 +344,17 @@ impl Responder for ImageResponse {
     fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
         let width = self.image.width();
 
-        let image_bytes = match self.format {
+        let maybe_image_bytes = match self.format {
             RigResultImageFormat::Jpeg => get_image_bytes(self.image, ImageFormat::Jpeg),
             RigResultImageFormat::Png => get_image_bytes(self.image, ImageFormat::Png),
             RigResultImageFormat::Bmp1Bit => bmp::encode_1bit_bmp(self.image),
+        };
+
+        let image_bytes = match maybe_image_bytes {
+            Err(e) => {
+                return HttpResponse::InternalServerError().body(format!("{:?}", e));
+            }
+            Ok(image_bytes) => image_bytes,
         };
 
         if self.wrap_in_html {
@@ -379,16 +388,14 @@ impl Responder for ImageResponse {
     }
 }
 
-fn get_image_bytes(image: RgbaImage, format: ImageFormat) -> Vec<u8> {
+fn get_image_bytes(image: RgbaImage, format: ImageFormat) -> Result<Vec<u8>, image::ImageError> {
     let dynamic = DynamicImage::ImageRgba8(image);
 
     let mut buf = Cursor::new(Vec::new());
 
-    dynamic
-        .write_to(&mut buf, format)
-        .expect("Failed to encode image.");
+    dynamic.write_to(&mut buf, format)?;
 
-    buf.into_inner()
+    Ok(buf.into_inner())
 }
 
 #[derive(Deserialize, Serialize, Default)]

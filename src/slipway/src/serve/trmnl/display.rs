@@ -1,8 +1,4 @@
-use std::io::Cursor;
-
 use actix_web::{get, web, HttpRequest, Responder};
-use dither::prelude::Dither;
-use image::{GrayImage, RgbaImage};
 use tracing::{debug, instrument, warn};
 
 use crate::serve::{
@@ -43,7 +39,7 @@ pub(crate) async fn trmnl_display(
     )
     .await?;
 
-    let RigResponse::Url(url_response) = device_response else {
+    let RigResponse::Url(url_response) = device_response.rig_response else {
         panic!("Expected URL response from device.");
     };
 
@@ -53,7 +49,7 @@ pub(crate) async fn trmnl_display(
         "filename": format!("{}.bmp", device_name),
         "update_firmware": false,
         "firmware_url": serde_json::Value::Null,
-        "refresh_rate": device.refresh_rate_seconds,
+        "refresh_rate": device_response.refresh_rate_seconds,
         "reset_firmware": device.reset_firmware
     })))
 }

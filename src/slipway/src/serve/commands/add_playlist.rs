@@ -4,7 +4,7 @@ use crate::{
     primitives::{PlaylistName, RigName},
     serve::{
         create_repository, load_serve_config,
-        repository::{Playlist, PlaylistItem},
+        repository::{Playlist, PlaylistItem, Refresh},
     },
 };
 
@@ -22,7 +22,7 @@ pub async fn add_playlist(
             Some(rig) => vec![PlaylistItem {
                 span: None,
                 days: None,
-                refresh_rate_seconds: 3600,
+                refresh: Refresh::Minutes { minutes: 5 },
                 rig,
             }],
         },
