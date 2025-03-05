@@ -30,7 +30,7 @@ impl ComponentRunner for SpecialComponentRunner {
         let input = &execution_data.input.value;
 
         match inner {
-            SpecialComponentReference::Pass => {
+            SpecialComponentReference::Passthrough => {
                 let call_start = Instant::now();
                 let output = input.clone();
                 let call_duration = call_start.elapsed();

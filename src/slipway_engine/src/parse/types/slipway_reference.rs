@@ -45,7 +45,7 @@ pub enum SlipwayReference {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SpecialComponentReference {
-    Pass,
+    Passthrough,
     Sink,
 }
 
@@ -54,7 +54,9 @@ impl FromStr for SlipwayReference {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s == PASSTHROUGH_STRING {
-            return Ok(SlipwayReference::Special(SpecialComponentReference::Pass));
+            return Ok(SlipwayReference::Special(
+                SpecialComponentReference::Passthrough,
+            ));
         }
 
         if s == SINK_STRING {
@@ -114,7 +116,7 @@ impl Display for SlipwayReference {
 impl Display for SpecialComponentReference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SpecialComponentReference::Pass => f.write_str(PASSTHROUGH_STRING),
+            SpecialComponentReference::Passthrough => f.write_str(PASSTHROUGH_STRING),
             SpecialComponentReference::Sink => f.write_str(SINK_STRING),
         }
     }
@@ -148,7 +150,8 @@ mod tests {
 
             let reference: SlipwayReference = serde_json::from_str(&json).unwrap();
 
-            let SlipwayReference::Special(SpecialComponentReference::Pass) = reference else {
+            let SlipwayReference::Special(SpecialComponentReference::Passthrough) = reference
+            else {
                 panic!("Unexpected reference: {reference}");
             };
 

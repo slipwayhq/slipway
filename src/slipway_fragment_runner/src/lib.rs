@@ -78,7 +78,7 @@ async fn run_component_fragment(
     rigging_with_input.components.insert(
         input_component_handle,
         ComponentRigging {
-            component: SlipwayReference::Special(SpecialComponentReference::Pass),
+            component: SlipwayReference::Special(SpecialComponentReference::Passthrough),
             input: Some(input.clone()),
             allow: None,
             deny: None,
@@ -132,7 +132,7 @@ async fn run_component_fragment(
 }
 
 async fn get_component_cache_with_pass_component() -> BasicComponentCache {
-    let pass_reference = SpecialComponentReference::Pass;
+    let pass_reference = SpecialComponentReference::Passthrough;
     let pass_component = prime_special_component(&pass_reference).await;
     BasicComponentCache::for_primed(
         vec![(

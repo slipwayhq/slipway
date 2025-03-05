@@ -137,7 +137,7 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
                         "output".parse().unwrap(),
                         slipway_engine::ComponentRigging::for_test_with_reference(
                             slipway_engine::SlipwayReference::Special(
-                                SpecialComponentReference::Pass,
+                                SpecialComponentReference::Passthrough,
                             ),
                             Some(serde_json::json!({
                                 "foo": "bar"
