@@ -9,6 +9,7 @@ use crate::ComponentFiles;
 use crate::ComponentFilesLoader;
 use crate::ComponentHandle;
 use crate::ComponentRigging;
+use crate::Description;
 use crate::Name;
 use crate::Permission;
 use crate::Permissions;
@@ -31,7 +32,7 @@ pub const TEST_PUBLISHER: &str = "test_publisher";
 impl Rig {
     pub fn for_test(rigging: Rigging) -> Rig {
         Rig {
-            description: None,
+            description: Some(Description::from_str("test_description").unwrap()),
             constants: Some(json!({"test_constant": "test_constant_value"})),
             rigging,
         }

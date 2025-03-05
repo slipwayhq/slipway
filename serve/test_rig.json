@@ -1,7 +1,4 @@
 {
-  "publisher": "slipwayhq",
-  "name": "test_rig",
-  "version": "0.0.1",
   "description": "A slipway rig which renders some UI",
   "constants": {
     "width": 800,

@@ -73,9 +73,6 @@ mod tests {
     fn it_should_provide_a_sensible_message_when_component_reference_cannot_be_parsed() {
         let json = r#"
         {
-            "publisher": "slipwayhq",
-            "name": "weather",
-            "version": "0.0.1",
             "rigging": {
                 "weather_url_resolver": {
                     "component": "invalid-component-reference"
@@ -104,9 +101,6 @@ mod tests {
     fn it_should_provide_a_sensible_message_when_duplicate_rigging_keys() {
         let json = r#"
         {
-            "publisher": "slipwayhq",
-            "name": "weather",
-            "version": "0.0.1",
             "rigging": {
                 "weather_url_resolver": {
                     "component": "a.b.1.0.0"

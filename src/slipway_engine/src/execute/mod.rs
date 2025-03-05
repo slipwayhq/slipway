@@ -110,7 +110,7 @@ mod tests {
                         Some(json!({
                             "constant": "$.constants.test_constant",
                             "constant2": "$?constants.test_constant2",
-                            "version": "$.version",
+                            "description": "$.description",
                         })),
                     ),
                     ComponentRigging::for_test(
@@ -136,7 +136,7 @@ mod tests {
                         Some(json!({"g": "$$.g", "f": "$$.f", "i": "$$.i", "j": "$$.j" })),
                     ),
                     ComponentRigging::for_test("i", None),
-                    ComponentRigging::for_test("j", Some(json!({"version": "$.version"}))),
+                    ComponentRigging::for_test("j", Some(json!({"description": "$.description"}))),
                     ComponentRigging::for_test("k", None),
                 ]
                 .into_iter()
@@ -173,7 +173,7 @@ mod tests {
                 json!({
                     "constant": "test_constant_value",
                     "constant2": null,
-                    "version": "0.1.0"
+                    "description": "test_description"
                 })
             );
         }

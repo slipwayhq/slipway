@@ -84,10 +84,7 @@ pub(super) struct PlaylistItem {
     #[serde(flatten)]
     pub span: Option<PlaylistTimeSpan>,
     pub days: Option<HashSet<Weekday>>,
-
-    /// The refresh rate to send back to the device for the next update.
     pub refresh: Refresh,
-
     pub rig: RigName,
 }
 
