@@ -7,7 +7,7 @@ use serde::Deserialize;
 use tracing::{info_span, Instrument};
 
 use crate::primitives::RigName;
-use crate::serve::{RigResultImageFormat, RigResultPresentation, UrlResponse};
+use crate::serve::{FormatQuery, RigResultFormat, RigResultImageFormat, UrlResponse};
 
 use super::super::{ImageResponse, RequestState, RigResponse, ServeError, ServeState};
 
@@ -18,11 +18,8 @@ struct GetRigPath {
 
 #[derive(Deserialize)]
 struct GetRigQuery {
-    #[serde(default)]
-    format: Option<RigResultImageFormat>,
-
-    #[serde(default)]
-    presentation: Option<RigResultPresentation>,
+    #[serde(flatten)]
+    output: FormatQuery,
 }
 
 #[get("/rig/{rig_name}")]
@@ -37,32 +34,30 @@ pub async fn get_rig(
 
     let state = data.into_inner();
     let rig_name = path.rig_name;
-    let format = query.format.unwrap_or_default();
-    let presentation = query.presentation.unwrap_or_default();
+    let image_format = query.output.image_format.unwrap_or_default();
+    let format = query.output.format.unwrap_or_default();
 
-    get_rig_response(&rig_name, format, presentation, state, req)
+    get_rig_response(&rig_name, format, image_format, state, req)
         .instrument(info_span!("rig", %rig_name))
         .await
 }
 
 pub async fn get_rig_response(
     rig_name: &RigName,
-    format: RigResultImageFormat,
-    presentation: RigResultPresentation,
+    format: RigResultFormat,
+    image_format: RigResultImageFormat,
     state: Arc<ServeState>,
     req: HttpRequest,
 ) -> Result<RigResponse, ServeError> {
     let rig = state.repository.get_rig(rig_name).await?;
 
-    match presentation {
-        RigResultPresentation::Image
-        | RigResultPresentation::DataUrl
-        | RigResultPresentation::Json => {
+    match format {
+        RigResultFormat::Image | RigResultFormat::DataUrl | RigResultFormat::Json => {
             let result = super::run_rig::run_rig(state, rig, rig_name)
                 .await
                 .map_err(ServeError::Internal)?;
 
-            if matches!(presentation, RigResultPresentation::Json) {
+            if matches!(format, RigResultFormat::Json) {
                 Ok(RigResponse::Json(web::Json(result.output)))
             } else {
                 let maybe_image = crate::canvas::get_canvas_image(&result.handle, &result.output);
@@ -70,8 +65,8 @@ pub async fn get_rig_response(
                 if let Ok(image) = maybe_image {
                     Ok(RigResponse::Image(ImageResponse {
                         image,
-                        format,
-                        wrap_in_html: matches!(presentation, RigResultPresentation::DataUrl),
+                        format: image_format,
+                        wrap_in_html: matches!(format, RigResultFormat::DataUrl),
                     }))
                 } else {
                     Err(ServeError::UserFacing(
@@ -81,7 +76,7 @@ pub async fn get_rig_response(
                 }
             }
         }
-        RigResultPresentation::Url => {
+        RigResultFormat::Url => {
             let connection_info = req.connection_info();
             let scheme = connection_info.scheme();
             let host = connection_info.host();
@@ -94,7 +89,7 @@ pub async fn get_rig_response(
 
             qs.append_pair(
                 "format",
-                serde_json::to_value(&format)
+                serde_json::to_value(&image_format)
                     .expect("Format should serialize")
                     .as_str()
                     .expect("Format should be a string"),

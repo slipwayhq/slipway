@@ -33,16 +33,12 @@ fn rn(s: &str) -> RigName {
     RigName::from_str(s).unwrap()
 }
 
-fn get_refresh_rate(response: &ServiceResponse<impl MessageBody>) -> u32 {
+fn get_refresh_rate(response: &ServiceResponse<impl MessageBody>) -> Option<u32> {
     let refresh_rate = response
         .headers()
         .get(HeaderName::from_static(REFRESH_RATE_HEADER))
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .parse()
-        .unwrap();
-    println!("Refresh rate: {}", refresh_rate);
+        .map(|v| u32::from_str(v.to_str().unwrap()).unwrap());
+    println!("Refresh rate: {:?}", refresh_rate);
     refresh_rate
 }
 
@@ -77,21 +73,30 @@ async fn when_devices_playlists_and_rigs_do_not_exist_should_return_not_found() 
     let app = test::init_service(create_app(PathBuf::from("."), config, None)).await;
 
     {
-        let req = test::TestRequest::get().uri("/device/foo").to_request();
-        let resp = test::call_service(&app, req).await;
-        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+        let request = test::TestRequest::get().uri("/device/foo").to_request();
+        let response = test::call_service(&app, request).await;
+        let status = response.status();
+        let body = get_body(response).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        assert!(body.contains("Device not found"));
     }
 
     {
-        let req = test::TestRequest::get().uri("/playlist/foo").to_request();
-        let resp = test::call_service(&app, req).await;
-        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+        let request = test::TestRequest::get().uri("/playlist/foo").to_request();
+        let response = test::call_service(&app, request).await;
+        let status = response.status();
+        let body = get_body(response).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        assert!(body.contains("Playlist not found"));
     }
 
     {
-        let req = test::TestRequest::get().uri("/rig/foo").to_request();
-        let resp = test::call_service(&app, req).await;
-        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+        let request = test::TestRequest::get().uri("/rig/foo").to_request();
+        let response = test::call_service(&app, request).await;
+        let status = response.status();
+        let body = get_body(response).await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        assert!(body.contains("Rig not found"));
     }
 }
 
@@ -155,13 +160,20 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
 
     let app = test::init_service(create_app(PathBuf::from("."), config, None)).await;
 
-    async fn assert_response(response: ServiceResponse<impl MessageBody>) {
+    async fn assert_response(response: ServiceResponse<impl MessageBody>, has_refresh_rate: bool) {
         let status = response.status();
-        let refresh_rate: u32 = get_refresh_rate(&response);
+        let refresh_rate = get_refresh_rate(&response);
         let body = get_body_json(response).await;
 
         assert_eq!(status, StatusCode::OK);
-        assert!(refresh_rate > 3598 && refresh_rate < 3602);
+        if has_refresh_rate {
+            let Some(refresh_rate) = refresh_rate else {
+                panic!("Expected refresh rate.");
+            };
+            assert!(refresh_rate > 3598 && refresh_rate < 3602);
+        } else {
+            assert!(refresh_rate.is_none());
+        }
         assert_eq!(body, serde_json::json!({ "foo": "bar"}));
     }
 
@@ -170,7 +182,7 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
             .uri("/device/d_1?format=json")
             .to_request();
         let response = test::call_service(&app, request).await;
-        assert_response(response).await;
+        assert_response(response, true).await;
     }
 
     {
@@ -179,7 +191,7 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_eq!(response.status(), StatusCode::OK);
-        assert_response(response).await;
+        assert_response(response, true).await;
     }
 
     {
@@ -188,6 +200,6 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_eq!(response.status(), StatusCode::OK);
-        assert_response(response).await;
+        assert_response(response, false).await;
     }
 }

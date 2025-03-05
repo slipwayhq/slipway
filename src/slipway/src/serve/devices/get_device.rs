@@ -6,7 +6,7 @@ use serde::Deserialize;
 use tracing::{debug_span, info_span, Instrument};
 
 use crate::primitives::DeviceName;
-use crate::serve::{FormatQuery, PlaylistResponse, RigResultImageFormat, RigResultPresentation};
+use crate::serve::{FormatQuery, PlaylistResponse, RigResultFormat, RigResultImageFormat};
 
 use super::super::{ServeError, ServeState};
 
@@ -33,18 +33,18 @@ pub async fn get_device(
     let state = data.into_inner();
 
     let device_name = &path.device_name;
-    let format = query.output.image_format.unwrap_or_default();
-    let presentation = query.output.format.unwrap_or_default();
+    let format = query.output.format.unwrap_or_default();
+    let image_format = query.output.image_format.unwrap_or_default();
 
-    get_device_response(device_name, format, presentation, state, req)
+    get_device_response(device_name, format, image_format, state, req)
         .instrument(info_span!("device", %device_name))
         .await
 }
 
 pub async fn get_device_response(
     device_name: &DeviceName,
-    format: RigResultImageFormat,
-    presentation: RigResultPresentation,
+    format: RigResultFormat,
+    image_format: RigResultImageFormat,
     state: Arc<ServeState>,
     req: HttpRequest,
 ) -> Result<PlaylistResponse, ServeError> {
@@ -62,7 +62,7 @@ pub async fn get_device_response(
     super::super::playlists::get_playlist::get_playlist_response(
         playlist_name,
         format,
-        presentation,
+        image_format,
         state,
         req,
     )

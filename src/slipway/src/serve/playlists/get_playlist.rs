@@ -6,7 +6,7 @@ use serde::Deserialize;
 use tracing::{debug_span, info_span, Instrument};
 
 use crate::primitives::PlaylistName;
-use crate::serve::{PlaylistResponse, RigResultImageFormat, RigResultPresentation};
+use crate::serve::{FormatQuery, PlaylistResponse, RigResultFormat, RigResultImageFormat};
 
 use super::super::{ServeError, ServeState};
 
@@ -17,11 +17,8 @@ struct GetPlaylistPath {
 
 #[derive(Deserialize)]
 struct GetPlaylistQuery {
-    #[serde(default)]
-    format: Option<RigResultImageFormat>,
-
-    #[serde(default)]
-    presentation: Option<RigResultPresentation>,
+    #[serde(flatten)]
+    output: FormatQuery,
 }
 
 #[get("/playlist/{playlist_name}")]
@@ -36,25 +33,23 @@ pub async fn get_playlist(
     let state = data.into_inner();
 
     let playlist_name = &path.playlist_name;
-    let format = query.format.unwrap_or_default();
-    let presentation = query.presentation.unwrap_or_default();
+    let image_format = query.output.image_format.unwrap_or_default();
+    let format = query.output.format.unwrap_or_default();
 
-    get_playlist_response(playlist_name, format, presentation, state, req)
+    get_playlist_response(playlist_name, format, image_format, state, req)
         .instrument(info_span!("playlist", %playlist_name))
         .await
 }
 
 pub async fn get_playlist_response(
     playlist_name: &PlaylistName,
-    format: RigResultImageFormat,
-    presentation: RigResultPresentation,
+    format: RigResultFormat,
+    image_format: RigResultImageFormat,
     state: Arc<ServeState>,
     req: HttpRequest,
 ) -> Result<PlaylistResponse, ServeError> {
     let maybe_playlist_item =
-        super::evaluate_playlist::evaluate_playlist(Arc::clone(&state), playlist_name)
-            .await
-            .map_err(ServeError::Internal)?;
+        super::evaluate_playlist::evaluate_playlist(Arc::clone(&state), playlist_name).await?;
 
     let Some(playlist_item) = maybe_playlist_item else {
         return Err(ServeError::UserFacing(
@@ -67,7 +62,7 @@ pub async fn get_playlist_response(
     let refresh_rate_seconds = playlist_item.refresh_rate_seconds;
 
     let rig_response =
-        super::super::rigs::get_rig::get_rig_response(&rig_name, format, presentation, state, req)
+        super::super::rigs::get_rig::get_rig_response(&rig_name, format, image_format, state, req)
             .instrument(debug_span!("rig", %rig_name))
             .await?;
 

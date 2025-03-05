@@ -4,7 +4,7 @@ use tracing::{debug, info_span, instrument, warn, Instrument};
 use crate::serve::{
     repository::Device,
     trmnl::{authenticate_device, get_device_id},
-    RigResponse, RigResultImageFormat, RigResultPresentation, ServeError, ServeState,
+    RigResponse, RigResultFormat, RigResultImageFormat, ServeError, ServeState,
 };
 
 use super::get_optional_header;
@@ -32,8 +32,8 @@ pub(crate) async fn trmnl_display(
 
     let device_response = super::super::devices::get_device::get_device_response(
         &device_name,
+        RigResultFormat::Url,
         RigResultImageFormat::Bmp1Bit,
-        RigResultPresentation::Url,
         data.into_inner(),
         req,
     )

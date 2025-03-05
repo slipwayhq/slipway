@@ -298,6 +298,7 @@ impl actix_web::error::ResponseError for ServeError {
     }
 
     fn status_code(&self) -> StatusCode {
+        println!("status_code: {:?}", self);
         match *self {
             ServeError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
             ServeError::UserFacing(status_code, _) => status_code,
@@ -448,7 +449,7 @@ enum RigResultImageFormat {
 
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
-enum RigResultPresentation {
+enum RigResultFormat {
     /// Return an image.
     #[default]
     Image,
@@ -469,5 +470,5 @@ struct FormatQuery {
     image_format: Option<RigResultImageFormat>,
 
     #[serde(default)]
-    format: Option<RigResultPresentation>,
+    format: Option<RigResultFormat>,
 }
