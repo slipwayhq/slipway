@@ -3,6 +3,7 @@ use std::sync::Arc;
 use actix_web::http::StatusCode;
 use actix_web::{get, web, HttpRequest};
 use serde::Deserialize;
+use tracing::{debug_span, info_span, Instrument};
 
 use crate::primitives::PlaylistName;
 use crate::serve::{PlaylistResponse, RigResultImageFormat, RigResultPresentation};
@@ -38,7 +39,9 @@ pub async fn get_playlist(
     let format = query.format.unwrap_or_default();
     let presentation = query.presentation.unwrap_or_default();
 
-    get_playlist_response(playlist_name, format, presentation, state, req).await
+    get_playlist_response(playlist_name, format, presentation, state, req)
+        .instrument(info_span!("playlist", %playlist_name))
+        .await
 }
 
 pub async fn get_playlist_response(
@@ -65,6 +68,7 @@ pub async fn get_playlist_response(
 
     let rig_response =
         super::super::rigs::get_rig::get_rig_response(&rig_name, format, presentation, state, req)
+            .instrument(debug_span!("rig", %rig_name))
             .await?;
 
     Ok(PlaylistResponse {

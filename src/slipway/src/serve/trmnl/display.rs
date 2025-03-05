@@ -1,5 +1,5 @@
 use actix_web::{get, web, HttpRequest, Responder};
-use tracing::{debug, instrument, warn};
+use tracing::{debug, info_span, instrument, warn, Instrument};
 
 use crate::serve::{
     repository::Device,
@@ -37,6 +37,7 @@ pub(crate) async fn trmnl_display(
         data.into_inner(),
         req,
     )
+    .instrument(info_span!("device", %device_name))
     .await?;
 
     let RigResponse::Url(url_response) = device_response.rig_response else {

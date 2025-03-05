@@ -27,8 +27,14 @@ pub(super) fn get_next_refresh_time(
     // The earliest boundary or specified refresh is our new earliest refresh because we don't
     // want to skip over playlist items.
     if let Some(earliest_boundary) = maybe_boundary {
-        Ok(earliest_boundary.min(specified_next))
+        let result = earliest_boundary.min(specified_next);
+        debug!(
+            "Specified refresh is {}. Earliest playlist boundary is at {}. Returning {}.",
+            specified_next, earliest_boundary, result
+        );
+        Ok(result)
     } else {
+        debug!("Returning specified refresh {}.", specified_next);
         Ok(specified_next)
     }
 }

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use actix_web::http::StatusCode;
 use actix_web::{get, web, HttpRequest};
 use serde::Deserialize;
+use tracing::{debug_span, info_span, Instrument};
 
 use crate::primitives::DeviceName;
 use crate::serve::{PlaylistResponse, RigResultImageFormat, RigResultPresentation};
@@ -38,7 +39,9 @@ pub async fn get_device(
     let format = query.format.unwrap_or_default();
     let presentation = query.presentation.unwrap_or_default();
 
-    get_device_response(device_name, format, presentation, state, req).await
+    get_device_response(device_name, format, presentation, state, req)
+        .instrument(info_span!("device", %device_name))
+        .await
 }
 
 pub async fn get_device_response(
@@ -66,5 +69,6 @@ pub async fn get_device_response(
         state,
         req,
     )
+    .instrument(debug_span!("playlist", %playlist_name))
     .await
 }

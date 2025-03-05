@@ -4,6 +4,7 @@ use actix_web::http::StatusCode;
 use actix_web::{get, web, HttpMessage, HttpRequest};
 use anyhow::Context;
 use serde::Deserialize;
+use tracing::{info_span, Instrument};
 
 use crate::primitives::RigName;
 use crate::serve::{RigResultImageFormat, RigResultPresentation, UrlResponse};
@@ -39,7 +40,9 @@ pub async fn get_rig(
     let format = query.format.unwrap_or_default();
     let presentation = query.presentation.unwrap_or_default();
 
-    get_rig_response(&rig_name, format, presentation, state, req).await
+    get_rig_response(&rig_name, format, presentation, state, req)
+        .instrument(info_span!("rig", %rig_name))
+        .await
 }
 
 pub async fn get_rig_response(
