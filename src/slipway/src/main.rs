@@ -123,6 +123,25 @@ enum ServeCommands {
     /// Add a device to use when serving HTTP requests.
     #[command(arg_required_else_help = true)]
     AddDevice {
+        /// The name of the device.
+        /// (lowercase alphanumeric plus underscores).
+        #[arg(short, long)]
+        name: DeviceName,
+
+        /// The optional playlist to use for the device
+        /// (lowercase alphanumeric plus underscores).
+        #[arg(short, long)]
+        playlist: Option<PlaylistName>,
+    },
+
+    /// Add or update a device with TRMNL API details.
+    #[command(arg_required_else_help = true)]
+    AddTrmnlDevice {
+        /// The name of the device.
+        /// (lowercase alphanumeric plus underscores).
+        #[arg(short, long)]
+        name: DeviceName,
+
         /// The ID the device uses to register itself (typically a MAC address).
         #[arg(long)]
         id: String,
@@ -134,10 +153,6 @@ enum ServeCommands {
         /// The hashed version of the API key the device uses to authenticate itself.
         #[arg(short('k'), long)]
         hashed_api_key: String,
-
-        /// A memorable name for the device.
-        #[arg(short, long)]
-        name: DeviceName,
 
         /// The optional playlist to use for the device
         /// (lowercase alphanumeric plus underscores).
@@ -285,15 +300,25 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
             println!("{}", WASM_INTERFACE_TYPE_STR);
         }
         Commands::Serve { path, subcommand } => match subcommand {
-            Some(ServeCommands::AddDevice {
+            Some(ServeCommands::AddDevice { name, playlist }) => {
+                serve::commands::add_device(path, name, playlist).await?;
+            }
+            Some(ServeCommands::AddTrmnlDevice {
                 id,
                 friendly_id,
                 hashed_api_key,
                 name,
                 playlist,
             }) => {
-                serve::commands::add_device(path, id, friendly_id, hashed_api_key, name, playlist)
-                    .await?;
+                serve::commands::add_trmnl_device(
+                    path,
+                    id,
+                    friendly_id,
+                    hashed_api_key,
+                    name,
+                    playlist,
+                )
+                .await?;
             }
             Some(ServeCommands::AddPlaylist { name, rig }) => {
                 serve::commands::add_playlist(path, name, rig).await?;

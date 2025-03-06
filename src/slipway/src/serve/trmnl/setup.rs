@@ -44,10 +44,12 @@ pub(crate) async fn trmnl_setup(
         "If you wish to allow this device, run the following command from your Slipway serve root:"
     );
     warn!("");
-    warn!("  slipway serve . add-device --id \"{id}\" \\");
+    warn!("  slipway serve . add-trmnl-device \\");
+    warn!("    --name \"<NAME>\" \\");
+    warn!("    --id \"{id}\" \\");
     warn!("    --friendly-id \"{friendly_id}\" \\");
     warn!("    --hashed-api-key \"{hashed_api_key}\" \\");
-    warn!("    --name <NAME> --playlist <PLAYLIST?>");
+    warn!("    --playlist <PLAYLIST?>");
     warn!("");
     warn!("Then re-deploy the server if necessary.");
     warn!("The API key sent to the device was \"{api_key}\".");

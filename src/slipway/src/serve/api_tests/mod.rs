@@ -100,6 +100,17 @@ async fn when_devices_playlists_and_rigs_do_not_exist_should_return_not_found() 
     }
 }
 
+fn device(name: &str, playlist_name: &str) -> (DeviceName, Device) {
+    (
+        dn(name),
+        Device {
+            trmnl: None,
+            playlist: Some(pn(playlist_name)),
+            context: None,
+        },
+    )
+}
+
 #[test_log::test(actix_web::test)]
 async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
     let config = SlipwayServeConfig {
@@ -108,20 +119,7 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
         repository: RepositoryConfig::Memory {
-            devices: vec![(
-                dn("d_1"),
-                Device {
-                    id: "mac:123".to_string(),
-                    friendly_id: "abc".to_string(),
-                    hashed_api_key: "xyz".to_string(),
-                    name: dn("d_1"),
-                    playlist: Some(pn("p_1")),
-                    context: serde_json::json!({}),
-                    reset_firmware: false,
-                },
-            )]
-            .into_iter()
-            .collect(),
+            devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![(
                 pn("p_1"),
                 Playlist {

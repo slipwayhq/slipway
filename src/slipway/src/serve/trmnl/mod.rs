@@ -10,7 +10,10 @@ use tracing::debug;
 
 use crate::serve::hash_string;
 
-use super::{repository::Device, ServeError};
+use super::{
+    repository::{Device, TrmnlDevice},
+    ServeError,
+};
 
 fn get_device_id(req: &HttpRequest) -> Result<&str, ServeError> {
     req.headers()
@@ -28,8 +31,19 @@ fn get_device_id(req: &HttpRequest) -> Result<&str, ServeError> {
         })
 }
 
-fn authenticate_device(id: &str, req: &HttpRequest, device: &Device) -> Result<(), ServeError> {
+fn authenticate_device<'d>(
+    id: &str,
+    req: &HttpRequest,
+    device: &'d Device,
+) -> Result<&'d TrmnlDevice, ServeError> {
     const ACCESS_TOKEN_HEADER: &str = "Access-Token";
+
+    let Some(trmnl_device) = device.trmnl.as_ref() else {
+        return Err(ServeError::UserFacing(
+            StatusCode::BAD_REQUEST,
+            "Device does not have a terminal configuration.".to_string(),
+        ));
+    };
 
     let api_key = req
         .headers()
@@ -50,12 +64,12 @@ fn authenticate_device(id: &str, req: &HttpRequest, device: &Device) -> Result<(
         })?;
 
     let hashed_api_key = hash_string(api_key);
-    if id != device.id || hashed_api_key != device.hashed_api_key {
+    if id != trmnl_device.id || hashed_api_key != trmnl_device.hashed_api_key {
         debug!("Device authentication failed.");
-        debug!("Expected ID: {}, received: {}", device.id, id);
+        debug!("Expected ID: {}, received: {}", trmnl_device.id, id);
         debug!(
             "Expected hashed key: {}, received: {}",
-            device.hashed_api_key, hashed_api_key
+            trmnl_device.hashed_api_key, hashed_api_key
         );
 
         return Err(ServeError::UserFacing(
@@ -64,7 +78,7 @@ fn authenticate_device(id: &str, req: &HttpRequest, device: &Device) -> Result<(
         ));
     }
 
-    Ok(())
+    Ok(trmnl_device)
 }
 
 fn get_optional_header<'a>(req: &'a HttpRequest, header: &str) -> Option<&'a str> {

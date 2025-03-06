@@ -1,10 +1,12 @@
 use actix_web::{get, web, HttpRequest, Responder};
 use tracing::{debug, info_span, instrument, warn, Instrument};
 
-use crate::serve::{
-    repository::Device,
-    trmnl::{authenticate_device, get_device_id},
-    RigResponse, RigResultFormat, RigResultImageFormat, ServeError, ServeState,
+use crate::{
+    primitives::DeviceName,
+    serve::{
+        trmnl::{authenticate_device, get_device_id},
+        RigResponse, RigResultFormat, RigResultImageFormat, ServeError, ServeState,
+    },
 };
 
 use super::get_optional_header;
@@ -16,14 +18,12 @@ pub(crate) async fn trmnl_display(
     req: HttpRequest,
 ) -> Result<impl Responder, ServeError> {
     let id = get_device_id(&req)?;
-    let device = data.repository.get_device_by_id(id).await?;
-    authenticate_device(id, &req, &device)?;
+    let (device_name, device) = data.repository.get_device_by_id(id).await?;
+    let trmnl_device = authenticate_device(id, &req, &device)?;
 
-    print_optional_headers(&req, &device);
+    print_optional_headers(&req, &device_name);
 
-    let device_name = device.name;
-
-    if device.reset_firmware {
+    if trmnl_device.reset_firmware {
         warn!(
             "Device \"{}\" JSON configuration is set to trigger a firmware reset.",
             device_name
@@ -51,23 +51,23 @@ pub(crate) async fn trmnl_display(
         "update_firmware": false,
         "firmware_url": serde_json::Value::Null,
         "refresh_rate": device_response.refresh_rate_seconds,
-        "reset_firmware": device.reset_firmware
+        "reset_firmware": trmnl_device.reset_firmware
     })))
 }
 
-fn print_optional_headers(req: &HttpRequest, device: &Device) {
+fn print_optional_headers(req: &HttpRequest, device_name: &DeviceName) {
     if let Some(battery_voltage) = get_optional_header(req, "Battery-Voltage") {
         debug!(
             "Battery voltage for \"{}\": {}",
-            device.name, battery_voltage
+            device_name, battery_voltage
         );
     }
 
     if let Some(rssi) = get_optional_header(req, "RSSI") {
-        debug!("RSSI for \"{}\": {}", device.name, rssi);
+        debug!("RSSI for \"{}\": {}", device_name, rssi);
     }
 
     if let Some(fw_version) = get_optional_header(req, "FW-Version") {
-        debug!("Firmware version for \"{}\": {}", device.name, fw_version);
+        debug!("Firmware version for \"{}\": {}", device_name, fw_version);
     }
 }

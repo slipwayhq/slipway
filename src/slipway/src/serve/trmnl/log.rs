@@ -13,7 +13,7 @@ pub(crate) async fn trmnl_log(
     req: HttpRequest,
 ) -> Result<impl Responder, ServeError> {
     let id = get_device_id(&req)?;
-    let device = data.repository.get_device_by_id(id).await?;
+    let (_device_name, device) = data.repository.get_device_by_id(id).await?;
     authenticate_device(id, &req, &device)?;
 
     Ok(web::Json(serde_json::json!({
