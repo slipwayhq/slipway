@@ -7,7 +7,7 @@ use actix_web::body::{BoxBody, EitherBody, MessageBody};
 use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
 use actix_web::http::header::{ContentType, HeaderName, HeaderValue};
 use actix_web::http::StatusCode;
-use actix_web::middleware::{from_fn, Next};
+use actix_web::middleware::{from_fn, Next, NormalizePath, TrailingSlash};
 use actix_web::{web, App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::Context;
 use chrono_tz::Tz;
@@ -207,6 +207,7 @@ fn create_app(
         .service(
             // Trmnl services.
             web::scope(TRMNL_PATH)
+                .wrap(NormalizePath::new(TrailingSlash::Trim)) // Required for TRMNL device as of 2025-03-07.
                 .wrap(from_fn(trmnl_auth_middleware))
                 .service(trmnl::trmnl_setup)
                 .service(trmnl::trmnl_display)
@@ -233,7 +234,8 @@ async fn auth_middleware(
     req: ServiceRequest,
     next: Next<impl MessageBody>,
 ) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
-    debug!("Running auth_middleware");
+    debug!("Running auth_middleware for {}", req.request().path());
+
     let serve_state = req
         .app_data::<web::Data<ServeState>>()
         .expect("ServeState should exist.");
@@ -284,7 +286,8 @@ async fn trmnl_auth_middleware(
     req: ServiceRequest,
     next: Next<impl MessageBody>,
 ) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
-    debug!("Running trmnl_auth_middleware");
+    debug!("Running trmnl_auth_middleware for {}", req.request().path());
+
     let serve_state = req
         .app_data::<web::Data<ServeState>>()
         .expect("ServeState should exist.");
@@ -311,13 +314,14 @@ enum ServeError {
 
 impl actix_web::error::ResponseError for ServeError {
     fn error_response(&self) -> HttpResponse {
+        debug!("Error response: {:?}", self);
+
         HttpResponse::build(self.status_code())
             .insert_header(ContentType::html())
             .body(self.to_string())
     }
 
     fn status_code(&self) -> StatusCode {
-        println!("status_code: {:?}", self);
         match *self {
             ServeError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
             ServeError::UserFacing(status_code, _) => status_code,

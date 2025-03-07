@@ -36,7 +36,7 @@ fn encode_1bit_bmp_custom(dithered: GrayImage) -> Vec<u8> {
 
     for y in 0..height {
         for x in 0..width {
-            let bit = if dithered.get_pixel(x, y).0[0] < 128 {
+            let bit = if dithered.get_pixel(x, height - y - 1).0[0] < 128 {
                 0
             } else {
                 1
@@ -67,7 +67,7 @@ fn encode_1bit_bmp_custom(dithered: GrayImage) -> Vec<u8> {
     // We use a negative height to indicate a top-down BMP
     out.extend_from_slice(&(info_header_size as u32).to_le_bytes());
     out.extend_from_slice(&(width as i32).to_le_bytes());
-    out.extend_from_slice(&(-(height as i32)).to_le_bytes()); // negative => top-down
+    out.extend_from_slice(&(height as i32).to_le_bytes());
     out.extend_from_slice(&1u16.to_le_bytes()); // Planes = 1
     out.extend_from_slice(&1u16.to_le_bytes()); // Bits per pixel = 1
     out.extend_from_slice(&0u32.to_le_bytes()); // Compression = 0
