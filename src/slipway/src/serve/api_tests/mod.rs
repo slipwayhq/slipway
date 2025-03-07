@@ -193,7 +193,6 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
             .uri("/playlist/p_1?format=json")
             .to_request();
         let response = test::call_service(&app, request).await;
-        assert_eq!(response.status(), StatusCode::OK);
         assert_response(response, true).await;
     }
 
@@ -202,7 +201,185 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
             .uri("/rig/r_1?format=json")
             .to_request();
         let response = test::call_service(&app, request).await;
-        assert_eq!(response.status(), StatusCode::OK);
+        assert_response(response, false).await;
+    }
+}
+
+#[test_log::test(actix_web::test)]
+async fn when_auth_not_supplied_it_should_return_unauthorized() {
+    let config = SlipwayServeConfig {
+        log_level: Some("debug".to_string()),
+        registry_urls: vec![],
+        timezone: Some(Tz::Canada__Eastern),
+        rig_permissions: HashMap::new(),
+        repository: RepositoryConfig::Memory {
+            devices: vec![device("d_1", "p_1")].into_iter().collect(),
+            playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
+            rigs: vec![rig("r_1")].into_iter().collect(),
+        },
+    };
+
+    let app = test::init_service(create_app(
+        PathBuf::from("."),
+        config,
+        Some("auth123".to_string()),
+    ))
+    .await;
+
+    async fn assert_response(
+        response: Result<ServiceResponse<impl MessageBody>, actix_web::Error>,
+    ) {
+        match response {
+            Ok(_) => panic!("Expected error."),
+            Err(e) => assert_eq!(e.error_response().status(), StatusCode::UNAUTHORIZED),
+        }
+    }
+
+    {
+        let request = test::TestRequest::get()
+            .uri("/device/d_1?format=json")
+            .to_request();
+        let response = test::try_call_service(&app, request).await;
+        assert_response(response).await;
+    }
+
+    {
+        let request = test::TestRequest::get()
+            .uri("/playlist/p_1?format=json")
+            .to_request();
+        let response = test::try_call_service(&app, request).await;
+        assert_response(response).await;
+    }
+
+    {
+        let request = test::TestRequest::get()
+            .uri("/rig/r_1?format=json")
+            .to_request();
+        let response = test::try_call_service(&app, request).await;
+        assert_response(response).await;
+    }
+}
+
+#[test_log::test(actix_web::test)]
+async fn when_auth_incorrect_it_should_return_unauthorized() {
+    let config = SlipwayServeConfig {
+        log_level: Some("debug".to_string()),
+        registry_urls: vec![],
+        timezone: Some(Tz::Canada__Eastern),
+        rig_permissions: HashMap::new(),
+        repository: RepositoryConfig::Memory {
+            devices: vec![device("d_1", "p_1")].into_iter().collect(),
+            playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
+            rigs: vec![rig("r_1")].into_iter().collect(),
+        },
+    };
+
+    let app = test::init_service(create_app(
+        PathBuf::from("."),
+        config,
+        Some("auth123".to_string()),
+    ))
+    .await;
+
+    async fn assert_response(
+        response: Result<ServiceResponse<impl MessageBody>, actix_web::Error>,
+    ) {
+        match response {
+            Ok(_) => panic!("Expected error."),
+            Err(e) => assert_eq!(e.error_response().status(), StatusCode::UNAUTHORIZED),
+        }
+    }
+
+    {
+        let request = test::TestRequest::get()
+            .uri("/device/d_1?format=json")
+            .append_header(("Authorization", "auth1234"))
+            .to_request();
+        let response = test::try_call_service(&app, request).await;
+        assert_response(response).await;
+    }
+
+    {
+        // Auth in the query string.
+        let request = test::TestRequest::get()
+            .uri("/playlist/p_1?format=json&authorization=auth1234")
+            .to_request();
+        let response = test::try_call_service(&app, request).await;
+        assert_response(response).await;
+    }
+
+    {
+        let request = test::TestRequest::get()
+            .uri("/rig/r_1?format=json")
+            .append_header(("Authorization", "auth1234"))
+            .to_request();
+        let response = test::try_call_service(&app, request).await;
+        assert_response(response).await;
+    }
+}
+
+#[test_log::test(actix_web::test)]
+async fn when_auth_supplied_it_should_execute_rigs() {
+    let config = SlipwayServeConfig {
+        log_level: Some("debug".to_string()),
+        registry_urls: vec![],
+        timezone: Some(Tz::Canada__Eastern),
+        rig_permissions: HashMap::new(),
+        repository: RepositoryConfig::Memory {
+            devices: vec![device("d_1", "p_1")].into_iter().collect(),
+            playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
+            rigs: vec![rig("r_1")].into_iter().collect(),
+        },
+    };
+
+    let app = test::init_service(create_app(
+        PathBuf::from("."),
+        config,
+        Some("auth123".to_string()),
+    ))
+    .await;
+
+    async fn assert_response(response: ServiceResponse<impl MessageBody>, has_refresh_rate: bool) {
+        let status = response.status();
+        let refresh_rate = get_refresh_rate(&response);
+        let body = get_body_json(response).await;
+
+        assert_eq!(status, StatusCode::OK);
+        if has_refresh_rate {
+            let Some(refresh_rate) = refresh_rate else {
+                panic!("Expected refresh rate.");
+            };
+            assert!(refresh_rate > 3598 && refresh_rate < 3602);
+        } else {
+            assert!(refresh_rate.is_none());
+        }
+        assert_eq!(body, serde_json::json!({ "foo": "bar"}));
+    }
+
+    {
+        let request = test::TestRequest::get()
+            .uri("/device/d_1?format=json")
+            .append_header(("Authorization", "auth123"))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_response(response, true).await;
+    }
+
+    {
+        // Auth in the query string.
+        let request = test::TestRequest::get()
+            .uri("/playlist/p_1?format=json&authorization=auth123")
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_response(response, true).await;
+    }
+
+    {
+        let request = test::TestRequest::get()
+            .uri("/rig/r_1?format=json")
+            .append_header(("Authorization", "auth123"))
+            .to_request();
+        let response = test::call_service(&app, request).await;
         assert_response(response, false).await;
     }
 }
