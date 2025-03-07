@@ -7,7 +7,7 @@ use crate::serve::{
 };
 
 #[get("/log")]
-#[instrument(name = "trmnl_log")]
+#[instrument(name = "trmnl_log", skip_all)]
 pub(crate) async fn trmnl_log(
     data: web::Data<ServeState>,
     req: HttpRequest,

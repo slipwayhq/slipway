@@ -8,7 +8,7 @@ use crate::serve::{
 };
 
 #[get("/setup")]
-#[instrument(name = "trmnl_setup")]
+#[instrument(name = "trmnl_setup", skip_all)]
 pub(crate) async fn trmnl_setup(
     data: web::Data<ServeState>,
     req: HttpRequest,

@@ -211,6 +211,7 @@ async fn when_valid_request_it_should_return_rig_result() {
 
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["reset_firmware"].as_bool(), Some(false));
+    assert_eq!(body["status"].as_u64(), Some(0));
 
     let image_url = body["image_url"].as_str().unwrap();
     assert!(image_url.contains("/rig/r_1?format=image&image_format=bmp_1bit&timestamp="));
@@ -261,6 +262,7 @@ async fn when_rig_auth_header_required_it_should_return_rig_result_with_auth_hea
 
     assert_eq!(status, StatusCode::OK);
     assert_eq!(body["reset_firmware"].as_bool(), Some(false));
+    assert_eq!(body["status"].as_u64(), Some(0));
 
     let image_url = body["image_url"].as_str().unwrap();
     assert!(image_url.contains("/rig/r_1?format=image&image_format=bmp_1bit&authorization="));

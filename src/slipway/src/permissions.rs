@@ -18,7 +18,9 @@ pub(super) static PERMISSIONS_EMPTY: LazyLock<PermissionsOwned> =
 
 #[derive(Debug, Clone, Deserialize)]
 pub(super) struct PermissionsOwned {
+    #[serde(default)]
     pub allow: Vec<Permission>,
+    #[serde(default)]
     pub deny: Vec<Permission>,
 }
 

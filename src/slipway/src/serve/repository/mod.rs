@@ -66,6 +66,7 @@ fn try_load<T>(maybe_result: Result<T, ServeError>) -> Result<Option<T>, ServeEr
 
 /// A device represents a physical or virtual device which will call the Slipway API.
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
 pub(super) struct Device {
     // Any Trmnl API specific settings for the device.
     #[serde(default)]
@@ -73,16 +74,19 @@ pub(super) struct Device {
 
     /// The playlist to use for this device.
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub playlist: Option<PlaylistName>,
 
     /// The context is included in the Rig data when a Rig is run, and can therefore
     /// be passed to components to affect behavior.
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub context: Option<serde_json::Value>,
 }
 
 /// Data specific to devices which make use of the TRMNL API.
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
 pub(super) struct TrmnlDevice {
     /// When the device calls the TRMNL API, this is the value it uses for the ID header.
     /// It is usually the MAC address of the device.
@@ -100,6 +104,7 @@ pub(super) struct TrmnlDevice {
 /// A playlist is a collection of Rigs which are run on a device
 /// along with information on when to run them.
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
 pub(super) struct Playlist {
     pub items: Vec<PlaylistItem>,
 }
@@ -107,12 +112,17 @@ pub(super) struct Playlist {
 /// A Rig to run on a device along with information on when to run it as part
 /// of a playlist.
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
 pub(super) struct PlaylistItem {
     /// The time span during a day this playlist item should be run.
+    #[serde(default)]
     #[serde(flatten)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub span: Option<PlaylistTimeSpan>,
 
     /// The days of the week this playlist item should be run.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub days: Option<HashSet<Weekday>>,
 
     /// When the device should next call the API to update its display after this

@@ -1,5 +1,3 @@
-use std::io::Cursor;
-
 use image::{GrayImage, Luma, RgbaImage};
 
 pub(super) fn encode_1bit_bmp(rgba_image: RgbaImage) -> Result<Vec<u8>, image::ImageError> {
@@ -7,19 +5,86 @@ pub(super) fn encode_1bit_bmp(rgba_image: RgbaImage) -> Result<Vec<u8>, image::I
     let gray_image: GrayImage = image::DynamicImage::ImageRgba8(rgba_image).into_luma8();
 
     // Dither to 1-bit
-    let binary_image = dither_image(&gray_image, DitherAlgorithm::Atkinson);
+    let dithered = dither_image(&gray_image, DitherAlgorithm::Atkinson);
 
-    // Create a new 1-bit BMP image
-    let mut buffer = Cursor::new(Vec::new());
-    let mut bmp = image::codecs::bmp::BmpEncoder::new(&mut buffer);
-    bmp.encode(
-        &binary_image,
-        binary_image.width(),
-        binary_image.height(),
-        image::ExtendedColorType::L1,
-    )?;
+    // // Pack the dithered data into a 1-bit buffer
+    // let packed = pack_to_1bit_buffer(&dithered);
 
-    Ok(buffer.into_inner())
+    // // Create a new 1-bit BMP image
+    // let mut buffer = Cursor::new(Vec::new());
+    // let mut bmp = image::codecs::bmp::BmpEncoder::new(&mut buffer);
+    // bmp.encode(
+    //     &packed,
+    //     dithered.width(),
+    //     dithered.height(),
+    //     image::ExtendedColorType::L1,
+    // )?;
+
+    // Ok(buffer.into_inner())
+
+    let buffer = encode_1bit_bmp_custom(dithered);
+    Ok(buffer)
+}
+
+fn encode_1bit_bmp_custom(dithered: GrayImage) -> Vec<u8> {
+    // Pack each row as bits. We’ll still write from top-to-bottom here,
+    // but we’ll specify a negative height in the BMP header to flip it.
+    let width = dithered.width();
+    let height = dithered.height();
+    let row_bytes = ((width + 31) / 32) * 4; // each row is 4-byte aligned
+    let mut pixel_data = vec![0u8; (row_bytes * height) as usize];
+
+    for y in 0..height {
+        for x in 0..width {
+            let bit = if dithered.get_pixel(x, y).0[0] < 128 {
+                0
+            } else {
+                1
+            };
+            let byte_index = (y * row_bytes) + (x / 8);
+            let bit_index = 7 - (x % 8);
+            pixel_data[byte_index as usize] |= bit << bit_index;
+        }
+    }
+
+    // Construct a minimal BMP header
+    let file_header_size = 14;
+    let info_header_size = 40;
+    let palette_size = 2 * 4;
+    let data_offset = file_header_size + info_header_size + palette_size;
+    let file_size = data_offset as u32 + pixel_data.len() as u32;
+
+    let mut out = Vec::with_capacity(file_size as usize);
+
+    // BMP file header (14 bytes)
+    out.extend_from_slice(b"BM");
+    out.extend_from_slice(&file_size.to_le_bytes());
+    out.extend_from_slice(&0u16.to_le_bytes()); // Reserved1
+    out.extend_from_slice(&0u16.to_le_bytes()); // Reserved2
+    out.extend_from_slice(&(data_offset as u32).to_le_bytes());
+
+    // DIB header (40 bytes)
+    // We use a negative height to indicate a top-down BMP
+    out.extend_from_slice(&(info_header_size as u32).to_le_bytes());
+    out.extend_from_slice(&(width as i32).to_le_bytes());
+    out.extend_from_slice(&(-(height as i32)).to_le_bytes()); // negative => top-down
+    out.extend_from_slice(&1u16.to_le_bytes()); // Planes = 1
+    out.extend_from_slice(&1u16.to_le_bytes()); // Bits per pixel = 1
+    out.extend_from_slice(&0u32.to_le_bytes()); // Compression = 0
+    out.extend_from_slice(&(pixel_data.len() as u32).to_le_bytes());
+    out.extend_from_slice(&0u32.to_le_bytes()); // X pixels per meter
+    out.extend_from_slice(&0u32.to_le_bytes()); // Y pixels per meter
+    out.extend_from_slice(&2u32.to_le_bytes()); // colors in palette
+    out.extend_from_slice(&0u32.to_le_bytes()); // important colors
+
+    // Palette: 2 entries (black and white), 4 bytes each: B, G, R, 0
+    out.extend_from_slice(&[0x00, 0x00, 0x00, 0x00]); // black
+    out.extend_from_slice(&[0xFF, 0xFF, 0xFF, 0x00]); // white
+
+    // Actual pixel data
+    out.extend_from_slice(&pixel_data);
+
+    out
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -173,5 +238,19 @@ mod tests {
 
         // Verify we don't crash, and the output is strictly binary
         assert!(is_binary_image(&dithered));
+    }
+
+    #[test]
+    fn encode_1bit_bmp_small_image() {
+        // Create a 100x100 RGBA image which has linear gradient from black to white.
+        let image = RgbaImage::from_fn(100, 100, |x, y| {
+            let intensity = (x + y) as u8;
+            image::Rgba([intensity, intensity, intensity, 255])
+        });
+
+        let bmp = encode_1bit_bmp(image).unwrap();
+
+        // Verify we don't crash, and the output is a valid BMP
+        let _ = image::load_from_memory(&bmp).unwrap();
     }
 }

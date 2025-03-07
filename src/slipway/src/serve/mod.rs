@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use actix_cors::Cors;
 use actix_web::body::{BoxBody, EitherBody, MessageBody};
 use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
 use actix_web::http::header::{ContentType, HeaderName, HeaderValue};
@@ -83,6 +84,7 @@ impl ServeState {
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
+#[serde(deny_unknown_fields)]
 struct SlipwayServeConfig {
     #[serde(default)]
     log_level: Option<String>,
@@ -196,6 +198,12 @@ fn create_app(
             expected_authorization_header,
             repository,
         )))
+        .wrap(
+            Cors::default()
+                .allow_any_origin()
+                .allow_any_method()
+                .allow_any_header(),
+        )
         .service(
             // Trmnl services.
             web::scope(TRMNL_PATH)

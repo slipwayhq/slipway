@@ -13,7 +13,7 @@ use crate::{
 use super::get_optional_header;
 
 #[get("/display")]
-#[instrument(name = "trmnl_display")]
+#[instrument(name = "trmnl_display", skip_all)]
 pub(crate) async fn trmnl_display(
     data: web::Data<ServeState>,
     req: HttpRequest,
@@ -42,7 +42,7 @@ pub(crate) async fn trmnl_display(
         );
 
         return Ok(web::Json(serde_json::json!({
-            "status": 200,
+            "status": 0,
             "image_url": serde_json::Value::Null,
             "filename": serde_json::Value::Null,
             "update_firmware": false,
@@ -69,7 +69,7 @@ pub(crate) async fn trmnl_display(
     };
 
     Ok(web::Json(serde_json::json!({
-        "status": 200,
+        "status": 0,
         "image_url": url_response.url,
         "filename": format!("{}.bmp", device_name),
         "update_firmware": false,

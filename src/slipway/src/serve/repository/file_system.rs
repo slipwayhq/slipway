@@ -67,7 +67,15 @@ async fn list_devices(root_path: &Path) -> Result<Vec<DeviceName>, ServeError> {
 
     let mut devices = vec![];
 
-    let mut dir = tokio::fs::read_dir(search_path)
+    if !tokio::fs::try_exists(&search_path)
+        .await
+        .context("Failed to check device directory existence.")
+        .map_err(ServeError::Internal)?
+    {
+        return Ok(devices);
+    }
+
+    let mut dir = tokio::fs::read_dir(&search_path)
         .await
         .context("Failed to read device directory.")
         .map_err(ServeError::Internal)?;
@@ -133,6 +141,15 @@ async fn write_to_file<T: Serialize>(
     value: &T,
 ) -> Result<(), ServeError> {
     let bytes = serde_json::to_vec_pretty(value).expect("Device should serialize to JSON");
+
+    if let Some(parent) = path.parent() {
+        tokio::fs::create_dir_all(parent).await.map_err(|e| {
+            ServeError::Internal(anyhow::anyhow!(
+                "Failed to create directory for {type_name} \"{path:?}\".\n{e}",
+            ))
+        })?;
+    }
+
     tokio::fs::write(&path, &bytes).await.map_err(|e| {
         ServeError::Internal(anyhow::anyhow!(
             "Failed to save Slipway {type_name} \"{path:?}\".\n{e}",
