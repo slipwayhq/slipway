@@ -88,9 +88,6 @@ pub(super) struct TrmnlDevice {
     /// It is usually the MAC address of the device.
     pub id: String,
 
-    /// The friendly ID assigned to the device during setup.
-    pub friendly_id: String,
-
     /// The hash of the API key given to the device during setup.
     pub hashed_api_key: String,
 

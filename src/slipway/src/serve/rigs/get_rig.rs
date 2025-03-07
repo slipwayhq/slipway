@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::sync::Arc;
 
 use actix_web::http::StatusCode;
@@ -7,7 +8,10 @@ use serde::Deserialize;
 use tracing::{info_span, Instrument};
 
 use crate::primitives::RigName;
-use crate::serve::{FormatQuery, RigResultFormat, RigResultImageFormat, UrlResponse};
+use crate::serve::{
+    FormatQuery, RigResultFormat, RigResultImageFormat, UrlResponse, API_GET_RIG_PATH,
+    TRMNL_DISPLAY_PATH,
+};
 
 use super::super::{ImageResponse, RequestState, RigResponse, ServeError, ServeState};
 
@@ -81,18 +85,35 @@ pub async fn get_rig_response(
             let scheme = connection_info.scheme();
             let host = connection_info.host();
             let uri = req.uri();
-            let path = uri.path();
+            let path = {
+                let path = uri.path();
+                if path.ends_with(TRMNL_DISPLAY_PATH) {
+                    let path_without_trmnl = &path[0..path.len() - TRMNL_DISPLAY_PATH.len()];
+                    Cow::Owned(format!("{path_without_trmnl}{API_GET_RIG_PATH}/{rig_name}"))
+                } else {
+                    Cow::Borrowed(path)
+                }
+            };
 
             let full_url_without_qs = format!("{}://{}{}", scheme, host, path);
 
             let mut qs = url::form_urlencoded::Serializer::new(String::new());
 
+            let new_format = RigResultFormat::Image;
             qs.append_pair(
                 "format",
-                serde_json::to_value(&image_format)
+                serde_json::to_value(&new_format)
                     .expect("Format should serialize")
                     .as_str()
                     .expect("Format should be a string"),
+            );
+
+            qs.append_pair(
+                "image_format",
+                serde_json::to_value(&image_format)
+                    .expect("Image format should serialize")
+                    .as_str()
+                    .expect("Image format should be a string"),
             );
 
             if let Some(authorization) = req

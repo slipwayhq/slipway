@@ -6,18 +6,18 @@ use actix_web::{http::StatusCode, HttpRequest};
 pub(super) use display::trmnl_display;
 pub(super) use log::trmnl_log;
 pub(super) use setup::trmnl_setup;
-use tracing::debug;
+use tracing::{debug, info};
 
-use crate::serve::hash_string;
+use crate::{primitives::DeviceName, serve::hash_string};
 
 use super::{
     repository::{Device, TrmnlDevice},
-    ServeError,
+    ServeError, ACCESS_TOKEN_HEADER, ID_HEADER,
 };
 
 fn get_device_id_from_headers(req: &HttpRequest) -> Result<&str, ServeError> {
     req.headers()
-        .get("id")
+        .get(ID_HEADER)
         .ok_or(ServeError::UserFacing(
             StatusCode::BAD_REQUEST,
             "Missing ID header. This typically contains the device's MAC address.".to_string(),
@@ -31,29 +31,8 @@ fn get_device_id_from_headers(req: &HttpRequest) -> Result<&str, ServeError> {
         })
 }
 
-fn requires_reset_firmware(device: &Device) -> bool {
-    device
-        .trmnl
-        .as_ref()
-        .map_or(false, |trmnl| trmnl.reset_firmware)
-}
-
-fn authenticate_device<'d>(
-    id: &str,
-    req: &HttpRequest,
-    device: &'d Device,
-) -> Result<&'d TrmnlDevice, ServeError> {
-    const ACCESS_TOKEN_HEADER: &str = "access-token";
-
-    let Some(trmnl_device) = device.trmnl.as_ref() else {
-        return Err(ServeError::UserFacing(
-            StatusCode::BAD_REQUEST,
-            "Device does not have a terminal configuration.".to_string(),
-        ));
-    };
-
-    let api_key = req
-        .headers()
+fn get_api_key_from_headers(req: &HttpRequest) -> Result<&str, ServeError> {
+    req.headers()
         .get(ACCESS_TOKEN_HEADER)
         .ok_or(ServeError::UserFacing(
             StatusCode::UNAUTHORIZED,
@@ -68,7 +47,22 @@ fn authenticate_device<'d>(
                     e
                 ),
             )
-        })?;
+        })
+}
+
+fn authenticate_device<'d>(
+    id: &str,
+    req: &HttpRequest,
+    device: &'d Device,
+) -> Result<&'d TrmnlDevice, ServeError> {
+    let Some(trmnl_device) = device.trmnl.as_ref() else {
+        return Err(ServeError::UserFacing(
+            StatusCode::BAD_REQUEST,
+            "Device does not have a terminal configuration.".to_string(),
+        ));
+    };
+
+    let api_key = get_api_key_from_headers(req)?;
 
     let hashed_api_key = hash_string(api_key);
     if id != trmnl_device.id || hashed_api_key != trmnl_device.hashed_api_key {
@@ -92,4 +86,32 @@ fn get_optional_header<'a>(req: &'a HttpRequest, header: &str) -> Option<&'a str
     req.headers()
         .get(header)
         .and_then(|header| header.to_str().ok())
+}
+
+fn print_new_device_message(
+    id: &str,
+    api_key: &str,
+    hashed_api_key: &str,
+    existing_device_name: Option<DeviceName>,
+) {
+    info!("To allow this device, run the following command from your Slipway serve root:");
+    info!("");
+    info!("  slipway serve . add-trmnl-device \\");
+
+    if let Some(device_name) = existing_device_name {
+        info!("    --name \"{device_name}\" \\");
+    } else {
+        info!("    --name \"<NAME>\" \\");
+    }
+
+    info!("    --id \"{id}\" \\");
+    info!("    --hashed-api-key \"{hashed_api_key}\" \\");
+    info!("    --playlist <?PLAYLIST?>");
+    info!("");
+    info!("Then re-deploy the server if necessary.");
+    info!("The API key sent to the device was: {api_key}");
+    info!(
+        "The API key is not stored by the server. If you need a record of it, store it securely."
+    );
+    info!("See the Slipway documentation for more information.");
 }

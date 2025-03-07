@@ -3,6 +3,7 @@ use std::{collections::HashMap, path::PathBuf};
 use actix_web::{http::StatusCode, test};
 use chrono_tz::Tz;
 
+use crate::serve::ID_HEADER;
 use crate::serve::{
     create_app, hash_string, repository::TrmnlDevice, RepositoryConfig, SlipwayServeConfig,
 };
@@ -11,7 +12,6 @@ use super::super::Device;
 use super::{device, dn, get_body_json, playlist, pn, rig};
 
 const MAC: &str = "aa:bb:cc:00:00:01";
-const FRIENDLY_ID: &str = "foo";
 const HASHED_API_KEY: &str = "bar";
 
 #[test_log::test(actix_web::test)]
@@ -27,7 +27,6 @@ async fn when_device_already_configured_for_trmnl_it_should_return_new_credentia
                 Device {
                     trmnl: Some(TrmnlDevice {
                         id: MAC.to_string(),
-                        friendly_id: FRIENDLY_ID.to_string(),
                         hashed_api_key: HASHED_API_KEY.to_string(),
                         reset_firmware: false,
                     }),
@@ -46,7 +45,7 @@ async fn when_device_already_configured_for_trmnl_it_should_return_new_credentia
 
     let request = test::TestRequest::get()
         .uri("/api/setup")
-        .append_header(("id", "aa:bb:cc:00:00:01"))
+        .append_header((ID_HEADER, MAC))
         .to_request();
     let response = test::call_service(&app, request).await;
     let status = response.status();
@@ -73,7 +72,7 @@ async fn when_device_not_configured_for_trmnl_it_should_return_new_credentials()
 
     let request = test::TestRequest::get()
         .uri("/api/setup")
-        .append_header(("id", "aa:bb:cc:00:00:01"))
+        .append_header((ID_HEADER, MAC))
         .to_request();
     let response = test::call_service(&app, request).await;
     let status = response.status();
@@ -95,5 +94,5 @@ fn assert_response(status: StatusCode, body: serde_json::Value) {
 
     let friendly_id = body["friendly_id"].as_str().unwrap();
     assert!(!friendly_id.is_empty());
-    assert_ne!(FRIENDLY_ID, friendly_id);
+    assert_eq!(&hashed_api_key[..6], friendly_id);
 }

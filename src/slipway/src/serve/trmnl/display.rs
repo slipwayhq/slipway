@@ -4,7 +4,8 @@ use tracing::{debug, info_span, instrument, warn, Instrument};
 use crate::{
     primitives::DeviceName,
     serve::{
-        trmnl::{authenticate_device, get_device_id_from_headers, requires_reset_firmware},
+        hash_string,
+        trmnl::{authenticate_device, get_api_key_from_headers, get_device_id_from_headers},
         RigResponse, RigResultFormat, RigResultImageFormat, ServeError, ServeState,
     },
 };
@@ -23,11 +24,18 @@ pub(crate) async fn trmnl_display(
         id
     );
 
-    let (device_name, device) = data.repository.get_device_by_id(id).await?;
+    let maybe_device = data.repository.try_get_device_by_id(id).await?;
+    let (device_name, device) = if let Some((device_name, device)) = maybe_device {
+        (device_name, device)
+    } else {
+        return Err(print_unknown_device_message(&req, id)?);
+    };
+
+    let trmnl_device = authenticate_device(id, &req, &device)?;
 
     // We check this before authenticating, so that if the device set itself up
     // and we didn't get the hashed API key we can still reset the firmware.
-    if requires_reset_firmware(&device) {
+    if trmnl_device.reset_firmware {
         warn!(
             "Device \"{}\" JSON configuration is set to trigger a firmware reset. This will be done now.",
             device_name
@@ -43,8 +51,6 @@ pub(crate) async fn trmnl_display(
             "reset_firmware": true
         })));
     }
-
-    authenticate_device(id, &req, &device)?;
 
     print_optional_headers(&req, &device_name);
 
@@ -71,6 +77,19 @@ pub(crate) async fn trmnl_display(
         "refresh_rate": device_response.refresh_rate_seconds,
         "reset_firmware": false
     })))
+}
+
+fn print_unknown_device_message(req: &HttpRequest, id: &str) -> Result<ServeError, ServeError> {
+    let api_key = get_api_key_from_headers(req)?;
+    let hashed_api_key = hash_string(api_key);
+
+    warn!("An unknown device with ID \"{id}\" called the TRMNL display API.");
+    super::print_new_device_message(id, api_key, &hashed_api_key, None);
+
+    Ok(ServeError::UserFacing(
+        actix_web::http::StatusCode::NOT_FOUND,
+        format!("No device with ID \"{}\".", id),
+    ))
 }
 
 fn print_optional_headers(req: &HttpRequest, device_name: &DeviceName) {

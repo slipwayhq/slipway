@@ -13,7 +13,6 @@ use crate::{
 pub async fn add_trmnl_device(
     serve_path: PathBuf,
     id: String,
-    friendly_id: String,
     hashed_api_key: String,
     name: DeviceName,
     playlist: Option<PlaylistName>,
@@ -36,7 +35,6 @@ pub async fn add_trmnl_device(
 
         existing_device.trmnl = Some(TrmnlDevice {
             id,
-            friendly_id,
             hashed_api_key,
             reset_firmware: false,
         });
@@ -52,7 +50,6 @@ pub async fn add_trmnl_device(
         let device = Device {
             trmnl: Some(TrmnlDevice {
                 id,
-                friendly_id,
                 hashed_api_key,
                 reset_firmware: false,
             }),

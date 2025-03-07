@@ -2,8 +2,9 @@ use actix_web::{get, web, HttpRequest, Responder};
 use tracing::{info, instrument, warn};
 
 use crate::serve::{
-    create_api_key, create_friendly_id, hash_string, trmnl::get_device_id_from_headers, Device,
-    ServeError, ServeState,
+    create_api_key, create_friendly_id, hash_string,
+    trmnl::{get_device_id_from_headers, print_new_device_message},
+    Device, ServeError, ServeState,
 };
 
 #[get("/setup")]
@@ -26,9 +27,8 @@ pub(crate) async fn trmnl_setup(
         },
     )) = maybe_device
     {
-        // We return credentials to the device even if it already has a TRMNL configuration.
-        // This makes it impossible for a third party to tell what device MAC addresses exist
-        // through brute force using this API.
+        // We return generated credentials for devices even if they already have a TRMNL configuration.
+        // This makes it easier to update the credentials of devices which have been reset.
         warn!("The device \"{device_name}\" already contains a TRMNL configuration for this ID.");
         warn!("New random credentials will be returned.");
         warn!("If this is not a genuine request then you can safely ignore it.");
@@ -46,29 +46,9 @@ pub(crate) async fn trmnl_setup(
     // API key and leave it up to the user to either add the device to the server and re-deploy, or just ignore it.
     let api_key = create_api_key();
     let hashed_api_key = hash_string(&api_key);
-    let friendly_id = create_friendly_id();
+    let friendly_id = create_friendly_id(&hashed_api_key);
 
-    info!("To allow this device run the following command from your Slipway serve root:");
-    info!("");
-    info!("  slipway serve . add-trmnl-device \\");
-
-    if let Some(device_name) = existing_device_name {
-        info!("    --name \"{device_name}\" \\");
-    } else {
-        info!("    --name \"<NAME>\" \\");
-    }
-
-    info!("    --id \"{id}\" \\");
-    info!("    --friendly-id \"{friendly_id}\" \\");
-    info!("    --hashed-api-key \"{hashed_api_key}\" \\");
-    info!("    --playlist <?PLAYLIST?>");
-    info!("");
-    info!("Then re-deploy the server if necessary.");
-    info!("The API key sent to the device was: {api_key}");
-    info!(
-        "The API key is not stored by the server. If you need a record of it, store it securely."
-    );
-    info!("See the Slipway documentation for more information.");
+    print_new_device_message(id, &api_key, &hashed_api_key, existing_device_name);
 
     Ok(web::Json(serde_json::json!({
         "status": 200,

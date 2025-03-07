@@ -17,7 +17,7 @@ use base64::prelude::*;
 use image::{DynamicImage, ImageFormat, RgbaImage};
 use std::io::Cursor;
 use thiserror::Error;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 use url::Url;
 
 #[cfg(test)]
@@ -36,6 +36,12 @@ use crate::permissions::PermissionsOwned;
 use crate::primitives::{DeviceName, PlaylistName, RigName};
 
 const REFRESH_RATE_HEADER: &str = "refresh-rate";
+const ACCESS_TOKEN_HEADER: &str = "access-token";
+const ID_HEADER: &str = "id";
+
+const TRMNL_PATH: &str = "/api";
+const TRMNL_DISPLAY_PATH: &str = "/api/display";
+const API_GET_RIG_PATH: &str = "/rig";
 
 fn hash_string(input: &str) -> String {
     let mut hasher = Sha256::new();
@@ -44,8 +50,8 @@ fn hash_string(input: &str) -> String {
     format!("{:x}", result)
 }
 
-fn create_friendly_id() -> String {
-    nanoid::nanoid!(6)
+fn create_friendly_id(hashed_api_key: &str) -> String {
+    hashed_api_key[..6].to_string()
 }
 
 fn create_api_key() -> String {
@@ -192,17 +198,20 @@ fn create_app(
         )))
         .service(
             // Trmnl services.
-            web::scope("/api")
+            web::scope(TRMNL_PATH)
                 .wrap(from_fn(trmnl_auth_middleware))
                 .service(trmnl::trmnl_setup)
                 .service(trmnl::trmnl_display)
                 .service(trmnl::trmnl_log),
         )
-        // Non-Trmnl services.
-        .wrap(from_fn(auth_middleware))
-        .service(rigs::get_rig::get_rig)
-        .service(playlists::get_playlist::get_playlist)
-        .service(devices::get_device::get_device)
+        .service(
+            // Non-Trmnl services.
+            web::scope("")
+                .wrap(from_fn(auth_middleware))
+                .service(rigs::get_rig::get_rig)
+                .service(playlists::get_playlist::get_playlist)
+                .service(devices::get_device::get_device),
+        )
 }
 
 #[derive(Clone)]
@@ -216,6 +225,7 @@ async fn auth_middleware(
     req: ServiceRequest,
     next: Next<impl MessageBody>,
 ) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
+    debug!("Running auth_middleware");
     let serve_state = req
         .app_data::<web::Data<ServeState>>()
         .expect("ServeState should exist.");
@@ -266,6 +276,7 @@ async fn trmnl_auth_middleware(
     req: ServiceRequest,
     next: Next<impl MessageBody>,
 ) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
+    debug!("Running trmnl_auth_middleware");
     let serve_state = req
         .app_data::<web::Data<ServeState>>()
         .expect("ServeState should exist.");
@@ -444,10 +455,12 @@ enum RigResultImageFormat {
     #[default]
     Png,
 
+    // Specify serde string as "bmp_1bit", to avoid default of `bmp1_bit`.
+    #[serde(rename = "bmp_1bit")]
     Bmp1Bit,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Serialize, Default)]
 #[serde(rename_all = "snake_case")]
 enum RigResultFormat {
     /// Return an image.

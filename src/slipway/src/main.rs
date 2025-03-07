@@ -146,10 +146,6 @@ enum ServeCommands {
         #[arg(long)]
         id: String,
 
-        /// The friendly ID generated for this device by the server.
-        #[arg(short, long)]
-        friendly_id: String,
-
         /// The hashed version of the API key the device uses to authenticate itself.
         #[arg(short('k'), long)]
         hashed_api_key: String,
@@ -305,20 +301,11 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
             }
             Some(ServeCommands::AddTrmnlDevice {
                 id,
-                friendly_id,
                 hashed_api_key,
                 name,
                 playlist,
             }) => {
-                serve::commands::add_trmnl_device(
-                    path,
-                    id,
-                    friendly_id,
-                    hashed_api_key,
-                    name,
-                    playlist,
-                )
-                .await?;
+                serve::commands::add_trmnl_device(path, id, hashed_api_key, name, playlist).await?;
             }
             Some(ServeCommands::AddPlaylist { name, rig }) => {
                 serve::commands::add_playlist(path, name, rig).await?;
