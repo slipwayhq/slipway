@@ -15,9 +15,9 @@ use super::{
     ServeError,
 };
 
-fn get_device_id(req: &HttpRequest) -> Result<&str, ServeError> {
+fn get_device_id_from_headers(req: &HttpRequest) -> Result<&str, ServeError> {
     req.headers()
-        .get("ID")
+        .get("id")
         .ok_or(ServeError::UserFacing(
             StatusCode::BAD_REQUEST,
             "Missing ID header. This typically contains the device's MAC address.".to_string(),
@@ -31,12 +31,19 @@ fn get_device_id(req: &HttpRequest) -> Result<&str, ServeError> {
         })
 }
 
+fn requires_reset_firmware(device: &Device) -> bool {
+    device
+        .trmnl
+        .as_ref()
+        .map_or(false, |trmnl| trmnl.reset_firmware)
+}
+
 fn authenticate_device<'d>(
     id: &str,
     req: &HttpRequest,
     device: &'d Device,
 ) -> Result<&'d TrmnlDevice, ServeError> {
-    const ACCESS_TOKEN_HEADER: &str = "Access-Token";
+    const ACCESS_TOKEN_HEADER: &str = "access-token";
 
     let Some(trmnl_device) = device.trmnl.as_ref() else {
         return Err(ServeError::UserFacing(

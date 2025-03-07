@@ -224,7 +224,7 @@ async fn auth_middleware(
     {
         let actual_authorization_header = req
             .headers()
-            .get("Authorization")
+            .get("authorization")
             .and_then(|v| v.to_str().map(Cow::Borrowed).ok())
             .unwrap_or_else(|| {
                 let query_string = req.query_string();

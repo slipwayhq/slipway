@@ -1,0 +1,56 @@
+use std::{collections::HashMap, path::PathBuf};
+
+use actix_web::{http::StatusCode, test};
+use chrono_tz::Tz;
+
+use crate::serve::{
+    create_app, hash_string, repository::TrmnlDevice, RepositoryConfig, SlipwayServeConfig,
+};
+
+use super::super::Device;
+use super::{device, dn, get_body_json, playlist, pn, rig};
+
+const MAC: &str = "aa:bb:cc:00:00:01";
+const FRIENDLY_ID: &str = "foo";
+const HASHED_API_KEY: &str = "bar";
+
+#[test_log::test(actix_web::test)]
+async fn when_device_already_configured_for_trmnl_it_should_return_new_credentials() {
+    let config = SlipwayServeConfig {
+        log_level: Some("debug".to_string()),
+        registry_urls: vec![],
+        timezone: Some(Tz::Canada__Eastern),
+        rig_permissions: HashMap::new(),
+        repository: RepositoryConfig::Memory {
+            devices: vec![(
+                dn("d_1"),
+                Device {
+                    trmnl: Some(TrmnlDevice {
+                        id: MAC.to_string(),
+                        friendly_id: FRIENDLY_ID.to_string(),
+                        hashed_api_key: HASHED_API_KEY.to_string(),
+                        reset_firmware: false,
+                    }),
+                    playlist: Some(pn("p_1")),
+                    context: None,
+                },
+            )]
+            .into_iter()
+            .collect(),
+            playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
+            rigs: vec![rig("r_1")].into_iter().collect(),
+        },
+    };
+
+    let app = test::init_service(create_app(PathBuf::from("."), config, None)).await;
+
+    let request = test::TestRequest::get()
+        .uri("/api/setup")
+        .append_header(("id", "aa:bb:cc:00:00:01"))
+        .to_request();
+    let response = test::call_service(&app, request).await;
+    let status = response.status();
+    let body = get_body_json(response).await;
+
+    assert_response(status, body);
+}

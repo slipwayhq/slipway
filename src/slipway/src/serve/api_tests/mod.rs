@@ -1,5 +1,3 @@
-mod trmnl;
-
 use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
 use actix_web::{
@@ -21,6 +19,9 @@ use super::{
     Device, Playlist,
 };
 
+mod trmnl_display;
+mod trmnl_setup;
+
 fn dn(s: &str) -> DeviceName {
     DeviceName::from_str(s).unwrap()
 }
@@ -31,6 +32,52 @@ fn pn(s: &str) -> PlaylistName {
 
 fn rn(s: &str) -> RigName {
     RigName::from_str(s).unwrap()
+}
+
+fn device(name: &str, playlist_name: &str) -> (DeviceName, Device) {
+    (
+        dn(name),
+        Device {
+            trmnl: None,
+            playlist: Some(pn(playlist_name)),
+            context: None,
+        },
+    )
+}
+
+fn playlist(name: &str, rig_name: &str) -> (PlaylistName, Playlist) {
+    (
+        pn(name),
+        Playlist {
+            items: vec![PlaylistItem {
+                span: None,
+                days: None,
+                refresh: Refresh::Hours { hours: 1 },
+                rig: rn(rig_name),
+            }],
+        },
+    )
+}
+
+fn rig(name: &str) -> (RigName, slipway_engine::Rig) {
+    (
+        rn(name),
+        slipway_engine::Rig::for_test(Rigging {
+            components: [(
+                "output".parse().unwrap(),
+                slipway_engine::ComponentRigging::for_test_with_reference(
+                    slipway_engine::SlipwayReference::Special(
+                        SpecialComponentReference::Passthrough,
+                    ),
+                    Some(serde_json::json!({
+                        "foo": "bar"
+                    })),
+                ),
+            )]
+            .into_iter()
+            .collect(),
+        }),
+    )
 }
 
 fn get_refresh_rate(response: &ServiceResponse<impl MessageBody>) -> Option<u32> {
@@ -100,17 +147,6 @@ async fn when_devices_playlists_and_rigs_do_not_exist_should_return_not_found() 
     }
 }
 
-fn device(name: &str, playlist_name: &str) -> (DeviceName, Device) {
-    (
-        dn(name),
-        Device {
-            trmnl: None,
-            playlist: Some(pn(playlist_name)),
-            context: None,
-        },
-    )
-}
-
 #[test_log::test(actix_web::test)]
 async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
     let config = SlipwayServeConfig {
@@ -120,39 +156,8 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
         rig_permissions: HashMap::new(),
         repository: RepositoryConfig::Memory {
             devices: vec![device("d_1", "p_1")].into_iter().collect(),
-            playlists: vec![(
-                pn("p_1"),
-                Playlist {
-                    items: vec![PlaylistItem {
-                        span: None,
-                        days: None,
-                        refresh: Refresh::Hours { hours: 1 },
-                        rig: rn("r_1"),
-                    }],
-                },
-            )]
-            .into_iter()
-            .collect(),
-            rigs: vec![(
-                rn("r_1"),
-                slipway_engine::Rig::for_test(Rigging {
-                    components: [(
-                        "output".parse().unwrap(),
-                        slipway_engine::ComponentRigging::for_test_with_reference(
-                            slipway_engine::SlipwayReference::Special(
-                                SpecialComponentReference::Passthrough,
-                            ),
-                            Some(serde_json::json!({
-                                "foo": "bar"
-                            })),
-                        ),
-                    )]
-                    .into_iter()
-                    .collect(),
-                }),
-            )]
-            .into_iter()
-            .collect(),
+            playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
+            rigs: vec![rig("r_1")].into_iter().collect(),
         },
     };
 

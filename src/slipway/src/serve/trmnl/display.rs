@@ -4,7 +4,7 @@ use tracing::{debug, info_span, instrument, warn, Instrument};
 use crate::{
     primitives::DeviceName,
     serve::{
-        trmnl::{authenticate_device, get_device_id},
+        trmnl::{authenticate_device, get_device_id_from_headers, requires_reset_firmware},
         RigResponse, RigResultFormat, RigResultImageFormat, ServeError, ServeState,
     },
 };
@@ -17,18 +17,36 @@ pub(crate) async fn trmnl_display(
     data: web::Data<ServeState>,
     req: HttpRequest,
 ) -> Result<impl Responder, ServeError> {
-    let id = get_device_id(&req)?;
+    let id = get_device_id_from_headers(&req)?;
+    debug!(
+        "A display request was received from a device with ID \"{}\".",
+        id
+    );
+
     let (device_name, device) = data.repository.get_device_by_id(id).await?;
-    let trmnl_device = authenticate_device(id, &req, &device)?;
 
-    print_optional_headers(&req, &device_name);
-
-    if trmnl_device.reset_firmware {
+    // We check this before authenticating, so that if the device set itself up
+    // and we didn't get the hashed API key we can still reset the firmware.
+    if requires_reset_firmware(&device) {
         warn!(
-            "Device \"{}\" JSON configuration is set to trigger a firmware reset.",
+            "Device \"{}\" JSON configuration is set to trigger a firmware reset. This will be done now.",
             device_name
         );
+
+        return Ok(web::Json(serde_json::json!({
+            "status": 200,
+            "image_url": serde_json::Value::Null,
+            "filename": serde_json::Value::Null,
+            "update_firmware": false,
+            "firmware_url": serde_json::Value::Null,
+            "refresh_rate": serde_json::Value::Null,
+            "reset_firmware": true
+        })));
     }
+
+    authenticate_device(id, &req, &device)?;
+
+    print_optional_headers(&req, &device_name);
 
     let device_response = super::super::devices::get_device::get_device_response(
         &device_name,
@@ -51,7 +69,7 @@ pub(crate) async fn trmnl_display(
         "update_firmware": false,
         "firmware_url": serde_json::Value::Null,
         "refresh_rate": device_response.refresh_rate_seconds,
-        "reset_firmware": trmnl_device.reset_firmware
+        "reset_firmware": false
     })))
 }
 
