@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::primitives::{DeviceName, PlaylistName, RigName};
 
-use super::ServeError;
+use super::{hash_string, ServeError};
 
 pub(super) mod file_system;
 pub(super) mod memory;
@@ -56,8 +56,9 @@ pub(super) trait ServeRepository: std::fmt::Debug {
     }
     async fn get_device_by_api_key(
         &self,
-        hashed_api_key: &str,
+        api_key: &str,
     ) -> Result<(DeviceName, Device), ServeError> {
+        let hashed_api_key = hash_string(api_key);
         for device_name in self.list_devices().await? {
             let device = self.get_device(&device_name).await?;
             if let Some(trmnl_device) = &device.trmnl {
@@ -69,7 +70,7 @@ pub(super) trait ServeRepository: std::fmt::Debug {
 
         Err(ServeError::UserFacing(
             StatusCode::NOT_FOUND,
-            "Failed to find device the given API key.".to_string(),
+            "Failed to find device for the given API key.".to_string(),
         ))
     }
 }
