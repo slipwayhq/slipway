@@ -44,10 +44,14 @@ fn get_next_specified_refresh_time(
         Refresh::Minutes { minutes } => Ok(now + chrono::Duration::minutes(*minutes as i64)),
         Refresh::Hours { hours } => Ok(now + chrono::Duration::hours(*hours as i64)),
         Refresh::Cron { cron } => {
-            let cron_evaluator = croner::Cron::new(cron);
+            let cron_evaluator = croner::Cron::new(cron)
+                .parse()
+                .with_context(|| format!("Failed to parse cron schedule: {cron}"))?;
             let next = cron_evaluator
                 .find_next_occurrence(&now, false)
-                .with_context(|| format!("Failed to evaluate cron schedule: {cron}"))?;
+                .with_context(|| {
+                    format!("Failed to evaluate next occurrence with cron schedule: {cron}")
+                })?;
             Ok(next)
         }
     }
@@ -278,5 +282,26 @@ mod tests {
 
         let next = get_next_refresh_time(now, &refresh, &playlist).unwrap();
         assert_eq!(next, dt("2025-01-05 14:05:00"));
+    }
+
+    #[test]
+    fn cron_no_boundary() {
+        let now = dt("2025-01-05 14:00:00");
+        let refresh = Refresh::Cron {
+            cron: "0 * * * *".to_string(),
+        };
+
+        let item = PlaylistItem {
+            span: Some(PlaylistTimeSpan::From {
+                from: NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
+            }),
+            days: None,
+            refresh: Refresh::Hours { hours: 10 },
+            rig: rig(),
+        };
+        let playlist = Playlist { items: vec![item] };
+
+        let next = get_next_refresh_time(now, &refresh, &playlist).unwrap();
+        assert_eq!(next, dt("2025-01-05 15:00:00"));
     }
 }

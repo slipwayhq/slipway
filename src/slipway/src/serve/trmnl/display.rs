@@ -71,7 +71,7 @@ pub(crate) async fn trmnl_display(
     Ok(web::Json(serde_json::json!({
         "status": 0,
         "image_url": url_response.url,
-        "filename": format!("{}.bmp", device_name),
+        "filename": chrono::Utc::now().format("%Y-%m-%d-%H-%M-%S").to_string(),
         "update_firmware": false,
         "firmware_url": serde_json::Value::Null,
         "refresh_rate": device_response.refresh_rate_seconds,

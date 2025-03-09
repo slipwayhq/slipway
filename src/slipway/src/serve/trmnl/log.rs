@@ -6,8 +6,6 @@ use crate::serve::{
     ServeError, ServeState,
 };
 
-// TODO: Logging seems to be broken. I don't think this method is getting called.
-
 #[post("/log")]
 #[instrument(name = "trmnl_log", skip_all)]
 pub(crate) async fn trmnl_log(
