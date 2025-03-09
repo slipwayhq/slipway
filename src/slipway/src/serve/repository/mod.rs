@@ -54,6 +54,24 @@ pub(super) trait ServeRepository: std::fmt::Debug {
     ) -> Result<Option<(DeviceName, Device)>, ServeError> {
         try_load(self.get_device_by_id(id).await)
     }
+    async fn get_device_by_api_key(
+        &self,
+        hashed_api_key: &str,
+    ) -> Result<(DeviceName, Device), ServeError> {
+        for device_name in self.list_devices().await? {
+            let device = self.get_device(&device_name).await?;
+            if let Some(trmnl_device) = &device.trmnl {
+                if trmnl_device.hashed_api_key == hashed_api_key {
+                    return Ok((device_name, device));
+                }
+            }
+        }
+
+        Err(ServeError::UserFacing(
+            StatusCode::NOT_FOUND,
+            "Failed to find device the given API key.".to_string(),
+        ))
+    }
 }
 
 fn try_load<T>(maybe_result: Result<T, ServeError>) -> Result<Option<T>, ServeError> {
