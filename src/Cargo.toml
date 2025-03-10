@@ -6,7 +6,6 @@ members = [
     "slipway_wasmtime_runner",
     "slipway_host",
     "slipway_fragment_runner",
-    "slipway_js_deno_runner",
     "slipway_js_boa_runner",
     "common_macros",
 ]
@@ -27,7 +26,7 @@ semver = { version = "1.0.25", features = ["serde"] }
 jtd = "0.3.1"
 tracing = "0.1.41"
 anyhow = "1.0.95"
-url = "2.5.4"
+url = { version = "2.5.4", features = ["serde"] }
 tiny_http = "0.12.0"
 tar = "0.4.43"
 walkdir = "2.5.0"

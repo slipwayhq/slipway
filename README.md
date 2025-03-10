@@ -55,15 +55,6 @@ It rigs together the `echarts_svg` Component (which takes an echarts definition 
 a new Component which takes an echarts definition as an input and returns a Canvas
 as an output.
 
-### `/src/slipway_js_deno_runner`
-
-Runs Slipway Components written in Javascript. This Javascript runner which is does not
-currently have development focus. Although it can run Components, it has not (yet) had the host interface
-implemented so doesn't support Components which call back into the host.
-
-This Javascript runner uses the `deno_engine` crate for running Javascript Components,
-which under the hood uses the C++ V8 engine.
-
 ### `/src/common_macros`
 
 Rust macros used by other crates in this repository.
