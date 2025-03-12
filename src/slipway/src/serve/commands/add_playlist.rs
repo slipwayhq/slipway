@@ -20,7 +20,7 @@ pub async fn add_playlist(
         items: match rig {
             None => vec![],
             Some(rig) => vec![PlaylistItem {
-                span: None,
+                times: None,
                 days: None,
                 refresh: Refresh::Minutes { minutes: 5 },
                 rig,

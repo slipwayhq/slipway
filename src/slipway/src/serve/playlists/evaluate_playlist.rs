@@ -64,7 +64,7 @@ fn find_active_playlist_item(playlist: &Playlist, now: DateTime<Tz>) -> Option<&
             }
         }
 
-        let span = &item.span;
+        let span = &item.times;
         if let Some(span) = span {
             if !is_now_in_timespan(span, now) {
                 return false;
@@ -99,5 +99,264 @@ fn is_now_in_timespan(span: &PlaylistTimeSpan, now: DateTime<Tz>) -> bool {
                 now >= *from || now <= *to
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::{NaiveDateTime, NaiveTime};
+
+    use crate::serve::repository::Refresh;
+
+    use super::*;
+
+    fn tz() -> Tz {
+        // Some timezone which is never UTC.
+        Tz::Canada__Atlantic
+    }
+
+    fn dt(s: &str) -> DateTime<Tz> {
+        // Helper for "2025-01-05 14:00:00"
+        tz().from_local_datetime(
+            &NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S")
+                .expect("Should be valid date time"),
+        )
+        .single()
+        .expect("Should be unambiguous local time")
+    }
+
+    fn midnight_refresh() -> Refresh {
+        Refresh::Seconds { seconds: 20 }
+    }
+
+    fn standard_refresh() -> Refresh {
+        Refresh::Seconds { seconds: 10 }
+    }
+
+    fn create_playlist() -> Playlist {
+        Playlist {
+            items: vec![
+                PlaylistItem {
+                    times: Some(PlaylistTimeSpan::Between {
+                        from: NaiveTime::from_hms_opt(23, 0, 0).unwrap(),
+                        to: NaiveTime::from_hms_opt(1, 0, 0).unwrap(),
+                    }),
+                    days: Some(
+                        vec![Weekday::Tue, Weekday::Wed, Weekday::Thu]
+                            .into_iter()
+                            .collect(),
+                    ),
+                    refresh: midnight_refresh(),
+                    rig: RigName("rig20".to_string()),
+                },
+                PlaylistItem {
+                    times: None,
+                    days: None,
+                    refresh: standard_refresh(),
+                    rig: RigName("rig10".to_string()),
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn monday_during_midnight_refresh_time_should_return_standard() {
+        let playlist = create_playlist();
+
+        assert_eq!(
+            &standard_refresh(),
+            &find_active_playlist_item(&playlist, dt("2025-01-06 23:30:00"))
+                .unwrap()
+                .refresh
+        );
+    }
+
+    #[test]
+    fn tuesday_morning_during_midnight_refresh_time_should_return_midnight() {
+        let playlist = create_playlist();
+
+        // This result isn't necessarily expected, but it is reasonable.
+        // If it isn't the desired behavior then a more complicated playlist can be used.
+        assert_eq!(
+            &midnight_refresh(),
+            &find_active_playlist_item(&playlist, dt("2025-01-07 00:30:00"))
+                .unwrap()
+                .refresh
+        );
+    }
+
+    #[test]
+    fn tuesday_night_during_midnight_refresh_time_should_return_midnight() {
+        let playlist = create_playlist();
+
+        assert_eq!(
+            &midnight_refresh(),
+            &find_active_playlist_item(&playlist, dt("2025-01-07 23:30:00"))
+                .unwrap()
+                .refresh
+        );
+    }
+
+    #[test]
+    fn wednesday_morning_during_midnight_refresh_time_should_return_midnight() {
+        let playlist = create_playlist();
+
+        assert_eq!(
+            &midnight_refresh(),
+            &find_active_playlist_item(&playlist, dt("2025-01-08 00:30:00"))
+                .unwrap()
+                .refresh
+        );
+    }
+
+    #[test]
+    fn thursday_night_during_midnight_refresh_time_should_return_midnight() {
+        let playlist = create_playlist();
+
+        assert_eq!(
+            &midnight_refresh(),
+            &find_active_playlist_item(&playlist, dt("2025-01-09 23:30:00"))
+                .unwrap()
+                .refresh
+        );
+    }
+
+    #[test]
+    fn friday_morning_during_midnight_refresh_time_should_return_standard() {
+        let playlist = create_playlist();
+
+        assert_eq!(
+            &standard_refresh(),
+            &find_active_playlist_item(&playlist, dt("2025-01-10 00:30:00"))
+                .unwrap()
+                .refresh
+        );
+    }
+
+    #[test]
+    fn wednesday_outside_midnight_refresh_time_should_return_standard() {
+        let playlist = create_playlist();
+
+        assert_eq!(
+            &standard_refresh(),
+            &find_active_playlist_item(&playlist, dt("2025-01-08 22:55:00"))
+                .unwrap()
+                .refresh
+        );
+    }
+
+    #[test]
+    fn wednesday_outside_midnight_refresh_time_should_return_standard_2() {
+        let playlist = create_playlist();
+
+        assert_eq!(
+            &standard_refresh(),
+            &find_active_playlist_item(&playlist, dt("2025-01-08 01:15:00"))
+                .unwrap()
+                .refresh
+        );
+    }
+
+    #[test]
+    fn when_no_days_specified_should_apply_to_all_days() {
+        let playlist = Playlist {
+            items: vec![
+                PlaylistItem {
+                    times: Some(PlaylistTimeSpan::Between {
+                        from: NaiveTime::from_hms_opt(23, 0, 0).unwrap(),
+                        to: NaiveTime::from_hms_opt(1, 0, 0).unwrap(),
+                    }),
+                    days: None,
+                    refresh: midnight_refresh(),
+                    rig: RigName("rig20".to_string()),
+                },
+                PlaylistItem {
+                    times: None,
+                    days: None,
+                    refresh: standard_refresh(),
+                    rig: RigName("rig10".to_string()),
+                },
+            ],
+        };
+
+        assert_eq!(
+            &standard_refresh(),
+            &find_active_playlist_item(&playlist, dt("2025-01-05 22:30:00"))
+                .unwrap()
+                .refresh
+        );
+
+        assert_eq!(
+            &midnight_refresh(),
+            &find_active_playlist_item(&playlist, dt("2025-01-05 23:30:00"))
+                .unwrap()
+                .refresh
+        );
+
+        assert_eq!(
+            &midnight_refresh(),
+            &find_active_playlist_item(&playlist, dt("2025-01-05 00:30:00"))
+                .unwrap()
+                .refresh
+        );
+
+        assert_eq!(
+            &standard_refresh(),
+            &find_active_playlist_item(&playlist, dt("2025-01-05 01:30:00"))
+                .unwrap()
+                .refresh
+        );
+    }
+
+    #[test]
+    fn when_no_times_specified_should_apply_to_all_times() {
+        let playlist = Playlist {
+            items: vec![
+                PlaylistItem {
+                    times: None,
+                    days: Some(
+                        vec![Weekday::Tue, Weekday::Wed, Weekday::Thu]
+                            .into_iter()
+                            .collect(),
+                    ),
+                    refresh: midnight_refresh(),
+                    rig: RigName("rig20".to_string()),
+                },
+                PlaylistItem {
+                    times: None,
+                    days: None,
+                    refresh: standard_refresh(),
+                    rig: RigName("rig10".to_string()),
+                },
+            ],
+        };
+
+        assert_eq!(
+            &standard_refresh(),
+            &find_active_playlist_item(&playlist, dt("2025-01-05 22:30:00"))
+                .unwrap()
+                .refresh
+        );
+
+        assert_eq!(
+            &standard_refresh(),
+            &find_active_playlist_item(&playlist, dt("2025-01-06 22:30:00"))
+                .unwrap()
+                .refresh
+        );
+
+        assert_eq!(
+            &midnight_refresh(),
+            &find_active_playlist_item(&playlist, dt("2025-01-07 22:30:00"))
+                .unwrap()
+                .refresh
+        );
+
+        assert_eq!(
+            &midnight_refresh(),
+            &find_active_playlist_item(&playlist, dt("2025-01-08 22:30:00"))
+                .unwrap()
+                .refresh
+        );
     }
 }

@@ -135,9 +135,8 @@ pub(super) struct Playlist {
 pub(super) struct PlaylistItem {
     /// The time span during a day this playlist item should be run.
     #[serde(default)]
-    #[serde(flatten)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub span: Option<PlaylistTimeSpan>,
+    pub times: Option<PlaylistTimeSpan>,
 
     /// The days of the week this playlist item should be run.
     #[serde(default)]
@@ -153,7 +152,7 @@ pub(super) struct PlaylistItem {
 }
 
 /// When the device should next call the API to update its display.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(untagged, rename_all = "snake_case")]
 pub(super) enum Refresh {
     Seconds { seconds: u32 },

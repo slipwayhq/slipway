@@ -51,6 +51,13 @@ fn hash_string(input: &str) -> String {
     format!("{:x}", result)
 }
 
+fn hash_bytes(input: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(input);
+    let result = hasher.finalize();
+    format!("{:x}", result)
+}
+
 fn create_friendly_id(hashed_api_key: &str) -> String {
     hashed_api_key[..6].to_string()
 }
@@ -418,6 +425,8 @@ impl Responder for ImageResponse {
             Ok(image_bytes) => image_bytes,
         };
 
+        info!("Responding with image of size {} bytes.", image_bytes.len());
+
         if self.wrap_in_html {
             let html = format!(
                 r#"<html><head><meta name="viewport" content="width={width}"></head><body style="margin:0px; width={width}px"><img src="data:image/png;base64,{}"/></body></html>"#,
@@ -429,9 +438,32 @@ impl Responder for ImageResponse {
                 .body(html);
         }
 
+        let maybe_etag = _req
+            .headers()
+            .get("if-none-match")
+            .and_then(|v| v.to_str().ok());
+
+        if let Some(etag) = maybe_etag {
+            debug!("Device supplied ETag: {}", etag);
+            let new_etag = hash_bytes(&image_bytes);
+            debug!("Calculated ETag     : {}", new_etag);
+
+            if etag == new_etag {
+                info!("Returning 304 Not Modified.");
+                return HttpResponse::NotModified().finish();
+            }
+        }
+
+        let etag = hash_bytes(&image_bytes);
+
         let body = image_bytes;
 
         let mut response = HttpResponse::Ok();
+
+        response.insert_header((
+            HeaderName::from_static("etag"),
+            HeaderValue::from_str(&etag).expect("ETag value should lowercase hex"),
+        ));
 
         match self.format {
             RigResultImageFormat::Jpeg => {

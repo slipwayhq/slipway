@@ -73,7 +73,7 @@ fn get_next_playlist_item_boundary_before_end(
                 }
             }
             // Pull from/to boundaries (if any) for this day
-            if let Some(span) = &item.span {
+            if let Some(span) = &item.times {
                 match span {
                     PlaylistTimeSpan::From { from } => {
                         if let Some(boundary) = make_boundary(now, end, day, *from) {
@@ -201,7 +201,7 @@ mod tests {
         let days = days.map(HashSet::from_iter);
 
         let item = PlaylistItem {
-            span: Some(PlaylistTimeSpan::From {
+            times: Some(PlaylistTimeSpan::From {
                 from: NaiveTime::from_hms_opt(14, 10, 0).unwrap(),
             }),
             days,
@@ -247,7 +247,7 @@ mod tests {
         days.insert(Weekday::Sun);
 
         let item = PlaylistItem {
-            span: Some(PlaylistTimeSpan::From {
+            times: Some(PlaylistTimeSpan::From {
                 from: NaiveTime::from_hms_opt(14, 50, 0).unwrap(),
             }),
             days: Some(days),
@@ -270,7 +270,7 @@ mod tests {
         days.insert(Weekday::Sun);
 
         let item = PlaylistItem {
-            span: Some(PlaylistTimeSpan::Between {
+            times: Some(PlaylistTimeSpan::Between {
                 from: NaiveTime::from_hms_opt(14, 5, 0).unwrap(),
                 to: NaiveTime::from_hms_opt(14, 15, 0).unwrap(),
             }),
@@ -292,7 +292,7 @@ mod tests {
         };
 
         let item = PlaylistItem {
-            span: Some(PlaylistTimeSpan::From {
+            times: Some(PlaylistTimeSpan::From {
                 from: NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
             }),
             days: None,
