@@ -1,16 +1,19 @@
 run(input);
 
 async function run(input) {
-  if (input.file_type === "text") {
+  if (input.file_type === TEXT) {
     var text = await slipway_host.load_text(input.handle, input.path);
     return {
       text
     };
   }
-  else {
+  else if (input.file_type === BINARY) {
     var bin = await slipway_host.load_bin(input.handle, input.path);
     return {
       bin
     };
+  }
+  else {
+    throw new Error("Unexpected file type: " + input.file_type);
   }
 }

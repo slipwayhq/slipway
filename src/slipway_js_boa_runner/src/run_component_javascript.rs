@@ -13,21 +13,15 @@ use tracing::debug;
 
 use crate::{
     host::{prepare_canopy_host, SlipwayHost},
-    BoaComponentDefinition, BOA_COMPONENT_DEFINITION_FILE_NAME,
+    BoaComponentDefinition, BOA_RUN_JS_FILE_NAME,
 };
 
 pub(super) async fn run_component_javascript(
     input: &serde_json::Value,
-    boa_definition: Arc<BoaComponentDefinition>,
+    run_js: Arc<String>,
+    boa_definition: Option<Arc<BoaComponentDefinition>>,
     execution_context: &ComponentExecutionContext<'_, '_, '_>,
 ) -> Result<RunComponentResult, RunComponentError> {
-    if boa_definition.scripts.is_empty() {
-        return Err(RunComponentError::Other(format!(
-            "No scripts specified in definition file \"{}\"",
-            BOA_COMPONENT_DEFINITION_FILE_NAME
-        )));
-    }
-
     let prepare_component_start = Instant::now();
     let host = SlipwayHost::new(execution_context);
     let mut context = super::boa_environment::prepare_environment()?;
@@ -38,9 +32,14 @@ pub(super) async fn run_component_javascript(
     set_input(&mut context, input)?;
     let prepare_input_duration = prepare_input_start.elapsed();
 
+    let scripts = boa_definition
+        .as_ref()
+        .map(|def| def.scripts.as_slice())
+        .unwrap_or_else(|| &[]);
+
     let call_start = Instant::now();
     let last_result =
-        run_component_scripts(&boa_definition.scripts, execution_context, &mut context).await?;
+        run_component_scripts(&run_js, scripts, execution_context, &mut context).await?;
     let call_duration = call_start.elapsed();
 
     let process_output_start = Instant::now();
@@ -70,56 +69,69 @@ fn set_input(context: &mut Context, input: &serde_json::Value) -> Result<(), Run
 }
 
 async fn run_component_scripts(
+    run_js: &str,
     script_files: &[String],
     execution_context: &ComponentExecutionContext<'_, '_, '_>,
     context: &mut Context,
 ) -> Result<JsValue, RunComponentError> {
-    let mut last_result = None;
     for script_file in script_files.iter() {
+        // Try and filter out accidental inclusion of "run.js" or "./run.js".
+        if script_file == BOA_RUN_JS_FILE_NAME
+            || (script_file.ends_with(BOA_RUN_JS_FILE_NAME)
+                && script_file.starts_with("./")
+                && script_file.len() == BOA_RUN_JS_FILE_NAME.len() + 2)
+        {
+            continue;
+        }
+
         let content = execution_context.files.get_text(script_file).await?;
 
-        debug!(
-            "Running script \"{}\" ({} bytes) using Boa",
-            script_file,
-            content.len()
-        );
-
-        let script = Script::parse(Source::from_bytes(&*content), None, context)
-            .map_err(|e| convert_error(script_file, context, e))?;
-
-        last_result = Some(
-            script
-                .evaluate_async(context)
-                .await
-                .map_err(|e| convert_error(script_file, context, e))?,
-        );
+        run_script(script_file, &content, context).await?;
     }
 
-    let last_result = last_result.expect("At least one script should be executed");
+    let run_js_result = run_script(BOA_RUN_JS_FILE_NAME, run_js, context).await?;
 
     context
         .run_jobs_async()
         .await
         .map_err(|e| RunComponentError::Other(format!("Failed to run async jobs\n{}", e)))?;
 
-    let promise = last_result.as_promise();
+    let promise = run_js_result.as_promise();
 
     match promise {
         Some(promise) => match promise.state() {
             PromiseState::Pending => Err(RunComponentError::RunCallFailed {
-                source: anyhow::anyhow!("Promise is still pending"),
+                source: anyhow::anyhow!("Promise from run.js is still pending"),
             }),
             PromiseState::Fulfilled(result) => Ok(result),
             PromiseState::Rejected(error) => Err(convert_error(
-                script_files
-                    .last()
-                    .expect("At least one script file should exist"),
+                BOA_RUN_JS_FILE_NAME,
                 context,
                 JsError::from_opaque(error),
             )),
         },
-        None => Ok(last_result),
+        None => Ok(run_js_result),
     }
+}
+
+async fn run_script(
+    name: &str,
+    content: &str,
+    context: &mut Context,
+) -> Result<JsValue, RunComponentError> {
+    debug!(
+        "Running script \"{}\" ({} bytes) using Boa",
+        name,
+        content.len()
+    );
+
+    let script = Script::parse(Source::from_bytes(&content), None, context)
+        .map_err(|e| convert_error(name, context, e))?;
+
+    script
+        .evaluate_async(context)
+        .await
+        .map_err(|e| convert_error(name, context, e))
 }
 
 fn convert_output(

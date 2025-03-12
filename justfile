@@ -71,7 +71,6 @@ assemble-test-components configuration="debug": \
 
   mkdir -p artifacts/{{publisher}}.increment_js
   cp src_components/slipway_increment_js_component/slipway_component.json artifacts/{{publisher}}.increment_js/slipway_component.json
-  cp src_components/slipway_increment_js_component/slipway_js_component.json artifacts/{{publisher}}.increment_js/slipway_js_component.json
   cp src_components/slipway_increment_js_component/run.js artifacts/{{publisher}}.increment_js/run.js
 
 tar-component-files name configuration="debug":
