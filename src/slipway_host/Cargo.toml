@@ -5,10 +5,8 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
-fontique = "0.2.0"
-slipway_engine = { path = "../slipway_engine", features = [
-    "unstable-test-utils",
-] }
+fontique = { workspace = true }
+slipway_engine = { workspace = true, features = ["unstable-test-utils"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -17,7 +15,7 @@ tracing = { workspace = true }
 reqwest = { workspace = true }
 url = { workspace = true }
 semver = { workspace = true }
-base64 = "0.22.1"
+base64 = { workspace = true }
 async-trait = { workspace = true }
 pollster = { workspace = true }
 tokio = { workspace = true }

@@ -5,12 +5,12 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
-wasmtime = { version = "27.0.0", features = ["component-model", "async"] }
-wasmtime-wasi = { version = "27.0.0" }
-wasi-common = "27.0.0"
-bytes = "1.8.0"
-slipway_engine = { path = "../slipway_engine", features = [] }
-slipway_host = { path = "../slipway_host", features = [] }
+slipway_engine = { workspace = true, features = [] }
+slipway_host = { workspace = true, features = [] }
+wasmtime = { workspace = true, features = ["component-model", "async"] }
+wasmtime-wasi = { workspace = true }
+wasi-common = { workspace = true }
+bytes = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }

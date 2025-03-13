@@ -5,23 +5,20 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
-slipway_engine = { path = "../slipway_engine", features = [] }
-slipway_host = { path = "../slipway_host", features = [] }
+slipway_engine = { workspace = true, features = [] }
+slipway_host = { workspace = true, features = [] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
-boa_engine = { git = "https://github.com/boa-dev/boa", branch = "main", package = "boa_engine", features = [
-    "annex-b",
-    "experimental",
-] }
-boa_runtime = { git = "https://github.com/boa-dev/boa", branch = "main", package = "boa_runtime" }
-boa_macros = { git = "https://github.com/boa-dev/boa", branch = "main", package = "boa_macros" }
-boa_gc = { git = "https://github.com/boa-dev/boa", branch = "main", package = "boa_gc" }
-pollster = "0.4.0"
+boa_engine = { workspace = true }
+boa_runtime = { workspace = true }
+boa_macros = { workspace = true }
+boa_gc = { workspace = true }
+pollster = { workspace = true }
 anyhow = { workspace = true }
 indoc = { workspace = true }
 paste = { workspace = true }
 async-trait = { workspace = true }
 tokio = { workspace = true }
-futures-concurrency = "7.6.3"
-futures-lite = "2.6.0"
+futures-concurrency = { workspace = true }
+futures-lite = { workspace = true }

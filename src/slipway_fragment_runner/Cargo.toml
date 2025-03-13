@@ -5,8 +5,8 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
-slipway_engine = { path = "../slipway_engine", features = [] }
-slipway_host = { path = "../slipway_host", features = [] }
+slipway_engine = { workspace = true, features = [] }
+slipway_host = { workspace = true, features = [] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }

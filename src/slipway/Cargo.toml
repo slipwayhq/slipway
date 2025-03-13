@@ -9,43 +9,43 @@ clap = { version = "4.3.22", features = ["derive", "color"] }
 slipway_engine = { path = "../slipway_engine", features = [
     "unstable-test-utils",
 ] }
-slipway_host = { path = "../slipway_host" }
-slipway_wasmtime_runner = { path = "../slipway_wasmtime_runner" }
-slipway_fragment_runner = { path = "../slipway_fragment_runner" }
-slipway_js_boa_runner = { path = "../slipway_js_boa_runner" }
+slipway_host = { workspace = true }
+slipway_wasmtime_runner = { workspace = true }
+slipway_fragment_runner = { workspace = true }
+slipway_js_boa_runner = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-termion = "4.0.0"
-ctrlc = "3.4.2"
-edit = "0.1.5"
+termion = { workspace = true }
+ctrlc = { workspace = true }
+edit = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 semver = { workspace = true }
 jtd = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = "0.3.18"
-viuer = { version = "0.9.1", features = ["sixel"] }
-base64 = "0.22.1"
-image = "0.25.2"
-time = { version = "0.3.37", features = ["formatting"] }
+tracing-subscriber = { workspace = true }
+viuer = { workspace = true, features = ["sixel"] }
+base64 = { workspace = true }
+image = { workspace = true }
+time = { workspace = true, features = ["formatting"] }
 url = { workspace = true }
 tar = { workspace = true }
 walkdir = { workspace = true }
 paste = { workspace = true }
 tokio = { workspace = true }
-actix-web = "4.9.0"
-once_cell = "1.20.3" # required for conflict between boa and actix-web
-chrono = { version = "0.4.39", features = ["serde"] }
-nanoid = "0.4.0"
 async-trait = { workspace = true }
-chrono-tz = { version = "0.10.1", features = ["serde"] }
 regex = { workspace = true }
 sha2 = { workspace = true }
-croner = "2.1.0"
-actix-cors = "0.7.0"
-iana-time-zone = "0.1.61"
+actix-web = { workspace = true }
+once_cell = { workspace = true } # required for conflict between boa and actix-web
+chrono = { workspace = true, features = ["serde"] }
+nanoid = { workspace = true }
+chrono-tz = { workspace = true, features = ["serde"] }
+croner = { workspace = true }
+actix-cors = { workspace = true }
+iana-time-zone = { workspace = true }
 
 [dev-dependencies]
-common_test_utils = { path = "../common_test_utils" }
-common_macros = { path = "../common_macros" }
+common_test_utils = { workspace = true }
+common_macros = { workspace = true }
 test-log = { workspace = true }

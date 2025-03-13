@@ -6,36 +6,34 @@ authors.workspace = true
 
 [dependencies]
 async-trait = { workspace = true }
-jsonpath-rust = "0.7.0"
+jsonpath-rust = { workspace = true }
 jtd = { workspace = true }
 regex = { workspace = true }
 semver = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_with = { version = "3.5.1", default-features = false, features = ["std"] }
+serde_with = { workspace = true }
 sha2 = { workspace = true }
 thiserror = { workspace = true }
 url = { workspace = true }
 tracing = { workspace = true }
-jsonschema = { version = "0.29.0", default-features = false, features = [
-    "resolve-async",
-] }
+jsonschema = { workspace = true }
 anyhow = { workspace = true }
 tar = { workspace = true }
-dirs = "5.0.1"
 tokio = { workspace = true }
 futures = { workspace = true }
-fluent-uri = "0.3.2"
-tokio-util = "0.7.13"
+dirs = { workspace = true }
+fluent-uri = { workspace = true }
+tokio-util = { workspace = true }
 reqwest = { workspace = true }
 
 [features]
 unstable-test-utils = []
 
 [dev-dependencies]
-tiny_http = "0.12.0"
+tiny_http = { workspace = true }
 walkdir = { workspace = true }
-common_test_utils = { path = "../common_test_utils" }
-common_macros = { path = "../common_macros" }
-tempfile = "3.13.0"
-test-log = { version = "0.2.16", features = ["trace"] }
+common_test_utils = { workspace = true }
+common_macros = { workspace = true }
+tempfile = { workspace = true }
+test-log = { workspace = true, features = ["trace"] }

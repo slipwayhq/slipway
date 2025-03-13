@@ -179,7 +179,7 @@ impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
         _this: &JsValue,
         args: &[JsValue],
         context: &'a mut Context,
-    ) -> impl Future<Output = JsResult<JsValue>> + 'a {
+    ) -> impl Future<Output = JsResult<JsValue>> + 'a + use<'a> {
         let font_stack = get_string_arg(args, 0, context);
 
         async move {
@@ -210,7 +210,7 @@ impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
         _this: &JsValue,
         args: &[JsValue],
         context: &'a mut Context,
-    ) -> impl Future<Output = JsResult<JsValue>> + 'a {
+    ) -> impl Future<Output = JsResult<JsValue>> + 'a + use<'a> {
         let url_opts = get_url_and_request_options(args, context);
 
         async move {
@@ -227,7 +227,7 @@ impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
         _this: &JsValue,
         args: &[JsValue],
         context: &'a mut Context,
-    ) -> impl Future<Output = JsResult<JsValue>> + 'a {
+    ) -> impl Future<Output = JsResult<JsValue>> + 'a + use<'a> {
         let url_opts = get_url_and_request_options(args, context);
 
         async move {
@@ -244,7 +244,7 @@ impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
         _this: &JsValue,
         args: &[JsValue],
         context: &'a mut Context,
-    ) -> impl Future<Output = JsResult<JsValue>> + 'a {
+    ) -> impl Future<Output = JsResult<JsValue>> + 'a + use<'a> {
         let handle = get_string_arg(args, 0, context);
         let input = if args.len() >= 2 {
             get_json_arg(args, 1, context)
@@ -274,7 +274,7 @@ impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
         _this: &JsValue,
         args: &[JsValue],
         context: &'a mut Context,
-    ) -> impl Future<Output = JsResult<JsValue>> + 'a {
+    ) -> impl Future<Output = JsResult<JsValue>> + 'a + use<'a> {
         let handle_path = get_handle_and_path(args, context);
 
         async move {
@@ -292,7 +292,7 @@ impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
         _this: &JsValue,
         args: &[JsValue],
         context: &'a mut Context,
-    ) -> impl Future<Output = JsResult<JsValue>> + 'a {
+    ) -> impl Future<Output = JsResult<JsValue>> + 'a + use<'a> {
         let handle_path = get_handle_and_path(args, context);
 
         async move {
