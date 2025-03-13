@@ -10,7 +10,7 @@ use slipway_engine::ComponentExecutionContext;
 use tracing::{error, info};
 use wasmtime::*;
 use wasmtime_wasi::{
-    HostOutputStream, ResourceTable, StdoutStream, StreamResult, Subscribe, WasiCtx, WasiView,
+    IoView, OutputStream, Pollable, ResourceTable, StdoutStream, StreamResult, WasiCtx, WasiView,
 };
 
 // https://docs.wasmtime.dev/api/wasmtime/component/bindgen_examples/index.html
@@ -41,12 +41,15 @@ impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
     }
 }
 
+impl IoView for SlipwayHost<'_, '_, '_> {
+    fn table(&mut self) -> &mut ResourceTable {
+        &mut self.wasi_table
+    }
+}
+
 impl WasiView for SlipwayHost<'_, '_, '_> {
     fn ctx(&mut self) -> &mut WasiCtx {
         &mut self.wasi_ctx
-    }
-    fn table(&mut self) -> &mut ResourceTable {
-        &mut self.wasi_table
     }
 }
 
@@ -72,26 +75,10 @@ impl<F: Future + ?Sized> Future for AssertSend<F> {
 }
 
 impl self::slipway_host::Host for SlipwayHost<'_, '_, '_> {
-    #[must_use]
-    #[allow(
-        elided_named_lifetimes,
-        clippy::type_complexity,
-        clippy::type_repetition_in_bounds
-    )]
-    fn font<'life0, 'async_trait>(
-        &'life0 mut self,
+    fn font(
+        &mut self,
         font_stack: wasmtime::component::__internal::String,
-    ) -> ::core::pin::Pin<
-        Box<
-            dyn ::core::future::Future<Output = Option<ResolvedFont>>
-                + ::core::marker::Send
-                + 'async_trait,
-        >,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
-    {
+    ) -> impl ::core::future::Future<Output = Option<ResolvedFont>> + ::core::marker::Send {
         Box::pin(async {
             ::slipway_host::fonts::font(self.execution_context, font_stack)
                 .await
@@ -102,131 +89,56 @@ impl self::slipway_host::Host for SlipwayHost<'_, '_, '_> {
         })
     }
 
-    #[must_use]
-    #[allow(
-        elided_named_lifetimes,
-        clippy::type_complexity,
-        clippy::type_repetition_in_bounds
-    )]
-    fn log_trace<'life0, 'async_trait>(
-        &'life0 mut self,
+    fn log_trace(
+        &mut self,
         message: wasmtime::component::__internal::String,
-    ) -> ::core::pin::Pin<
-        Box<dyn ::core::future::Future<Output = ()> + ::core::marker::Send + 'async_trait>,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
-    {
+    ) -> impl ::core::future::Future<Output = ()> + ::core::marker::Send {
         Box::pin(async {
             ::slipway_host::log::log_trace(message);
         })
     }
 
-    #[must_use]
-    #[allow(
-        elided_named_lifetimes,
-        clippy::type_complexity,
-        clippy::type_repetition_in_bounds
-    )]
-    fn log_debug<'life0, 'async_trait>(
-        &'life0 mut self,
+    fn log_debug(
+        &mut self,
         message: wasmtime::component::__internal::String,
-    ) -> ::core::pin::Pin<
-        Box<dyn ::core::future::Future<Output = ()> + ::core::marker::Send + 'async_trait>,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
-    {
+    ) -> impl ::core::future::Future<Output = ()> + ::core::marker::Send {
         Box::pin(async {
             ::slipway_host::log::log_debug(message);
         })
     }
 
-    #[must_use]
-    #[allow(
-        elided_named_lifetimes,
-        clippy::type_complexity,
-        clippy::type_repetition_in_bounds
-    )]
-    fn log_info<'life0, 'async_trait>(
-        &'life0 mut self,
+    fn log_info(
+        &mut self,
         message: wasmtime::component::__internal::String,
-    ) -> ::core::pin::Pin<
-        Box<dyn ::core::future::Future<Output = ()> + ::core::marker::Send + 'async_trait>,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
-    {
+    ) -> impl ::core::future::Future<Output = ()> + ::core::marker::Send {
         Box::pin(async {
             ::slipway_host::log::log_info(message);
         })
     }
 
-    #[must_use]
-    #[allow(
-        elided_named_lifetimes,
-        clippy::type_complexity,
-        clippy::type_repetition_in_bounds
-    )]
-    fn log_warn<'life0, 'async_trait>(
-        &'life0 mut self,
+    fn log_warn(
+        &mut self,
         message: wasmtime::component::__internal::String,
-    ) -> ::core::pin::Pin<
-        Box<dyn ::core::future::Future<Output = ()> + ::core::marker::Send + 'async_trait>,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
-    {
+    ) -> impl ::core::future::Future<Output = ()> + ::core::marker::Send {
         Box::pin(async {
             ::slipway_host::log::log_warn(message);
         })
     }
 
-    #[must_use]
-    #[allow(
-        elided_named_lifetimes,
-        clippy::type_complexity,
-        clippy::type_repetition_in_bounds
-    )]
-    fn log_error<'life0, 'async_trait>(
-        &'life0 mut self,
+    fn log_error(
+        &mut self,
         message: wasmtime::component::__internal::String,
-    ) -> ::core::pin::Pin<
-        Box<dyn ::core::future::Future<Output = ()> + ::core::marker::Send + 'async_trait>,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
-    {
+    ) -> impl ::core::future::Future<Output = ()> + ::core::marker::Send {
         Box::pin(async {
             ::slipway_host::log::log_error(message);
         })
     }
 
-    #[must_use]
-    #[allow(
-        elided_named_lifetimes,
-        clippy::type_complexity,
-        clippy::type_repetition_in_bounds
-    )]
-    fn fetch_bin<'life0, 'async_trait>(
-        &'life0 mut self,
+    fn fetch_bin(
+        &mut self,
         url: wasmtime::component::__internal::String,
         options: Option<RequestOptions>,
-    ) -> ::core::pin::Pin<
-        Box<
-            dyn ::core::future::Future<Output = Result<BinResponse, RequestError>>
-                + ::core::marker::Send
-                + 'async_trait,
-        >,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
+    ) -> impl ::core::future::Future<Output = Result<BinResponse, RequestError>> + ::core::marker::Send
     {
         Box::pin(AssertSend(async move {
             ::slipway_host::fetch::fetch_bin(self.execution_context, &url, options.map(Into::into))
@@ -236,26 +148,11 @@ impl self::slipway_host::Host for SlipwayHost<'_, '_, '_> {
         }))
     }
 
-    #[must_use]
-    #[allow(
-        elided_named_lifetimes,
-        clippy::type_complexity,
-        clippy::type_repetition_in_bounds
-    )]
-    fn fetch_text<'life0, 'async_trait>(
-        &'life0 mut self,
+    fn fetch_text(
+        &mut self,
         url: wasmtime::component::__internal::String,
         options: Option<RequestOptions>,
-    ) -> ::core::pin::Pin<
-        Box<
-            dyn ::core::future::Future<Output = Result<TextResponse, RequestError>>
-                + ::core::marker::Send
-                + 'async_trait,
-        >,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
+    ) -> impl ::core::future::Future<Output = Result<TextResponse, RequestError>> + ::core::marker::Send
     {
         Box::pin(AssertSend(async move {
             ::slipway_host::fetch::fetch_text(self.execution_context, &url, options.map(Into::into))
@@ -265,28 +162,13 @@ impl self::slipway_host::Host for SlipwayHost<'_, '_, '_> {
         }))
     }
 
-    #[must_use]
-    #[allow(
-        elided_named_lifetimes,
-        clippy::type_complexity,
-        clippy::type_repetition_in_bounds
-    )]
-    fn run<'life0, 'async_trait>(
-        &'life0 mut self,
+    fn run(
+        &mut self,
         handle: wasmtime::component::__internal::String,
         input: wasmtime::component::__internal::String,
-    ) -> ::core::pin::Pin<
-        Box<
-            dyn ::core::future::Future<
-                    Output = Result<wasmtime::component::__internal::String, ComponentError>,
-                > + ::core::marker::Send
-                + 'async_trait,
-        >,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
-    {
+    ) -> impl ::core::future::Future<
+        Output = Result<wasmtime::component::__internal::String, ComponentError>,
+    > + ::core::marker::Send {
         Box::pin(AssertSend(async {
             ::slipway_host::fetch::run_string(self.execution_context, handle, input)
                 .await
@@ -294,28 +176,13 @@ impl self::slipway_host::Host for SlipwayHost<'_, '_, '_> {
         }))
     }
 
-    #[must_use]
-    #[allow(
-        elided_named_lifetimes,
-        clippy::type_complexity,
-        clippy::type_repetition_in_bounds
-    )]
-    fn load_bin<'life0, 'async_trait>(
-        &'life0 mut self,
+    fn load_bin(
+        &mut self,
         handle: wasmtime::component::__internal::String,
         path: wasmtime::component::__internal::String,
-    ) -> ::core::pin::Pin<
-        Box<
-            dyn ::core::future::Future<
-                    Output = Result<wasmtime::component::__internal::Vec<u8>, ComponentError>,
-                > + ::core::marker::Send
-                + 'async_trait,
-        >,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
-    {
+    ) -> impl ::core::future::Future<
+        Output = Result<wasmtime::component::__internal::Vec<u8>, ComponentError>,
+    > + ::core::marker::Send {
         Box::pin(AssertSend(async {
             ::slipway_host::fetch::load_bin(self.execution_context, handle, path)
                 .await
@@ -323,28 +190,13 @@ impl self::slipway_host::Host for SlipwayHost<'_, '_, '_> {
         }))
     }
 
-    #[must_use]
-    #[allow(
-        elided_named_lifetimes,
-        clippy::type_complexity,
-        clippy::type_repetition_in_bounds
-    )]
-    fn load_text<'life0, 'async_trait>(
-        &'life0 mut self,
+    fn load_text(
+        &mut self,
         handle: wasmtime::component::__internal::String,
         path: wasmtime::component::__internal::String,
-    ) -> ::core::pin::Pin<
-        Box<
-            dyn ::core::future::Future<
-                    Output = Result<wasmtime::component::__internal::String, ComponentError>,
-                > + ::core::marker::Send
-                + 'async_trait,
-        >,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
-    {
+    ) -> impl ::core::future::Future<
+        Output = Result<wasmtime::component::__internal::String, ComponentError>,
+    > + ::core::marker::Send {
         Box::pin(AssertSend(async {
             ::slipway_host::fetch::load_text(self.execution_context, handle, path)
                 .await
@@ -352,73 +204,28 @@ impl self::slipway_host::Host for SlipwayHost<'_, '_, '_> {
         }))
     }
 
-    #[must_use]
-    #[allow(
-        elided_named_lifetimes,
-        clippy::type_complexity,
-        clippy::type_repetition_in_bounds
-    )]
-    fn env<'life0, 'async_trait>(
-        &'life0 mut self,
+    fn env(
+        &mut self,
         key: wasmtime::component::__internal::String,
-    ) -> ::core::pin::Pin<
-        Box<
-            dyn ::core::future::Future<Output = Option<wasmtime::component::__internal::String>>
-                + ::core::marker::Send
-                + 'async_trait,
-        >,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
-    {
+    ) -> impl ::core::future::Future<Output = Option<wasmtime::component::__internal::String>>
+    + ::core::marker::Send {
         Box::pin(async move { ::slipway_host::fetch::env(self.execution_context, &key) })
     }
 
-    #[must_use]
-    #[allow(
-        elided_named_lifetimes,
-        clippy::type_complexity,
-        clippy::type_repetition_in_bounds
-    )]
-    fn encode_bin<'life0, 'async_trait>(
-        &'life0 mut self,
+    fn encode_bin(
+        &mut self,
         bin: wasmtime::component::__internal::Vec<u8>,
-    ) -> ::core::pin::Pin<
-        Box<
-            dyn ::core::future::Future<Output = wasmtime::component::__internal::String>
-                + ::core::marker::Send
-                + 'async_trait,
-        >,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
-    {
+    ) -> impl ::core::future::Future<Output = wasmtime::component::__internal::String>
+    + ::core::marker::Send {
         Box::pin(async { ::slipway_host::bin::encode_bin(self.execution_context, bin) })
     }
 
-    #[must_use]
-    #[allow(
-        elided_named_lifetimes,
-        clippy::type_complexity,
-        clippy::type_repetition_in_bounds
-    )]
-    fn decode_bin<'life0, 'async_trait>(
-        &'life0 mut self,
+    fn decode_bin(
+        &mut self,
         text: wasmtime::component::__internal::String,
-    ) -> ::core::pin::Pin<
-        Box<
-            dyn ::core::future::Future<
-                    Output = Result<wasmtime::component::__internal::Vec<u8>, ComponentError>,
-                > + ::core::marker::Send
-                + 'async_trait,
-        >,
-    >
-    where
-        'life0: 'async_trait,
-        Self: 'async_trait,
-    {
+    ) -> impl ::core::future::Future<
+        Output = Result<wasmtime::component::__internal::Vec<u8>, ComponentError>,
+    > + ::core::marker::Send {
         Box::pin(async {
             ::slipway_host::bin::decode_bin(self.execution_context, text).map_err(Into::into)
         })
@@ -492,7 +299,7 @@ struct OutputObserver {
 }
 
 #[async_trait::async_trait]
-impl Subscribe for OutputObserver {
+impl Pollable for OutputObserver {
     async fn ready(&mut self) {}
 }
 
@@ -504,7 +311,7 @@ impl Drop for OutputObserver {
     }
 }
 
-impl HostOutputStream for OutputObserver {
+impl OutputStream for OutputObserver {
     fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
         self.buffer.push_str(&String::from_utf8_lossy(&bytes));
 
@@ -551,7 +358,7 @@ impl OutputObserverStream {
 }
 
 impl StdoutStream for OutputObserverStream {
-    fn stream(&self) -> Box<dyn wasmtime_wasi::HostOutputStream> {
+    fn stream(&self) -> Box<dyn OutputStream> {
         Box::new(OutputObserver {
             buffer: String::new(),
             observer_type: self.observer_type,
