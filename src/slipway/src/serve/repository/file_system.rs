@@ -63,7 +63,7 @@ impl ServeRepository for FileSystemRepository {
 }
 
 async fn list_devices(root_path: &Path) -> Result<Vec<DeviceName>, ServeError> {
-    let search_path = root_path.join("device");
+    let search_path = root_path.join("devices");
 
     let mut devices = vec![];
 
