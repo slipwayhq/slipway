@@ -21,7 +21,7 @@ struct GetPlaylistQuery {
     output: FormatQuery,
 }
 
-#[get("/playlist/{playlist_name}")]
+#[get("/playlists/{playlist_name}")]
 pub async fn get_playlist(
     path: web::Path<GetPlaylistPath>,
     query: web::Query<GetPlaylistQuery>,

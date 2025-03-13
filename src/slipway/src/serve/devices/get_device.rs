@@ -21,7 +21,7 @@ struct GetDeviceQuery {
     output: FormatQuery,
 }
 
-#[get("/device/{device_name}")]
+#[get("/devices/{device_name}")]
 pub async fn get_device(
     path: web::Path<GetDevicePath>,
     query: web::Query<GetDeviceQuery>,

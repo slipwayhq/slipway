@@ -120,6 +120,9 @@ pub(crate) enum Commands {
 #[derive(Debug, Subcommand)]
 #[allow(clippy::enum_variant_names)]
 enum ServeCommands {
+    /// Create basic configuration files and directory structure.
+    Init,
+
     /// Add a device to use when serving HTTP requests.
     #[command(arg_required_else_help = true)]
     AddDevice {
@@ -188,7 +191,7 @@ struct CommonRunArgs {
     /// This can be specified multiple times to search multiple registries in order.
     /// For example:
     ///   https://registry.example.com/{publisher}/{name}/{version}
-    ///   file:../slipway_{name}/artifacts/{publisher}.{name}.{version}.tar
+    ///   file:../slipway_{name}/components/{publisher}.{name}.{version}.tar
     #[arg(short, long, verbatim_doc_comment)]
     registry_url: Vec<String>,
 
@@ -296,7 +299,12 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
             println!("{}", WASM_INTERFACE_TYPE_STR);
         }
         Commands::Serve { path, subcommand } => match subcommand {
+            Some(ServeCommands::Init) => {
+                configure_tracing(None);
+                serve::commands::init(path).await?;
+            }
             Some(ServeCommands::AddDevice { name, playlist }) => {
+                configure_tracing(None);
                 serve::commands::add_device(path, name, playlist).await?;
             }
             Some(ServeCommands::AddTrmnlDevice {
@@ -305,12 +313,15 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
                 name,
                 playlist,
             }) => {
+                configure_tracing(None);
                 serve::commands::add_trmnl_device(path, id, hashed_api_key, name, playlist).await?;
             }
             Some(ServeCommands::AddPlaylist { name, rig }) => {
+                configure_tracing(None);
                 serve::commands::add_playlist(path, name, rig).await?;
             }
             Some(ServeCommands::AddRig { name }) => {
+                configure_tracing(None);
                 serve::commands::add_rig(path, name).await?;
             }
             None => {

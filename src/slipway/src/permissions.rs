@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 use anyhow::Context;
 use clap::Args;
 use paste::paste;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use slipway_engine::{
     LocalComponentPermission, Permission, RegistryComponentPermission, StringPermission,
     UrlPermission,
@@ -16,7 +16,7 @@ pub(super) static PERMISSIONS_EMPTY: LazyLock<PermissionsOwned> =
         deny: vec![],
     });
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) struct PermissionsOwned {
     #[serde(default)]
     pub allow: Vec<Permission>,

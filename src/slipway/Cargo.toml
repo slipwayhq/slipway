@@ -43,6 +43,7 @@ regex = { workspace = true }
 sha2 = { workspace = true }
 croner = "2.1.0"
 actix-cors = "0.7.0"
+iana-time-zone = "0.1.61"
 
 [dev-dependencies]
 common_test_utils = { path = "../common_test_utils" }

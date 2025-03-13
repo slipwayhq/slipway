@@ -5,17 +5,17 @@ default:
   
 build configuration="debug": (build-src configuration) (build-components configuration)
 
-test *FLAGS: build-components
+test *FLAGS: build-src build-components
   cd src && RUST_LOG="debug,cranelift_codegen=info,wasmtime_cranelift=info" cargo nextest run --no-fail-fast {{FLAGS}}
 
 test-only *FLAGS:
   cd src && RUST_LOG="debug,cranelift_codegen=info,wasmtime_cranelift=info" cargo nextest run --no-fail-fast {{FLAGS}}
 
-clean: clean-src clean-components (clean-artifacts "")
+clean: clean-src clean-components (clean-component-artifacts "")
 
-clean-artifacts configuration:
-  mkdir -p artifacts
-  rm -rf artifacts
+clean-component-artifacts configuration:
+  mkdir -p components
+  rm -rf components
 
 build-src configuration="debug":
   cd src && cargo build {{ if configuration == "release" { "--release" } else { "" } }}
@@ -37,7 +37,7 @@ clean-components:
   cd src_components && cargo clean
 
 assemble-test-components configuration="debug": \
-  (clean-artifacts configuration) \
+  (clean-component-artifacts configuration) \
   (assemble-rust-component "increment" configuration) \
   (assemble-rust-component "component_file" configuration) \
   (assemble-rust-component "fetch" configuration) \
@@ -54,39 +54,39 @@ assemble-test-components configuration="debug": \
   (tar-component-files "increment_json_schema" configuration) \
   (tar-component-files "fragment" configuration) \
   
-  mkdir -p artifacts/{{publisher}}.increment_ten
-  cp src_components/target/increment-ten/wasm32-wasip2/{{configuration}}/slipway_increment_component.wasm artifacts/{{publisher}}.increment_ten/slipway_component.wasm
-  cp src_components/slipway_increment_component/slipway_component.json artifacts/{{publisher}}.increment_ten/slipway_component.json
-  jq '.name = "increment_ten"' artifacts/{{publisher}}.increment_ten/slipway_component.json > artifacts/{{publisher}}.increment_ten/slipway_component2.json
-  mv artifacts/{{publisher}}.increment_ten/slipway_component2.json artifacts/{{publisher}}.increment_ten/slipway_component.json
+  mkdir -p components/{{publisher}}.increment_ten
+  cp src_components/target/increment-ten/wasm32-wasip2/{{configuration}}/slipway_increment_component.wasm components/{{publisher}}.increment_ten/run.wasm
+  cp src_components/slipway_increment_component/slipway_component.json components/{{publisher}}.increment_ten/slipway_component.json
+  jq '.name = "increment_ten"' components/{{publisher}}.increment_ten/slipway_component.json > components/{{publisher}}.increment_ten/slipway_component2.json
+  mv components/{{publisher}}.increment_ten/slipway_component2.json components/{{publisher}}.increment_ten/slipway_component.json
 
-  mkdir -p artifacts/{{publisher}}.increment_json_schema
-  cp src_components/target/wasm32-wasip2/{{configuration}}/slipway_increment_component.wasm artifacts/{{publisher}}.increment_json_schema/slipway_component.wasm
-  cp src_components/slipway_increment_json_schema_component/slipway_component.json artifacts/{{publisher}}.increment_json_schema/slipway_component.json
-  cp src_components/slipway_increment_json_schema_component/input_schema.json artifacts/{{publisher}}.increment_json_schema/input_schema.json
-  cp src_components/slipway_increment_json_schema_component/output_schema.json artifacts/{{publisher}}.increment_json_schema/output_schema.json
+  mkdir -p components/{{publisher}}.increment_json_schema
+  cp src_components/target/wasm32-wasip2/{{configuration}}/slipway_increment_component.wasm components/{{publisher}}.increment_json_schema/run.wasm
+  cp src_components/slipway_increment_json_schema_component/slipway_component.json components/{{publisher}}.increment_json_schema/slipway_component.json
+  cp src_components/slipway_increment_json_schema_component/input_schema.json components/{{publisher}}.increment_json_schema/input_schema.json
+  cp src_components/slipway_increment_json_schema_component/output_schema.json components/{{publisher}}.increment_json_schema/output_schema.json
 
-  mkdir -p artifacts/{{publisher}}.fragment
-  cp src_components/slipway_fragment_component/slipway_component.json artifacts/{{publisher}}.fragment/slipway_component.json
+  mkdir -p components/{{publisher}}.fragment
+  cp src_components/slipway_fragment_component/slipway_component.json components/{{publisher}}.fragment/slipway_component.json
 
-  mkdir -p artifacts/{{publisher}}.increment_js
-  cp src_components/slipway_increment_js_component/slipway_component.json artifacts/{{publisher}}.increment_js/slipway_component.json
-  cp src_components/slipway_increment_js_component/run.js artifacts/{{publisher}}.increment_js/run.js
+  mkdir -p components/{{publisher}}.increment_js
+  cp src_components/slipway_increment_js_component/slipway_component.json components/{{publisher}}.increment_js/slipway_component.json
+  cp src_components/slipway_increment_js_component/run.js components/{{publisher}}.increment_js/run.js
 
 tar-component-files name configuration="debug":
-  src/target/{{configuration}}/slipway package artifacts/{{publisher}}.{{name}}
+  src/target/{{configuration}}/slipway package components/{{publisher}}.{{name}}
 
 assemble-rust-component name configuration="debug": \
   && \
   (tar-component-files name configuration) \
 
-  mkdir -p artifacts/{{publisher}}.{{name}}
-  cp src_components/target/wasm32-wasip2/{{configuration}}/slipway_{{name}}_component.wasm artifacts/{{publisher}}.{{name}}/slipway_component.wasm
-  cp src_components/slipway_{{name}}_component/slipway_component.json artifacts/{{publisher}}.{{name}}/slipway_component.json
+  mkdir -p components/{{publisher}}.{{name}}
+  cp src_components/target/wasm32-wasip2/{{configuration}}/slipway_{{name}}_component.wasm components/{{publisher}}.{{name}}/run.wasm
+  cp src_components/slipway_{{name}}_component/slipway_component.json components/{{publisher}}.{{name}}/slipway_component.json
 
 assemble-js-component name configuration="debug": \
   && \
   (tar-component-files name configuration) \
 
-  mkdir -p artifacts/{{publisher}}.{{name}}
-  cp src_components/slipway_{{name}}_component/* artifacts/{{publisher}}.{{name}}
+  mkdir -p components/{{publisher}}.{{name}}
+  cp src_components/slipway_{{name}}_component/* components/{{publisher}}.{{name}}

@@ -120,7 +120,7 @@ async fn when_devices_playlists_and_rigs_do_not_exist_should_return_not_found() 
     let app = test::init_service(create_app(PathBuf::from("."), config, None)).await;
 
     {
-        let request = test::TestRequest::get().uri("/device/foo").to_request();
+        let request = test::TestRequest::get().uri("/devices/foo").to_request();
         let response = test::call_service(&app, request).await;
         let status = response.status();
         let body = get_body(response).await;
@@ -129,7 +129,7 @@ async fn when_devices_playlists_and_rigs_do_not_exist_should_return_not_found() 
     }
 
     {
-        let request = test::TestRequest::get().uri("/playlist/foo").to_request();
+        let request = test::TestRequest::get().uri("/playlists/foo").to_request();
         let response = test::call_service(&app, request).await;
         let status = response.status();
         let body = get_body(response).await;
@@ -138,7 +138,7 @@ async fn when_devices_playlists_and_rigs_do_not_exist_should_return_not_found() 
     }
 
     {
-        let request = test::TestRequest::get().uri("/rig/foo").to_request();
+        let request = test::TestRequest::get().uri("/rigs/foo").to_request();
         let response = test::call_service(&app, request).await;
         let status = response.status();
         let body = get_body(response).await;
@@ -182,7 +182,7 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
 
     {
         let request = test::TestRequest::get()
-            .uri("/device/d_1?format=json")
+            .uri("/devices/d_1?format=json")
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_response(response, true).await;
@@ -190,7 +190,7 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
 
     {
         let request = test::TestRequest::get()
-            .uri("/playlist/p_1?format=json")
+            .uri("/playlists/p_1?format=json")
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_response(response, true).await;
@@ -198,7 +198,7 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
 
     {
         let request = test::TestRequest::get()
-            .uri("/rig/r_1?format=json")
+            .uri("/rigs/r_1?format=json")
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_response(response, false).await;
@@ -237,7 +237,7 @@ async fn when_auth_not_supplied_it_should_return_unauthorized() {
 
     {
         let request = test::TestRequest::get()
-            .uri("/device/d_1?format=json")
+            .uri("/devices/d_1?format=json")
             .to_request();
         let response = test::try_call_service(&app, request).await;
         assert_response(response).await;
@@ -245,7 +245,7 @@ async fn when_auth_not_supplied_it_should_return_unauthorized() {
 
     {
         let request = test::TestRequest::get()
-            .uri("/playlist/p_1?format=json")
+            .uri("/playlists/p_1?format=json")
             .to_request();
         let response = test::try_call_service(&app, request).await;
         assert_response(response).await;
@@ -253,7 +253,7 @@ async fn when_auth_not_supplied_it_should_return_unauthorized() {
 
     {
         let request = test::TestRequest::get()
-            .uri("/rig/r_1?format=json")
+            .uri("/rigs/r_1?format=json")
             .to_request();
         let response = test::try_call_service(&app, request).await;
         assert_response(response).await;
@@ -292,7 +292,7 @@ async fn when_auth_incorrect_it_should_return_unauthorized() {
 
     {
         let request = test::TestRequest::get()
-            .uri("/device/d_1?format=json")
+            .uri("/devices/d_1?format=json")
             .append_header(("Authorization", "auth1234"))
             .to_request();
         let response = test::try_call_service(&app, request).await;
@@ -302,7 +302,7 @@ async fn when_auth_incorrect_it_should_return_unauthorized() {
     {
         // Auth in the query string.
         let request = test::TestRequest::get()
-            .uri("/playlist/p_1?format=json&authorization=auth1234")
+            .uri("/playlists/p_1?format=json&authorization=auth1234")
             .to_request();
         let response = test::try_call_service(&app, request).await;
         assert_response(response).await;
@@ -310,7 +310,7 @@ async fn when_auth_incorrect_it_should_return_unauthorized() {
 
     {
         let request = test::TestRequest::get()
-            .uri("/rig/r_1?format=json")
+            .uri("/rigs/r_1?format=json")
             .append_header(("Authorization", "auth1234"))
             .to_request();
         let response = test::try_call_service(&app, request).await;
@@ -358,7 +358,7 @@ async fn when_auth_supplied_it_should_execute_rigs() {
 
     {
         let request = test::TestRequest::get()
-            .uri("/device/d_1?format=json")
+            .uri("/devices/d_1?format=json")
             .append_header(("Authorization", "auth123"))
             .to_request();
         let response = test::call_service(&app, request).await;
@@ -368,7 +368,7 @@ async fn when_auth_supplied_it_should_execute_rigs() {
     {
         // Auth in the query string.
         let request = test::TestRequest::get()
-            .uri("/playlist/p_1?format=json&authorization=auth123")
+            .uri("/playlists/p_1?format=json&authorization=auth123")
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_response(response, true).await;
@@ -376,7 +376,7 @@ async fn when_auth_supplied_it_should_execute_rigs() {
 
     {
         let request = test::TestRequest::get()
-            .uri("/rig/r_1?format=json")
+            .uri("/rigs/r_1?format=json")
             .append_header(("Authorization", "auth123"))
             .to_request();
         let response = test::call_service(&app, request).await;

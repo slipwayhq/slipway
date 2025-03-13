@@ -42,7 +42,9 @@ const ID_HEADER: &str = "id";
 
 const TRMNL_PATH: &str = "/api";
 const TRMNL_DISPLAY_PATH: &str = "/api/display";
-const API_GET_RIG_PATH: &str = "/rig";
+const API_GET_RIG_PATH: &str = "/rigs";
+
+const SERVE_CONFIG_FILE_NAME: &str = "slipway_serve.json";
 
 fn hash_string(input: &str) -> String {
     let mut hasher = Sha256::new();
@@ -90,7 +92,7 @@ impl ServeState {
     }
 }
 
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 #[serde(deny_unknown_fields)]
 struct SlipwayServeConfig {
     #[serde(default)]
@@ -109,7 +111,7 @@ struct SlipwayServeConfig {
     repository: RepositoryConfig,
 }
 
-#[derive(Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "snake_case")]
 enum RepositoryConfig {
     #[default]
@@ -128,7 +130,7 @@ pub async fn serve(path: PathBuf) -> anyhow::Result<()> {
 }
 
 async fn load_serve_config(root_path: &Path) -> Result<SlipwayServeConfig, anyhow::Error> {
-    let config_path = root_path.join("slipway_serve.json");
+    let config_path = root_path.join(SERVE_CONFIG_FILE_NAME);
     let config = match tokio::fs::read(&config_path).await {
         Ok(bytes) => {
             serde_json::from_slice(&bytes).context("Failed to parse Slipway Serve config file.")?
@@ -137,6 +139,10 @@ async fn load_serve_config(root_path: &Path) -> Result<SlipwayServeConfig, anyho
         Err(e) => return Err(e).context("Failed to load Slipway Serve config file.")?,
     };
     Ok(config)
+}
+
+fn get_serve_config_path(root_path: &Path) -> PathBuf {
+    root_path.join(SERVE_CONFIG_FILE_NAME)
 }
 
 fn create_repository(root_path: &Path, config: &RepositoryConfig) -> Box<dyn ServeRepository> {

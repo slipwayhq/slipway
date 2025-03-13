@@ -1,0 +1,12 @@
+FROM slipwayhq:slipway
+
+WORKDIR /usr/artifacts
+COPY slipway_serve.json ./slipway_serve.json
+COPY ./devices ./devices
+COPY ./playlists ./playlists
+COPY ./rigs ./rigs
+COPY ./components/* ./components/
+
+RUN slipway serve . consolidate
+
+CMD ["slipway", "serve", "."]

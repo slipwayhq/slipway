@@ -135,7 +135,7 @@ async fn load_from_file<T: DeserializeOwned>(
     Ok(result)
 }
 
-async fn write_to_file<T: Serialize>(
+pub(crate) async fn write_to_file<T: Serialize>(
     path: &Path,
     type_name: &str,
     value: &T,
@@ -158,14 +158,30 @@ async fn write_to_file<T: Serialize>(
     Ok(())
 }
 
+pub(crate) const RIG_FOLDER_NAME: &str = "rigs";
+pub(crate) const PLAYLIST_FOLDER_NAME: &str = "playlists";
+pub(crate) const DEVICE_FOLDER_NAME: &str = "devices";
+
+pub fn get_rig_folder_path(root_path: &Path) -> PathBuf {
+    root_path.join(RIG_FOLDER_NAME)
+}
+
+pub fn get_playlist_folder_path(root_path: &Path) -> PathBuf {
+    root_path.join(PLAYLIST_FOLDER_NAME)
+}
+
+pub fn get_device_folder_path(root_path: &Path) -> PathBuf {
+    root_path.join(DEVICE_FOLDER_NAME)
+}
+
 fn get_rig_path(root_path: &Path, name: &RigName) -> PathBuf {
-    root_path.join(format!("rig/{}.json", name))
+    get_rig_folder_path(root_path).join(format!("{}.json", name))
 }
 
 fn get_playlist_path(root_path: &Path, name: &PlaylistName) -> PathBuf {
-    root_path.join(format!("playlist/{}.json", name))
+    get_playlist_folder_path(root_path).join(format!("{}.json", name))
 }
 
 fn get_device_path(root_path: &Path, name: &DeviceName) -> PathBuf {
-    root_path.join(format!("device/{}.json", name))
+    get_device_folder_path(root_path).join(format!("{}.json", name))
 }

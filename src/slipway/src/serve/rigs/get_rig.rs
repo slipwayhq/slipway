@@ -26,7 +26,7 @@ struct GetRigQuery {
     output: FormatQuery,
 }
 
-#[get("/rig/{rig_name}")]
+#[get("/rigs/{rig_name}")]
 pub async fn get_rig(
     path: web::Path<GetRigPath>,
     query: web::Query<GetRigQuery>,
