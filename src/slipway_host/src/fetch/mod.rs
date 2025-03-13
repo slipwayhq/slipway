@@ -134,9 +134,7 @@ pub async fn fetch_bin(
 
     match scheme {
         "https" | "http" => http::fetch_http(execution_context, url, options).await,
-        "component" => component::fetch_component_data(execution_context, &url, options)
-            .await
-            .map_err(Into::into),
+        "component" => component::fetch_component_data(execution_context, &url, options).await,
         "env" => env::fetch_env_url(execution_context, &url),
         _ => Err(RequestError::message(format!(
             "Unsupported URL scheme for URL from component {}: {}",
@@ -154,7 +152,6 @@ pub async fn fetch_text(
     fetch_bin(execution_context, url_str, options)
         .await
         .map(Into::into)
-        .map_err(Into::into)
 }
 
 pub async fn run_string(
@@ -193,9 +190,7 @@ pub async fn run_json(
         )
     })?;
 
-    run_component_callout(execution_context, &handle, input)
-        .await
-        .map_err(Into::into)
+    run_component_callout(execution_context, &handle, input).await
 }
 
 pub async fn load_bin(

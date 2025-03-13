@@ -290,7 +290,6 @@ impl self::slipway_host::Host for SlipwayHost<'_, '_, '_> {
         Box::pin(AssertSend(async {
             ::slipway_host::fetch::run_string(self.execution_context, handle, input)
                 .await
-                .map(Into::into)
                 .map_err(Into::into)
         }))
     }
