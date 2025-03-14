@@ -205,6 +205,13 @@ impl BasicComponentsLoader {
                             self.load_http_component(&SlipwayReference::Http { url })
                                 .await
                         }
+                        ProcessedUrl::Other(url) => Err(ComponentLoadError::new(
+                            component_reference,
+                            ComponentLoadErrorInner::FileLoadFailed {
+                                path: resolved_registry_lookup_url.clone(),
+                                error: format!("Unsupported URL scheme: {url}"),
+                            },
+                        )),
                     };
 
                     match result {
@@ -680,7 +687,7 @@ mod tests {
         use tar::{Builder, Header};
         use url::Url;
 
-        use crate::load::component_io_abstractions::FileHandle;
+        use crate::load::{SLIPWAY_COMPONENT_FILE_NAME, component_io_abstractions::FileHandle};
 
         use super::*;
 
@@ -792,7 +799,7 @@ mod tests {
                 let mut builder = Builder::new(&mut buffer);
 
                 add_text_to_tar(
-                    "slipway_component.json",
+                    SLIPWAY_COMPONENT_FILE_NAME,
                     data.definition_content,
                     &mut builder,
                 );

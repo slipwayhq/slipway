@@ -26,6 +26,7 @@ dirs = { workspace = true }
 fluent-uri = { workspace = true }
 tokio-util = { workspace = true }
 reqwest = { workspace = true }
+normalize-path = { workspace = true }
 
 [features]
 unstable-test-utils = []

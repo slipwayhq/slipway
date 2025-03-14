@@ -27,11 +27,14 @@ use clap::{
 };
 use permissions::CommonPermissionsArgs;
 use primitives::{DeviceName, PlaylistName, RigName};
+use semver::Version;
+use slipway_engine::{Name, Publisher};
 use time::{OffsetDateTime, format_description};
 use tracing::Level;
 use tracing_subscriber::{FmtSubscriber, fmt::time::FormatTime};
 
 const WASM_INTERFACE_TYPE_STR: &str = include_str!("../../../wit/latest/slipway.wit");
+const SLIPWAY_COMPONENT_FILE_NAME: &str = "slipway_component.json";
 
 #[derive(Debug, Parser)]
 #[command(name = "slipway")]
@@ -91,7 +94,27 @@ pub(crate) enum Commands {
         common: CommonRunArgs,
     },
 
-    /// Serve HTTP requests.
+    /// Create default configuration for a component.
+    #[command(arg_required_else_help = true)]
+    InitComponent {
+        /// The component publisher name (lowercase alphanumeric plus underscores).
+        #[arg(short, long)]
+        publisher: Publisher,
+
+        /// The component name (lowercase alphanumeric plus underscores).
+        #[arg(short, long)]
+        name: Name,
+    },
+
+    /// Create default configuration for a rig.
+    #[command(arg_required_else_help = true)]
+    InitRig {
+        /// The rig name (lowercase alphanumeric plus underscores).
+        #[arg(short, long)]
+        name: RigName,
+    },
+
+    /// Serve HTTP requests. Use `slipway serve --help` for more commands.
     #[command(arg_required_else_help = true)]
     Serve {
         /// The path to the server configuration files.
@@ -272,6 +295,35 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
                 registry_url,
             )
             .await?;
+        }
+        Commands::InitComponent { publisher, name } => {
+            let component = slipway_engine::Component {
+                publisher,
+                name,
+                version: Version::new(0, 1, 0),
+                description: None,
+                input: serde_json::Value::Object(Default::default()),
+                output: serde_json::Value::Object(Default::default()),
+                constants: None,
+                rigging: None,
+                callouts: None,
+            };
+
+            serde_json::to_writer_pretty(
+                std::fs::File::create(SLIPWAY_COMPONENT_FILE_NAME)?,
+                &component,
+            )?;
+        }
+        Commands::InitRig { name } => {
+            let rig = slipway_engine::Rig {
+                description: None,
+                constants: None,
+                rigging: slipway_engine::Rigging {
+                    components: Default::default(),
+                },
+            };
+
+            serde_json::to_writer_pretty(std::fs::File::create(name.to_string() + ".json")?, &rig)?;
         }
         Commands::Run {
             rig,

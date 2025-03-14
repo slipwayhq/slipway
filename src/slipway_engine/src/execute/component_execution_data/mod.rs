@@ -1,8 +1,9 @@
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use crate::{
-    errors::RigError, Component, ComponentCache, ComponentFiles, ComponentHandle, ComponentInput,
-    Permission, Schema, SlipwayReference, PERMISSIONS_ALL_VEC, PERMISSIONS_NONE_VEC,
+    Component, ComponentCache, ComponentFiles, ComponentHandle, ComponentInput,
+    PERMISSIONS_ALL_VEC, PERMISSIONS_NONE_VEC, Permission, RigSessionOptions, Schema,
+    SlipwayReference, errors::RigError,
 };
 
 use super::component_runner::ComponentRunner;
@@ -24,6 +25,7 @@ pub struct ComponentExecutionContext<'call, 'rig, 'runners> {
     pub call_chain: Arc<CallChain<'rig>>,
     pub files: Arc<ComponentFiles>,
     pub callout_context: CalloutContext<'call, 'rig>,
+    pub rig_session_options: &'rig RigSessionOptions,
 }
 
 impl ComponentExecutionContext<'_, '_, '_> {

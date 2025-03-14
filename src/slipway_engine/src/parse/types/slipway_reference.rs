@@ -2,7 +2,7 @@ use crate::{
     errors::RigError,
     parse::{
         types::parse_component_version,
-        url::{process_url_str, ProcessedUrl},
+        url::{ProcessedUrl, process_url_str},
     },
 };
 use regex::Regex;
@@ -78,6 +78,10 @@ impl FromStr for SlipwayReference {
                 ProcessedUrl::RelativePath(path) => Ok(SlipwayReference::Local { path }),
                 ProcessedUrl::AbsolutePath(path) => Ok(SlipwayReference::Local { path }),
                 ProcessedUrl::Http(url) => Ok(SlipwayReference::Http { url }),
+                ProcessedUrl::Other(url) => Err(RigError::InvalidSlipwayPrimitive {
+                    primitive_type: stringify!(SlipwayReference).to_string(),
+                    message: format!("Unsupported URL scheme: {}", url),
+                }),
             };
         }
 

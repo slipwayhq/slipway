@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::Arc};
 use anyhow::Context;
 use slipway_engine::{
     BasicComponentCache, BasicComponentsLoader, CallChain, ComponentHandle, Permission, Rig,
-    RigSession,
+    RigSession, RigSessionOptions,
 };
 use tracing::info;
 
@@ -20,12 +20,16 @@ pub async fn run_rig(
     rig_name: &RigName,
 ) -> anyhow::Result<RunRigResult> {
     let components_loader = BasicComponentsLoader::builder()
-        .local_base_directory(&state.root)
+        .local_base_directory(&state.base_path)
         .registry_lookup_urls(state.config.registry_urls.clone())
         .build();
 
     let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
-    let session = RigSession::new(rig, &component_cache);
+    let session = RigSession::new_with_options(
+        rig,
+        &component_cache,
+        RigSessionOptions::new(state.base_path.clone()),
+    );
 
     let mut writer = TracingWriter::new();
 

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::errors::RigError;
 use crate::load::ComponentCache;
 use crate::{Immutable, SlipwayReference};
@@ -51,4 +53,12 @@ impl<'cache> RigSession<'cache> {
 }
 
 #[derive(Default)]
-pub struct RigSessionOptions {}
+pub struct RigSessionOptions {
+    pub base_path: PathBuf,
+}
+
+impl RigSessionOptions {
+    pub fn new(base_path: PathBuf) -> Self {
+        RigSessionOptions { base_path }
+    }
+}

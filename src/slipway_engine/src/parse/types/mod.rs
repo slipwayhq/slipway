@@ -10,7 +10,7 @@
 //! and is what the users will expect based on other toolchains
 //! such as Node's package.json.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use semver::Version;
 use serde::{Deserialize, Serialize};
@@ -26,6 +26,7 @@ use self::{
 };
 
 mod local_component_permission;
+mod path_permission;
 pub(crate) mod primitives;
 mod registry_component_permission;
 pub(crate) mod slipway_id;
@@ -70,28 +71,6 @@ pub struct ComponentRigging {
     pub callouts: Option<Callouts>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(tag = "permission", rename_all = "snake_case")]
-pub enum Permission {
-    All,
-
-    Http(UrlPermission),
-
-    Font(StringPermission),
-
-    Env(StringPermission),
-
-    RegistryComponent(RegistryComponentPermission),
-    HttpComponent(UrlPermission),
-    LocalComponent(LocalComponentPermission),
-}
-
-impl Permission {
-    pub fn all() -> Vec<Permission> {
-        vec![Permission::All]
-    }
-}
-
 /// The structure of this enum is designed to allow user friendly JSON.
 /// For example:
 /// ```json
@@ -109,6 +88,32 @@ impl Permission {
 /// ```
 /// for `Permission::Http(UrlPermission::Prefix { prefix: "https://example.com/".into() })`.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(tag = "permission", rename_all = "snake_case")]
+pub enum Permission {
+    All,
+
+    Http(UrlPermission),
+
+    File(PathPermission),
+
+    Font(StringPermission),
+
+    Env(StringPermission),
+
+    RegistryComponent(RegistryComponentPermission),
+    HttpComponent(UrlPermission),
+    LocalComponent(LocalComponentPermission),
+}
+
+impl Permission {
+    pub fn all() -> Vec<Permission> {
+        vec![Permission::All]
+    }
+}
+
+/// The structure of this enum is designed to allow user friendly JSON.
+/// See `Permission`` for more details.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(untagged, rename_all = "snake_case")]
 pub enum StringPermission {
     Any {},
@@ -118,7 +123,17 @@ pub enum StringPermission {
 }
 
 /// The structure of this enum is designed to allow user friendly JSON.
-/// See `StringPermission` for more details.
+/// See `Permission`` for more details.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(untagged, rename_all = "snake_case")]
+pub enum PathPermission {
+    Any {},
+    Exact { exact: PathBuf },
+    Within { within: PathBuf },
+}
+
+/// The structure of this enum is designed to allow user friendly JSON.
+/// See `Permission`` for more details.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(untagged, rename_all = "snake_case")]
 pub enum LocalComponentPermission {
@@ -132,7 +147,7 @@ pub enum LocalComponentPermission {
 }
 
 /// The structure of this enum is designed to allow user friendly JSON.
-/// See `StringPermission` for more details.
+/// See `Permission`` for more details.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(untagged, rename_all = "snake_case")]
 pub enum UrlPermission {
@@ -154,14 +169,6 @@ pub struct RegistryComponentPermission {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<semver::VersionReq>,
 }
-
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-// #[serde(tag = "type", content = "value", rename_all = "snake_case")]
-// pub enum PathPermission {
-//     Any,
-//     Exact(PathBuf),
-//     Within(PathBuf),
-// }
 
 // impl PathPermission {
 //     pub fn matches(&self, path: &Path) -> bool {

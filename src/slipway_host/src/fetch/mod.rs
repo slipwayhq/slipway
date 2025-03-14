@@ -1,14 +1,14 @@
 mod component;
 mod env;
+mod file;
 mod http;
 
 use std::{error::Error, str::FromStr};
 
 use env::fetch_env;
 use serde::{Deserialize, Serialize};
-use slipway_engine::{ComponentExecutionContext, ComponentHandle};
+use slipway_engine::{ComponentExecutionContext, ComponentHandle, ProcessedUrl, process_url_str};
 use tracing::warn;
-use url::Url;
 
 use crate::run::run_component_callout;
 
@@ -119,28 +119,30 @@ pub async fn fetch_bin(
     url_str: &str,
     options: Option<RequestOptions>,
 ) -> Result<BinResponse, RequestError> {
-    let url = Url::parse(url_str).map_err(|e| {
-        RequestError::for_error(
+    let processed_url = process_url_str(url_str).map_err(|e| {
+        RequestError::for_inner(
             format!(
-                "Failed to parse URL from component {}: {}",
-                execution_context.call_chain.component_handle_trail(),
-                url_str,
+                "Failed to parse URL from component {}: {url_str}",
+                execution_context.call_chain.component_handle_trail()
             ),
-            e,
+            vec![e],
         )
     })?;
 
-    let scheme = url.scheme();
-
-    match scheme {
-        "https" | "http" => http::fetch_http(execution_context, url, options).await,
-        "component" => component::fetch_component_data(execution_context, &url, options).await,
-        "env" => env::fetch_env_url(execution_context, &url),
-        _ => Err(RequestError::message(format!(
-            "Unsupported URL scheme for URL from component {}: {}",
-            execution_context.call_chain.component_handle_trail(),
-            url_str
-        ))),
+    match processed_url {
+        ProcessedUrl::AbsolutePath(_) | ProcessedUrl::RelativePath(_) => {
+            file::fetch_file(execution_context, processed_url, options).await
+        }
+        ProcessedUrl::Http(url) => http::fetch_http(execution_context, url, options).await,
+        ProcessedUrl::Other(url) => match url.scheme() {
+            "component" => component::fetch_component_data(execution_context, &url, options).await,
+            "env" => env::fetch_env_url(execution_context, &url),
+            _ => Err(RequestError::message(format!(
+                "Unsupported URL scheme for URL from component {}: {}",
+                execution_context.call_chain.component_handle_trail(),
+                url_str
+            ))),
+        },
     }
 }
 

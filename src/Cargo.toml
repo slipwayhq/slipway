@@ -84,6 +84,7 @@ iana-time-zone = "0.1.61"
 proc-macro2 = "1.0.94"
 quote = "1.0.40"
 syn = "2.0.100"
+normalize-path = "0.2.1"
 boa_engine = { git = "https://github.com/boa-dev/boa", branch = "main", package = "boa_engine", features = [
     "annex-b",
     "experimental",

@@ -5,10 +5,10 @@ use std::path::{Path, PathBuf};
 use actix_cors::Cors;
 use actix_web::body::{BoxBody, EitherBody, MessageBody};
 use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
-use actix_web::http::header::{ContentType, HeaderName, HeaderValue};
 use actix_web::http::StatusCode;
-use actix_web::middleware::{from_fn, Next, NormalizePath, TrailingSlash};
-use actix_web::{web, App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::http::header::{ContentType, HeaderName, HeaderValue};
+use actix_web::middleware::{Next, NormalizePath, TrailingSlash, from_fn};
+use actix_web::{App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder, web};
 use anyhow::Context;
 use chrono_tz::Tz;
 use repository::{Device, Playlist, ServeRepository};
@@ -70,7 +70,7 @@ fn create_api_key() -> String {
 
 #[derive(Debug)]
 struct ServeState {
-    pub root: PathBuf,
+    pub base_path: PathBuf,
     pub config: SlipwayServeConfig,
     pub expected_authorization_header: Option<String>,
     pub repository: Box<dyn ServeRepository>,
@@ -78,13 +78,13 @@ struct ServeState {
 
 impl ServeState {
     pub fn new(
-        root: PathBuf,
+        base_path: PathBuf,
         config: SlipwayServeConfig,
         expected_authorization_header: Option<String>,
         repository: Box<dyn ServeRepository>,
     ) -> Self {
         Self {
-            root,
+            base_path,
             config,
             expected_authorization_header,
             repository,

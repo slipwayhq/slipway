@@ -27,3 +27,4 @@ slipway_wasmtime_runner = { path = "../slipway_wasmtime_runner" }
 slipway_js_boa_runner = { path = "../slipway_js_boa_runner" }
 slipway_fragment_runner = { path = "../slipway_fragment_runner" }
 test-log = { workspace = true }
+tempfile = { workspace = true }

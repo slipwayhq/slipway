@@ -10,6 +10,7 @@ pub enum ProcessedUrl {
     RelativePath(PathBuf),
     AbsolutePath(PathBuf),
     Http(Url),
+    Other(Url),
 }
 
 static RELATIVE_FILE_REGEX: LazyLock<Regex> =
@@ -48,7 +49,7 @@ pub fn process_url_str(url_str: &str) -> Result<ProcessedUrl, String> {
             Ok(ProcessedUrl::AbsolutePath(file_path))
         }
         "https" | "http" => Ok(ProcessedUrl::Http(url)),
-        other => Err(format!("unsupported URL scheme: {other}")),
+        _ => Ok(ProcessedUrl::Other(url)),
     }
 }
 
@@ -133,8 +134,10 @@ mod test {
     }
 
     #[test]
-    fn it_should_return_error_on_unsupported_schemes() {
-        let maybe_result = super::process_url_str("ftp://blah.com/test.txt");
-        assert!(maybe_result.is_err());
+    fn it_should_return_other_on_unsupported_schemes() {
+        assert_eq!(
+            super::process_url_str("ftp://blah.com/test.txt").unwrap(),
+            super::ProcessedUrl::Other(Url::parse("ftp://blah.com/test.txt").unwrap())
+        );
     }
 }

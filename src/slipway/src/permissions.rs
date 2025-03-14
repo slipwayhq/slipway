@@ -1,12 +1,12 @@
-use std::sync::LazyLock;
+use std::{path::PathBuf, sync::LazyLock};
 
 use anyhow::Context;
 use clap::Args;
 use paste::paste;
 use serde::{Deserialize, Serialize};
 use slipway_engine::{
-    LocalComponentPermission, Permission, RegistryComponentPermission, StringPermission,
-    UrlPermission,
+    LocalComponentPermission, PathPermission, Permission, RegistryComponentPermission,
+    StringPermission, UrlPermission,
 };
 use url::Url;
 
@@ -61,6 +61,39 @@ macro_rules! create_url_permissions {
                 #[doc = "Deny " $doc_name "s with the given prefix at the rig level."]
                 #[arg(long)]
                 [<deny_ $name _prefix>]: Vec<url::Url>,
+            }
+        }
+    };
+}
+
+macro_rules! create_path_permissions {
+    ($permission_name:ident, $name:ident, $doc_name:expr) => {
+        paste! {
+            #[derive(Debug, Args)]
+            pub(super) struct $permission_name {
+                #[doc = "Allow any " $doc_name "s at the rig level."]
+                #[arg(long)]
+                [<allow_ $name>]: bool,
+
+                #[doc = "Allow a specific " $doc_name " at the rig level."]
+                #[arg(long)]
+                [<allow_ $name _exact>]: Vec<std::path::PathBuf>,
+
+                #[doc = "Allow " $doc_name "s within the given path at the rig level."]
+                #[arg(long)]
+                [<allow_ $name _within>]: Vec<std::path::PathBuf>,
+
+                #[doc = "Deny any " $doc_name "s at the rig level."]
+                #[arg(long)]
+                [<deny_ $name>]: bool,
+
+                #[doc = "Deny a specific " $doc_name " at the rig level."]
+                #[arg(long)]
+                [<deny_ $name _exact>]: Vec<std::path::PathBuf>,
+
+                #[doc = "Deny " $doc_name "s within the given path at the rig level."]
+                #[arg(long)]
+                [<deny_ $name _within>]: Vec<std::path::PathBuf>,
             }
         }
     };
@@ -133,6 +166,7 @@ macro_rules! create_simple_string_permissions {
 }
 
 create_url_permissions!(HttpPermissionArgs, http, "HTTP request");
+create_path_permissions!(FilePermissionArgs, file, "file request");
 create_string_permissions!(FontPermissionArgs, fonts, "font");
 create_string_permissions!(EnvPermissionArgs, env, "environment variable");
 create_url_permissions!(
@@ -188,6 +222,9 @@ pub(super) struct CommonPermissionsArgs {
     http: HttpPermissionArgs,
 
     #[command(flatten)]
+    file: FilePermissionArgs,
+
+    #[command(flatten)]
     font: FontPermissionArgs,
 
     #[command(flatten)]
@@ -227,6 +264,19 @@ impl CommonPermissionsArgs {
             self.http.deny_http,
             self.http.deny_http_exact,
             self.http.deny_http_prefix,
+        );
+
+        // File
+        add_path_permissions(
+            &mut allow,
+            &mut deny,
+            Permission::File,
+            self.file.allow_file,
+            self.file.allow_file_exact,
+            self.file.allow_file_within,
+            self.file.deny_file,
+            self.file.deny_file_exact,
+            self.file.deny_file_within,
         );
 
         // Fonts
@@ -328,6 +378,41 @@ fn add_url_permissions<F>(
     }
     for prefix in deny_prefix {
         deny_list.push(variant_ctor(UrlPermission::Prefix { prefix }));
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn add_path_permissions<F>(
+    allow_list: &mut Vec<Permission>,
+    deny_list: &mut Vec<Permission>,
+    variant_ctor: F,
+    allow_any: bool,
+    allow_exact: Vec<PathBuf>,
+    allow_within: Vec<PathBuf>,
+    deny_any: bool,
+    deny_exact: Vec<PathBuf>,
+    deny_within: Vec<PathBuf>,
+) where
+    F: Fn(PathPermission) -> Permission,
+{
+    if allow_any {
+        allow_list.push(variant_ctor(PathPermission::Any {}));
+    }
+    for exact in allow_exact {
+        allow_list.push(variant_ctor(PathPermission::Exact { exact }));
+    }
+    for within in allow_within {
+        allow_list.push(variant_ctor(PathPermission::Within { within }));
+    }
+
+    if deny_any {
+        deny_list.push(variant_ctor(PathPermission::Any {}));
+    }
+    for exact in deny_exact {
+        deny_list.push(variant_ctor(PathPermission::Exact { exact }));
+    }
+    for within in deny_within {
+        deny_list.push(variant_ctor(PathPermission::Within { within }));
     }
 }
 
@@ -501,6 +586,14 @@ mod tests {
                 deny_http_exact: vec![],
                 deny_http_prefix: vec![],
             },
+            file: FilePermissionArgs {
+                allow_file: true,
+                allow_file_exact: vec![],
+                allow_file_within: vec![],
+                deny_file: false,
+                deny_file_exact: vec![],
+                deny_file_within: vec![],
+            },
             font: FontPermissionArgs {
                 allow_fonts: true,
                 allow_fonts_exact: vec![],
@@ -550,6 +643,7 @@ mod tests {
             vec![
                 Permission::All,
                 Permission::Http(UrlPermission::Any {}),
+                Permission::File(PathPermission::Any {}),
                 Permission::Font(StringPermission::Any {}),
                 Permission::Env(StringPermission::Any {}),
                 Permission::HttpComponent(UrlPermission::Any {}),
@@ -576,6 +670,14 @@ mod tests {
                 deny_http: true,
                 deny_http_exact: vec![],
                 deny_http_prefix: vec![],
+            },
+            file: FilePermissionArgs {
+                allow_file: false,
+                allow_file_exact: vec![],
+                allow_file_within: vec![],
+                deny_file: true,
+                deny_file_exact: vec![],
+                deny_file_within: vec![],
             },
             font: FontPermissionArgs {
                 allow_fonts: false,
@@ -627,6 +729,7 @@ mod tests {
             vec![
                 Permission::All,
                 Permission::Http(UrlPermission::Any {}),
+                Permission::File(PathPermission::Any {}),
                 Permission::Font(StringPermission::Any {}),
                 Permission::Env(StringPermission::Any {}),
                 Permission::HttpComponent(UrlPermission::Any {}),
@@ -652,6 +755,14 @@ mod tests {
                 deny_http: true,
                 deny_http_exact: vec![Url::parse("https://example3.com").unwrap()],
                 deny_http_prefix: vec![Url::parse("https://example4.com").unwrap()],
+            },
+            file: FilePermissionArgs {
+                allow_file: false,
+                allow_file_exact: vec![],
+                allow_file_within: vec![],
+                deny_file: false,
+                deny_file_exact: vec![],
+                deny_file_within: vec![],
             },
             font: FontPermissionArgs {
                 allow_fonts: false,
@@ -725,6 +836,98 @@ mod tests {
     }
 
     #[test]
+    fn test_file_permissions() {
+        let args = CommonPermissionsArgs {
+            allow_all: false,
+            deny_all: false,
+            http: HttpPermissionArgs {
+                allow_http: false,
+                allow_http_exact: vec![],
+                allow_http_prefix: vec![],
+                deny_http: false,
+                deny_http_exact: vec![],
+                deny_http_prefix: vec![],
+            },
+            file: FilePermissionArgs {
+                allow_file: true,
+                allow_file_exact: vec![PathBuf::from("/foo/bar.json")],
+                allow_file_within: vec![PathBuf::from("/foo2")],
+                deny_file: true,
+                deny_file_exact: vec![PathBuf::from("foo/bar3.json")],
+                deny_file_within: vec![PathBuf::from("foo4")],
+            },
+            font: FontPermissionArgs {
+                allow_fonts: false,
+                allow_fonts_exact: vec![],
+                allow_fonts_prefix: vec![],
+                allow_fonts_suffix: vec![],
+                deny_fonts: false,
+                deny_fonts_exact: vec![],
+                deny_fonts_prefix: vec![],
+                deny_fonts_suffix: vec![],
+            },
+            env: EnvPermissionArgs {
+                allow_env: false,
+                allow_env_exact: vec![],
+                allow_env_prefix: vec![],
+                allow_env_suffix: vec![],
+                deny_env: false,
+                deny_env_exact: vec![],
+                deny_env_prefix: vec![],
+                deny_env_suffix: vec![],
+            },
+            http_components: HttpComponentPermissionArgs {
+                allow_http_components: false,
+                allow_http_components_exact: vec![],
+                allow_http_components_prefix: vec![],
+                deny_http_components: false,
+                deny_http_components_exact: vec![],
+                deny_http_components_prefix: vec![],
+            },
+            local_components: LocalComponentPermissionArgs {
+                allow_local_components: false,
+                allow_local_components_exact: vec![],
+                deny_local_components: false,
+                deny_local_components_exact: vec![],
+            },
+            registry_components: RegistryComponentPermissionArgs {
+                allow_registry_components: false,
+                allow_registry_components_exact: vec![],
+                deny_registry_components: false,
+                deny_registry_components_exact: vec![],
+            },
+        };
+
+        let permissions = args.into_permissions().unwrap();
+
+        assert_eq!(
+            permissions.allow,
+            vec![
+                Permission::File(PathPermission::Any {}),
+                Permission::File(PathPermission::Exact {
+                    exact: PathBuf::from("/foo/bar.json")
+                }),
+                Permission::File(PathPermission::Within {
+                    within: PathBuf::from("/foo2")
+                }),
+            ]
+        );
+
+        assert_eq!(
+            permissions.deny,
+            vec![
+                Permission::File(PathPermission::Any {}),
+                Permission::File(PathPermission::Exact {
+                    exact: PathBuf::from("foo/bar3.json")
+                }),
+                Permission::File(PathPermission::Within {
+                    within: PathBuf::from("foo4")
+                }),
+            ]
+        );
+    }
+
+    #[test]
     fn test_string_permissions_for_fonts() {
         let args = CommonPermissionsArgs {
             allow_all: false,
@@ -736,6 +939,14 @@ mod tests {
                 deny_http: false,
                 deny_http_exact: vec![],
                 deny_http_prefix: vec![],
+            },
+            file: FilePermissionArgs {
+                allow_file: false,
+                allow_file_exact: vec![],
+                allow_file_within: vec![],
+                deny_file: false,
+                deny_file_exact: vec![],
+                deny_file_within: vec![],
             },
             font: FontPermissionArgs {
                 allow_fonts: true,
@@ -826,6 +1037,14 @@ mod tests {
                 deny_http_exact: vec![],
                 deny_http_prefix: vec![],
             },
+            file: FilePermissionArgs {
+                allow_file: false,
+                allow_file_exact: vec![],
+                allow_file_within: vec![],
+                deny_file: false,
+                deny_file_exact: vec![],
+                deny_file_within: vec![],
+            },
             font: FontPermissionArgs {
                 allow_fonts: false,
                 allow_fonts_exact: vec![],
@@ -915,6 +1134,14 @@ mod tests {
                 deny_http_exact: vec![],
                 deny_http_prefix: vec![],
             },
+            file: FilePermissionArgs {
+                allow_file: false,
+                allow_file_exact: vec![],
+                allow_file_within: vec![],
+                deny_file: false,
+                deny_file_exact: vec![],
+                deny_file_within: vec![],
+            },
             font: FontPermissionArgs {
                 allow_fonts: false,
                 allow_fonts_exact: vec![],
@@ -999,6 +1226,14 @@ mod tests {
                 deny_http_exact: vec![],
                 deny_http_prefix: vec![],
             },
+            file: FilePermissionArgs {
+                allow_file: false,
+                allow_file_exact: vec![],
+                allow_file_within: vec![],
+                deny_file: false,
+                deny_file_exact: vec![],
+                deny_file_within: vec![],
+            },
             font: FontPermissionArgs {
                 allow_fonts: false,
                 allow_fonts_exact: vec![],
@@ -1076,6 +1311,14 @@ mod tests {
                 deny_http: false,
                 deny_http_exact: vec![],
                 deny_http_prefix: vec![],
+            },
+            file: FilePermissionArgs {
+                allow_file: false,
+                allow_file_exact: vec![],
+                allow_file_within: vec![],
+                deny_file: false,
+                deny_file_exact: vec![],
+                deny_file_within: vec![],
             },
             font: FontPermissionArgs {
                 allow_fonts: false,

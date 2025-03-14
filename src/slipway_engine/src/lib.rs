@@ -22,6 +22,7 @@ pub use parse::types::primitives::*;
 pub use parse::types::slipway_id::*;
 pub use parse::types::slipway_reference::*;
 pub use parse::types::*;
+pub use parse::url::*;
 pub use parse::*;
 use regex::Regex;
 pub use special_components::*;

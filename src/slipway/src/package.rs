@@ -4,6 +4,8 @@ use tar::Builder;
 use tracing::{error, info, warn};
 use walkdir::WalkDir;
 
+use crate::SLIPWAY_COMPONENT_FILE_NAME;
+
 pub fn package_component(path: &Path) -> anyhow::Result<()> {
     if !path.exists() {
         error!("Path does not exist: {:?}", path);
@@ -15,7 +17,7 @@ pub fn package_component(path: &Path) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let file_path = path.join("slipway_component.json");
+    let file_path = path.join(SLIPWAY_COMPONENT_FILE_NAME);
 
     if !file_path.exists() {
         error!("Component file does not exist: {:?}", file_path);
@@ -35,7 +37,9 @@ pub fn package_component(path: &Path) -> anyhow::Result<()> {
     let tar_path = match path.parent() {
         Some(parent) => parent.join(tar_name),
         None => {
-            warn!("Failed to get component parent folder for, so writing .tar file to component folder.");
+            warn!(
+                "Failed to get component parent folder for, so writing .tar file to component folder."
+            );
             path.join(tar_name)
         }
     };

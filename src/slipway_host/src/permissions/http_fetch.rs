@@ -54,9 +54,8 @@ fn ensure_can_fetch_url_inner(
 
 #[cfg(test)]
 mod test {
-    use slipway_engine::StringPermission;
     use slipway_engine::UrlPermission;
-    use slipway_engine::{utils::ch, ComponentHandle, Permissions};
+    use slipway_engine::{ComponentHandle, Permissions, utils::ch};
 
     use super::*;
 
@@ -73,6 +72,8 @@ mod test {
     }
 
     mod insufficient_permissions {
+        use slipway_engine::PathPermission;
+
         use super::*;
 
         #[test]
@@ -88,7 +89,7 @@ mod test {
         fn it_should_forbid_any_url_for_incorrect_permissions() {
             run_test(
                 "https://example.com/foo/bar.json",
-                Permissions::allow(&vec![Permission::Font(StringPermission::Any {})]),
+                Permissions::allow(&vec![Permission::File(PathPermission::Any {})]),
                 false,
             );
         }

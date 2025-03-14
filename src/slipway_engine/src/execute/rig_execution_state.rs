@@ -4,9 +4,9 @@ use std::{
 };
 
 use crate::{
-    errors::RigError, Callouts, ChainItem, ComponentCache, ComponentHandle, ComponentInput,
-    Immutable, Instruction, JsonMetadata, Permissions, RigSession, SlipwayReference,
-    PERMISSIONS_NONE_VEC,
+    Callouts, ChainItem, ComponentCache, ComponentHandle, ComponentInput, Immutable, Instruction,
+    JsonMetadata, PERMISSIONS_NONE_VEC, Permissions, RigSession, RigSessionOptions,
+    SlipwayReference, errors::RigError,
 };
 
 use super::{
@@ -84,6 +84,7 @@ impl<'rig, 'cache> RigExecutionState<'rig, 'cache> {
             call_chain,
             outer_callouts,
             Arc::clone(input),
+            &self.session.options,
         )
     }
 
@@ -165,6 +166,7 @@ where
         call_chain,
         outer_callouts,
         input,
+        execution_context.rig_session_options,
     )
 }
 
@@ -175,6 +177,7 @@ pub(super) fn get_component_execution_data<'call, 'rig, 'runners>(
     call_chain: Arc<CallChain<'rig>>,
     outer_callouts: Option<&'rig Callouts>,
     input: Arc<ComponentInput>,
+    rig_session_options: &'rig RigSessionOptions,
 ) -> Result<ComponentExecutionData<'call, 'rig, 'runners>, RigError>
 where
     'rig: 'call,
@@ -198,6 +201,7 @@ where
             call_chain,
             files,
             callout_context,
+            rig_session_options,
         },
     })
 }
