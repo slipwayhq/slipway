@@ -19,17 +19,17 @@ mod test_utils;
 use std::path::PathBuf;
 
 use clap::{
-    builder::{
-        styling::{AnsiColor, Effects},
-        Styles,
-    },
     Args, Parser, Subcommand,
+    builder::{
+        Styles,
+        styling::{AnsiColor, Effects},
+    },
 };
 use permissions::CommonPermissionsArgs;
 use primitives::{DeviceName, PlaylistName, RigName};
-use time::{format_description, OffsetDateTime};
+use time::{OffsetDateTime, format_description};
 use tracing::Level;
-use tracing_subscriber::{fmt::time::FormatTime, FmtSubscriber};
+use tracing_subscriber::{FmtSubscriber, fmt::time::FormatTime};
 
 const WASM_INTERFACE_TYPE_STR: &str = include_str!("../../../wit/latest/slipway.wit");
 
@@ -122,6 +122,9 @@ pub(crate) enum Commands {
 enum ServeCommands {
     /// Create basic configuration files and directory structure.
     Init,
+
+    /// Download all required components to the local components folder.
+    Consolidate,
 
     /// Add a device to use when serving HTTP requests.
     #[command(arg_required_else_help = true)]
@@ -300,11 +303,15 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
         }
         Commands::Serve { path, subcommand } => match subcommand {
             Some(ServeCommands::Init) => {
-                configure_tracing(None);
+                configure_tracing(Default::default());
                 serve::commands::init(path).await?;
             }
+            Some(ServeCommands::Consolidate) => {
+                configure_tracing(Some("debug".to_string()));
+                serve::commands::consolidate(path).await?;
+            }
             Some(ServeCommands::AddDevice { name, playlist }) => {
-                configure_tracing(None);
+                configure_tracing(Default::default());
                 serve::commands::add_device(path, name, playlist).await?;
             }
             Some(ServeCommands::AddTrmnlDevice {
@@ -313,15 +320,15 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
                 name,
                 playlist,
             }) => {
-                configure_tracing(None);
+                configure_tracing(Default::default());
                 serve::commands::add_trmnl_device(path, id, hashed_api_key, name, playlist).await?;
             }
             Some(ServeCommands::AddPlaylist { name, rig }) => {
-                configure_tracing(None);
+                configure_tracing(Default::default());
                 serve::commands::add_playlist(path, name, rig).await?;
             }
             Some(ServeCommands::AddRig { name }) => {
-                configure_tracing(None);
+                configure_tracing(Default::default());
                 serve::commands::add_rig(path, name).await?;
             }
             None => {

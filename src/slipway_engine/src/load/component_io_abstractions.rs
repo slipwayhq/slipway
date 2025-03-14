@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use tokio_util::io::StreamReader;
+use tracing::debug;
 use url::Url;
 
 use crate::errors::ComponentLoadErrorInner;
@@ -124,8 +125,11 @@ impl ComponentIOAbstractions for ComponentIOAbstractionsImpl {
         let file_path = self.local_component_cache_path.join(file_name);
 
         if file_path.exists() {
+            debug!("Found component in cache: {url}");
             return Ok(file_path);
         }
+
+        debug!("Downloading component: {url}");
 
         // Create the directory if it doesn't exist
         if !file_path.parent().unwrap().exists() {

@@ -6,7 +6,7 @@ use std::{
 use actix_web::http::StatusCode;
 use anyhow::Context;
 use async_trait::async_trait;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use tracing::warn;
 
 use crate::{
@@ -39,6 +39,10 @@ impl ServeRepository for FileSystemRepository {
         write_to_file(&path, "Rig", value).await
     }
 
+    async fn list_rigs(&self) -> Result<Vec<RigName>, ServeError> {
+        list_files(&self.root_path.join(RIG_FOLDER_NAME), "Rig").await
+    }
+
     async fn get_playlist(&self, name: &PlaylistName) -> Result<Playlist, ServeError> {
         let path = get_playlist_path(&self.root_path, name);
         load_from_file(&path, "Playlist").await
@@ -48,65 +52,76 @@ impl ServeRepository for FileSystemRepository {
         let path = get_playlist_path(&self.root_path, name);
         write_to_file(&path, "Playlist", value).await
     }
+
+    async fn list_playlists(&self) -> Result<Vec<PlaylistName>, ServeError> {
+        list_files(&self.root_path.join(PLAYLIST_FOLDER_NAME), "Playlist").await
+    }
+
     async fn get_device(&self, name: &DeviceName) -> Result<Device, ServeError> {
         let path = get_device_path(&self.root_path, name);
         load_from_file(&path, "Device").await
     }
+
     async fn set_device(&self, name: &DeviceName, value: &Device) -> Result<(), ServeError> {
         let path = get_device_path(&self.root_path, name);
         write_to_file(&path, "Device", value).await
     }
 
     async fn list_devices(&self) -> Result<Vec<DeviceName>, ServeError> {
-        list_devices(&self.root_path).await
+        list_files(&self.root_path.join(DEVICE_FOLDER_NAME), "Device").await
     }
 }
 
-async fn list_devices(root_path: &Path) -> Result<Vec<DeviceName>, ServeError> {
-    let search_path = root_path.join("devices");
+async fn list_files<T>(folder_path: &Path, type_name: &str) -> Result<Vec<T>, ServeError>
+where
+    T: FromStr,
+    T::Err: std::fmt::Debug,
+{
+    let mut results = vec![];
 
-    let mut devices = vec![];
-
-    if !tokio::fs::try_exists(&search_path)
+    if !tokio::fs::try_exists(&folder_path)
         .await
-        .context("Failed to check device directory existence.")
+        .with_context(|| format!("Failed to check {type_name} directory existence."))
         .map_err(ServeError::Internal)?
     {
-        return Ok(devices);
+        return Ok(results);
     }
 
-    let mut dir = tokio::fs::read_dir(&search_path)
+    let mut dir = tokio::fs::read_dir(&folder_path)
         .await
-        .context("Failed to read device directory.")
+        .with_context(|| format!("Failed to read {type_name} directory."))
         .map_err(ServeError::Internal)?;
 
     while let Some(entry) = dir
         .next_entry()
         .await
-        .context("Failed to read next device in device directory.")
+        .with_context(|| format!("Failed to read next {type_name} in {type_name} directory."))
         .map_err(ServeError::Internal)?
     {
-        let path = entry.path();
-        if path.is_file() {
+        let item_path = entry.path();
+        if item_path.is_file() {
             // get file name without extension
-            if let Some(file_stem) = path.file_stem() {
-                let maybe_device_name = DeviceName::from_str(file_stem.to_string_lossy().as_ref());
+            if let Some(file_stem) = item_path.file_stem() {
+                let maybe_device_name = T::from_str(file_stem.to_string_lossy().as_ref());
                 match maybe_device_name {
-                    Ok(device_name) => devices.push(device_name),
+                    Ok(device_name) => results.push(device_name),
                     Err(e) => {
                         warn!(
-                            "Failed to parse device name from file name: {:?}.\nError: {:?}",
-                            path, e
+                            "Failed to parse {type_name} name from file name: {:?}.\nError: {:?}",
+                            item_path, e
                         );
                     }
                 }
             } else {
-                warn!("Failed to get file stem from device file path: {:?}", path);
+                warn!(
+                    "Failed to get file stem from {type_name} file path: {:?}",
+                    item_path
+                );
             }
         }
     }
 
-    Ok(devices)
+    Ok(results)
 }
 
 async fn load_from_file<T: DeserializeOwned>(

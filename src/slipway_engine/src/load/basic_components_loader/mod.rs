@@ -7,15 +7,15 @@ use std::{
 use super::component_io_abstractions::{ComponentIOAbstractions, ComponentIOAbstractionsImpl};
 use async_trait::async_trait;
 use futures::future::join_all;
-use tracing::debug;
+use tracing::{debug, trace};
 
 use crate::{
-    errors::{ComponentLoadError, ComponentLoadErrorInner},
-    parse::url::{process_url_str, ProcessedUrl},
     SlipwayReference,
+    errors::{ComponentLoadError, ComponentLoadErrorInner},
+    parse::url::{ProcessedUrl, process_url_str},
 };
 
-use super::{special_components::load_special_component, ComponentsLoader, LoadedComponent};
+use super::{ComponentsLoader, LoadedComponent, special_components::load_special_component};
 
 mod load_from_directory;
 mod load_from_tar;
@@ -95,6 +95,8 @@ impl BasicComponentsLoaderBuilder {
         let components_cache_path = self
             .components_cache_path
             .unwrap_or_else(get_default_slipway_components_cache_dir);
+
+        debug!("Caching components to: {:?}", components_cache_path);
 
         let local_base_directory = self
             .local_base_directory
@@ -208,18 +210,22 @@ impl BasicComponentsLoader {
                     match result {
                         Err(e) => {
                             debug!(
-                                "Failed to load component \"{}\" from registry \"{}\"",
+                                "Failed to load \"{}\" from \"{}\"",
                                 component_reference, resolved_registry_lookup_url
                             );
-                            debug!("Reason: {}\n", e.error);
+                            trace!("Reason: {}\n", e.error);
                             continue;
                         }
                         Ok(c) => {
+                            debug!(
+                                "Loaded \"{}\" from \"{}\"",
+                                component_reference, resolved_registry_lookup_url
+                            );
                             return Ok(LoadedComponent::new(
                                 component_reference.clone(),
                                 c.definition,
                                 c.files,
-                            ))
+                            ));
                         }
                     };
                 }

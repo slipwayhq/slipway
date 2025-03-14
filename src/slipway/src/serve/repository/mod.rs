@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::primitives::{DeviceName, PlaylistName, RigName};
 
-use super::{hash_string, ServeError};
+use super::{ServeError, hash_string};
 
 pub(super) mod file_system;
 pub(super) mod memory;
@@ -19,20 +19,22 @@ pub(super) trait ServeRepository: std::fmt::Debug {
         try_load(self.get_rig(name).await)
     }
     async fn set_rig(&self, name: &RigName, value: &slipway_engine::Rig) -> Result<(), ServeError>;
+    async fn list_rigs(&self) -> Result<Vec<RigName>, ServeError>;
 
     async fn get_playlist(&self, name: &PlaylistName) -> Result<Playlist, ServeError>;
     async fn try_get_playlist(&self, name: &PlaylistName) -> Result<Option<Playlist>, ServeError> {
         try_load(self.get_playlist(name).await)
     }
     async fn set_playlist(&self, name: &PlaylistName, value: &Playlist) -> Result<(), ServeError>;
+    async fn list_playlists(&self) -> Result<Vec<PlaylistName>, ServeError>;
 
     async fn get_device(&self, name: &DeviceName) -> Result<Device, ServeError>;
     async fn try_get_device(&self, name: &DeviceName) -> Result<Option<Device>, ServeError> {
         try_load(self.get_device(name).await)
     }
     async fn set_device(&self, name: &DeviceName, value: &Device) -> Result<(), ServeError>;
-
     async fn list_devices(&self) -> Result<Vec<DeviceName>, ServeError>;
+
     async fn get_device_by_id(&self, id: &str) -> Result<(DeviceName, Device), ServeError> {
         for device_name in self.list_devices().await? {
             let device = self.get_device(&device_name).await?;

@@ -47,6 +47,10 @@ impl ServeRepository for MemoryRepository {
         unimplemented!();
     }
 
+    async fn list_rigs(&self) -> Result<Vec<RigName>, ServeError> {
+        Ok(self.rigs.keys().cloned().collect())
+    }
+
     async fn get_playlist(&self, name: &PlaylistName) -> Result<Playlist, ServeError> {
         self.playlists.get(name).cloned().ok_or_else(|| {
             ServeError::UserFacing(
@@ -63,6 +67,11 @@ impl ServeRepository for MemoryRepository {
     ) -> Result<(), ServeError> {
         unimplemented!();
     }
+
+    async fn list_playlists(&self) -> Result<Vec<PlaylistName>, ServeError> {
+        Ok(self.playlists.keys().cloned().collect())
+    }
+
     async fn get_device(&self, name: &DeviceName) -> Result<Device, ServeError> {
         self.devices.get(name).cloned().ok_or_else(|| {
             ServeError::UserFacing(StatusCode::NOT_FOUND, format!("Device not found: {}", name))

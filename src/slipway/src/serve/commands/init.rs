@@ -2,13 +2,13 @@ use std::path::{Path, PathBuf};
 
 use tracing::info;
 
-use crate::serve::{get_serve_config_path, RepositoryConfig, SlipwayServeConfig};
+use crate::serve::{RepositoryConfig, SlipwayServeConfig, get_serve_config_path};
 
 pub async fn init(serve_path: PathBuf) -> anyhow::Result<()> {
     init_serve_config(&serve_path).await?;
     init_dockerfile(&serve_path).await?;
 
-    init_folder(&serve_path, "components").await?;
+    init_folder(&serve_path, super::COMPONENTS_PATH).await?;
     init_folder(
         &serve_path,
         crate::serve::repository::file_system::RIG_FOLDER_NAME,
