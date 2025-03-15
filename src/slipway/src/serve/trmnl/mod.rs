@@ -2,17 +2,18 @@ mod display;
 mod log;
 mod setup;
 
-use actix_web::{http::StatusCode, HttpRequest};
+use actix_web::{HttpRequest, http::StatusCode};
 pub(super) use display::trmnl_display;
 pub(super) use log::trmnl_log;
 pub(super) use setup::trmnl_setup;
+use slipway_host::hash_string;
 use tracing::{debug, info};
 
-use crate::{primitives::DeviceName, serve::hash_string};
+use crate::primitives::DeviceName;
 
 use super::{
+    ACCESS_TOKEN_HEADER, ID_HEADER, ServeError,
     repository::{Device, TrmnlDevice},
-    ServeError, ACCESS_TOKEN_HEADER, ID_HEADER,
 };
 
 fn get_device_id_from_headers(req: &HttpRequest) -> Result<&str, ServeError> {

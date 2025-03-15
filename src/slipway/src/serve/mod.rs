@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 
 use base64::prelude::*;
 use image::{DynamicImage, ImageFormat, RgbaImage};
+use slipway_host::hash_bytes;
 use std::io::Cursor;
 use thiserror::Error;
 use tracing::{debug, info, warn};
@@ -31,8 +32,6 @@ mod repository;
 mod rigs;
 pub(super) mod trmnl;
 
-use sha2::{Digest, Sha256};
-
 use crate::permissions::PermissionsOwned;
 use crate::primitives::{DeviceName, PlaylistName, RigName};
 
@@ -46,20 +45,6 @@ const API_GET_RIG_PATH: &str = "/rigs";
 
 const SERVE_CONFIG_FILE_NAME: &str = "slipway_serve.json";
 
-fn hash_string(input: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(input);
-    let result = hasher.finalize();
-    format!("{:x}", result)
-}
-
-fn hash_bytes(input: &[u8]) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(input);
-    let result = hasher.finalize();
-    format!("{:x}", result)
-}
-
 fn create_friendly_id(hashed_api_key: &str) -> String {
     hashed_api_key[..6].to_string()
 }
@@ -71,6 +56,7 @@ fn create_api_key() -> String {
 #[derive(Debug)]
 struct ServeState {
     pub base_path: PathBuf,
+    pub aot_path: Option<PathBuf>,
     pub config: SlipwayServeConfig,
     pub expected_authorization_header: Option<String>,
     pub repository: Box<dyn ServeRepository>,
@@ -79,12 +65,14 @@ struct ServeState {
 impl ServeState {
     pub fn new(
         base_path: PathBuf,
+        aot_path: Option<PathBuf>,
         config: SlipwayServeConfig,
         expected_authorization_header: Option<String>,
         repository: Box<dyn ServeRepository>,
     ) -> Self {
         Self {
             base_path,
+            aot_path,
             config,
             expected_authorization_header,
             repository,
@@ -123,9 +111,9 @@ enum RepositoryConfig {
     },
 }
 
-pub async fn serve(path: PathBuf) -> anyhow::Result<()> {
+pub async fn serve(path: PathBuf, aot_path: Option<PathBuf>) -> anyhow::Result<()> {
     let config = load_serve_config(&path).await?;
-    serve_with_config(path, config).await?;
+    serve_with_config(path, aot_path, config).await?;
     Ok(())
 }
 
@@ -162,7 +150,11 @@ fn create_repository(root_path: &Path, config: &RepositoryConfig) -> Box<dyn Ser
     }
 }
 
-async fn serve_with_config(root: PathBuf, config: SlipwayServeConfig) -> anyhow::Result<()> {
+async fn serve_with_config(
+    root: PathBuf,
+    aot_path: Option<PathBuf>,
+    config: SlipwayServeConfig,
+) -> anyhow::Result<()> {
     super::configure_tracing(config.log_level.clone());
 
     let expected_authorization_header = std::env::var("SLIPWAY_AUTHORIZATION_HEADER").ok();
@@ -178,6 +170,7 @@ async fn serve_with_config(root: PathBuf, config: SlipwayServeConfig) -> anyhow:
     HttpServer::new(move || {
         create_app(
             root.clone(),
+            aot_path.clone(),
             config.clone(),
             expected_authorization_header.clone(),
         )
@@ -191,6 +184,7 @@ async fn serve_with_config(root: PathBuf, config: SlipwayServeConfig) -> anyhow:
 
 fn create_app(
     root: PathBuf,
+    aot_path: Option<PathBuf>,
     config: SlipwayServeConfig,
     expected_authorization_header: Option<String>,
 ) -> App<
@@ -207,6 +201,7 @@ fn create_app(
     App::new()
         .app_data(web::Data::new(ServeState::new(
             root,
+            aot_path,
             config,
             expected_authorization_header,
             repository,

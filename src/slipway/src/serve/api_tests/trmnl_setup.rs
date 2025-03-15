@@ -2,11 +2,10 @@ use std::{collections::HashMap, path::PathBuf};
 
 use actix_web::{http::StatusCode, test};
 use chrono_tz::Tz;
+use slipway_host::hash_string;
 
 use crate::serve::ID_HEADER;
-use crate::serve::{
-    create_app, hash_string, repository::TrmnlDevice, RepositoryConfig, SlipwayServeConfig,
-};
+use crate::serve::{RepositoryConfig, SlipwayServeConfig, create_app, repository::TrmnlDevice};
 
 use super::super::Device;
 use super::{device, dn, get_body_json, playlist, pn, rig};
@@ -41,7 +40,7 @@ async fn when_device_already_configured_for_trmnl_it_should_return_new_credentia
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), config, None)).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
 
     let request = test::TestRequest::get()
         .uri("/api/setup")
@@ -68,7 +67,7 @@ async fn when_device_not_configured_for_trmnl_it_should_return_new_credentials()
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), config, None)).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
 
     let request = test::TestRequest::get()
         .uri("/api/setup")

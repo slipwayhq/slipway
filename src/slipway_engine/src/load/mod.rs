@@ -2,9 +2,9 @@ use core::panic;
 use std::{collections::HashMap, default, path::Path, sync::Arc};
 
 use crate::{
+    Component, Rig, Schema, SlipwayReference,
     errors::{ComponentLoadError, ComponentLoadErrorInner},
     utils::ExpectWith,
-    Component, Rig, Schema, SlipwayReference,
 };
 
 pub(super) mod basic_components_loader;
@@ -217,6 +217,10 @@ impl BasicComponentCache {
 
     pub fn for_primed(components: HashMap<SlipwayReference, PrimedComponent>) -> Self {
         Self { components }
+    }
+
+    pub fn into_inner(self) -> HashMap<SlipwayReference, PrimedComponent> {
+        self.components
     }
 }
 

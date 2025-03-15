@@ -4,10 +4,11 @@ use actix_web::http::StatusCode;
 use async_trait::async_trait;
 use chrono::{NaiveTime, Weekday};
 use serde::{Deserialize, Serialize};
+use slipway_host::hash_string;
 
 use crate::primitives::{DeviceName, PlaylistName, RigName};
 
-use super::{ServeError, hash_string};
+use super::ServeError;
 
 pub(super) mod file_system;
 pub(super) mod memory;

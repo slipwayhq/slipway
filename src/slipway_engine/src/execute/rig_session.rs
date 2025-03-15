@@ -52,13 +52,17 @@ impl<'cache> RigSession<'cache> {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct RigSessionOptions {
     pub base_path: PathBuf,
+    pub aot_path: Option<PathBuf>,
 }
 
 impl RigSessionOptions {
-    pub fn new(base_path: PathBuf) -> Self {
-        RigSessionOptions { base_path }
+    pub fn new(base_path: PathBuf, aot_path: Option<PathBuf>) -> Self {
+        RigSessionOptions {
+            base_path,
+            aot_path,
+        }
     }
 }

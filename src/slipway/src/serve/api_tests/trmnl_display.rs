@@ -2,12 +2,11 @@ use std::{collections::HashMap, path::PathBuf};
 
 use actix_web::{http::StatusCode, test};
 use chrono_tz::Tz;
+use slipway_host::hash_string;
 
 use crate::serve::api_tests::get_body;
-use crate::serve::{
-    create_app, hash_string, repository::TrmnlDevice, RepositoryConfig, SlipwayServeConfig,
-};
 use crate::serve::{ACCESS_TOKEN_HEADER, ID_HEADER};
+use crate::serve::{RepositoryConfig, SlipwayServeConfig, create_app, repository::TrmnlDevice};
 
 use super::super::Device;
 use super::{device, dn, get_body_json, playlist, pn, rig};
@@ -31,7 +30,7 @@ async fn when_no_device_id_header_it_should_return_bad_request() {
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), config, None)).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
 
     let request = test::TestRequest::get()
         .uri("/api/display")
@@ -72,7 +71,7 @@ async fn when_no_device_with_matching_id_it_should_return_not_found() {
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), config, None)).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
 
     let request = test::TestRequest::get()
         .uri("/api/display")
@@ -114,7 +113,7 @@ async fn when_api_key_incorrect_it_should_return_unauthorized() {
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), config, None)).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
 
     let request = test::TestRequest::get()
         .uri("/api/display")
@@ -156,7 +155,7 @@ async fn when_reset_firmware_set_it_should_return_reset_firmware_flag() {
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), config, None)).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
 
     let request = test::TestRequest::get()
         .uri("/api/display")
@@ -198,7 +197,7 @@ async fn when_valid_request_it_should_return_rig_result() {
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), config, None)).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
 
     let request = test::TestRequest::get()
         .uri("/api/display")
@@ -246,6 +245,7 @@ async fn when_rig_auth_header_required_it_should_return_rig_result_with_auth_hea
 
     let app = test::init_service(create_app(
         PathBuf::from("."),
+        None,
         config,
         Some("auth123".to_string()),
     ))

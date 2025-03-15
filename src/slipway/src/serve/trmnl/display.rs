@@ -1,12 +1,12 @@
-use actix_web::{get, web, HttpRequest, Responder};
-use tracing::{debug, info_span, instrument, warn, Instrument};
+use actix_web::{HttpRequest, Responder, get, web};
+use slipway_host::hash_string;
+use tracing::{Instrument, debug, info_span, instrument, warn};
 
 use crate::{
     primitives::DeviceName,
     serve::{
-        hash_string,
-        trmnl::{authenticate_device, get_api_key_from_headers, get_device_id_from_headers},
         RigResponse, RigResultFormat, RigResultImageFormat, ServeError, ServeState,
+        trmnl::{authenticate_device, get_api_key_from_headers, get_device_id_from_headers},
     },
 };
 

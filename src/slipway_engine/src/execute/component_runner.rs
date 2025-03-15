@@ -1,19 +1,24 @@
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
 use crate::{
+    CallChain, ComponentExecutionContext, ComponentFiles, ComponentHandle, RigExecutionState,
+    RunMetadata, SlipwayReference,
     errors::{ComponentLoadError, RigError},
-    CallChain, ComponentExecutionContext, ComponentHandle, RigExecutionState, RunMetadata,
 };
 use async_trait::async_trait;
 use thiserror::Error;
-use tracing::{info_span, Instrument};
+use tracing::{Instrument, info_span};
 
 use super::{
     component_execution_data::ComponentExecutionData,
     rig_execution_state::get_component_execution_data_for_callout,
-    validate_component_io::{validate_component_io, ValidationData},
+    validate_component_io::{ValidationData, validate_component_io},
 };
 
+pub enum TryAotCompileComponentResult {
+    Compiled,
+    CannotCompile,
+}
 pub enum TryRunComponentResult {
     CannotRun,
     Ran { result: RunComponentResult },
@@ -51,6 +56,15 @@ pub enum RunComponentError {
 #[async_trait(?Send)]
 pub trait ComponentRunner: Send + Sync {
     fn identifier(&self) -> String;
+
+    async fn aot_compile(
+        &self,
+        _component_reference: &SlipwayReference,
+        _aot_path: &Path,
+        _files: Arc<ComponentFiles>,
+    ) -> Result<TryAotCompileComponentResult, RunComponentError> {
+        Ok(TryAotCompileComponentResult::CannotCompile)
+    }
 
     async fn run<'call>(
         &self,

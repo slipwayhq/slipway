@@ -2,10 +2,10 @@ use std::{str::FromStr, sync::Arc};
 
 use async_trait::async_trait;
 use slipway_engine::{
-    prime_special_component, BasicComponentCache, Component, ComponentExecutionContext,
-    ComponentExecutionData, ComponentHandle, ComponentRigging, ComponentRunner,
-    MultiComponentCache, Rig, RigSession, Rigging, RunComponentError, RunComponentResult, Schema,
-    SlipwayReference, SpecialComponentReference, TryRunComponentResult,
+    BasicComponentCache, Component, ComponentExecutionContext, ComponentExecutionData,
+    ComponentHandle, ComponentRigging, ComponentRunner, MultiComponentCache, Rig, RigSession,
+    Rigging, RunComponentError, RunComponentResult, Schema, SlipwayReference,
+    SpecialComponentReference, TryRunComponentResult, prime_special_component,
 };
 use slipway_host::run::{no_event_handler, run_rig};
 use tracing::Instrument;
@@ -100,7 +100,11 @@ async fn run_component_fragment(
     let component_cache =
         MultiComponentCache::new(vec![original_component_cache, &new_component_cache]);
 
-    let rig_session = RigSession::new(rig, &component_cache);
+    let rig_session = RigSession::new_with_options(
+        rig,
+        &component_cache,
+        execution_context.rig_session_options.clone(),
+    );
 
     let run_result = run_rig(
         &rig_session,

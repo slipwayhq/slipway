@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 pub mod bin;
 pub mod fetch;
@@ -27,4 +28,18 @@ impl ComponentError {
             },
         }
     }
+}
+
+pub fn hash_string(input: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(input);
+    let result = hasher.finalize();
+    format!("{:x}", result)
+}
+
+pub fn hash_bytes(input: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(input);
+    let result = hasher.finalize();
+    format!("{:x}", result)
 }

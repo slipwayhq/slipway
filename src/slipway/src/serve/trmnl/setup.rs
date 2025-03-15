@@ -1,10 +1,10 @@
-use actix_web::{get, web, HttpRequest, Responder};
+use actix_web::{HttpRequest, Responder, get, web};
+use slipway_host::hash_string;
 use tracing::{info, instrument, warn};
 
 use crate::serve::{
-    create_api_key, create_friendly_id, hash_string,
+    Device, ServeError, ServeState, create_api_key, create_friendly_id,
     trmnl::{get_device_id_from_headers, print_new_device_message},
-    Device, ServeError, ServeState,
 };
 
 #[get("/setup")]

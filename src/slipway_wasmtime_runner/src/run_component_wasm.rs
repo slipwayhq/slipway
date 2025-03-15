@@ -7,9 +7,15 @@ use slipway_engine::{
 use wasmtime::*;
 use wasmtime_wasi::WasiCtxBuilder;
 
+pub enum WasmData {
+    Wasm(Arc<Vec<u8>>),
+    Aot(Vec<u8>),
+}
+
 pub async fn run_component_wasm(
     input: &serde_json::Value,
-    wasm_bytes: Arc<Vec<u8>>,
+    wasm_data: WasmData,
+    engine: &Engine,
     execution_context: &ComponentExecutionContext<'_, '_, '_>,
 ) -> Result<RunComponentResult, RunComponentError> {
     let prepare_input_start = Instant::now();
@@ -21,9 +27,8 @@ pub async fn run_component_wasm(
     let prepare_input_duration = prepare_input_start.elapsed();
     let prepare_component_start = Instant::now();
 
-    // Create an engine and store
-    let engine = Engine::new(Config::new().async_support(true))?;
-    let mut linker = wasmtime::component::Linker::new(&engine);
+    // Create a linker.
+    let mut linker = wasmtime::component::Linker::new(engine);
 
     // Add WASI to linker
     Slipway::add_to_linker(&mut linker, |state: &mut SlipwayHost| state)?;
@@ -35,10 +40,15 @@ pub async fn run_component_wasm(
     let wasi_ctx = WasiCtxBuilder::new().stdout(stdout).stderr(stderr).build();
 
     // Create a store
-    let mut store = Store::new(&engine, SlipwayHost::new(execution_context, wasi_ctx));
+    let mut store = Store::new(engine, SlipwayHost::new(execution_context, wasi_ctx));
 
     // Create the component from raw bytes.
-    let component = wasmtime::component::Component::new(&engine, &*wasm_bytes)?;
+    let component = match wasm_data {
+        WasmData::Wasm(wasm_bytes) => wasmtime::component::Component::new(engine, &*wasm_bytes)?,
+        WasmData::Aot(aot_bytes) => unsafe {
+            wasmtime::component::Component::deserialize(engine, &aot_bytes)?
+        },
+    };
 
     // Create the SlipwayComponent instance.
     let slipway_component = Slipway::instantiate_async(&mut store, &component, &linker).await?;

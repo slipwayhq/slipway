@@ -7,6 +7,6 @@ COPY ./playlists ./playlists
 COPY ./rigs ./rigs
 COPY ./components ./components
 
-RUN slipway serve . consolidate
+RUN slipway serve . aot-compile
 
 CMD ["slipway", "serve", "."]

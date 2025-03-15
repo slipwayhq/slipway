@@ -28,7 +28,7 @@ pub async fn run_rig(
     let session = RigSession::new_with_options(
         rig,
         &component_cache,
-        RigSessionOptions::new(state.base_path.clone()),
+        RigSessionOptions::new(state.base_path.clone(), state.aot_path.clone()),
     );
 
     let mut writer = TracingWriter::new();

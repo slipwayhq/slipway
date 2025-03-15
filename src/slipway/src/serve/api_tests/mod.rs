@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::PathBuf, str::FromStr};
 use actix_web::{
     body::MessageBody,
     dev::ServiceResponse,
-    http::{header::HeaderName, StatusCode},
+    http::{StatusCode, header::HeaderName},
     test,
 };
 use chrono_tz::Tz;
@@ -11,12 +11,12 @@ use slipway_engine::{Rigging, SpecialComponentReference};
 
 use crate::{
     primitives::{DeviceName, PlaylistName, RigName},
-    serve::{create_app, RepositoryConfig, SlipwayServeConfig, REFRESH_RATE_HEADER},
+    serve::{REFRESH_RATE_HEADER, RepositoryConfig, SlipwayServeConfig, create_app},
 };
 
 use super::{
-    repository::{PlaylistItem, Refresh},
     Device, Playlist,
+    repository::{PlaylistItem, Refresh},
 };
 
 mod trmnl_display;
@@ -117,7 +117,7 @@ async fn when_devices_playlists_and_rigs_do_not_exist_should_return_not_found() 
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), config, None)).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
 
     {
         let request = test::TestRequest::get().uri("/devices/foo").to_request();
@@ -161,7 +161,7 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), config, None)).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
 
     async fn assert_response(response: ServiceResponse<impl MessageBody>, has_refresh_rate: bool) {
         let status = response.status();
@@ -221,6 +221,7 @@ async fn when_auth_not_supplied_it_should_return_unauthorized() {
 
     let app = test::init_service(create_app(
         PathBuf::from("."),
+        None,
         config,
         Some("auth123".to_string()),
     ))
@@ -276,6 +277,7 @@ async fn when_auth_incorrect_it_should_return_unauthorized() {
 
     let app = test::init_service(create_app(
         PathBuf::from("."),
+        None,
         config,
         Some("auth123".to_string()),
     ))
@@ -334,6 +336,7 @@ async fn when_auth_supplied_it_should_execute_rigs() {
 
     let app = test::init_service(create_app(
         PathBuf::from("."),
+        None,
         config,
         Some("auth123".to_string()),
     ))

@@ -120,6 +120,13 @@ pub(crate) enum Commands {
         /// The path to the server configuration files.
         path: PathBuf,
 
+        /// The path to any ahead-of-time compiled components.
+        /// Note: This should be used with caution. AOT compiled files
+        /// must be compatible with the target machine, and have been
+        /// created with this exact version of Slipway.
+        #[arg(short, long)]
+        aot_path: Option<PathBuf>,
+
         #[command(subcommand)]
         subcommand: Option<ServeCommands>,
     },
@@ -148,6 +155,9 @@ enum ServeCommands {
 
     /// Download all required components to the local components folder.
     Consolidate,
+
+    /// Try to ahead-of-time compile any WASM components.
+    AotCompile,
 
     /// Add a device to use when serving HTTP requests.
     #[command(arg_required_else_help = true)]
@@ -353,7 +363,11 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
         Commands::Wit => {
             println!("{}", WASM_INTERFACE_TYPE_STR);
         }
-        Commands::Serve { path, subcommand } => match subcommand {
+        Commands::Serve {
+            path,
+            aot_path,
+            subcommand,
+        } => match subcommand {
             Some(ServeCommands::Init) => {
                 configure_tracing(Default::default());
                 serve::commands::init(path).await?;
@@ -361,6 +375,14 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
             Some(ServeCommands::Consolidate) => {
                 configure_tracing(Some("debug".to_string()));
                 serve::commands::consolidate(path).await?;
+            }
+            Some(ServeCommands::AotCompile) => {
+                configure_tracing(Some("debug".to_string()));
+                let Some(aot_path) = aot_path else {
+                    anyhow::bail!("AOT path must be provided for ahead-of-time compilation.");
+                };
+                let cache = serve::commands::consolidate(path.clone()).await?;
+                serve::commands::aot_compile(aot_path, cache).await?;
             }
             Some(ServeCommands::AddDevice { name, playlist }) => {
                 configure_tracing(Default::default());
@@ -400,9 +422,10 @@ async fn main_actix_web(args: Cli) -> anyhow::Result<()> {
     match args.command {
         Commands::Serve {
             path,
+            aot_path,
             subcommand: None,
         } => {
-            serve::serve(path).await?;
+            serve::serve(path, aot_path).await?;
         }
         _ => {
             panic!("Command is not supported in actix-web mode.");
