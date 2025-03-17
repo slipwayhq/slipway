@@ -46,12 +46,13 @@ mod tests {
     use common_macros::slipway_test_async;
     use serde_json::json;
     use slipway_engine::{
-        utils::ch, BasicComponentCache, BasicComponentsLoader, BasicComponentsLoaderBuilder,
-        ComponentRigging, Rig, RigSession, Rigging, RunComponentError, RunError, SlipwayReference,
+        BasicComponentCache, BasicComponentsLoader, BasicComponentsLoaderBuilder, ComponentRigging,
+        Rig, RigSession, Rigging, RunComponentError, RunError, SlipwayReference, utils::ch,
     };
 
     use common_test_utils::{
-        get_slipway_test_components_path, SLIPWAY_INCREMENT_COMPONENT_FOLDER_NAME,
+        SLIPWAY_INCREMENT_COMPONENT_FOLDER_NAME, get_slipway_test_components_path,
+        get_slipway_test_components_registry_url,
     };
     use slipway_wasmtime_runner::WASMTIME_COMPONENT_RUNNER_IDENTIFIER;
 
@@ -77,6 +78,7 @@ mod tests {
 
     fn create_components_loader() -> BasicComponentsLoader {
         BasicComponentsLoaderBuilder::new()
+            .registry_lookup_url(&get_slipway_test_components_registry_url())
             .local_base_directory(&get_slipway_test_components_path())
             .build()
     }

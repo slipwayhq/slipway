@@ -4,10 +4,10 @@ use common::{assert_messages_contains, get_rig_output};
 use common_test_utils::SLIPWAY_INCREMENT_COMPONENT_TAR_NAME;
 use serde_json::json;
 use slipway_engine::{
+    ComponentHandle, ComponentRigging, Permission, Permissions, RegistryComponentPermission, Rig,
+    Rigging, RunComponentError, RunError, SlipwayReference,
     errors::{ComponentLoadError, ComponentLoadErrorInner},
     utils::ch,
-    ComponentHandle, ComponentRigging, LocalComponentPermission, Permission, Permissions, Rig,
-    Rigging, RunComponentError, RunError, SlipwayReference,
 };
 
 mod common;
@@ -16,7 +16,11 @@ mod common;
 async fn permissions_load_component_from_rig() {
     let rig = create_rig(Permissions::new(
         &vec![Permission::All],
-        &vec![Permission::LocalComponent(LocalComponentPermission::Any {})],
+        &vec![Permission::RegistryComponent(RegistryComponentPermission {
+            name: None,
+            publisher: None,
+            version: None,
+        })],
     ));
 
     let maybe_output = get_rig_output(rig, "test", Permissions::allow_all()).await;

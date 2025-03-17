@@ -46,6 +46,6 @@
     }
   },
   "callouts": {
-    "increment": "file:slipwayhq.increment.0.0.1.tar"
+    "increment": "slipwayhq.increment.0.0.1"
   }
 }

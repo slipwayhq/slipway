@@ -1,7 +1,9 @@
 use core::panic;
 use std::{str::FromStr, sync::Arc};
 
-use common_test_utils::get_slipway_test_components_path;
+use common_test_utils::{
+    get_slipway_test_components_path, get_slipway_test_components_registry_url,
+};
 use slipway_engine::{
     BasicComponentCache, BasicComponentsLoader, BasicComponentsLoaderBuilder, CallChain,
     ComponentHandle, ComponentOutput, ComponentRunner, Permissions, Rig, RigSession, RunError,
@@ -19,6 +21,7 @@ pub fn get_component_runners() -> Vec<Box<dyn ComponentRunner>> {
 
 pub fn create_components_loader() -> BasicComponentsLoader {
     BasicComponentsLoaderBuilder::new()
+        .registry_lookup_url(&get_slipway_test_components_registry_url())
         .local_base_directory(&get_slipway_test_components_path())
         .build()
 }

@@ -5,7 +5,7 @@ use slipway_engine::{CallChain, ComponentHandle, ComponentRunner, Immutable, Rig
 use crate::to_view_model::to_shortcuts;
 
 use super::{
-    errors::SlipwayDebugError, json_editor::JsonEditor, write_state, DebugCli, DebuggerCommand,
+    DebugCli, DebuggerCommand, errors::SlipwayDebugError, json_editor::JsonEditor, write_state,
 };
 
 pub(super) async fn handle_command<'rig, 'cache, W: Write>(
@@ -122,12 +122,13 @@ mod tests {
     use common_macros::slipway_test_async;
     use serde_json::json;
     use slipway_engine::{
-        utils::ch, BasicComponentCache, BasicComponentsLoaderBuilder, ComponentRigging,
-        ComponentState, Rig, RigSession, Rigging, SlipwayReference,
+        BasicComponentCache, BasicComponentsLoaderBuilder, ComponentRigging, ComponentState, Rig,
+        RigSession, Rigging, SlipwayReference, utils::ch,
     };
 
     use common_test_utils::{
-        get_slipway_test_components_path, SLIPWAY_INCREMENT_COMPONENT_FOLDER_NAME,
+        SLIPWAY_INCREMENT_COMPONENT_FOLDER_NAME, get_slipway_test_components_path,
+        get_slipway_test_components_registry_url,
     };
 
     use crate::component_runners::get_component_runners;
@@ -515,6 +516,7 @@ mod tests {
         let component_cache = BasicComponentCache::primed(
             &rig,
             &BasicComponentsLoaderBuilder::new()
+                .registry_lookup_url(&get_slipway_test_components_registry_url())
                 .local_base_directory(&get_slipway_test_components_path())
                 .build(),
         )

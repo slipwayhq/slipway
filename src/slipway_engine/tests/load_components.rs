@@ -4,15 +4,16 @@ use common_macros::slipway_test_async;
 use serde_json::json;
 
 use common_test_utils::{
-    get_slipway_test_components_path, test_server::TestServer,
     SLIPWAY_INCREMENT_COMPONENT_FOLDER_NAME, SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_FOLDER_NAME,
     SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_NAME, SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_TAR_NAME,
+    get_slipway_test_components_path, get_slipway_test_components_registry_url,
+    test_server::TestServer,
 };
 use slipway_engine::{
-    errors::{RigError, ValidationType},
-    utils::ch,
     BasicComponentCache, BasicComponentsLoader, ComponentHandle, ComponentRigging, Instruction,
     Rig, RigSession, Rigging, SlipwayReference,
+    errors::{RigError, ValidationType},
+    utils::ch,
 };
 use url::Url;
 
@@ -125,6 +126,7 @@ async fn test_component(localhost_url: Option<&str>, component_reference: Slipwa
         &rig,
         &BasicComponentsLoader::builder()
             .local_base_directory(&get_slipway_test_components_path())
+            .registry_lookup_url(&get_slipway_test_components_registry_url())
             .registry_lookup_url(&format!(
                 "{}{{publisher}}.{{name}}.{{version}}.tar",
                 localhost_url.unwrap_or("http://localhost/")

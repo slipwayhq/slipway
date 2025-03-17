@@ -44,6 +44,16 @@ pub fn get_slipway_test_components_path() -> PathBuf {
     find_ancestor_path(PathBuf::from(SLIPWAY_TEST_COMPONENTS_PATH))
 }
 
+pub fn get_slipway_test_components_registry_url() -> String {
+    let components_path = get_slipway_test_components_path();
+    format!(
+        "file://{}",
+        components_path
+            .join("{publisher}.{name}.{version}.tar")
+            .to_string_lossy()
+    )
+}
+
 pub fn find_ancestor_path(path_to_find: PathBuf) -> PathBuf {
     let mut current_path = std::env::current_dir().unwrap();
 

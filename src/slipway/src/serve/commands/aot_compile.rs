@@ -13,6 +13,8 @@ pub async fn aot_compile(
 
     let components = component_cache.into_inner();
 
+    tokio::fs::create_dir_all(&aot_path).await?;
+
     for (name, component) in components {
         for runner in component_runners.iter() {
             match runner
