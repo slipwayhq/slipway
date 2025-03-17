@@ -9,4 +9,4 @@ COPY ./components ./components
 
 RUN slipway serve . aot-compile
 
-CMD ["slipway", "serve", "."]
+CMD ["slipway", "serve", ".", "--aot"]
