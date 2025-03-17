@@ -40,7 +40,7 @@ pub async fn init_serve_config(serve_path: &Path) -> anyhow::Result<()> {
     let config = SlipwayServeConfig {
         registry_urls: vec![
             "file:./components/{publisher}.{name}.{version}.tar".to_string(),
-            "file:./components/{publisher}.{name}.".to_string(),
+            "file:./components/{publisher}.{name}".to_string(),
         ],
         timezone: Some(system_timezone),
         repository: RepositoryConfig::Filesystem,

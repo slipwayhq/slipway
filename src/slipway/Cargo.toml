@@ -5,10 +5,8 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
-clap = { version = "4.3.22", features = ["derive", "color"] }
-slipway_engine = { path = "../slipway_engine", features = [
-    "unstable-test-utils",
-] }
+clap = { workspace = true, features = ["derive", "color"] }
+slipway_engine = { workspace = true, features = ["unstable-test-utils"] }
 slipway_host = { workspace = true }
 slipway_wasmtime_runner = { workspace = true }
 slipway_fragment_runner = { workspace = true }
@@ -37,7 +35,7 @@ async-trait = { workspace = true }
 regex = { workspace = true }
 sha2 = { workspace = true }
 actix-web = { workspace = true }
-once_cell = { workspace = true } # required for conflict between boa and actix-web
+once_cell = { workspace = true }                                          # required for conflict between boa and actix-web
 chrono = { workspace = true, features = ["serde"] }
 nanoid = { workspace = true }
 chrono-tz = { workspace = true, features = ["serde"] }
@@ -49,3 +47,8 @@ iana-time-zone = { workspace = true }
 common_test_utils = { workspace = true }
 common_macros = { workspace = true }
 test-log = { workspace = true }
+assert_cmd = { workspace = true }
+tempfile = { workspace = true }
+reqwest = { workspace = true }
+indoc = { workspace = true }
+nix = { workspace = true }
