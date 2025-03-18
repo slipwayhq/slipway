@@ -1,4 +1,3 @@
-run(input);
 
 async function run(input) {
   if (input.file_type === TEXT) {
@@ -17,3 +16,5 @@ async function run(input) {
     throw new Error("Unexpected file type: " + input.file_type);
   }
 }
+
+export let output = run(input);

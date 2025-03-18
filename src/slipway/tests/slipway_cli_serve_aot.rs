@@ -51,6 +51,7 @@ async fn slipway_cli_serve_aot_and_check_response() {
     let mut config_json: serde_json::Value =
         serde_json::from_reader(std::fs::File::open(path.join("slipway_serve.json")).unwrap())
             .unwrap();
+
     config_json["rig_permissions"] = serde_json::json!({
             "hello": {
                 "allow": [ { "permission": "all" } ]
@@ -109,9 +110,14 @@ async fn slipway_cli_serve_aot_and_check_response() {
     thread::sleep(Duration::from_secs(1));
 
     // Make a request to check the server's response
-    let response = reqwest::get("http://localhost:8080/rigs/hello?format=json")
-        .await
-        .unwrap();
+    let maybe_response = reqwest::get("http://localhost:8080/rigs/hello?format=json").await;
+
+    // Shut down the server
+    send_ctrlc(&child); // child.kill().unwrap();
+
+    let output = child.wait_with_output().unwrap();
+
+    let response = maybe_response.unwrap();
 
     println!("{:?}", response);
     assert_eq!(response.status(), 200);
@@ -121,12 +127,7 @@ async fn slipway_cli_serve_aot_and_check_response() {
     let body_json: serde_json::Value = serde_json::from_str(&body).unwrap();
     assert_eq!(body_json["value"], 2);
 
-    // Shut down the server
-    send_ctrlc(&child); // child.kill().unwrap();
-
-    let output = child.wait_with_output().unwrap();
     let stdout = String::from_utf8_lossy(&output.stdout);
-
     println!("{}", stdout);
 
     assert!(

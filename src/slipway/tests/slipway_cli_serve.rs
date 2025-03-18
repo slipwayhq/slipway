@@ -51,20 +51,20 @@ async fn slipway_cli_serve_and_check_response() {
         component_path.join("run.js"),
         indoc::indoc! {r#"
             function run(input) {
-            return {
-                "type": "AdaptiveCard",
-                "verticalContentAlignment": "center",
-                "body": [
-                    {
-                        "type": "TextBlock",
-                        "horizontalAlignment": "center",
-                        "text": input.text
-                    }
-                ]
-            };
+                return {
+                    "type": "AdaptiveCard",
+                    "verticalContentAlignment": "center",
+                    "body": [
+                        {
+                            "type": "TextBlock",
+                            "horizontalAlignment": "center",
+                            "text": input.text
+                        }
+                    ]
+                };
             }
 
-            run(input);
+            export let output = run(input);
         "#},
     )
     .unwrap();
@@ -116,9 +116,13 @@ async fn slipway_cli_serve_and_check_response() {
     thread::sleep(Duration::from_secs(1));
 
     // Make a request to check the server's response
-    let response = reqwest::get("http://localhost:8080/rigs/hello?format=json")
-        .await
-        .unwrap();
+    let maybe_response = reqwest::get("http://localhost:8080/rigs/hello?format=json").await;
+
+    // Shut down the server
+    send_ctrlc(&child); // child.kill().unwrap();
+    child.wait().unwrap();
+
+    let response = maybe_response.unwrap();
 
     println!("{:?}", response);
     assert_eq!(response.status(), 200);
@@ -126,8 +130,4 @@ async fn slipway_cli_serve_and_check_response() {
     let body = response.text().await.unwrap();
     println!("{:?}", body);
     assert!(body.contains("\"AdaptiveCard\""));
-
-    // Shut down the server
-    send_ctrlc(&child); // child.kill().unwrap();
-    child.wait().unwrap();
 }

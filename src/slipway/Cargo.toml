@@ -42,6 +42,7 @@ chrono-tz = { workspace = true, features = ["serde"] }
 croner = { workspace = true }
 actix-cors = { workspace = true }
 iana-time-zone = { workspace = true }
+indoc = { workspace = true }
 
 [dev-dependencies]
 common_test_utils = { workspace = true }

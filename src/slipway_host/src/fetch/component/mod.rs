@@ -14,22 +14,19 @@ pub(super) async fn fetch_component_data(
     url: &Url,
     options: Option<RequestOptions>,
 ) -> Result<BinResponse, RequestError> {
-    let handle_str = url.domain().ok_or(RequestError::message(format!(
-        "No domain (component handle) found in url from component {}: {}",
-        execution_context.call_chain.component_handle_trail(),
-        url
-    )))?;
-
-    let handle = ComponentHandle::from_str(handle_str).map_err(|e| {
-        RequestError::for_error(
-            format!(
-                "Failed to parse component handle \"{}\" from \"{}\"",
-                handle_str,
-                execution_context.call_chain.component_handle_trail(),
-            ),
-            e,
-        )
-    })?;
+    let handle = match url.domain() {
+        Some(handle_str) => ComponentHandle::from_str(handle_str).map_err(|e| {
+            RequestError::for_error(
+                format!(
+                    "Failed to parse component handle \"{}\" from \"{}\"",
+                    handle_str,
+                    execution_context.call_chain.component_handle_trail(),
+                ),
+                e,
+            )
+        }),
+        None => Ok(execution_context.component_handle().clone()),
+    }?;
 
     crate::permissions::ensure_can_use_component_handle(&handle, execution_context)?;
 

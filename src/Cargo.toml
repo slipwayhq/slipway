@@ -91,6 +91,7 @@ nix = "0.29.0"
 boa_engine = { git = "https://github.com/boa-dev/boa", branch = "main", package = "boa_engine", features = [
     "annex-b",
     "experimental",
+    "intl_bundled",
 ] }
 boa_runtime = { git = "https://github.com/boa-dev/boa", branch = "main", package = "boa_runtime" }
 boa_macros = { git = "https://github.com/boa-dev/boa", branch = "main", package = "boa_macros" }

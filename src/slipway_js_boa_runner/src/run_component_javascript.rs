@@ -5,15 +5,15 @@ use slipway_engine::{
 };
 
 use boa_engine::{
-    builtins::promise::PromiseState, js_string, property::Attribute, Context, JsError, JsValue,
-    Script, Source,
+    Context, JsError, JsValue, Module, Script, Source, builtins::promise::PromiseState, js_string,
+    property::Attribute,
 };
 use slipway_host::ComponentError;
 use tracing::debug;
 
 use crate::{
-    host::{prepare_canopy_host, SlipwayHost},
-    BoaComponentDefinition, BOA_RUN_JS_FILE_NAME,
+    BOA_RUN_JS_FILE_NAME, BoaComponentDefinition,
+    host::{SlipwayHost, prepare_canopy_host},
 };
 
 pub(super) async fn run_component_javascript(
@@ -24,7 +24,8 @@ pub(super) async fn run_component_javascript(
 ) -> Result<RunComponentResult, RunComponentError> {
     let prepare_component_start = Instant::now();
     let host = SlipwayHost::new(execution_context);
-    let mut context = super::boa_environment::prepare_environment()?;
+    let mut context =
+        super::boa_environment::prepare_environment(Arc::clone(&execution_context.files))?;
     prepare_canopy_host(&host, &mut context)?;
     let prepare_component_duration = prepare_component_start.elapsed();
 
@@ -89,28 +90,53 @@ async fn run_component_scripts(
         run_script(script_file, &content, context).await?;
     }
 
-    let run_js_result = run_script(BOA_RUN_JS_FILE_NAME, run_js, context).await?;
+    debug!(
+        "Running module \"{}\" ({} bytes) using Boa",
+        BOA_RUN_JS_FILE_NAME,
+        run_js.len()
+    );
+
+    let module = Module::parse(Source::from_bytes(&run_js), None, context)
+        .map_err(|e| convert_error(BOA_RUN_JS_FILE_NAME, context, e))?;
+
+    let promise = module.load_link_evaluate(context);
 
     context
         .run_jobs_async()
         .await
         .map_err(|e| RunComponentError::Other(format!("Failed to run async jobs\n{}", e)))?;
 
-    let promise = run_js_result.as_promise();
+    match promise.state() {
+        PromiseState::Pending => Err(RunComponentError::RunCallFailed {
+            source: anyhow::anyhow!("Promise from run.js is still pending"),
+        }),
+        PromiseState::Fulfilled(_) => {
+            let namespace = module.namespace(context);
+            let result = namespace
+                .get(js_string!("output"), context)
+                .map_err(|e| convert_error(BOA_RUN_JS_FILE_NAME, context, e))?;
 
-    match promise {
-        Some(promise) => match promise.state() {
-            PromiseState::Pending => Err(RunComponentError::RunCallFailed {
-                source: anyhow::anyhow!("Promise from run.js is still pending"),
-            }),
-            PromiseState::Fulfilled(result) => Ok(result),
-            PromiseState::Rejected(error) => Err(convert_error(
-                BOA_RUN_JS_FILE_NAME,
-                context,
-                JsError::from_opaque(error),
-            )),
-        },
-        None => Ok(run_js_result),
+            let promise = result.as_promise();
+            match promise {
+                Some(promise) => match promise.state() {
+                    PromiseState::Pending => Err(RunComponentError::RunCallFailed {
+                        source: anyhow::anyhow!("Output promise from run.js is still pending"),
+                    }),
+                    PromiseState::Fulfilled(result) => Ok(result),
+                    PromiseState::Rejected(error) => Err(convert_error(
+                        BOA_RUN_JS_FILE_NAME,
+                        context,
+                        JsError::from_opaque(error),
+                    )),
+                },
+                None => Ok(result),
+            }
+        }
+        PromiseState::Rejected(error) => Err(convert_error(
+            BOA_RUN_JS_FILE_NAME,
+            context,
+            JsError::from_opaque(error),
+        )),
     }
 }
 

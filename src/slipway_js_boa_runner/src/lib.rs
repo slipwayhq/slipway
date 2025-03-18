@@ -6,6 +6,7 @@ use slipway_engine::{
 
 mod async_environment;
 mod boa_environment;
+mod component_module_loader;
 mod host;
 mod run_component_javascript;
 

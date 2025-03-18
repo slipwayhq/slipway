@@ -1,5 +1,3 @@
-run(input);
-
 async function run(input) {
   const { url, method, headers, body, response_type } = input;
   const requestOptions = {
@@ -43,3 +41,5 @@ async function run(input) {
     return mapErrToOutput(e);
   }
 }
+
+export let output = run(input);

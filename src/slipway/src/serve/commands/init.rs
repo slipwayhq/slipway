@@ -69,6 +69,30 @@ pub async fn init_dockerfile(serve_path: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
+pub async fn init_git_ignore(serve_path: &Path) -> anyhow::Result<()> {
+    let path = serve_path.join(".gitignore");
+
+    if path.exists() {
+        return Ok(());
+    }
+
+    info!("Adding .gitignore: {path:?}");
+    crate::serve::repository::file_system::write_to_file(
+        &path,
+        ".gitignore",
+        &indoc::indoc!(
+            r#"
+            /aot
+
+            .DS_Store
+            "#
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
+
 pub async fn init_folder(serve_path: &Path, folder_name: &str) -> anyhow::Result<()> {
     let path = serve_path.join(folder_name);
 

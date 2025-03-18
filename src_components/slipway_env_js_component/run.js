@@ -1,5 +1,3 @@
-run(input);
-
 function run(input) {
   const env = slipway_host.env(input.key);
 
@@ -7,3 +5,5 @@ function run(input) {
     value: env
   };
 }
+
+export let output = run(input);

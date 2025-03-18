@@ -1,5 +1,3 @@
-run(input);
-
 async function run(input) {
   switch (input.type) {
     case "increment":
@@ -43,6 +41,8 @@ async function run(input) {
       throw new Error("Unexpected input type: " + input.type);
   }  
 }
+
+export let output = run(input);
 
 // function run() {
 //   console.trace("Trace from 'run' function.");

@@ -1,5 +1,3 @@
-run();
-
 async function run() {
   const requestOptions = {
     // ERROR: We are passing a map instead of a list of key-value pairs.
@@ -12,3 +10,5 @@ async function run() {
 
   await slipway_host.fetch_text("https://example.com", requestOptions);
 }
+
+export let output = run();

@@ -1,17 +1,22 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use boa_runtime::{ConsoleState, Logger, RegisterOptions};
 
 use boa_engine::{
-    context::ContextBuilder, module::SimpleModuleLoader, optimizer::OptimizerOptions, Context,
-    JsResult, JsString, Source,
+    Context, JsResult, JsString, Source, context::ContextBuilder, optimizer::OptimizerOptions,
 };
-use slipway_engine::RunComponentError;
+use slipway_engine::{ComponentFiles, RunComponentError};
 use tracing::{debug, error, info, trace, warn};
 
-pub(super) fn prepare_environment() -> Result<Context, RunComponentError> {
+use crate::component_module_loader::ComponentModuleLoader;
+
+pub(super) fn prepare_environment(
+    files: Arc<ComponentFiles>,
+) -> Result<Context, RunComponentError> {
     let executor = Rc::new(super::async_environment::Queue::new());
-    let loader = Rc::new(SimpleModuleLoader::new(".").map_err(|e| anyhow::anyhow!(e.to_string()))?);
+    // let loader = Rc::new(SimpleModuleLoader::new(".").map_err(|e| anyhow::anyhow!(e.to_string()))?);
+    let loader =
+        Rc::new(ComponentModuleLoader::new(files).map_err(|e| anyhow::anyhow!(e.to_string()))?);
 
     let mut context = ContextBuilder::new()
         .job_executor(executor)
@@ -35,6 +40,7 @@ pub(super) fn prepare_environment() -> Result<Context, RunComponentError> {
             global = {};
             setTimeout = () => {};
             clearTimeout = () => {};
+            process = { env: {} };
             "#}))
         .map_err(|e| {
             RunComponentError::Other(format!("Failed to prepare javascript environment.\n{}", e))
