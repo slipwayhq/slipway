@@ -1,12 +1,13 @@
 use std::{path::Path, sync::Arc};
 
-use crate::ComponentError;
+use crate::{ComponentError, permissions::log_permissions_check};
 use slipway_engine::{CallChain, ComponentExecutionContext, Permission};
 
 pub fn ensure_can_fetch_file(
     path: &Path,
     execution_context: &ComponentExecutionContext,
 ) -> Result<(), ComponentError> {
+    log_permissions_check(&format!("fetch file: {path:?}"));
     ensure_can_fetch_file_inner(path, Arc::clone(&execution_context.call_chain))
 }
 

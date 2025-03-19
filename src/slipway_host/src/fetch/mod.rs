@@ -192,6 +192,11 @@ pub async fn run_json(
         )
     })?;
 
+    // Rather than going through fetch_bin system, which would involve serializing and deserializing
+    // the input and output unnecessarily, we directly call `run_component_callout`.
+    // We must therefore perform our own permissions check here.
+    crate::permissions::ensure_can_use_component_handle(&handle, execution_context)?;
+
     run_component_callout(execution_context, &handle, input).await
 }
 

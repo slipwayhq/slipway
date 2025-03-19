@@ -124,12 +124,13 @@ async fn assert_run_errors_with(rig: Rig, expected_messages: &[&str]) {
 
     let result = run_rig::<()>(
         &session,
-        &mut no_event_handler(),
+        &mut no_event_handler(), // This causes TError to be ().
         &component_runners,
         call_chain,
     )
     .await;
 
+    // The fragment runner returns a std::io::Error for TError.
     fn match_inner_anyhow(error: &anyhow::Error, expected_messages: &[&str]) {
         match error.downcast_ref::<RunError<std::io::Error>>() {
             Some(run_error) => match_inner(run_error, expected_messages),

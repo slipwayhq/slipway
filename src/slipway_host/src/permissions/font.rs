@@ -2,12 +2,13 @@ use std::sync::Arc;
 
 use slipway_engine::{CallChain, ComponentExecutionContext, Permission};
 
-use crate::ComponentError;
+use crate::{ComponentError, permissions::log_permissions_check};
 
 pub fn ensure_can_query_font(
     query: &str,
     execution_context: &ComponentExecutionContext,
 ) -> Result<(), ComponentError> {
+    log_permissions_check(&format!("query font: {query}"));
     ensure_can_query_font_inner(query, Arc::clone(&execution_context.call_chain))
 }
 
@@ -56,7 +57,7 @@ fn ensure_can_query_font_inner(
 mod test {
     use slipway_engine::StringPermission;
     use slipway_engine::UrlPermission;
-    use slipway_engine::{utils::ch, ComponentHandle, Permissions};
+    use slipway_engine::{ComponentHandle, Permissions, utils::ch};
 
     use super::*;
 

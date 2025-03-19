@@ -1,7 +1,9 @@
 use std::str::FromStr;
 
 use common::{assert_messages_contains, get_rig_output};
-use common_test_utils::SLIPWAY_INCREMENT_COMPONENT_TAR_NAME;
+use common_test_utils::{
+    SLIPWAY_INCREMENT_COMPONENT_TAR_NAME, SLIPWAY_INCREMENT_JS_COMPONENT_TAR_NAME,
+};
 use serde_json::json;
 use slipway_engine::{
     ComponentHandle, ComponentRigging, Permission, Permissions, RegistryComponentPermission, Rig,
@@ -13,15 +15,25 @@ use slipway_engine::{
 mod common;
 
 #[common_macros::slipway_test_async]
-async fn permissions_load_component_from_rig() {
-    let rig = create_rig(Permissions::new(
-        &vec![Permission::All],
-        &vec![Permission::RegistryComponent(RegistryComponentPermission {
-            name: None,
-            publisher: None,
-            version: None,
-        })],
-    ));
+async fn permissions_load_component_from_rig_wasm() {
+    permissions_load_component_from_rig(SLIPWAY_INCREMENT_COMPONENT_TAR_NAME).await;
+}
+#[common_macros::slipway_test_async]
+async fn permissions_load_component_from_rig_js() {
+    permissions_load_component_from_rig(SLIPWAY_INCREMENT_JS_COMPONENT_TAR_NAME).await;
+}
+async fn permissions_load_component_from_rig(component: &str) {
+    let rig = create_rig(
+        Permissions::new(
+            &vec![Permission::All],
+            &vec![Permission::RegistryComponent(RegistryComponentPermission {
+                name: None,
+                publisher: None,
+                version: None,
+            })],
+        ),
+        component,
+    );
 
     let maybe_output = get_rig_output(rig, "test", Permissions::allow_all()).await;
 
@@ -47,8 +59,15 @@ async fn permissions_load_component_from_rig() {
 }
 
 #[common_macros::slipway_test_async]
-async fn permissions_load_component_from_component() {
-    let rig = create_rig(Permissions::allow_all());
+async fn permissions_load_component_from_component_wasm() {
+    permissions_load_component_from_component(SLIPWAY_INCREMENT_COMPONENT_TAR_NAME).await;
+}
+#[common_macros::slipway_test_async]
+async fn permissions_load_component_from_component_js() {
+    permissions_load_component_from_component(SLIPWAY_INCREMENT_JS_COMPONENT_TAR_NAME).await;
+}
+async fn permissions_load_component_from_component(component: &str) {
+    let rig = create_rig(Permissions::allow_all(), component);
 
     let maybe_output = get_rig_output(rig, "test", Permissions::empty()).await;
 
@@ -64,7 +83,7 @@ async fn permissions_load_component_from_component() {
             assert_eq!(
                 reference,
                 Box::new(SlipwayReference::Local {
-                    path: SLIPWAY_INCREMENT_COMPONENT_TAR_NAME.into(),
+                    path: component.into(),
                 })
             );
             assert_messages_contains(
@@ -77,13 +96,13 @@ async fn permissions_load_component_from_component() {
     }
 }
 
-fn create_rig(component_permissions: Permissions) -> Rig {
+fn create_rig(component_permissions: Permissions, component: &str) -> Rig {
     Rig::for_test(Rigging {
         components: [(
             ComponentHandle::from_str("test").unwrap(),
             ComponentRigging::for_test_with_reference_permissions(
                 SlipwayReference::Local {
-                    path: SLIPWAY_INCREMENT_COMPONENT_TAR_NAME.into(),
+                    path: component.into(),
                 },
                 Some(json!({
                     "type": "callout_increment",

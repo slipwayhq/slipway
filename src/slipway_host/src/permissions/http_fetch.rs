@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::ComponentError;
+use crate::{ComponentError, permissions::log_permissions_check};
 use slipway_engine::{CallChain, ComponentExecutionContext, Permission};
 use url::Url;
 
@@ -8,6 +8,7 @@ pub fn ensure_can_fetch_url(
     url: &Url,
     execution_context: &ComponentExecutionContext,
 ) -> Result<(), ComponentError> {
+    log_permissions_check(&format!("fetch URL: {url}"));
     ensure_can_fetch_url_inner(url, Arc::clone(&execution_context.call_chain))
 }
 

@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
-use crate::ComponentError;
+use crate::{ComponentError, permissions::log_permissions_check};
 use slipway_engine::{CallChain, ComponentExecutionContext, Permission};
 
 pub fn ensure_can_fetch_env(
     key: &str,
     execution_context: &ComponentExecutionContext,
 ) -> Result<(), ComponentError> {
+    log_permissions_check(&format!("access environment variable: {key}"));
     ensure_can_fetch_env_inner(key, Arc::clone(&execution_context.call_chain))
 }
 
@@ -55,7 +56,7 @@ fn ensure_can_fetch_env_inner(
 mod test {
     use slipway_engine::StringPermission;
     use slipway_engine::UrlPermission;
-    use slipway_engine::{utils::ch, ComponentHandle, Permissions};
+    use slipway_engine::{ComponentHandle, Permissions, utils::ch};
 
     use super::*;
 

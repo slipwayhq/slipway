@@ -7,6 +7,8 @@ use slipway_engine::{
 };
 use url::Url;
 
+use super::log_permissions_check;
+
 pub fn ensure_can_use_component_handle(
     handle: &ComponentHandle,
     execution_context: &ComponentExecutionContext,
@@ -33,6 +35,8 @@ pub fn ensure_can_use_component_reference(
     component_reference: &SlipwayReference,
     call_chain: Arc<CallChain<'_>>,
 ) -> Result<(), ComponentError> {
+    log_permissions_check(&format!("use component: {component_reference}"));
+
     let is_allowed = match component_reference {
         SlipwayReference::Registry {
             publisher,
@@ -147,7 +151,7 @@ mod test {
 
     use slipway_engine::RegistryComponentPermission;
     use slipway_engine::UrlPermission;
-    use slipway_engine::{utils::ch, ComponentHandle, Permissions};
+    use slipway_engine::{ComponentHandle, Permissions, utils::ch};
 
     use super::*;
 
