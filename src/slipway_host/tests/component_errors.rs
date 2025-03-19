@@ -122,7 +122,7 @@ async fn assert_run_errors_with(rig: Rig, expected_messages: &[&str]) {
     let call_chain = CallChain::full_trust_arc();
     let session = RigSession::new(rig, &component_cache);
 
-    let result = run_rig(
+    let result = run_rig::<()>(
         &session,
         &mut no_event_handler(),
         &component_runners,
@@ -130,8 +130,18 @@ async fn assert_run_errors_with(rig: Rig, expected_messages: &[&str]) {
     )
     .await;
 
-    fn match_inner(error: &anyhow::Error, expected_messages: &[&str]) {
-        match error.downcast_ref::<RunError<()>>().unwrap() {
+    fn match_inner_anyhow(error: &anyhow::Error, expected_messages: &[&str]) {
+        match error.downcast_ref::<RunError<std::io::Error>>() {
+            Some(run_error) => match_inner(run_error, expected_messages),
+            None => panic!("Expected RunError, got: {:#?}", error),
+        }
+    }
+
+    fn match_inner<TError: std::fmt::Debug>(
+        run_error: &RunError<TError>,
+        expected_messages: &[&str],
+    ) {
+        match run_error {
             RunError::RunComponentFailed {
                 component_handle: _,
                 component_runner: _,
@@ -143,21 +153,21 @@ async fn assert_run_errors_with(rig: Rig, expected_messages: &[&str]) {
                     }
                 }
                 RunComponentError::RunCallFailed { source } => {
-                    match_inner(source, expected_messages);
+                    match_inner_anyhow(source, expected_messages);
                 }
                 _ => panic!(
                     "Expected RunCallReturnedError or RunCallFailed, got: {:#?}",
                     error
                 ),
             },
-            _ => panic!("Expected RunComponentFailed, got: {:#?}", error),
+            _ => panic!("Expected RunComponentFailed, got: {:#?}", run_error),
         }
     }
 
     match result {
         Ok(_) => panic!("Expected error"),
         Err(error) => {
-            match_inner(&error.into(), expected_messages);
+            match_inner(&error, expected_messages);
         }
     }
 }

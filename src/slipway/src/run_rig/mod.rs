@@ -2,14 +2,17 @@ use std::{io::Write, path::PathBuf, sync::Arc};
 
 use anyhow::Context;
 use slipway_engine::{
-    parse_rig, BasicComponentCache, BasicComponentsLoader, CallChain, Permissions, RigSession,
+    BasicComponentCache, BasicComponentsLoader, CallChain, Permissions, RigSession, parse_rig,
 };
-use slipway_host::run::RunEventHandler;
+use slipway_host::{
+    render_state::to_view_model::ComponentViewModel,
+    render_state::{WriteComponentOutputs, write_state, write_state_with_outputs},
+    run::RunEventHandler,
+};
 
 use crate::{
-    component_runners::get_component_runners,
+    canvas::render_canvas_if_exists, component_runners::get_component_runners,
     host_error::HostError,
-    render_state::{write_state, write_state_with_outputs},
 };
 
 pub(super) async fn run_rig<W: Write>(
@@ -20,7 +23,6 @@ pub(super) async fn run_rig<W: Write>(
     save_path: Option<PathBuf>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Launching {}", input.display())?;
-    writeln!(w)?;
 
     let file_contents = tokio::fs::read_to_string(input.clone())
         .await
@@ -34,11 +36,8 @@ pub(super) async fn run_rig<W: Write>(
     let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
     let session = RigSession::new(rig, &component_cache);
 
-    let mut event_handler = SlipwayRunEventHandler::new(
-        w,
-        save_path,
-        crate::render_state::PrintComponentOutputsType::LeafComponents,
-    );
+    let mut event_handler =
+        CliRunEventHandler::new(w, save_path, WriteComponentOutputsType::LeafComponents);
     let component_runners = get_component_runners();
     let component_runners_slice = component_runners.as_slice();
 
@@ -55,17 +54,17 @@ pub(super) async fn run_rig<W: Write>(
     Ok(())
 }
 
-pub(super) struct SlipwayRunEventHandler<'w, W: Write> {
+pub(super) struct CliRunEventHandler<'w, W: Write> {
     w: &'w mut W,
     save_path: Option<PathBuf>,
-    write_outputs_type: crate::render_state::PrintComponentOutputsType,
+    write_outputs_type: WriteComponentOutputsType,
 }
 
-impl<'w, W: Write> SlipwayRunEventHandler<'w, W> {
+impl<'w, W: Write> CliRunEventHandler<'w, W> {
     pub fn new(
         w: &'w mut W,
         save_path: Option<PathBuf>,
-        write_outputs_type: crate::render_state::PrintComponentOutputsType,
+        write_outputs_type: WriteComponentOutputsType,
     ) -> Self {
         Self {
             w,
@@ -76,7 +75,7 @@ impl<'w, W: Write> SlipwayRunEventHandler<'w, W> {
 }
 
 impl<'rig, 'cache, W: Write> RunEventHandler<'rig, 'cache, HostError>
-    for SlipwayRunEventHandler<'_, W>
+    for CliRunEventHandler<'_, W>
 {
     fn handle_component_run_start(
         &mut self,
@@ -100,17 +99,110 @@ impl<'rig, 'cache, W: Write> RunEventHandler<'rig, 'cache, HostError>
     ) -> Result<(), HostError> {
         if event.is_complete {
             writeln!(self.w, "No more components to run.")?;
-            writeln!(self.w)?;
             write_state_with_outputs(
                 self.w,
                 self.save_path.as_ref(),
                 event.state,
-                self.write_outputs_type,
+                SlipwayWriteComponentsOutputs {
+                    write_outputs_type: self.write_outputs_type,
+                },
             )?;
         } else {
-            write_state(self.w, event.state)?;
+            write_state::<_, HostError>(self.w, event.state)?;
         }
 
         Ok(())
     }
+}
+
+struct SlipwayWriteComponentsOutputs {
+    write_outputs_type: WriteComponentOutputsType,
+}
+
+impl<W: Write> WriteComponentOutputs<W, HostError> for SlipwayWriteComponentsOutputs {
+    fn write_component_outputs(
+        &self,
+        w: &mut W,
+        save_path: Option<&PathBuf>,
+        view_model: slipway_host::render_state::to_view_model::RigExecutionStateViewModel,
+    ) -> Result<(), HostError> {
+        match self.write_outputs_type {
+            WriteComponentOutputsType::None => {}
+            WriteComponentOutputsType::LeafComponents => {
+                for group in view_model.groups.iter() {
+                    for component in group.components.iter() {
+                        if !component.output_row_indexes.is_empty() {
+                            continue;
+                        }
+
+                        write_component_output(w, save_path, component)?;
+                    }
+                }
+            }
+            WriteComponentOutputsType::AllComponents => {
+                for group in view_model.groups.iter() {
+                    for component in group.components.iter() {
+                        write_component_output(w, save_path, component)?;
+                    }
+                }
+            }
+        };
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) enum WriteComponentOutputsType {
+    None,
+    LeafComponents,
+    AllComponents,
+}
+
+fn write_component_output<W: Write>(
+    w: &mut W,
+    save_path: Option<&PathBuf>,
+    component: &ComponentViewModel,
+) -> Result<(), HostError> {
+    if let Some(save_path) = save_path.as_ref() {
+        std::fs::create_dir_all(save_path).map_err(|error| {
+            HostError::Other(format!(
+                "Failed to create directory to save outputs: {}",
+                error
+            ))
+        })?;
+    }
+
+    if let Some(output) = component.state.output() {
+        writeln!(w, r#"Component "{}" output:"#, component.handle)?;
+
+        if !render_canvas_if_exists(
+            component.handle,
+            output,
+            save_path.map(|p| p.join(format!("{}.png", component.handle.0))),
+        )? {
+            writeln!(w, "{:#}", output)?;
+
+            if let Some(save_path) = save_path {
+                let output_path = save_path.join(format!("{}.json", component.handle.0));
+                let output_file = std::fs::File::create(output_path).map_err(|error| {
+                    HostError::Other(format!(
+                        "Failed to create output file for component {}: {}",
+                        component.handle, error
+                    ))
+                })?;
+
+                serde_json::to_writer_pretty(output_file, output).map_err(|error| {
+                    HostError::Other(format!(
+                        "Failed to write output file for component {}: {}",
+                        component.handle, error
+                    ))
+                })?;
+            }
+        }
+
+        writeln!(w)?;
+    }
+
+    Ok(())
 }

@@ -1,16 +1,17 @@
 use std::{collections::HashMap, sync::Arc};
 
 use slipway_engine::{
+    CallChain, ComponentExecutionContext, ComponentHandle, ComponentOutput, ComponentRunner,
+    Immutable, Instruction, RigExecutionState, RigSession, RunComponentError, RunError,
     errors::{ComponentLoadError, ComponentLoadErrorInner},
-    run_component, CallChain, ComponentExecutionContext, ComponentHandle, ComponentOutput,
-    ComponentRunner, Immutable, Instruction, RigExecutionState, RigSession, RunComponentError,
-    RunError,
+    run_component,
 };
-use tracing::{info_span, Instrument};
+use tracing::{Instrument, info_span};
 
 use crate::ComponentError;
 
 pub mod sink_run_event_handler;
+pub mod tracing_run_event_handler;
 
 pub struct ComponentRunStartEvent<'rig> {
     pub component_handle: &'rig ComponentHandle,
@@ -48,6 +49,10 @@ pub struct RunRigResult<'rig> {
 
 pub fn no_event_handler<'rig, 'cache>() -> impl RunEventHandler<'rig, 'cache, ()> {
     sink_run_event_handler::SinkRunEventHandler::new()
+}
+
+pub fn tracing_event_handler<'rig, 'cache>() -> impl RunEventHandler<'rig, 'cache, std::io::Error> {
+    tracing_run_event_handler::TracingRunEventHandler::new()
 }
 
 pub async fn run_rig<'rig, 'cache, 'runners, THostError>(

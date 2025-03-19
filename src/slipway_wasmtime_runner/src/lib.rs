@@ -15,7 +15,7 @@ use slipway_engine::{
     TryAotCompileComponentResult, TryRunComponentResult,
 };
 use slipway_host::{SLIPWAY_COMPONENT_WASM_FILE_NAME, hash_bytes};
-use tracing::{info, warn};
+use tracing::{debug, warn};
 use wasmtime::{Config, Engine};
 
 pub const WASMTIME_COMPONENT_RUNNER_IDENTIFIER: &str = "wasmtime";
@@ -121,7 +121,7 @@ impl ComponentRunner for WasmComponentRunner {
                     )
                 })?;
 
-                info!(
+                debug!(
                     "Using AOT compiled component {}",
                     execution_data.context.component_reference
                 );
@@ -135,7 +135,7 @@ impl ComponentRunner for WasmComponentRunner {
                 WasmData::Wasm(Arc::clone(&wasm_bytes))
             }
         } else {
-            info!(
+            debug!(
                 "JIT compiling component {}",
                 execution_data.context.component_reference
             );

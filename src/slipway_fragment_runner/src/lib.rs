@@ -7,7 +7,7 @@ use slipway_engine::{
     Rigging, RunComponentError, RunComponentResult, Schema, SlipwayReference,
     SpecialComponentReference, TryRunComponentResult, prime_special_component,
 };
-use slipway_host::run::{no_event_handler, run_rig};
+use slipway_host::run::{run_rig, tracing_event_handler};
 use tracing::Instrument;
 
 pub const FRAGMENT_COMPONENT_RUNNER_IDENTIFIER: &str = "fragment";
@@ -106,9 +106,9 @@ async fn run_component_fragment(
         execution_context.rig_session_options.clone(),
     );
 
-    let run_result = run_rig(
+    let run_result = run_rig::<std::io::Error>(
         &rig_session,
-        &mut no_event_handler(),
+        &mut tracing_event_handler(),
         component_runners,
         call_chain,
     )

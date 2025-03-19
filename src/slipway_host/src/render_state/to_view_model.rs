@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use slipway_engine::{ComponentHandle, ComponentState, RigExecutionState};
 
-pub(super) fn to_view_model<'state, 'rig, 'cache>(
+pub fn to_view_model<'state, 'rig, 'cache>(
     state: &'state RigExecutionState<'rig, 'cache>,
 ) -> RigExecutionStateViewModel<'rig>
 where
@@ -83,7 +83,7 @@ where
     RigExecutionStateViewModel { groups }
 }
 
-pub(super) fn to_shortcuts<'rig>(
+pub fn to_shortcuts<'rig>(
     state: &RigExecutionState<'rig, '_>,
 ) -> HashMap<String, &'rig ComponentHandle> {
     let mut shortcuts = HashMap::new();
@@ -108,15 +108,15 @@ fn to_shortcut<'rig>(
     s
 }
 
-pub(super) struct RigExecutionStateViewModel<'rig> {
+pub struct RigExecutionStateViewModel<'rig> {
     pub groups: Vec<ComponentGroupViewModel<'rig>>,
 }
 
-pub(super) struct ComponentGroupViewModel<'rig> {
+pub struct ComponentGroupViewModel<'rig> {
     pub components: Vec<ComponentViewModel<'rig>>,
 }
 
-pub(super) struct ComponentViewModel<'rig> {
+pub struct ComponentViewModel<'rig> {
     pub handle: &'rig ComponentHandle,
     pub state: &'rig ComponentState<'rig>,
     pub shortcut: String,
@@ -133,7 +133,7 @@ mod tests {
     use common_macros::slipway_test_async;
     use serde_json::json;
     use slipway_engine::{
-        utils::ch, BasicComponentCache, ComponentRigging, Rig, RigSession, Rigging,
+        BasicComponentCache, ComponentRigging, Rig, RigSession, Rigging, utils::ch,
     };
 
     fn get_component<'rig>(

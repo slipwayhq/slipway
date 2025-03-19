@@ -7,11 +7,8 @@ mod host_error;
 mod package;
 mod permissions;
 mod primitives;
-mod render_state;
 mod run_rig;
 mod serve;
-mod to_view_model;
-mod utils;
 
 #[cfg(test)]
 mod test_utils;

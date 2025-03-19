@@ -2,11 +2,13 @@ use std::io::Write;
 
 use termion::{color, style};
 
-use crate::{
-    host_error::HostError,
-    to_view_model::{ComponentGroupViewModel, ComponentViewModel, RigExecutionStateViewModel},
-    utils::{format_bytes, skip_first_n_chars},
+use crate::render_state::to_view_model::{
+    ComponentGroupViewModel, ComponentViewModel, RigExecutionStateViewModel,
 };
+
+use utils::{format_bytes, skip_first_n_chars};
+
+mod utils;
 
 const HASH_RENDER_CHAR_COUNT: usize = 8;
 const COLUMN_PADDING: &str = "  ";
@@ -24,10 +26,10 @@ const COLUMN_CHAR: char = '┆';
 //   ╰─┴───┴───────┴─• 10
 // • 3
 
-pub(crate) fn write_rig_graph<W: Write>(
+pub(crate) fn write_rig_graph<W: Write, TError: From<std::io::Error>>(
     w: &mut W,
     view_model: &RigExecutionStateViewModel<'_>,
-) -> Result<(), HostError> {
+) -> Result<(), TError> {
     let max_component_state_row_length = get_max_component_state_row_length(view_model);
     let max_input_size_string_length = get_max_input_size_string_length(view_model);
     let max_output_size_string_length = get_max_output_size_string_length(view_model);
@@ -163,11 +165,11 @@ fn get_max_call_duration_string_length(view_model: &RigExecutionStateViewModel<'
         .unwrap_or(0)
 }
 
-fn write_component_state<F: Write>(
+fn write_component_state<F: Write, TError: From<std::io::Error>>(
     f: &mut F,
     component: &ComponentViewModel<'_>,
     group: &ComponentGroupViewModel<'_>,
-) -> Result<(), HostError> {
+) -> Result<(), TError> {
     const NO_INPUT_NO_OUTPUT: char = '□';
     const INPUT_NO_OUTPUT: char = '◩';
     const NO_INPUT_OUTPUT: char = '◪';
@@ -257,11 +259,11 @@ enum MetadataType {
     },
 }
 
-fn write_metadata<F: Write>(
+fn write_metadata<F: Write, TError: From<std::io::Error>>(
     f: &mut F,
     component: &ComponentViewModel<'_>,
     metadata_type: MetadataType,
-) -> Result<(), HostError> {
+) -> Result<(), TError> {
     const OUTPUT_FROM_INPUT: char = '➜';
     const OUTPUT_NOT_FROM_INPUT: char = '!';
     const NO_OUTPUT: char = ' ';
@@ -406,11 +408,11 @@ fn write_metadata<F: Write>(
     Ok(())
 }
 
-fn write_durations<F: Write>(
+fn write_durations<F: Write, TError: From<std::io::Error>>(
     f: &mut F,
     component: &ComponentViewModel<'_>,
     max_call_duration_string_length: usize,
-) -> Result<(), HostError> {
+) -> Result<(), TError> {
     if let Some(output) = component.state.execution_output.as_ref() {
         let call_duration_string = format!("{:.0?}", output.run_metadata.call_duration);
         let overall_duration_string = format!("{:.0?}", output.run_metadata.overall_duration());
@@ -463,11 +465,11 @@ mod tests {
     use common_macros::slipway_test_async;
     use serde_json::json;
     use slipway_engine::{
-        utils::ch, BasicComponentCache, ComponentRigging, Instruction, Rig, RigSession, Rigging,
-        RunMetadata,
+        BasicComponentCache, ComponentRigging, Instruction, Rig, RigSession, Rigging, RunMetadata,
+        utils::ch,
     };
 
-    use crate::to_view_model::to_view_model;
+    use crate::render_state::to_view_model::to_view_model;
 
     use super::*;
 
@@ -515,7 +517,7 @@ mod tests {
         let view_model = to_view_model(&state);
 
         let mut buffer = Vec::new();
-        write_rig_graph(&mut buffer, &view_model).unwrap();
+        write_rig_graph::<_, std::io::Error>(&mut buffer, &view_model).unwrap();
         let buffer_string = String::from_utf8(buffer).unwrap();
         println!("{}", buffer_string);
 
@@ -720,7 +722,7 @@ mod tests {
         let view_model = to_view_model(&state);
 
         let mut buffer = Vec::new();
-        write_rig_graph(&mut buffer, &view_model).unwrap();
+        write_rig_graph::<_, std::io::Error>(&mut buffer, &view_model).unwrap();
         let buffer_string = String::from_utf8(buffer).unwrap();
         println!("{}", buffer_string);
 

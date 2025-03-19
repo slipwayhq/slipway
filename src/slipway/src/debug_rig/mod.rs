@@ -1,19 +1,19 @@
 use anyhow::Context;
-use handle_command::{handle_command, HandleCommandResult};
+use handle_command::{HandleCommandResult, handle_command};
 use json_editor::{JsonEditor, JsonEditorImpl};
 use serde_json::json;
+use slipway_host::render_state::write_state;
 use std::io::{self, Write};
 use std::str::FromStr;
 use std::sync::Arc;
 use termion::{color, style};
 
 use slipway_engine::{
-    parse_rig, BasicComponentCache, BasicComponentsLoader, CallChain, ComponentHandle,
-    ComponentRigging, Permissions, Rig, RigSession, Rigging, SlipwayReference,
+    BasicComponentCache, BasicComponentsLoader, CallChain, ComponentHandle, ComponentRigging,
+    Permissions, Rig, RigSession, Rigging, SlipwayReference, parse_rig,
 };
 
 use crate::component_runners::get_component_runners;
-use crate::render_state::write_state;
 
 mod errors;
 mod handle_clear_input_command;
@@ -219,7 +219,7 @@ async fn debug_rig<W: Write>(
 
     let component_runners = get_component_runners();
 
-    write_state(w, &state)?;
+    write_state::<_, anyhow::Error>(w, &state)?;
 
     let help_color = color::Fg(color::Yellow);
     writeln!(
@@ -267,7 +267,7 @@ async fn debug_rig<W: Write>(
                         Ok(HandleCommandResult::Continue(Some(s))) => {
                             state = s;
                             writeln!(w)?;
-                            write_state(w, &state)?;
+                            write_state::<_, anyhow::Error>(w, &state)?;
                         }
                         Ok(HandleCommandResult::Continue(None)) => {}
                         Ok(HandleCommandResult::Exit) => break,
@@ -280,7 +280,7 @@ async fn debug_rig<W: Write>(
                                 color::Fg(color::Reset)
                             )?;
                             writeln!(w)?;
-                            write_state(w, &state)?;
+                            write_state::<_, anyhow::Error>(w, &state)?;
                         }
                     }
                 }

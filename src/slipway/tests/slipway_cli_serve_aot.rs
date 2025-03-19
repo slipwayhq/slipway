@@ -52,6 +52,8 @@ async fn slipway_cli_serve_aot_and_check_response() {
         serde_json::from_reader(std::fs::File::open(path.join("slipway_serve.json")).unwrap())
             .unwrap();
 
+    config_json["log_level"] = serde_json::json!("debug");
+
     config_json["rig_permissions"] = serde_json::json!({
             "hello": {
                 "allow": [ { "permission": "all" } ]

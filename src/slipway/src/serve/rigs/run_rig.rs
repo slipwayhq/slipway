@@ -5,11 +5,13 @@ use slipway_engine::{
     BasicComponentCache, BasicComponentsLoader, CallChain, ComponentHandle, Permission, Rig,
     RigSession, RigSessionOptions,
 };
-use tracing::info;
+use slipway_host::tracing_writer::TracingWriter;
 
 use crate::{
-    component_runners::get_component_runners, permissions::PERMISSIONS_EMPTY, primitives::RigName,
-    run_rig::SlipwayRunEventHandler,
+    component_runners::get_component_runners,
+    permissions::PERMISSIONS_EMPTY,
+    primitives::RigName,
+    run_rig::{CliRunEventHandler, WriteComponentOutputsType},
 };
 
 use super::super::ServeState;
@@ -31,13 +33,10 @@ pub async fn run_rig(
         RigSessionOptions::new(state.base_path.clone(), state.aot_path.clone()),
     );
 
-    let mut writer = TracingWriter::new();
+    let mut writer = TracingWriter::new(tracing::Level::INFO);
 
-    let mut event_handler = SlipwayRunEventHandler::new(
-        &mut writer,
-        None,
-        crate::render_state::PrintComponentOutputsType::None,
-    );
+    let mut event_handler =
+        CliRunEventHandler::new(&mut writer, None, WriteComponentOutputsType::None);
     let component_runners = get_component_runners();
     let component_runners_slice = component_runners.as_slice();
 
@@ -94,48 +93,4 @@ struct RigConfig {
 pub struct RunRigResult {
     pub handle: ComponentHandle,
     pub output: serde_json::Value,
-}
-
-#[derive(Debug)]
-struct TracingWriter {
-    buffer: String,
-}
-
-impl TracingWriter {
-    fn new() -> Self {
-        TracingWriter {
-            buffer: String::new(),
-        }
-    }
-}
-
-impl std::io::Write for TracingWriter {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        match std::str::from_utf8(buf) {
-            Ok(s) => {
-                self.buffer.push_str(s);
-                while let Some(idx) = self.buffer.find('\n') {
-                    let line = self.buffer.drain(..=idx).collect::<String>();
-                    info!("{}", line.trim_end_matches('\n'));
-                }
-            }
-            Err(_) => {
-                // Fallback for non-UTF8 data
-                self.buffer.push_str(&format!("{:?}", buf));
-                while let Some(idx) = self.buffer.find('\n') {
-                    let line = self.buffer.drain(..=idx).collect::<String>();
-                    info!("{}", line.trim_end_matches('\n'));
-                }
-            }
-        }
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        if !self.buffer.is_empty() {
-            info!("{}", self.buffer);
-            self.buffer.clear();
-        }
-        Ok(())
-    }
 }

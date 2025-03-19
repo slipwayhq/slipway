@@ -1,12 +1,9 @@
 use std::{io::Write, sync::Arc};
 
 use slipway_engine::{CallChain, ComponentHandle, ComponentRunner, Immutable, RigExecutionState};
+use slipway_host::{render_state::write_state, render_state::to_view_model::to_shortcuts};
 
-use crate::to_view_model::to_shortcuts;
-
-use super::{
-    DebugCli, DebuggerCommand, errors::SlipwayDebugError, json_editor::JsonEditor, write_state,
-};
+use super::{DebugCli, DebuggerCommand, errors::SlipwayDebugError, json_editor::JsonEditor};
 
 pub(super) async fn handle_command<'rig, 'cache, W: Write>(
     w: &mut W,
@@ -18,7 +15,7 @@ pub(super) async fn handle_command<'rig, 'cache, W: Write>(
 ) -> anyhow::Result<HandleCommandResult<'rig, 'cache>> {
     let result = match debug_cli.command {
         DebuggerCommand::Print {} => {
-            write_state(w, state)?;
+            write_state::<_, anyhow::Error>(w, state)?;
             HandleCommandResult::Continue(None)
         }
         DebuggerCommand::Run { handle } => {

@@ -6,7 +6,9 @@ pub mod fetch;
 pub mod fonts;
 pub mod log;
 mod permissions;
+pub mod render_state;
 pub mod run;
+pub mod tracing_writer;
 
 pub const SLIPWAY_COMPONENT_WASM_FILE_NAME: &str = "run.wasm";
 

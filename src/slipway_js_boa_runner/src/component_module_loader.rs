@@ -10,7 +10,7 @@ use boa_engine::{
 };
 use boa_gc::GcRefCell;
 use slipway_engine::ComponentFiles;
-use tracing::{error, info};
+use tracing::{debug, error};
 
 /// A component module loader that loads modules from the current component.
 ///
@@ -50,7 +50,7 @@ impl ModuleLoader for ComponentModuleLoader {
         finish_load: Box<dyn FnOnce(JsResult<Module>, &mut Context)>,
         context: &mut Context,
     ) {
-        info!(
+        debug!(
             "Loading module. Referrer: {:?}, Specifier: {:?}",
             referrer.path(),
             specifier

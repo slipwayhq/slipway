@@ -63,29 +63,3 @@ mod skip_first_n_chars_tests {
         assert_eq!(skip_first_n_chars("Löwe老虎", 6), "");
     }
 }
-
-pub(crate) fn get_first_n_chars(s: &str, n: usize) -> &str {
-    let char_pos = s
-        .char_indices()
-        .nth(n)
-        .map(|(pos, _)| pos)
-        .unwrap_or(s.len());
-    &s[..char_pos]
-}
-
-#[cfg(test)]
-mod get_first_n_chars_tests {
-    use super::*;
-
-    #[test]
-    fn it_should_return_end_of_string() {
-        assert_eq!(get_first_n_chars("abcdef", 0), "");
-        assert_eq!(get_first_n_chars("abcdef", 3), "abc");
-        assert_eq!(get_first_n_chars("abcdef", 6), "abcdef");
-
-        assert_eq!(get_first_n_chars("Löwe老虎", 0), "");
-        assert_eq!(get_first_n_chars("Löwe老虎", 3), "Löw");
-        assert_eq!(get_first_n_chars("Löwe老虎", 5), "Löwe老");
-        assert_eq!(get_first_n_chars("Löwe老虎", 6), "Löwe老虎");
-    }
-}
