@@ -133,7 +133,7 @@ async fn slipway_cli_serve_aot_and_check_response() {
     println!("{}", stdout);
 
     assert!(
-        stdout.contains("Using AOT compiled component"),
-        "Failed to find string \"Using AOT compiled component\" in stdout."
+        stdout.contains("Using AOT compiled WASM component"),
+        "Failed to find string \"Using AOT compiled WASM component\" in stdout."
     );
 }

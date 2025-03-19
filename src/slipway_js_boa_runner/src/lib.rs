@@ -11,7 +11,7 @@ mod host;
 mod run_component_javascript;
 
 const BOA_COMPONENT_RUNNER_IDENTIFIER: &str = "js_boa";
-const BOA_COMPONENT_DEFINITION_FILE_NAME: &str = "slipway_js_component.json";
+const BOA_COMPONENT_DEFINITION_FILE_NAME: &str = "js_component.json";
 const BOA_RUN_JS_FILE_NAME: &str = "run.js";
 
 pub struct BoaComponentRunner {}
