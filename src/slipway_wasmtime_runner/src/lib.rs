@@ -109,34 +109,34 @@ impl ComponentRunner for WasmComponentRunner {
                 .await
                 .with_context(|| {
                     format!(
-                        "Failed to check if AOT compiled file exists for component {}",
+                        "Failed to check if AOT compiled file exists for WASM component: {}",
                         execution_data.context.component_reference
                     )
                 })?
             {
                 let aot_bytes = tokio::fs::read(&aot_bytes_path).await.with_context(|| {
                     format!(
-                        "Failed to read AOT compiled file for component {}",
+                        "Failed to read AOT compiled file for WASM component: {}",
                         execution_data.context.component_reference
                     )
                 })?;
 
                 debug!(
-                    "Using AOT compiled component {}",
+                    "Using AOT compiled WASM component: {}",
                     execution_data.context.component_reference
                 );
 
                 WasmData::Aot(aot_bytes)
             } else {
                 warn!(
-                    "AOT compiled file not found for component {}",
+                    "AOT compiled file not found for WASM component: {}",
                     execution_data.context.component_reference
                 );
                 WasmData::Wasm(Arc::clone(&wasm_bytes))
             }
         } else {
             debug!(
-                "JIT compiling component {}",
+                "JIT compiling WASM component: {}",
                 execution_data.context.component_reference
             );
             WasmData::Wasm(Arc::clone(&wasm_bytes))

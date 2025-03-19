@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Instant};
+use std::{path::Path, sync::Arc, time::Instant};
 
 use slipway_engine::{
     ComponentExecutionContext, RunComponentError, RunComponentResult, RunMetadata,
@@ -91,13 +91,16 @@ async fn run_component_scripts(
     }
 
     debug!(
-        "Running module \"{}\" ({} bytes) using Boa",
-        BOA_RUN_JS_FILE_NAME,
-        run_js.len()
+        "Running Javascript component: {}",
+        execution_context.component_reference
     );
 
-    let module = Module::parse(Source::from_bytes(&run_js), None, context)
-        .map_err(|e| convert_error(BOA_RUN_JS_FILE_NAME, context, e))?;
+    let module = Module::parse(
+        Source::from_bytes(&run_js).with_path(Path::new(BOA_RUN_JS_FILE_NAME)),
+        None,
+        context,
+    )
+    .map_err(|e| convert_error(BOA_RUN_JS_FILE_NAME, context, e))?;
 
     let promise = module.load_link_evaluate(context);
 

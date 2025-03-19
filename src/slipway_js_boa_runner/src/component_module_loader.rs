@@ -51,9 +51,9 @@ impl ModuleLoader for ComponentModuleLoader {
         context: &mut Context,
     ) {
         debug!(
-            "Loading module. Referrer: {:?}, Specifier: {:?}",
-            referrer.path(),
-            specifier
+            "Loading Javascript module {:?} from {:?}",
+            specifier,
+            referrer.path().expect("Referrer path should exist"),
         );
         let result = (|| {
             let short_path = specifier.to_std_string_escaped();
