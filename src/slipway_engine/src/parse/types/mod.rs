@@ -47,8 +47,12 @@ fn parse_component_version(version_string: &str) -> Result<Version, RigError> {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Rig {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<Description>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub constants: Option<serde_json::Value>,
+
     pub rigging: Rigging,
 }
 
@@ -65,9 +69,17 @@ pub type Callouts = HashMap<ComponentHandle, SlipwayReference>;
 #[serde(deny_unknown_fields)]
 pub struct ComponentRigging {
     pub component: SlipwayReference,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub input: Option<serde_json::Value>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub allow: Option<Vec<Permission>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub deny: Option<Vec<Permission>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub callouts: Option<Callouts>,
 }
 
@@ -170,58 +182,6 @@ pub struct RegistryComponentPermission {
     pub version: Option<semver::VersionReq>,
 }
 
-// impl PathPermission {
-//     pub fn matches(&self, path: &Path) -> bool {
-//         match self {
-//             PathPermission::Any => true,
-//             PathPermission::Exact(value) => match (value.canonicalize(), path.canonicalize()) {
-//                 (Ok(val), Ok(p)) => val == p,
-//                 _ => false,
-//             },
-//             PathPermission::Within(value) => match (value.canonicalize(), path.canonicalize()) {
-//                 (Ok(val), Ok(p)) => p.starts_with(&val),
-//                 (Err(value_e), Err(path_e)) => {
-//                     warn!(
-//                         "Error canonicalizing path to check permissions: {:?}, error: {:?}",
-//                         value, value_e
-//                     );
-//                     warn!(
-//                         "Error canonicalizing path to check permissions: {:?}, error: {:?}",
-//                         path, path_e
-//                     );
-//                     false
-//                 }
-//                 (Err(value_e), Ok(_)) => {
-//                     warn!(
-//                         "Error canonicalizing path to check permissions: {:?}, error: {:?}",
-//                         value, value_e
-//                     );
-//                     false
-//                 }
-//                 (Ok(_), Err(path_e)) => {
-//                     warn!(
-//                         "Error canonicalizing path to check permissions: {:?}, error: {:?}",
-//                         path, path_e
-//                     );
-//                     false
-//                 }
-//             },
-//         }
-//     }
-
-//     pub fn matches_url_str(&self, url_str: &str) -> bool {
-//         let Ok(processed_url) = process_url_str(url_str) else {
-//             return false;
-//         };
-
-//         match processed_url {
-//             ProcessedUrl::RelativePath(path) => self.matches(&path),
-//             ProcessedUrl::AbsolutePath(path) => self.matches(&path),
-//             ProcessedUrl::Url(_) => false,
-//         }
-//     }
-// }
-
 pub(crate) static PERMISSIONS_ALL_VEC: LazyLock<Vec<Permission>> =
     LazyLock::new(|| vec![Permission::All]);
 
@@ -233,11 +193,20 @@ pub struct Component<TSchema> {
     pub publisher: Publisher,
     pub name: Name,
     pub version: Version,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<Description>,
+
     pub input: TSchema,
     pub output: TSchema,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub constants: Option<serde_json::Value>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub rigging: Option<Rigging>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub callouts: Option<Callouts>,
 }
 
