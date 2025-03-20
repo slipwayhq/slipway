@@ -27,6 +27,7 @@ fluent-uri = { workspace = true }
 tokio-util = { workspace = true }
 reqwest = { workspace = true }
 normalize-path = { workspace = true }
+tempfile = { workspace = true }
 
 [features]
 unstable-test-utils = []
@@ -36,5 +37,4 @@ tiny_http = { workspace = true }
 walkdir = { workspace = true }
 common_test_utils = { workspace = true }
 common_macros = { workspace = true }
-tempfile = { workspace = true }
 test-log = { workspace = true, features = ["trace"] }
