@@ -6,10 +6,9 @@ use slipway_engine::{
 
 use boa_engine::{
     Context, JsError, JsValue, Module, Script, Source, builtins::promise::PromiseState, js_string,
-    property::Attribute,
 };
 use slipway_host::ComponentError;
-use tracing::debug;
+use tracing::{debug, warn};
 
 use crate::{
     BOA_RUN_JS_FILE_NAME, BoaComponentDefinition,
@@ -30,7 +29,7 @@ pub(super) async fn run_component_javascript(
     let prepare_component_duration = prepare_component_start.elapsed();
 
     let prepare_input_start = Instant::now();
-    set_input(&mut context, input)?;
+    let input = convert_input(&mut context, input)?;
     let prepare_input_duration = prepare_input_start.elapsed();
 
     let scripts = boa_definition
@@ -40,7 +39,8 @@ pub(super) async fn run_component_javascript(
 
     let call_start = Instant::now();
     let last_result =
-        run_component_scripts(&run_js, scripts, execution_context, &mut context).await?;
+        run_component_scripts_and_modules(&run_js, scripts, execution_context, &mut context, input)
+            .await?;
     let call_duration = call_start.elapsed();
 
     let process_output_start = Instant::now();
@@ -58,30 +58,35 @@ pub(super) async fn run_component_javascript(
     })
 }
 
-fn set_input(context: &mut Context, input: &serde_json::Value) -> Result<(), RunComponentError> {
+fn convert_input(
+    context: &mut Context,
+    input: &serde_json::Value,
+) -> Result<JsValue, RunComponentError> {
     let value = JsValue::from_json(input, context)
         .map_err(|e| RunComponentError::Other(format!("Failed to convert input object.\n{}", e)))?;
-
-    context
-        .register_global_property(js_string!("input"), value, Attribute::default())
-        .expect("input property shouldn't exist");
-
-    Ok(())
+    Ok(value)
 }
 
-async fn run_component_scripts(
+fn is_run_js(script_file: &str) -> bool {
+    script_file == BOA_RUN_JS_FILE_NAME
+        || (script_file.ends_with(BOA_RUN_JS_FILE_NAME)
+            && script_file.starts_with("./")
+            && script_file.len() == BOA_RUN_JS_FILE_NAME.len() + 2)
+}
+
+async fn run_component_scripts_and_modules(
     run_js: &str,
     script_files: &[String],
     execution_context: &ComponentExecutionContext<'_, '_, '_>,
     context: &mut Context,
+    input: JsValue,
 ) -> Result<JsValue, RunComponentError> {
     for script_file in script_files.iter() {
-        // Try and filter out accidental inclusion of "run.js" or "./run.js".
-        if script_file == BOA_RUN_JS_FILE_NAME
-            || (script_file.ends_with(BOA_RUN_JS_FILE_NAME)
-                && script_file.starts_with("./")
-                && script_file.len() == BOA_RUN_JS_FILE_NAME.len() + 2)
-        {
+        if is_run_js(script_file) {
+            warn!(
+                "Ignoring script \"{}\" as it is the component Javascript module. This should be removed from the scripts list.",
+                script_file
+            );
             continue;
         }
 
@@ -102,44 +107,72 @@ async fn run_component_scripts(
     )
     .map_err(|e| convert_error(BOA_RUN_JS_FILE_NAME, context, e))?;
 
-    let promise = module.load_link_evaluate(context);
+    let module_promise = module.load_link_evaluate(context);
 
-    context
-        .run_jobs_async()
-        .await
-        .map_err(|e| RunComponentError::Other(format!("Failed to run async jobs\n{}", e)))?;
+    context.run_jobs_async().await.map_err(|e| {
+        RunComponentError::Other(format!(
+            "Failed to run async jobs after loading scripts and {BOA_RUN_JS_FILE_NAME} module\n{}",
+            e
+        ))
+    })?;
 
-    match promise.state() {
+    match module_promise.state() {
         PromiseState::Pending => Err(RunComponentError::RunCallFailed {
-            source: anyhow::anyhow!("Promise from run.js is still pending"),
+            source: anyhow::anyhow!(
+                "Promise from evaluating {BOA_RUN_JS_FILE_NAME} module is still pending"
+            ),
         }),
         PromiseState::Fulfilled(_) => {
-            let namespace = module.namespace(context);
-            let result = namespace
-                .get(js_string!("output"), context)
-                .map_err(|e| convert_error(BOA_RUN_JS_FILE_NAME, context, e))?;
-
-            let promise = result.as_promise();
-            match promise {
-                Some(promise) => match promise.state() {
-                    PromiseState::Pending => Err(RunComponentError::RunCallFailed {
-                        source: anyhow::anyhow!("Output promise from run.js is still pending"),
-                    }),
-                    PromiseState::Fulfilled(result) => Ok(result),
-                    PromiseState::Rejected(error) => Err(convert_error(
-                        BOA_RUN_JS_FILE_NAME,
-                        context,
-                        JsError::from_opaque(error),
-                    )),
-                },
-                None => Ok(result),
-            }
+            // The module was evaluated successfully, so we can continue.
+            Ok(())
         }
         PromiseState::Rejected(error) => Err(convert_error(
             BOA_RUN_JS_FILE_NAME,
             context,
             JsError::from_opaque(error),
         )),
+    }?;
+
+    let namespace = module.namespace(context);
+
+    const RUN_FUNCTION_EXPORT_NAME: &str = "run";
+    let run = namespace
+        .get(js_string!(RUN_FUNCTION_EXPORT_NAME), context)
+        .map_err(|e| convert_error(BOA_RUN_JS_FILE_NAME, context, e))?
+        .as_callable()
+        .cloned()
+        .ok_or_else(|| {
+            RunComponentError::Other(format!(
+                "The export \"{RUN_FUNCTION_EXPORT_NAME}\" wasn't a function."
+            ))
+        })?;
+
+    let script_name = format!("{BOA_RUN_JS_FILE_NAME}::{RUN_FUNCTION_EXPORT_NAME}");
+    let result = run
+        .call(&JsValue::undefined(), &[input], context)
+        .map_err(|e| convert_error(&script_name, context, e))?;
+
+    context
+        .run_jobs_async()
+        .await
+        .map_err(|e| RunComponentError::Other(format!("Failed to run async jobs after executing {BOA_RUN_JS_FILE_NAME} {RUN_FUNCTION_EXPORT_NAME} function\n{}", e)))?;
+
+    let promise = result.as_promise();
+    match promise {
+        Some(promise) => match promise.state() {
+            PromiseState::Pending => Err(RunComponentError::RunCallFailed {
+                source: anyhow::anyhow!(
+                    "Output promise from {BOA_RUN_JS_FILE_NAME} {RUN_FUNCTION_EXPORT_NAME} function is still pending"
+                ),
+            }),
+            PromiseState::Fulfilled(result) => Ok(result),
+            PromiseState::Rejected(error) => Err(convert_error(
+                &script_name,
+                context,
+                JsError::from_opaque(error),
+            )),
+        },
+        None => Ok(result),
     }
 }
 

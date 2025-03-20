@@ -1,4 +1,4 @@
-async function run(input) {
+export async function run(input) {
   const { url, method, headers, body, response_type } = input;
   const requestOptions = {
     headers: Object.entries(headers),
@@ -41,5 +41,3 @@ async function run(input) {
     return mapErrToOutput(e);
   }
 }
-
-export let output = run(input);

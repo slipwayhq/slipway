@@ -1,5 +1,4 @@
-
-async function run(input) {
+export async function run(input) {
   if (input.file_type === TEXT) {
     var text = await slipway_host.load_text(input.handle, input.path);
     return {
@@ -16,5 +15,3 @@ async function run(input) {
     throw new Error("Unexpected file type: " + input.file_type);
   }
 }
-
-export let output = run(input);

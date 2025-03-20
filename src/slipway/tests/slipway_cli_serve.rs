@@ -50,7 +50,7 @@ async fn slipway_cli_serve_and_check_response() {
     std::fs::write(
         component_path.join("run.js"),
         indoc::indoc! {r#"
-            function run(input) {
+            export function run(input) {
                 return {
                     "type": "AdaptiveCard",
                     "verticalContentAlignment": "center",
@@ -63,8 +63,6 @@ async fn slipway_cli_serve_and_check_response() {
                     ]
                 };
             }
-
-            export let output = run(input);
         "#},
     )
     .unwrap();
