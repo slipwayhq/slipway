@@ -5,9 +5,12 @@ use slipway_engine::{
     BasicComponentCache, BasicComponentsLoader, CallChain, Permissions, RigSession, parse_rig,
 };
 use slipway_host::{
-    render_state::to_view_model::ComponentViewModel,
-    render_state::{WriteComponentOutputs, write_state, write_state_with_outputs},
+    render_state::{
+        WriteComponentOutputs,
+        to_view_model::{ComponentViewModel, RigExecutionStateViewModel},
+    },
     run::RunEventHandler,
+    tracing_writer::TraceOrWriter,
 };
 
 use crate::{
@@ -15,14 +18,14 @@ use crate::{
     host_error::HostError,
 };
 
-pub(super) async fn run_rig<W: Write>(
-    w: &mut W,
+pub(super) async fn run_rig(
+    mut w: Box<dyn Write>,
     input: std::path::PathBuf,
     engine_permissions: Permissions<'_>,
     registry_urls: Vec<String>,
     save_path: Option<PathBuf>,
 ) -> anyhow::Result<()> {
-    writeln!(w, "Launching {}", input.display())?;
+    writeln!(&mut w, "Launching {}", input.display())?;
 
     let file_contents = tokio::fs::read_to_string(input.clone())
         .await
@@ -36,8 +39,11 @@ pub(super) async fn run_rig<W: Write>(
     let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
     let session = RigSession::new(rig, &component_cache);
 
-    let mut event_handler =
-        CliRunEventHandler::new(w, save_path, WriteComponentOutputsType::LeafComponents);
+    let mut event_handler = CliRunEventHandler::new(
+        save_path,
+        WriteComponentOutputsType::LeafComponents,
+        TraceOrWriter::Writer(w),
+    );
     let component_runners = get_component_runners();
     let component_runners_slice = component_runners.as_slice();
 
@@ -54,64 +60,71 @@ pub(super) async fn run_rig<W: Write>(
     Ok(())
 }
 
-pub(super) struct CliRunEventHandler<'w, W: Write> {
-    w: &'w mut W,
+pub(super) struct CliRunEventHandler {
     save_path: Option<PathBuf>,
     write_outputs_type: WriteComponentOutputsType,
+    inner: slipway_host::run::tracing_run_event_handler::TracingRunEventHandler,
 }
 
-impl<'w, W: Write> CliRunEventHandler<'w, W> {
+impl CliRunEventHandler {
     pub fn new(
-        w: &'w mut W,
         save_path: Option<PathBuf>,
         write_outputs_type: WriteComponentOutputsType,
+        level: TraceOrWriter,
     ) -> Self {
         Self {
-            w,
             save_path,
             write_outputs_type,
+            inner: slipway_host::run::tracing_run_event_handler::TracingRunEventHandler::new_for(
+                level,
+            ),
         }
     }
 }
 
-impl<'rig, 'cache, W: Write> RunEventHandler<'rig, 'cache, HostError>
-    for CliRunEventHandler<'_, W>
-{
-    fn handle_component_run_start(
+impl<'rig, 'cache> RunEventHandler<'rig, 'cache, HostError> for CliRunEventHandler {
+    fn handle_component_run_start<'state>(
         &mut self,
-        event: slipway_host::run::ComponentRunStartEvent<'rig>,
+        event: slipway_host::run::ComponentRunStartEvent<'rig, 'cache, 'state>,
     ) -> Result<(), HostError> {
-        writeln!(self.w, r#"Running "{}"..."#, event.component_handle)?;
-        Ok(())
+        self.inner
+            .handle_component_run_start(event)
+            .map_err(HostError::from)
     }
 
     fn handle_component_run_end(
         &mut self,
-        _event: slipway_host::run::ComponentRunEndEvent<'rig>,
+        event: slipway_host::run::ComponentRunEndEvent<'rig>,
     ) -> Result<(), HostError> {
-        writeln!(self.w)?;
-        Ok(())
+        self.inner
+            .handle_component_run_end(event)
+            .map_err(HostError::from)
     }
 
     fn handle_state_changed<'state>(
         &mut self,
         event: slipway_host::run::StateChangeEvent<'rig, 'cache, 'state>,
-    ) -> Result<(), HostError> {
-        if event.is_complete {
-            writeln!(self.w, "No more components to run.")?;
-            write_state_with_outputs(
-                self.w,
+    ) -> Result<RigExecutionStateViewModel<'state>, HostError> {
+        let is_complete = event.is_complete;
+
+        let view_model = self
+            .inner
+            .handle_state_changed(event)
+            .map_err(HostError::from)?;
+
+        if is_complete {
+            let write_component_outputs = SlipwayWriteComponentsOutputs {
+                write_outputs_type: self.write_outputs_type,
+            };
+
+            write_component_outputs.write_component_outputs(
+                self.inner.writer(),
                 self.save_path.as_ref(),
-                event.state,
-                SlipwayWriteComponentsOutputs {
-                    write_outputs_type: self.write_outputs_type,
-                },
+                &view_model,
             )?;
-        } else {
-            write_state::<_, HostError>(self.w, event.state)?;
         }
 
-        Ok(())
+        Ok(view_model)
     }
 }
 
@@ -124,7 +137,7 @@ impl<W: Write> WriteComponentOutputs<W, HostError> for SlipwayWriteComponentsOut
         &self,
         w: &mut W,
         save_path: Option<&PathBuf>,
-        view_model: slipway_host::render_state::to_view_model::RigExecutionStateViewModel,
+        view_model: &slipway_host::render_state::to_view_model::RigExecutionStateViewModel,
     ) -> Result<(), HostError> {
         match self.write_outputs_type {
             WriteComponentOutputsType::None => {}

@@ -5,7 +5,7 @@ use slipway_engine::{
     BasicComponentCache, BasicComponentsLoader, CallChain, ComponentHandle, Permission, Rig,
     RigSession, RigSessionOptions,
 };
-use slipway_host::tracing_writer::TracingWriter;
+use slipway_host::tracing_writer::TraceOrWriter;
 
 use crate::{
     component_runners::get_component_runners,
@@ -33,10 +33,12 @@ pub async fn run_rig(
         RigSessionOptions::new(state.base_path.clone(), state.aot_path.clone()),
     );
 
-    let mut writer = TracingWriter::new(tracing::Level::INFO);
+    let mut event_handler = CliRunEventHandler::new(
+        None,
+        WriteComponentOutputsType::None,
+        TraceOrWriter::Trace(tracing::Level::INFO),
+    );
 
-    let mut event_handler =
-        CliRunEventHandler::new(&mut writer, None, WriteComponentOutputsType::None);
     let component_runners = get_component_runners();
     let component_runners_slice = component_runners.as_slice();
 

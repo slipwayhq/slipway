@@ -1,4 +1,7 @@
-use crate::run::RunEventHandler;
+use crate::{
+    render_state::to_view_model::{self, RigExecutionStateViewModel},
+    run::RunEventHandler,
+};
 
 pub struct SinkRunEventHandler {}
 
@@ -15,9 +18,9 @@ impl Default for SinkRunEventHandler {
 }
 
 impl<'rig, 'cache> RunEventHandler<'rig, 'cache, ()> for SinkRunEventHandler {
-    fn handle_component_run_start(
+    fn handle_component_run_start<'state>(
         &mut self,
-        _event: crate::run::ComponentRunStartEvent<'rig>,
+        _event: crate::run::ComponentRunStartEvent<'rig, 'cache, 'state>,
     ) -> Result<(), ()> {
         Ok(())
     }
@@ -31,8 +34,9 @@ impl<'rig, 'cache> RunEventHandler<'rig, 'cache, ()> for SinkRunEventHandler {
 
     fn handle_state_changed<'state>(
         &mut self,
-        _event: crate::run::StateChangeEvent<'rig, 'cache, 'state>,
-    ) -> Result<(), ()> {
-        Ok(())
+        event: crate::run::StateChangeEvent<'rig, 'cache, 'state>,
+    ) -> Result<RigExecutionStateViewModel<'state>, ()> {
+        let view_model = to_view_model::to_view_model(event.state);
+        Ok(view_model)
     }
 }

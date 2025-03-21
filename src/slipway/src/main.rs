@@ -344,7 +344,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
             configure_tracing(log_level);
             let permissions = common.permissions.into_permissions()?;
             run_rig::run_rig(
-                &mut std::io::stdout(),
+                Box::new(std::io::stdout()),
                 rig,
                 (&permissions).into(),
                 registry_url,

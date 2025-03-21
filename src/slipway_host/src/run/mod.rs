@@ -8,13 +8,15 @@ use slipway_engine::{
 };
 use tracing::{Instrument, info_span};
 
-use crate::ComponentError;
+use crate::{ComponentError, render_state::to_view_model::RigExecutionStateViewModel};
 
 pub mod sink_run_event_handler;
 pub mod tracing_run_event_handler;
 
-pub struct ComponentRunStartEvent<'rig> {
+pub struct ComponentRunStartEvent<'rig, 'cache, 'state> {
     pub component_handle: &'rig ComponentHandle,
+    pub state: &'state Immutable<RigExecutionState<'rig, 'cache>>,
+    pub call_chain: Arc<CallChain<'rig>>,
 }
 
 pub struct ComponentRunEndEvent<'rig> {
@@ -27,9 +29,9 @@ pub struct StateChangeEvent<'rig, 'cache, 'state> {
 }
 
 pub trait RunEventHandler<'rig, 'cache, THostError> {
-    fn handle_component_run_start(
+    fn handle_component_run_start<'state>(
         &mut self,
-        event: ComponentRunStartEvent<'rig>,
+        event: ComponentRunStartEvent<'rig, 'cache, 'state>,
     ) -> Result<(), THostError>;
 
     fn handle_component_run_end(
@@ -40,7 +42,7 @@ pub trait RunEventHandler<'rig, 'cache, THostError> {
     fn handle_state_changed<'state>(
         &mut self,
         event: StateChangeEvent<'rig, 'cache, 'state>,
-    ) -> Result<(), THostError>;
+    ) -> Result<RigExecutionStateViewModel<'state>, THostError>;
 }
 
 pub struct RunRigResult<'rig> {
@@ -97,6 +99,8 @@ where
             event_handler
                 .handle_component_run_start(ComponentRunStartEvent {
                     component_handle: handle,
+                    state: &state,
+                    call_chain: Arc::clone(&call_chain),
                 })
                 .map_err(|e| RunError::HostError(e))?;
 
