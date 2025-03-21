@@ -9,11 +9,6 @@ impl PathPermission {
             PathPermission::Any {} => true,
             PathPermission::Exact { exact } => exact.normalize() == path.normalize(),
             PathPermission::Within { within: prefix } => {
-                println!(
-                    "{} starts with {} ?",
-                    path.normalize().to_string_lossy(),
-                    prefix.normalize().to_string_lossy()
-                );
                 path.normalize().starts_with(prefix.normalize())
             }
         }
