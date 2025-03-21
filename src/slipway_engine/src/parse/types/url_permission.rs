@@ -14,20 +14,22 @@ impl UrlPermission {
 
 #[cfg(test)]
 mod test {
+    use common_macros::slipway_test;
+
     use super::*;
 
     fn url(s: &str) -> Url {
         Url::parse(s).unwrap()
     }
 
-    #[test]
+    #[slipway_test]
     fn it_should_match_any_url() {
         let permission = UrlPermission::Any {};
         assert!(permission.matches(&url("https://example.com")));
         assert!(permission.matches(&url("http://other.co.uk/foo.bar.json")));
     }
 
-    #[test]
+    #[slipway_test]
     fn it_should_match_exact_domain() {
         let permission = UrlPermission::Exact {
             exact: url("https://example.com"),
@@ -43,7 +45,7 @@ mod test {
         assert!(!permission.matches(&url("https://example.org")));
     }
 
-    #[test]
+    #[slipway_test]
     fn it_should_match_exact_domain_with_path() {
         let permission = UrlPermission::Exact {
             exact: url("https://example.com/some/file.json"),
@@ -59,7 +61,7 @@ mod test {
         assert!(!permission.matches(&url("http://example.com/some/file.json/")));
     }
 
-    #[test]
+    #[slipway_test]
     fn it_should_match_prefix() {
         let permission = UrlPermission::Prefix {
             prefix: url("https://example.com/some/file.json"),

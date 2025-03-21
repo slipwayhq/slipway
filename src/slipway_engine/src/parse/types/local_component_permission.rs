@@ -3,7 +3,7 @@ use super::LocalComponentPermission;
 impl LocalComponentPermission {
     pub fn matches(&self, path: &str) -> bool {
         match self {
-            LocalComponentPermission::Any => true,
+            LocalComponentPermission::Any {} => true,
             LocalComponentPermission::Exact { exact } => exact == path,
         }
     }
@@ -15,7 +15,7 @@ mod tests {
 
     #[test]
     fn it_should_match_any() {
-        let permission = LocalComponentPermission::Any;
+        let permission = LocalComponentPermission::Any {};
         assert!(permission.matches("file:blah"));
         assert!(permission.matches("file:///some/path.tar"));
     }

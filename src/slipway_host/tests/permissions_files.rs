@@ -23,7 +23,7 @@ async fn permissions_file_no_allow_js() {
 async fn permissions_file_no_allow(component: &str) {
     run(
         Permissions::allow(&vec![Permission::LocalComponent(
-            LocalComponentPermission::Any,
+            LocalComponentPermission::Any {},
         )]),
         component,
     )

@@ -46,7 +46,7 @@ async fn permissions_load_fonts_no_rig_permissions(component: &str) {
         rig,
         "test",
         Permissions::allow(&vec![Permission::LocalComponent(
-            LocalComponentPermission::Any,
+            LocalComponentPermission::Any {},
         )]),
     )
     .await
@@ -72,7 +72,7 @@ async fn permissions_load_fonts_single_font_permission(component: &str) {
         rig,
         "test",
         Permissions::allow(&vec![
-            Permission::LocalComponent(LocalComponentPermission::Any),
+            Permission::LocalComponent(LocalComponentPermission::Any {}),
             Permission::Font(StringPermission::Exact {
                 exact: "sans-serif".to_string(),
             }),
@@ -101,7 +101,7 @@ async fn permissions_load_fonts_any_font_permissions(component: &str) {
         rig,
         "test",
         Permissions::allow(&vec![
-            Permission::LocalComponent(LocalComponentPermission::Any),
+            Permission::LocalComponent(LocalComponentPermission::Any {}),
             Permission::Font(StringPermission::Any {}),
         ]),
     )

@@ -469,7 +469,7 @@ fn add_local_component_permissions(
     deny_exact: Vec<String>,
 ) {
     if allow_any {
-        allow_list.push(Permission::LocalComponent(LocalComponentPermission::Any));
+        allow_list.push(Permission::LocalComponent(LocalComponentPermission::Any {}));
     }
     for exact in allow_exact {
         allow_list.push(Permission::LocalComponent(
@@ -478,7 +478,7 @@ fn add_local_component_permissions(
     }
 
     if deny_any {
-        deny_list.push(Permission::LocalComponent(LocalComponentPermission::Any));
+        deny_list.push(Permission::LocalComponent(LocalComponentPermission::Any {}));
     }
     for exact in deny_exact {
         deny_list.push(Permission::LocalComponent(
@@ -1281,7 +1281,7 @@ mod tests {
         assert_eq!(
             permissions.allow,
             vec![
-                Permission::LocalComponent(LocalComponentPermission::Any),
+                Permission::LocalComponent(LocalComponentPermission::Any {}),
                 Permission::LocalComponent(LocalComponentPermission::Exact {
                     exact: "foo.wasm".into()
                 }),
@@ -1291,7 +1291,7 @@ mod tests {
         assert_eq!(
             permissions.deny,
             vec![
-                Permission::LocalComponent(LocalComponentPermission::Any),
+                Permission::LocalComponent(LocalComponentPermission::Any {}),
                 Permission::LocalComponent(LocalComponentPermission::Exact {
                     exact: "bar.wasm".into()
                 }),

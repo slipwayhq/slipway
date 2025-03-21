@@ -100,7 +100,7 @@ pub struct ComponentRigging {
 /// ```
 /// for `Permission::Http(UrlPermission::Prefix { prefix: "https://example.com/".into() })`.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(tag = "permission", rename_all = "snake_case")]
+#[serde(tag = "permission", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Permission {
     All,
 
@@ -126,7 +126,7 @@ impl Permission {
 /// The structure of this enum is designed to allow user friendly JSON.
 /// See `Permission`` for more details.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(untagged, rename_all = "snake_case")]
+#[serde(untagged, rename_all = "snake_case", deny_unknown_fields)]
 pub enum StringPermission {
     Any {},
     Exact { exact: String },
@@ -137,7 +137,7 @@ pub enum StringPermission {
 /// The structure of this enum is designed to allow user friendly JSON.
 /// See `Permission`` for more details.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(untagged, rename_all = "snake_case")]
+#[serde(untagged, rename_all = "snake_case", deny_unknown_fields)]
 pub enum PathPermission {
     Any {},
     Exact { exact: PathBuf },
@@ -147,9 +147,9 @@ pub enum PathPermission {
 /// The structure of this enum is designed to allow user friendly JSON.
 /// See `Permission`` for more details.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(untagged, rename_all = "snake_case")]
+#[serde(untagged, rename_all = "snake_case", deny_unknown_fields)]
 pub enum LocalComponentPermission {
-    Any,
+    Any {},
 
     // We only support exact for component paths because we
     // don't know where the ComponentsLoader implementation will load
@@ -161,7 +161,7 @@ pub enum LocalComponentPermission {
 /// The structure of this enum is designed to allow user friendly JSON.
 /// See `Permission`` for more details.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(untagged, rename_all = "snake_case")]
+#[serde(untagged, rename_all = "snake_case", deny_unknown_fields)]
 pub enum UrlPermission {
     Any {},
     Exact { exact: Url },
@@ -169,8 +169,7 @@ pub enum UrlPermission {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-#[serde(deny_unknown_fields)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub struct RegistryComponentPermission {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub publisher: Option<String>,
@@ -262,5 +261,239 @@ impl Clone for Schema {
                 original: original.clone(),
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use common_macros::slipway_test;
+    use semver::VersionReq;
+
+    use super::*;
+
+    #[slipway_test]
+    fn test_deserialize_all_permission() {
+        assert_eq!(
+            serde_json::from_str::<Permission>(r#"{"permission":"all"}"#).unwrap(),
+            Permission::All
+        );
+    }
+
+    #[slipway_test]
+    fn test_deserialize_http_permission() {
+        assert_eq!(
+            serde_json::from_str::<Permission>(r#"{"permission":"http"}"#).unwrap(),
+            Permission::Http(UrlPermission::Any {})
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(
+                r#"{"permission":"http", "exact": "https://example.com/foo.txt"}"#
+            )
+            .unwrap(),
+            Permission::Http(UrlPermission::Exact {
+                exact: Url::parse("https://example.com/foo.txt").unwrap()
+            })
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(
+                r#"{"permission":"http", "prefix": "https://example.com/foo/"}"#
+            )
+            .unwrap(),
+            Permission::Http(UrlPermission::Prefix {
+                prefix: Url::parse("https://example.com/foo/").unwrap()
+            })
+        );
+    }
+
+    #[slipway_test]
+    fn test_deserialize_file_permission() {
+        assert_eq!(
+            serde_json::from_str::<Permission>(r#"{"permission":"file"}"#).unwrap(),
+            Permission::File(PathPermission::Any {})
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(r#"{"permission":"file", "exact": "./foo.txt"}"#)
+                .unwrap(),
+            Permission::File(PathPermission::Exact {
+                exact: PathBuf::from("./foo.txt")
+            })
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(r#"{"permission":"file", "within": "./foo"}"#)
+                .unwrap(),
+            Permission::File(PathPermission::Within {
+                within: PathBuf::from("./foo")
+            })
+        );
+    }
+
+    #[slipway_test]
+    fn test_deserialize_font_permission() {
+        assert_eq!(
+            serde_json::from_str::<Permission>(r#"{"permission":"font"}"#).unwrap(),
+            Permission::Font(StringPermission::Any {})
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(r#"{"permission":"font", "exact": "foo"}"#).unwrap(),
+            Permission::Font(StringPermission::Exact {
+                exact: String::from("foo")
+            })
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(r#"{"permission":"font", "prefix": "foo"}"#)
+                .unwrap(),
+            Permission::Font(StringPermission::Prefix {
+                prefix: String::from("foo")
+            })
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(r#"{"permission":"font", "suffix": "foo"}"#)
+                .unwrap(),
+            Permission::Font(StringPermission::Suffix {
+                suffix: String::from("foo")
+            })
+        );
+    }
+
+    #[slipway_test]
+    fn test_deserialize_env_permission() {
+        assert_eq!(
+            serde_json::from_str::<Permission>(r#"{"permission":"env"}"#).unwrap(),
+            Permission::Env(StringPermission::Any {})
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(r#"{"permission":"env", "exact": "foo"}"#).unwrap(),
+            Permission::Env(StringPermission::Exact {
+                exact: String::from("foo")
+            })
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(r#"{"permission":"env", "prefix": "foo"}"#).unwrap(),
+            Permission::Env(StringPermission::Prefix {
+                prefix: String::from("foo")
+            })
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(r#"{"permission":"env", "suffix": "foo"}"#).unwrap(),
+            Permission::Env(StringPermission::Suffix {
+                suffix: String::from("foo")
+            })
+        );
+    }
+
+    #[slipway_test]
+    fn test_deserialize_registry_component_permission() {
+        assert_eq!(
+            serde_json::from_str::<Permission>(r#"{"permission":"registry_component"}"#).unwrap(),
+            Permission::RegistryComponent(RegistryComponentPermission {
+                publisher: None,
+                name: None,
+                version: None
+            })
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(
+                r#"{"permission":"registry_component", "publisher": "foo"}"#
+            )
+            .unwrap(),
+            Permission::RegistryComponent(RegistryComponentPermission {
+                publisher: Some("foo".into()),
+                name: None,
+                version: None
+            })
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(
+                r#"{"permission":"registry_component", "name": "foo"}"#
+            )
+            .unwrap(),
+            Permission::RegistryComponent(RegistryComponentPermission {
+                publisher: None,
+                name: Some("foo".into()),
+                version: None
+            })
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(
+                r#"{"permission":"registry_component", "version": "1.0.0"}"#
+            )
+            .unwrap(),
+            Permission::RegistryComponent(RegistryComponentPermission {
+                publisher: None,
+                name: None,
+                version: Some(VersionReq::parse("1.0.0").unwrap())
+            })
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(
+                r#"{"permission":"registry_component", "publisher": "foo", "name": "bar", "version": "1.2.3"}"#
+            )
+            .unwrap(),
+            Permission::RegistryComponent(RegistryComponentPermission {
+                publisher: Some("foo".into()),
+                name: Some("bar".into()),
+                version: Some(VersionReq::parse("1.2.3").unwrap())
+            })
+        );
+    }
+
+    #[slipway_test]
+    fn test_deserialize_http_component_permission() {
+        assert_eq!(
+            serde_json::from_str::<Permission>(r#"{"permission":"http_component"}"#).unwrap(),
+            Permission::HttpComponent(UrlPermission::Any {})
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(
+                r#"{"permission":"http_component", "exact": "https://example.com/foo.txt"}"#
+            )
+            .unwrap(),
+            Permission::HttpComponent(UrlPermission::Exact {
+                exact: Url::parse("https://example.com/foo.txt").unwrap()
+            })
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(
+                r#"{"permission":"http_component", "prefix": "https://example.com/foo/"}"#
+            )
+            .unwrap(),
+            Permission::HttpComponent(UrlPermission::Prefix {
+                prefix: Url::parse("https://example.com/foo/").unwrap()
+            })
+        );
+    }
+
+    #[slipway_test]
+    fn test_deserialize_local_component_permission() {
+        assert_eq!(
+            serde_json::from_str::<Permission>(r#"{"permission":"local_component"}"#).unwrap(),
+            Permission::LocalComponent(LocalComponentPermission::Any {})
+        );
+
+        assert_eq!(
+            serde_json::from_str::<Permission>(
+                r#"{"permission":"local_component", "exact": "foo"}"#
+            )
+            .unwrap(),
+            Permission::LocalComponent(LocalComponentPermission::Exact {
+                exact: String::from("foo")
+            })
+        );
     }
 }

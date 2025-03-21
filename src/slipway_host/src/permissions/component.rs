@@ -476,7 +476,7 @@ mod test {
                 run_test(
                     "file:///path/to/component",
                     Permissions::allow(&vec![Permission::LocalComponent(
-                        LocalComponentPermission::Any,
+                        LocalComponentPermission::Any {},
                     )]),
                     true,
                 );
@@ -487,7 +487,7 @@ mod test {
                 run_test(
                     "file:path/to/component",
                     Permissions::allow(&vec![Permission::LocalComponent(
-                        LocalComponentPermission::Any,
+                        LocalComponentPermission::Any {},
                     )]),
                     true,
                 );
