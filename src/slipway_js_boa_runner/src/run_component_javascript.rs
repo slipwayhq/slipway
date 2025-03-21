@@ -203,9 +203,15 @@ fn convert_output(
     if last_result.is_undefined() {
         Ok(serde_json::Value::Null)
     } else {
-        last_result.to_json(context).map_err(|e| {
-            RunComponentError::Other(format!("Failed to convert output object.\n{}", e))
-        })
+        last_result
+            .to_json(context)
+            .map(|v| match v {
+                None => serde_json::Value::Null,
+                Some(v) => v,
+            })
+            .map_err(|e| {
+                RunComponentError::Other(format!("Failed to convert output object.\n{}", e))
+            })
     }
 }
 
@@ -217,7 +223,10 @@ fn convert_error(script_file: &str, context: &mut Context, error: JsError) -> Ru
             messages.push(native.message().to_string());
             inner = native.cause();
         } else if let Some(opaque) = e.as_opaque() {
-            let maybe_json = opaque.to_json(context);
+            let maybe_json = opaque.to_json(context).map(|v| match v {
+                None => serde_json::Value::Null,
+                Some(v) => v,
+            });
             if let Ok(json) = maybe_json {
                 let maybe_component_error = serde_json::from_value::<ComponentError>(json.clone());
                 if let Ok(component_error) = maybe_component_error {

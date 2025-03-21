@@ -1,19 +1,19 @@
-use std::future::Future;
+use std::{collections::HashMap, future::Future};
 
 use boa_engine::{
-    js_string,
+    Context, JsError, JsResult, JsValue, NativeFunction, js_string,
     object::{
-        builtins::{JsArrayBuffer, JsPromise},
         ObjectInitializer,
+        builtins::{JsArrayBuffer, JsPromise, JsUint8Array},
     },
     property::{Attribute, PropertyKey},
-    Context, JsError, JsResult, JsValue, NativeFunction,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use slipway_engine::{ComponentExecutionContext, RunComponentError};
 use slipway_host::{
-    fetch::{RequestError, RequestOptions},
     ComponentError,
+    fetch::{BinResponse, RequestError, RequestOptions},
+    fonts::ResolvedFont,
 };
 
 type JsFunction = dyn Fn(&JsValue, &[JsValue], &mut Context) -> JsResult<JsValue> + 'static;
@@ -187,20 +187,23 @@ impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
                 return Ok(JsValue::null());
             };
 
-            let result = ::slipway_host::fonts::font(self.execution_context, font_stack).await;
+            let resolved_font =
+                ::slipway_host::fonts::font(self.execution_context, font_stack).await;
 
-            JsValue::from_json(
-                &serde_json::to_value(&result).map_err(|e| {
-                    js_error_from("Failed to serialize font".to_string(), e, context)
-                })?,
-                context,
-            )
-            .map_err(|e| {
-                js_error_from(
-                    "Failed to convert font result to JsValue".to_string(),
-                    e,
-                    context,
-                )
+            let Some(resolved_font) = resolved_font else {
+                return Ok(JsValue::null());
+            };
+
+            // We want to ensure we return the data as a Uint8Array,
+            // so we manually add it to the object.
+            let (js_resolved_font, data) = JsResolvedFont::from(resolved_font);
+            value_to_js_value(js_resolved_font, context).and_then(|js_result| {
+                let js_object = js_result
+                    .as_object()
+                    .expect("Resolved font should be an object");
+                let js_bin_array = bin_array_to_typed_array_js_value(data, context)?;
+                js_object.set(js_string!("data"), js_bin_array, true, context)?;
+                Ok(js_result)
             })
         }
     }
@@ -218,7 +221,19 @@ impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
             ::slipway_host::fetch::fetch_bin(self.execution_context, &url, opts)
                 .await
                 .map_err(|e| js_error_from_request_error(e, context))
-                .and_then(|response| value_to_js_value(response, context))
+                .and_then(|response| {
+                    // We want to ensure we return the body as a Uint8Array,
+                    // so we manually add it to the object.
+                    let (js_bin_response, body) = JsBinResponse::from(response);
+                    value_to_js_value(js_bin_response, context).and_then(|js_response| {
+                        let js_object = js_response
+                            .as_object()
+                            .expect("Bin response should be an object");
+                        let js_bin_array = bin_array_to_typed_array_js_value(body, context)?;
+                        js_object.set(js_string!("body"), js_bin_array, true, context)?;
+                        Ok(js_response)
+                    })
+                })
         }
     }
 
@@ -283,7 +298,7 @@ impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
             ::slipway_host::fetch::load_bin(self.execution_context, handle, path)
                 .await
                 .map_err(|e| js_error_from_component_error(e, context))
-                .and_then(|response| value_to_js_value(response, context))
+                .and_then(|response| bin_array_to_typed_array_js_value(response, context))
         }
     }
 
@@ -330,7 +345,10 @@ impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
         context: &mut Context,
     ) -> JsResult<JsValue> {
         if args.is_empty() {
-            return Err(js_error("Expected a u8 array.".to_string(), context));
+            return Err(js_error(
+                "Expected a u8 array, found no arguments.".to_string(),
+                context,
+            ));
         }
 
         let bin = get_bin_arg(args, 0, context)?;
@@ -352,14 +370,38 @@ impl<'call, 'rig, 'runners> SlipwayHost<'call, 'rig, 'runners> {
         let bin = ::slipway_host::bin::decode_bin(self.execution_context, text)
             .map_err(|e| js_error_from_component_error(e, context))?;
 
-        JsArrayBuffer::from_byte_block(bin, context).map(JsValue::from)
+        bin_array_to_typed_array_js_value(bin, context)
     }
 }
+
+#[derive(Debug, Serialize)]
+pub struct JsResolvedFont {
+    pub family: String,
+}
+
+impl JsResolvedFont {
+    fn from(value: ResolvedFont) -> (Self, Vec<u8>) {
+        (
+            JsResolvedFont {
+                family: value.family,
+            },
+            value.data,
+        )
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum BytesOrString {
     Bytes(Vec<u8>),
     String(String),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum TuplesOrHashMap {
+    Tuples(Vec<(String, String)>),
+    HashMap(HashMap<String, String>),
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -368,9 +410,9 @@ struct JsRequestOptions {
     pub method: Option<String>,
 
     #[serde(default)]
-    pub headers: Option<Vec<(String, String)>>,
+    pub headers: Option<TuplesOrHashMap>,
 
-    #[serde(default)]
+    #[serde(skip)] // We will handle this manually.
     pub body: Option<BytesOrString>,
 
     #[serde(default)]
@@ -381,13 +423,34 @@ impl From<JsRequestOptions> for RequestOptions {
     fn from(value: JsRequestOptions) -> Self {
         RequestOptions {
             method: value.method,
-            headers: value.headers,
+            headers: value.headers.map(|h| match h {
+                TuplesOrHashMap::Tuples(tuples) => tuples,
+                TuplesOrHashMap::HashMap(map) => map.into_iter().collect(),
+            }),
             body: value.body.map(|b| match b {
                 BytesOrString::Bytes(bytes) => bytes,
                 BytesOrString::String(string) => string.into_bytes(),
             }),
             timeout_ms: value.timeout_ms,
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct JsBinResponse {
+    pub status_code: u16,
+    pub headers: Vec<(String, String)>,
+}
+
+impl JsBinResponse {
+    fn from(value: BinResponse) -> (Self, Vec<u8>) {
+        (
+            JsBinResponse {
+                status_code: value.status_code,
+                headers: value.headers,
+            },
+            value.body,
+        )
     }
 }
 
@@ -419,7 +482,24 @@ fn get_url_and_request_options(
     let url = get_string_arg(args, 0, context)?;
 
     let request_options = if args.len() >= 2 {
-        Some(get_arg::<JsRequestOptions>(args, 1, context)?)
+        let request_options = get_arg::<JsRequestOptions>(args, 1, context).and_then(|mut v| {
+            let js_arg =
+                get_js_arg(args, 1, context).expect("Request options argument should exist");
+            let js_arg_object = js_arg
+                .as_object()
+                .expect("Request options should be an object");
+            let body_key = js_string!("body");
+            if js_arg_object.has_property(body_key.clone(), context)? {
+                let body = js_arg_object.get(body_key, context)?;
+                if body.is_null_or_undefined() {
+                    v.body = None;
+                } else {
+                    v.body = Some(value_to_bin_array_or_string(&body, context)?);
+                }
+            }
+            Ok(v)
+        })?;
+        Some(request_options)
     } else {
         None
     };
@@ -427,18 +507,25 @@ fn get_url_and_request_options(
     Ok((url, request_options.map(Into::into)))
 }
 
+fn get_js_arg<'a>(
+    args: &'a [JsValue],
+    index: usize,
+    context: &mut Context,
+) -> Result<&'a JsValue, JsError> {
+    args.get(index).ok_or_else(|| {
+        js_error(
+            format!("Expected an argument at position {index}."),
+            context,
+        )
+    })
+}
+
 fn get_string_arg(
     args: &[JsValue],
     index: usize,
     context: &mut Context,
 ) -> Result<String, JsError> {
-    args.get(index)
-        .ok_or_else(|| {
-            js_error(
-                format!("Expected a string argument at position {index}."),
-                context,
-            )
-        })
+    get_js_arg(args, index, context)
         .and_then(|arg| {
             arg.to_string(context).map_err(|e| {
                 js_error_from(
@@ -452,14 +539,7 @@ fn get_string_arg(
 }
 
 fn get_bin_arg(args: &[JsValue], index: usize, context: &mut Context) -> Result<Vec<u8>, JsError> {
-    args.get(index)
-        .ok_or_else(|| {
-            js_error(
-                format!("Expected a u8 array argument at position {index}."),
-                context,
-            )
-        })
-        .and_then(|value| value_to_bin_array(value, context))
+    get_js_arg(args, index, context).and_then(|value| value_to_bin_array(value, context))
 }
 
 fn get_json_arg(
@@ -467,22 +547,20 @@ fn get_json_arg(
     index: usize,
     context: &mut Context,
 ) -> Result<serde_json::Value, JsError> {
-    args.get(index)
-        .ok_or_else(|| {
-            js_error(
-                format!("Expected an argument at position {index}."),
-                context,
-            )
-        })
-        .and_then(|arg| {
-            arg.to_json(context).map_err(|e| {
+    get_js_arg(args, index, context).and_then(|arg| {
+        arg.to_json(context)
+            .map(|v| match v {
+                None => serde_json::Value::Null,
+                Some(v) => v,
+            })
+            .map_err(|e| {
                 js_error_from(
                     format!("Failed to convert argument at position {index} to JSON."),
                     e,
                     context,
                 )
             })
-        })
+    })
 }
 
 fn get_arg<T>(args: &[JsValue], index: usize, context: &mut Context) -> Result<T, JsError>
@@ -498,6 +576,27 @@ where
             )
         })
     })
+}
+
+fn bin_array_to_typed_array_js_value(
+    value: Vec<u8>,
+    context: &mut Context,
+) -> Result<JsValue, JsError> {
+    let array_buffer = JsArrayBuffer::from_byte_block(value, context)?;
+    JsUint8Array::from_array_buffer(array_buffer.clone(), context).map(JsValue::from)
+}
+
+fn value_to_bin_array_or_string(
+    value: &JsValue,
+    context: &mut Context,
+) -> Result<BytesOrString, JsError> {
+    if value.is_string() {
+        let js_str = value.to_string(context)?;
+        return Ok(BytesOrString::String(js_str.to_std_string_escaped()));
+    }
+
+    let bytes = value_to_bin_array(value, context)?;
+    Ok(BytesOrString::Bytes(bytes))
 }
 
 fn value_to_bin_array(value: &JsValue, context: &mut Context) -> Result<Vec<u8>, JsError> {
@@ -540,13 +639,45 @@ fn value_to_bin_array(value: &JsValue, context: &mut Context) -> Result<Vec<u8>,
             }
 
             return Ok(result);
+        } else {
+            let maybe_uint8_array = JsUint8Array::from_object(array.clone());
+            if let Ok(uint8_array) = maybe_uint8_array {
+                let length = uint8_array.length(context).map_err(|e| {
+                    js_error_from(
+                        "Failed to read length of Uint8Array.".to_string(),
+                        e,
+                        context,
+                    )
+                })?;
+
+                let mut result = Vec::with_capacity(length);
+
+                // There is surely a better way of doing this...
+                for i in 0..length {
+                    let num = uint8_array.get(i, context).map_err(|e| {
+                        js_error_from(
+                            format!("Failed to get Uint8Array element at index {i}."),
+                            e,
+                            context,
+                        )
+                    })?;
+
+                    result.push(
+                        num.as_number()
+                            .expect("Uint8Array elements should be numbers")
+                            as u8,
+                    );
+                }
+
+                return Ok(result);
+            }
         }
-    } else if value.is_string() {
-        let js_str = value.to_string(context)?;
-        return Ok(js_str.to_std_string_escaped().into_bytes());
     }
 
-    Err(js_error("Expected a u8 array.".to_string(), context))
+    Err(js_error(
+        format!("Expected a u8 array, found: {:?}", value),
+        context,
+    ))
 }
 
 fn value_to_js_value<T>(value: T, context: &mut Context) -> Result<JsValue, JsError>

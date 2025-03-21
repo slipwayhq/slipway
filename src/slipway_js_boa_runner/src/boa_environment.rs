@@ -10,6 +10,8 @@ use tracing::{debug, error, info, trace, warn};
 
 use crate::component_module_loader::ComponentModuleLoader;
 
+const POLYFILLS: &str = include_str!("polyfills.js");
+
 pub(super) fn prepare_environment(
     files: Arc<ComponentFiles>,
 ) -> Result<Context, RunComponentError> {
@@ -35,16 +37,12 @@ pub(super) fn prepare_environment(
     optimizer_options.set(OptimizerOptions::OPTIMIZE_ALL, true);
     context.set_optimizer_options(optimizer_options);
 
-    context
-        .eval(Source::from_bytes(indoc::indoc! {r#"
-            global = {};
-            setTimeout = () => {};
-            clearTimeout = () => {};
-            process = { env: {} };
-            "#}))
-        .map_err(|e| {
-            RunComponentError::Other(format!("Failed to prepare javascript environment.\n{}", e))
-        })?;
+    context.eval(Source::from_bytes(POLYFILLS)).map_err(|e| {
+        RunComponentError::Other(format!(
+            "Failed to prepare javascript environment polyfills.\n{}",
+            e
+        ))
+    })?;
 
     Ok(context)
 }
@@ -113,47 +111,3 @@ impl Logger for BoaConsoleLogger {
         Ok(())
     }
 }
-
-// #[derive(Default)]
-// struct Executor {
-//     promise_jobs: RefCell<VecDeque<PromiseJob>>,
-//     async_jobs: RefCell<VecDeque<NativeAsyncJob>>,
-// }
-
-// impl JobExecutor for Executor {
-//     fn enqueue_job(&self, job: Job, _: &mut Context) {
-//         match job {
-//             Job::PromiseJob(job) => self.promise_jobs.borrow_mut().push_back(job),
-//             Job::AsyncJob(job) => self.async_jobs.borrow_mut().push_back(job),
-//             job => eprintln!("unsupported job type {job:?}"),
-//         }
-//     }
-
-//     fn run_jobs(&self, context: &mut Context) -> JsResult<()> {
-//         loop {
-//             if self.promise_jobs.borrow().is_empty() && self.async_jobs.borrow().is_empty() {
-//                 return Ok(());
-//             }
-
-//             let jobs = std::mem::take(&mut *self.promise_jobs.borrow_mut());
-//             for job in jobs {
-//                 if let Err(e) = job.call(context) {
-//                     eprintln!("Uncaught {e}");
-//                 }
-//             }
-
-//             let async_jobs = std::mem::take(&mut *self.async_jobs.borrow_mut());
-//             for async_job in async_jobs {
-//                 if let Err(err) = pollster::block_on(async_job.call(&RefCell::new(context))) {
-//                     eprintln!("Uncaught {err}");
-//                 }
-//                 let jobs = std::mem::take(&mut *self.promise_jobs.borrow_mut());
-//                 for job in jobs {
-//                     if let Err(e) = job.call(context) {
-//                         eprintln!("Uncaught {e}");
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }

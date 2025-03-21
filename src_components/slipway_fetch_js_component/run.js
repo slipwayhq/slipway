@@ -29,9 +29,14 @@ export async function run(input) {
       };
     } else if (response_type === "binary") {
       const res = await slipway_host.fetch_bin(url, requestOptions);
+
+      if (!(res.body instanceof Uint8Array)) {
+        throw new Error("Expected body data to be a Uint8Array.");      
+      }
+  
       return {
         status_code: res.status_code,
-        body_bin: res.body,
+        body_bin: Array.from(res.body),
       };
     } else {
       throw new Error(`Unsupported response_type: ${response_type}`);

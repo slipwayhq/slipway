@@ -50,48 +50,44 @@ async fn load_component_from_tar_with_json_schema_refs() {
     .await;
 }
 
-mod serial_tests {
-    use super::*;
+#[slipway_test_async]
+async fn load_component_from_url_with_json_schema_refs() {
+    let test_server = TestServer::start_from_folder(get_slipway_test_components_path());
 
-    #[slipway_test_async]
-    async fn load_component_from_url_with_json_schema_refs() {
-        let test_server = TestServer::start_from_folder(get_slipway_test_components_path());
+    test_component(
+        Some(&test_server.localhost_url),
+        SlipwayReference::Http {
+            url: Url::parse(&format!(
+                "{}{}",
+                test_server.localhost_url, SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_TAR_NAME
+            ))
+            .unwrap(),
+        },
+    )
+    .await;
 
-        test_component(
-            Some(&test_server.localhost_url),
-            SlipwayReference::Http {
-                url: Url::parse(&format!(
-                    "{}{}",
-                    test_server.localhost_url, SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_TAR_NAME
-                ))
-                .unwrap(),
-            },
-        )
-        .await;
+    test_server.stop();
+}
 
-        test_server.stop();
+#[slipway_test_async]
+async fn load_component_from_registry_with_json_schema_refs() {
+    let test_server = TestServer::start_from_folder(get_slipway_test_components_path());
+
+    let reference =
+        SlipwayReference::from_str(SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_NAME).unwrap();
+
+    match reference {
+        SlipwayReference::Registry {
+            publisher: _,
+            name: _,
+            version: _,
+        } => {}
+        _ => panic!("Expected registry reference"),
     }
 
-    #[slipway_test_async]
-    async fn load_component_from_registry_with_json_schema_refs() {
-        let test_server = TestServer::start_from_folder(get_slipway_test_components_path());
+    test_component(Some(&test_server.localhost_url), reference).await;
 
-        let reference =
-            SlipwayReference::from_str(SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_NAME).unwrap();
-
-        match reference {
-            SlipwayReference::Registry {
-                publisher: _,
-                name: _,
-                version: _,
-            } => {}
-            _ => panic!("Expected registry reference"),
-        }
-
-        test_component(Some(&test_server.localhost_url), reference).await;
-
-        test_server.stop();
-    }
+    test_server.stop();
 }
 
 fn create_rig(component_reference: SlipwayReference) -> (Rig, ComponentHandle) {

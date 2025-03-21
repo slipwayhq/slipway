@@ -57,6 +57,6 @@ async fn deserialize_argument_error_propagation() {
     assert!(inner.len() == 2);
     assert_eq!(
         inner.last(),
-        Some(&"invalid type: map, expected a sequence".to_string())
+        Some(&"data did not match any variant of untagged enum TuplesOrHashMap".to_string())
     );
 }

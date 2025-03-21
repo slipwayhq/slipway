@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use jsonschema::{AsyncRetrieve, Validator};
 use thiserror::Error;
 
-use crate::{errors::ComponentLoadErrorInner, ComponentFiles};
+use crate::{ComponentFiles, errors::ComponentLoadErrorInner};
 
 use crate::parse::types::Schema;
 
@@ -139,12 +139,13 @@ impl AsyncRetrieve for ComponentJsonSchemaResolver {
 mod tests {
     use async_trait::async_trait;
     use common_macros::slipway_test_async;
-    use jsonschema::{error::ValidationErrorKind, ValidationError};
+    use jsonschema::{ValidationError, error::ValidationErrorKind};
     use jtd::ValidationErrorIndicator;
     use serde_json::json;
     use std::collections::HashMap;
 
-    use crate::{errors::ComponentLoadError, ComponentFilesLoader, SlipwayReference};
+    use crate::errors::JsonSchemaValidationFailure;
+    use crate::{ComponentFilesLoader, SlipwayReference, errors::ComponentLoadError};
 
     use super::*;
 
@@ -286,73 +287,67 @@ mod tests {
         assert_json_schema_errors(schema, true);
     }
 
-    mod serial_tests {
-        use crate::errors::JsonSchemaValidationFailure;
+    #[slipway_test_async]
+    async fn it_should_not_parse_json_schema_with_https_references() {
+        // // Start a server to return the schema.
+        // let test_server = TestServer::start_from_string_map(HashMap::from([(
+        //     "/name.json".to_string(),
+        //     r#"{ "type": "string" }"#.to_string(),
+        // )]));
 
-        use super::*;
+        let server_url = "https://localhost:1234/"; // test_server.localhost_url;
+        let file_url = format!("{}name.json", server_url);
 
-        #[slipway_test_async]
-        async fn it_should_not_parse_json_schema_with_https_references() {
-            // // Start a server to return the schema.
-            // let test_server = TestServer::start_from_string_map(HashMap::from([(
-            //     "/name.json".to_string(),
-            //     r#"{ "type": "string" }"#.to_string(),
-            // )]));
+        let schema = serde_json::json!({
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "properties": {
+                "name": { "$ref": file_url},
+                "age": { "type": "number" },
+                "phones": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                }
+            },
+            "required": ["name", "age"]
+        });
 
-            let server_url = "https://localhost:1234/"; // test_server.localhost_url;
-            let file_url = format!("{}name.json", server_url);
+        let component_files = mock_component_files(HashMap::new());
 
-            let schema = serde_json::json!({
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "properties": {
-                    "name": { "$ref": file_url},
-                    "age": { "type": "number" },
-                    "phones": {
-                        "type": "array",
-                        "items": { "type": "string" }
-                    }
-                },
-                "required": ["name", "age"]
-            });
+        let maybe_schema = parse_schema("test", schema, component_files).await;
 
-            let component_files = mock_component_files(HashMap::new());
-
-            let maybe_schema = parse_schema("test", schema, component_files).await;
-
-            match maybe_schema {
-                Err(ComponentLoadErrorInner::JsonSchemaParseFailed {
-                    schema_name: _,
-                    error:
-                        JsonSchemaValidationFailure {
-                            kind,
-                            instance_path: _,
-                            schema_path: _,
-                        },
-                }) => match &*kind {
-                    jsonschema::error::ValidationErrorKind::Referencing(
-                        jsonschema::ReferencingError::Unretrievable { uri: _, source },
-                    ) => {
-                        let inner_error = source
-                            .downcast_ref::<JsonSchemaRetrieveError>()
-                            .unwrap_or_else(|| panic!("Unexpected inner error: {:?}", source));
-                        match inner_error {
-                            JsonSchemaRetrieveError::UnsupportedExternalSchemaUrl { url } => {
-                                assert_eq!(url, &file_url);
-                            }
-                            _ => panic!("expected UnsupportedExternalSchemaUrl"),
+        match maybe_schema {
+            Err(ComponentLoadErrorInner::JsonSchemaParseFailed {
+                schema_name: _,
+                error:
+                    JsonSchemaValidationFailure {
+                        kind,
+                        instance_path: _,
+                        schema_path: _,
+                    },
+            }) => match &*kind {
+                jsonschema::error::ValidationErrorKind::Referencing(
+                    jsonschema::ReferencingError::Unretrievable { uri: _, source },
+                ) => {
+                    let inner_error = source
+                        .downcast_ref::<JsonSchemaRetrieveError>()
+                        .unwrap_or_else(|| panic!("Unexpected inner error: {:?}", source));
+                    match inner_error {
+                        JsonSchemaRetrieveError::UnsupportedExternalSchemaUrl { url } => {
+                            assert_eq!(url, &file_url);
                         }
+                        _ => panic!("expected UnsupportedExternalSchemaUrl"),
                     }
-                    _ => panic!("expected UriError"),
-                },
-                _ => panic!("expected JsonSchemaParseFailed"),
-            }
-
-            // let schema = parse_schema("test", schema, component_files).await.unwrap();
-
-            // assert_json_schema_errors(schema);
-
-            // test_server.stop();
+                }
+                _ => panic!("expected UriError"),
+            },
+            _ => panic!("expected JsonSchemaParseFailed"),
         }
+
+        // let schema = parse_schema("test", schema, component_files).await.unwrap();
+
+        // assert_json_schema_errors(schema);
+
+        // test_server.stop();
     }
 
     fn create_json_schema_input_bad() -> serde_json::Value {

@@ -7,8 +7,12 @@ export async function run(input) {
   }
   else if (input.file_type === BINARY) {
     var bin = await slipway_host.load_bin(input.handle, input.path);
+    if (!(bin instanceof Uint8Array)) {
+      throw new Error("Expected binary data to be a Uint8Array.");      
+    }
+
     return {
-      bin
+      bin: Array.from(bin)
     };
   }
   else {

@@ -13,14 +13,23 @@ use tracing::warn;
 use crate::run::run_component_callout;
 
 #[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RequestOptions {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub method: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub headers: Option<Vec<(String, String)>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub body: Option<Vec<u8>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub timeout_ms: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct BinResponse {
     pub status_code: u16,
     pub headers: Vec<(String, String)>,
@@ -28,6 +37,7 @@ pub struct BinResponse {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct TextResponse {
     pub status_code: u16,
     pub headers: Vec<(String, String)>,
@@ -35,6 +45,7 @@ pub struct TextResponse {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct RequestError {
     pub message: String,
     pub inner: Vec<String>,
