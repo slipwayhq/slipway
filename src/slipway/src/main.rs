@@ -309,7 +309,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
             let component = slipway_engine::Component {
                 publisher,
                 name,
-                version: Version::new(0, 1, 0),
+                version: Version::new(1, 0, 0),
                 description: None,
                 input: serde_json::Value::Object(Default::default()),
                 output: serde_json::Value::Object(Default::default()),
