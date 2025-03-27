@@ -66,6 +66,10 @@ pub(crate) enum Commands {
         /// The optional folder path to save the rig outputs to.
         #[arg(short, long)]
         output: Option<std::path::PathBuf>,
+
+        /// The optional file path to save the flattened debug rig to.
+        #[arg(short, long)]
+        output_debug_rig: Option<std::path::PathBuf>,
     },
 
     /// Debug a Slipway rig.
@@ -338,6 +342,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
             rig,
             common,
             output,
+            output_debug_rig,
         } => {
             let log_level = common.log_level;
             let registry_url = common.registry_url;
@@ -349,6 +354,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
                 (&permissions).into(),
                 registry_url,
                 output,
+                output_debug_rig,
             )
             .await?;
         }

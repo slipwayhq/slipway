@@ -119,9 +119,13 @@ impl<'rig> Permissions<'rig> {
 }
 
 const CHAIN_SEPARATOR: &str = " -> ";
+const HANDLE_SEPARATOR: &str = "_then_";
 
 #[derive(Clone, Debug)]
-pub struct CallChainLink<'rig>(Option<&'rig ComponentHandle>, ChainItem<Permissions<'rig>>);
+pub struct CallChainLink<'rig> {
+    pub handle: Option<&'rig ComponentHandle>,
+    pub permissions: ChainItem<Permissions<'rig>>,
+}
 
 impl<'rig> CallChain<'rig> {
     pub fn new(permissions: Permissions<'rig>) -> CallChain<'rig> {
@@ -189,18 +193,22 @@ impl<'rig> CallChain<'rig> {
         })
     }
 
-    pub fn component_handle_trail(&self) -> String {
+    fn custom_component_handle_trail(&self, separator: &str) -> String {
         let mut trail = format!("{}", self.current_component_handle());
         let mut maybe_current = &self.previous;
 
         while let Some(current) = maybe_current {
             if let Some(component_handle) = current.component_handle {
-                trail.insert_str(0, &format!("{}{}", component_handle, CHAIN_SEPARATOR));
+                trail.insert_str(0, &format!("{}{}", component_handle, separator));
             }
             maybe_current = &current.previous;
         }
 
         trail
+    }
+
+    pub fn component_handle_trail(&self) -> String {
+        self.custom_component_handle_trail(CHAIN_SEPARATOR)
     }
 
     pub fn rig_or_component_handle_trail_error_prefix(&self) -> String {
@@ -212,17 +220,17 @@ impl<'rig> CallChain<'rig> {
     }
 
     pub fn permission_trail(&self) -> Vec<CallChainLink<'rig>> {
-        let mut result = vec![CallChainLink(
-            self.component_handle,
-            self.permissions.clone(),
-        )];
+        let mut result = vec![CallChainLink {
+            handle: self.component_handle,
+            permissions: self.permissions.clone(),
+        }];
         let mut maybe_current = &self.previous;
 
         while let Some(current) = maybe_current {
-            result.push(CallChainLink(
-                current.component_handle,
-                current.permissions.clone(),
-            ));
+            result.push(CallChainLink {
+                handle: current.component_handle,
+                permissions: current.permissions.clone(),
+            });
             maybe_current = &current.previous;
         }
 
@@ -238,6 +246,16 @@ impl<'rig> CallChain<'rig> {
             trail.push_str(CHAIN_SEPARATOR);
             trail.push_str(&handle_string);
             trail
+        }
+    }
+
+    /// Creates a unique handle for the given handle, based on the current call chain.
+    pub fn unique_handle(&self) -> ComponentHandle {
+        let trail = self.custom_component_handle_trail(HANDLE_SEPARATOR);
+        if trail.is_empty() {
+            panic!("Call chain should not be empty");
+        } else {
+            ComponentHandle::from_str(&trail).expect("Handle should be valid")
         }
     }
 

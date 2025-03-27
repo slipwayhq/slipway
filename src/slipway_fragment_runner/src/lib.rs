@@ -82,6 +82,7 @@ async fn run_component_fragment(
             input: Some(input.clone()),
             allow: None,
             deny: None,
+            permissions_chain: None,
             callouts: None,
         },
     );

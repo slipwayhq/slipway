@@ -2,7 +2,8 @@ use std::{io::Write, path::PathBuf, sync::Arc};
 
 use anyhow::Context;
 use slipway_engine::{
-    BasicComponentCache, BasicComponentsLoader, CallChain, Permissions, RigSession, parse_rig,
+    BasicComponentCache, BasicComponentsLoader, CallChain, Permissions, RigSession,
+    RigSessionOptions, parse_rig,
 };
 use slipway_host::{
     render_state::{
@@ -24,6 +25,7 @@ pub(super) async fn run_rig(
     engine_permissions: Permissions<'_>,
     registry_urls: Vec<String>,
     save_path: Option<PathBuf>,
+    debug_rig_path: Option<PathBuf>,
 ) -> anyhow::Result<()> {
     writeln!(&mut w, "Launching {}", input.display())?;
 
@@ -37,7 +39,8 @@ pub(super) async fn run_rig(
         .build();
 
     let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
-    let session = RigSession::new(rig, &component_cache);
+    let session_options = RigSessionOptions::new_for_run(debug_rig_path.is_some());
+    let session = RigSession::new_with_options(rig, &component_cache, session_options);
 
     let mut event_handler = CliRunEventHandler::new(
         save_path,
@@ -56,6 +59,15 @@ pub(super) async fn run_rig(
         call_chain,
     )
     .await?;
+
+    if let Some(debug_rig_path) = debug_rig_path {
+        let debug_rig = session.run_record_as_rig();
+        let debug_rig_json =
+            serde_json::to_string_pretty(&debug_rig).context("Failed to serialize debug rig")?;
+        tokio::fs::write(debug_rig_path, debug_rig_json)
+            .await
+            .context("Failed to write debug rig")?;
+    }
 
     Ok(())
 }
@@ -85,7 +97,7 @@ impl CliRunEventHandler {
 impl<'rig, 'cache> RunEventHandler<'rig, 'cache, HostError> for CliRunEventHandler {
     fn handle_component_run_start<'state>(
         &mut self,
-        event: slipway_host::run::ComponentRunStartEvent<'rig, 'cache, 'state>,
+        event: slipway_host::run::ComponentRunStartEvent<'rig>,
     ) -> Result<(), HostError> {
         self.inner
             .handle_component_run_start(event)

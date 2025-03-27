@@ -103,6 +103,7 @@ fn create_rig(component_reference: SlipwayReference) -> (Rig, ComponentHandle) {
                 }}),
                 allow: None,
                 deny: None,
+                permissions_chain: None,
                 callouts: None,
             },
         )]

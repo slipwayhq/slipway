@@ -6,6 +6,7 @@ mod initialize;
 pub(crate) mod primitives;
 pub(crate) mod rig_execution_state;
 pub(crate) mod rig_session;
+mod run_record;
 pub(crate) mod step;
 mod topological_sort;
 mod validate_component_io;
@@ -15,9 +16,9 @@ mod tests {
     use serde_json::json;
 
     use crate::{
+        ComponentState, Immutable, RigExecutionState,
         parse::types::{ComponentRigging, Rig, Rigging},
         utils::ch,
-        ComponentState, Immutable, RigExecutionState,
     };
 
     use super::step::Instruction;
@@ -40,9 +41,9 @@ mod tests {
                 && component_state.output().is_none()
             {
                 panic!(
-                "expected component \"{}\" not to be ready, but it has execution input and no output",
-                handle
-            );
+                    "expected component \"{}\" not to be ready, but it has execution input and no output",
+                    handle
+                );
             }
         }
     }
@@ -81,7 +82,7 @@ mod tests {
     mod step {
         use common_macros::slipway_test_async;
 
-        use crate::{errors::RigError, BasicComponentCache, RigSession};
+        use crate::{BasicComponentCache, RigSession, errors::RigError};
 
         use super::*;
 
@@ -145,8 +146,8 @@ mod tests {
         }
 
         #[slipway_test_async]
-        async fn initialize_should_populate_execution_inputs_of_components_that_can_run_immediately(
-        ) {
+        async fn initialize_should_populate_execution_inputs_of_components_that_can_run_immediately()
+         {
             let rig = create_rig();
 
             let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
@@ -217,9 +218,9 @@ mod tests {
                 Ok(_) => panic!("expected an error"),
                 Err(RigError::StepFailed { error }) => {
                     assert_eq!(
-                    error,
-                    "component g cannot currently be executed, did you intend to override the output?"
-                );
+                        error,
+                        "component g cannot currently be executed, did you intend to override the output?"
+                    );
                 }
                 Err(err) => panic!("expected StepFailed error, got {}", err),
             }
@@ -346,7 +347,7 @@ mod tests {
     mod input_override {
         use common_macros::slipway_test_async;
 
-        use crate::{custom_iter_tools::CustomIterTools, BasicComponentCache, RigSession};
+        use crate::{BasicComponentCache, RigSession, custom_iter_tools::CustomIterTools};
 
         use super::*;
 

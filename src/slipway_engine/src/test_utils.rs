@@ -1,8 +1,3 @@
-use crate::errors::ComponentLoadError;
-use crate::errors::ComponentLoadErrorInner;
-use crate::load::ComponentsLoader;
-use crate::load::LoadedComponent;
-use crate::utils::ch;
 use crate::BasicComponentCache;
 use crate::Component;
 use crate::ComponentFiles;
@@ -19,10 +14,15 @@ use crate::Rigging;
 use crate::Schema;
 use crate::SlipwayId;
 use crate::SlipwayReference;
+use crate::errors::ComponentLoadError;
+use crate::errors::ComponentLoadErrorInner;
+use crate::load::ComponentsLoader;
+use crate::load::LoadedComponent;
+use crate::utils::ch;
 use async_trait::async_trait;
 use semver::Version;
-use serde_json::json;
 use serde_json::Value;
+use serde_json::json;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -56,6 +56,7 @@ impl ComponentRigging {
             input,
             allow: Some(vec![Permission::All]),
             deny: None,
+            permissions_chain: None,
             callouts: None,
         }
     }
@@ -70,6 +71,7 @@ impl ComponentRigging {
             input,
             allow: Some(permissions.allow.clone()),
             deny: Some(permissions.deny.clone()),
+            permissions_chain: None,
             callouts: None,
         }
     }
@@ -85,6 +87,7 @@ impl ComponentRigging {
             input,
             allow: Some(vec![Permission::All]),
             deny: None,
+            permissions_chain: None,
             callouts: Some(
                 vec![(ch(callout_handle), callout_reference)]
                     .into_iter()
@@ -105,6 +108,7 @@ impl ComponentRigging {
             input,
             allow: Some(permissions.allow.clone()),
             deny: Some(permissions.deny.clone()),
+            permissions_chain: None,
             callouts: Some(
                 vec![(ch(callout_handle), callout_reference)]
                     .into_iter()

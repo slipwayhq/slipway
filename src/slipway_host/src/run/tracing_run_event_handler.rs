@@ -37,7 +37,7 @@ impl Default for TracingRunEventHandler {
 impl<'rig, 'cache> RunEventHandler<'rig, 'cache, std::io::Error> for TracingRunEventHandler {
     fn handle_component_run_start<'state>(
         &mut self,
-        event: crate::run::ComponentRunStartEvent<'rig, 'cache, 'state>,
+        event: crate::run::ComponentRunStartEvent<'rig>,
     ) -> Result<(), std::io::Error> {
         writeln!(self.w, r#"Running "{}"..."#, event.component_handle)?;
         Ok(())

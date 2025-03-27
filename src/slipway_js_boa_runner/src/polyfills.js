@@ -4,6 +4,17 @@ setTimeout = () => {};
 clearTimeout = () => {};
 process = { env: {} };
 
+function btoa(str) {
+  const bytes = new TextEncoder().encode(str);
+  return slipway_host.encode_bin(bytes);
+}
+
+function atob(str) {
+  const bytes = slipway_host.decode_bin(str);
+  const decoder = new TextDecoder('utf-8');
+  return decoder.decode(bytes);
+}
+
 // Polyfill fetch API.
 class Response {
   constructor(binResponse) {

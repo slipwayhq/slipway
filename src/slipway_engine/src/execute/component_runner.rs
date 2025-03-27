@@ -103,7 +103,26 @@ pub async fn run_component<'rig, THostError>(
     call_chain: Arc<CallChain<'rig>>,
 ) -> Result<RunComponentResult, RunError<THostError>> {
     let execution_data =
-        state.get_component_execution_data(handle, call_chain, component_runners)?;
+        state.get_component_execution_data(handle, Arc::clone(&call_chain), component_runners)?;
+
+    if state.session.run_record_enabled() {
+        let component_state = state
+            .component_states
+            .get(handle)
+            .expect("component state should exist");
+
+        let input = component_state
+            .execution_input
+            .as_ref()
+            .expect("input should exist");
+
+        state.session.push_run_record(
+            component_state.rigging.component.clone(),
+            Arc::clone(&execution_data.context.call_chain),
+            Arc::clone(input),
+            component_state.rigging.callouts.clone(),
+        );
+    }
 
     run_component_inner(&execution_data).await
 }

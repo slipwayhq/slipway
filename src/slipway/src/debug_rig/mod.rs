@@ -163,6 +163,7 @@ pub(crate) async fn debug_rig_from_component_file<W: Write>(
                     input: Some(initial_input),
                     allow: None,
                     deny: None,
+                    permissions_chain: None,
                     callouts: None,
                 },
             )]

@@ -20,7 +20,7 @@ impl Default for SinkRunEventHandler {
 impl<'rig, 'cache> RunEventHandler<'rig, 'cache, ()> for SinkRunEventHandler {
     fn handle_component_run_start<'state>(
         &mut self,
-        _event: crate::run::ComponentRunStartEvent<'rig, 'cache, 'state>,
+        _event: crate::run::ComponentRunStartEvent<'rig>,
     ) -> Result<(), ()> {
         Ok(())
     }

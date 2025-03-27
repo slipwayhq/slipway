@@ -79,8 +79,63 @@ pub struct ComponentRigging {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deny: Option<Vec<Permission>>,
 
+    // This is used for outputting the debug rig. We need to keep the entire
+    // permissions chain for each component, so we can't just use `allow` and `deny`.
+    // Originally we had an enum which either had allow/deny fields above,
+    // or a permissions_chain field. We used `flatten` to make this transparent
+    // to the user, but `flatten` isn't compatible with `deny_unknown_fields`,
+    // and losing `deny_unknown_fields` would make the experience worse for the user
+    // so we decided to settle on having all three properties in `ComponentRigging`
+    // with a runtime check to ensure only one is used at a time.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub permissions_chain: Option<Vec<PermissionsChainLink>>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub callouts: Option<Callouts>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct PermissionsChainLink {
+    pub allow: Vec<Permission>,
+    pub deny: Vec<Permission>,
+}
+
+pub struct PermissionsChainLinkRef<'a> {
+    pub allow: &'a Vec<Permission>,
+    pub deny: &'a Vec<Permission>,
+}
+
+impl ComponentRigging {
+    pub fn permissions_as_chain(&self) -> Vec<PermissionsChainLinkRef> {
+        if let Some(permissions_chain) = self.permissions_chain.as_ref() {
+            if self.allow.is_some() || self.deny.is_some() {
+                panic!(
+                    "ComponentRigging should have either allow/deny or permissions_chain, not both"
+                );
+            }
+
+            if permissions_chain.is_empty() {
+                vec![PermissionsChainLinkRef {
+                    allow: &PERMISSIONS_NONE_VEC,
+                    deny: &PERMISSIONS_NONE_VEC,
+                }]
+            } else {
+                permissions_chain
+                    .iter()
+                    .map(|item| PermissionsChainLinkRef {
+                        allow: &item.allow,
+                        deny: &item.deny,
+                    })
+                    .collect()
+            }
+        } else {
+            vec![PermissionsChainLinkRef {
+                allow: self.allow.as_ref().unwrap_or(&PERMISSIONS_NONE_VEC),
+                deny: self.deny.as_ref().unwrap_or(&PERMISSIONS_NONE_VEC),
+            }]
+        }
+    }
 }
 
 /// The structure of this enum is designed to allow user friendly JSON.
@@ -200,13 +255,13 @@ pub struct Component<TSchema> {
     pub output: TSchema,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub constants: Option<serde_json::Value>,
+    pub callouts: Option<Callouts>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rigging: Option<Rigging>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub callouts: Option<Callouts>,
+    pub constants: Option<serde_json::Value>,
 }
 
 impl<TSchema> Component<TSchema> {
