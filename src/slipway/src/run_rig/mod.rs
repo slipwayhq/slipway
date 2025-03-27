@@ -52,13 +52,13 @@ pub(super) async fn run_rig(
 
     let call_chain = Arc::new(CallChain::new(engine_permissions));
 
-    slipway_host::run::run_rig(
+    let maybe_run_rig_result = slipway_host::run::run_rig(
         &session,
         &mut event_handler,
         component_runners_slice,
         call_chain,
     )
-    .await?;
+    .await;
 
     if let Some(debug_rig_path) = debug_rig_path {
         let debug_rig = session.run_record_as_rig();
@@ -68,6 +68,8 @@ pub(super) async fn run_rig(
             .await
             .context("Failed to write debug rig")?;
     }
+
+    maybe_run_rig_result?;
 
     Ok(())
 }
