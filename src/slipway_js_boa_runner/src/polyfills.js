@@ -4,15 +4,27 @@ setTimeout = () => {};
 clearTimeout = () => {};
 process = { env: {} };
 
+// Polyfill btoa, which takes a binary string and returns a base64 string.
 function btoa(str) {
-  const bytes = new TextEncoder().encode(str);
+  const bytes = new Uint8Array(str.length);
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    // native btoa will choke on code > 255
+    if (code > 255) {
+      throw new Error("Invalid character passed to btoa");
+    }
+    bytes[i] = code;
+  }
   return slipway_host.encode_bin(bytes);
 }
 
+// Polyfill atob, which takes a base64 string and returns a binary string.
 function atob(str) {
   const bytes = slipway_host.decode_bin(str);
-  const decoder = new TextDecoder('utf-8');
-  return decoder.decode(bytes);
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return binary;
 }
 
 // Polyfill fetch API.
