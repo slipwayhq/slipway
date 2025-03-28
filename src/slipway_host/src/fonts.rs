@@ -6,7 +6,7 @@ use fontique::{
 };
 use serde::Serialize;
 use slipway_engine::ComponentExecutionContext;
-use tracing::warn;
+use tracing::{debug, warn};
 
 static CONTEXT: OnceLock<Mutex<FontContext>> = OnceLock::new();
 
@@ -25,7 +25,7 @@ pub async fn font(
 ) -> Option<ResolvedFont> {
     let families: Vec<String> = font_stack
         .split(",")
-        .map(|s| s.trim().to_string())
+        .map(|s| s.trim().trim_matches('"').to_string())
         .filter(|s| {
             if let Err(e) = crate::permissions::ensure_can_query_font(s, execution_context) {
                 warn!(
@@ -58,8 +58,11 @@ fn try_resolve_font_families(families: Vec<String>) -> Option<ResolvedFont> {
                 .family(resolved.0)
                 .expect("resolved font family should exist");
 
+            let font_name = font_info.name();
+            debug!("Found font: {font_name}");
+
             Some(ResolvedFont {
-                family: font_info.name().to_string(),
+                family: font_name.to_string(),
                 data: resolved.1,
             })
         }
