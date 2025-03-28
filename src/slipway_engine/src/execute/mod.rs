@@ -173,7 +173,6 @@ mod tests {
                 c.execution_input.as_ref().unwrap().value,
                 json!({
                     "constant": "test_constant_value",
-                    "constant2": null,
                     "description": "test_description"
                 })
             );
@@ -243,7 +242,7 @@ mod tests {
 
             assert_eq!(
                 f.execution_input.as_ref().unwrap().value,
-                json!({ "c_x": [], "c_y": null, "c_z": 3 })
+                json!({ "c_x": [], "c_z": 3 })
             );
         }
 
@@ -293,7 +292,7 @@ mod tests {
 
             assert_eq!(
                 e.execution_input.as_ref().unwrap().value,
-                json!({ "b_input_y": null, "b_input_z": 3 })
+                json!({ "b_input_z": 3 })
             );
         }
 

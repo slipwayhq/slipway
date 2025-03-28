@@ -15,7 +15,7 @@ pub(super) trait JsonPathOperations {
 
     fn to_prefixed_path_string(&self, prefix: &str) -> String;
 
-    fn replace(&self, target: &mut Value, new_value: Value) -> Result<(), RigError>;
+    fn replace(&self, target: &mut Value, new_value: Option<Value>) -> Result<(), RigError>;
 }
 
 impl JsonPathOperations for Vec<SimpleJsonPath<'_>> {
@@ -38,54 +38,71 @@ impl JsonPathOperations for Vec<SimpleJsonPath<'_>> {
         result
     }
 
-    fn replace(&self, target: &mut Value, new_value: Value) -> Result<(), RigError> {
+    fn replace(&self, target: &mut Value, new_value: Option<Value>) -> Result<(), RigError> {
         let mut current = target;
         let path_so_far = vec![SimpleJsonPath::Field("$")];
-        for path in self {
+        for (i, path) in self.iter().enumerate() {
             match path {
                 SimpleJsonPath::Field(field) => {
-                    current = current
-                        .as_object_mut()
-                        .ok_or(RigError::StepFailed {
-                            error: format!(
-                                "Expected {} to be an object",
-                                path_so_far.to_json_path_string()
-                            ),
-                        })?
-                        .get_mut(*field)
-                        .ok_or(RigError::StepFailed {
-                            error: format!(
-                                "Expected field {} at {} to exist",
-                                field,
-                                path_so_far.to_json_path_string()
-                            ),
-                        })?;
+                    let o = current.as_object_mut().ok_or(RigError::StepFailed {
+                        error: format!(
+                            "Expected {} to be an object",
+                            path_so_far.to_json_path_string()
+                        ),
+                    })?;
+
+                    if i == self.len() - 1 && new_value.is_none() {
+                        o.remove(*field);
+                        return Ok(());
+                    }
+
+                    current = o.get_mut(*field).ok_or(RigError::StepFailed {
+                        error: format!(
+                            "Expected field {} at {} to exist",
+                            field,
+                            path_so_far.to_json_path_string()
+                        ),
+                    })?;
                 }
                 SimpleJsonPath::Index(index) => {
-                    current = current
-                        .as_array_mut()
-                        .ok_or(RigError::StepFailed {
-                            error: format!(
-                                "Expected {} to be an array",
-                                path_so_far.to_json_path_string()
-                            ),
-                        })?
-                        .get_mut(*index)
-                        .ok_or(RigError::StepFailed {
-                            error: format!(
-                                "Expected index {} at {} to exist",
-                                index,
-                                path_so_far.to_json_path_string()
-                            ),
-                        })?;
+                    let a = current.as_array_mut().ok_or(RigError::StepFailed {
+                        error: format!(
+                            "Expected {} to be an array",
+                            path_so_far.to_json_path_string()
+                        ),
+                    })?;
+
+                    if i == self.len() - 1 && new_value.is_none() {
+                        // Important: Because we remove items from the array, we must ensure we
+                        // evaluate the found json path strings  in reverse order.
+                        a.remove(*index);
+                        return Ok(());
+                    }
+
+                    current = a.get_mut(*index).ok_or(RigError::StepFailed {
+                        error: format!(
+                            "Expected index {} at {} to exist",
+                            index,
+                            path_so_far.to_json_path_string()
+                        ),
+                    })?;
                 }
             }
         }
-        *current = new_value;
+        match new_value {
+            Some(new_value) => {
+                *current = new_value;
+            }
+            None => {
+                unreachable!("new_value should never be None here, as we handle None in the loop");
+            }
+        }
+
         Ok(())
     }
 }
 
+// Note: There is more test coverage in the tests for the `execute` module.
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -131,7 +148,7 @@ mod tests {
 
             let mut target_mut = target.clone();
 
-            let new_value = json!({ "f": 3 });
+            let new_value = Some(json!({ "f": 3 }));
 
             let path = vec![
                 SimpleJsonPath::Field("a"),
@@ -176,7 +193,7 @@ mod tests {
 
             let mut target_mut = target.clone();
 
-            let new_value = json!(4);
+            let new_value = Some(json!(4));
 
             let path = vec![
                 SimpleJsonPath::Field("a"),
@@ -195,6 +212,91 @@ mod tests {
                         "b": [
                             {
                                 "c": [1, 4, 3]
+                            }
+                        ]
+                    }
+                })
+            );
+        }
+
+        #[test]
+        fn it_should_remove_values_in_json() {
+            let target = json!({
+                "a": {
+                    "b": [
+                        {
+                            "c": {
+                                "d": 1,
+                                "e": 2,
+                            }
+                        }
+                    ]
+                }
+            });
+
+            let mut target_mut = target.clone();
+
+            let new_value = None;
+
+            let path = vec![
+                SimpleJsonPath::Field("a"),
+                SimpleJsonPath::Field("b"),
+                SimpleJsonPath::Index(0),
+                SimpleJsonPath::Field("c"),
+                SimpleJsonPath::Field("e"),
+            ];
+
+            path.replace(&mut target_mut, new_value).unwrap();
+
+            assert_eq!(
+                target_mut,
+                json!({
+                    "a": {
+                        "b": [
+                            {
+                                "c": {
+                                    "d": 1
+                                }
+                            }
+                        ]
+                    }
+                })
+            );
+        }
+
+        #[test]
+        fn it_should_remove_values_in_json_array() {
+            let target = json!({
+                "a": {
+                    "b": [
+                        {
+                            "c": [1, 2, 3]
+                        }
+                    ]
+                }
+            });
+
+            let mut target_mut = target.clone();
+
+            let new_value = None;
+
+            let path = vec![
+                SimpleJsonPath::Field("a"),
+                SimpleJsonPath::Field("b"),
+                SimpleJsonPath::Index(0),
+                SimpleJsonPath::Field("c"),
+                SimpleJsonPath::Index(1),
+            ];
+
+            path.replace(&mut target_mut, new_value).unwrap();
+
+            assert_eq!(
+                target_mut,
+                json!({
+                    "a": {
+                        "b": [
+                            {
+                                "c": [1, 3]
                             }
                         ]
                     }
