@@ -51,7 +51,7 @@ pub fn ensure_can_use_component_reference(
             ) -> bool {
                 match permission {
                     Permission::All => true,
-                    Permission::RegistryComponent(permission) => {
+                    Permission::RegistryComponents(permission) => {
                         permission.matches(publisher, name, version)
                     }
                     _ => false,
@@ -79,7 +79,7 @@ pub fn ensure_can_use_component_reference(
             fn matches(url: &Url, permission: &Permission) -> bool {
                 match permission {
                     Permission::All => true,
-                    Permission::HttpComponent(permission) => permission.matches(url),
+                    Permission::HttpComponents(permission) => permission.matches(url),
                     _ => false,
                 }
             }
@@ -105,7 +105,7 @@ pub fn ensure_can_use_component_reference(
             fn matches(path: &str, permission: &Permission) -> bool {
                 match permission {
                     Permission::All => true,
-                    Permission::LocalComponent(permission) => permission.matches(path),
+                    Permission::LocalComponents(permission) => permission.matches(path),
                     _ => false,
                 }
             }
@@ -208,7 +208,7 @@ mod test {
             fn it_should_allow_any_reference() {
                 run_test(
                     "p1.n1.1.0.1",
-                    Permissions::allow(&vec![Permission::RegistryComponent(
+                    Permissions::allow(&vec![Permission::RegistryComponents(
                         RegistryComponentPermission {
                             publisher: None,
                             name: None,
@@ -224,11 +224,13 @@ mod test {
             use super::*;
 
             fn create_permissions() -> Vec<Permission> {
-                vec![Permission::RegistryComponent(RegistryComponentPermission {
-                    publisher: Some("p1".to_string()),
-                    name: None,
-                    version: None,
-                })]
+                vec![Permission::RegistryComponents(
+                    RegistryComponentPermission {
+                        publisher: Some("p1".to_string()),
+                        name: None,
+                        version: None,
+                    },
+                )]
             }
 
             #[test]
@@ -246,11 +248,13 @@ mod test {
             use super::*;
 
             fn create_permissions() -> Vec<Permission> {
-                vec![Permission::RegistryComponent(RegistryComponentPermission {
-                    publisher: None,
-                    name: Some("n1".to_string()),
-                    version: None,
-                })]
+                vec![Permission::RegistryComponents(
+                    RegistryComponentPermission {
+                        publisher: None,
+                        name: Some("n1".to_string()),
+                        version: None,
+                    },
+                )]
             }
 
             #[test]
@@ -268,11 +272,13 @@ mod test {
             use super::*;
 
             fn create_permissions() -> Vec<Permission> {
-                vec![Permission::RegistryComponent(RegistryComponentPermission {
-                    publisher: None,
-                    name: None,
-                    version: Some(VersionReq::parse(">=1.0,<2.0").unwrap()),
-                })]
+                vec![Permission::RegistryComponents(
+                    RegistryComponentPermission {
+                        publisher: None,
+                        name: None,
+                        version: Some(VersionReq::parse(">=1.0,<2.0").unwrap()),
+                    },
+                )]
             }
 
             #[test]
@@ -293,11 +299,13 @@ mod test {
             use super::*;
 
             fn create_permissions() -> Vec<Permission> {
-                vec![Permission::RegistryComponent(RegistryComponentPermission {
-                    publisher: Some("p1".to_string()),
-                    name: Some("n1".to_string()),
-                    version: Some(VersionReq::parse(">=1.0,<2.0").unwrap()),
-                })]
+                vec![Permission::RegistryComponents(
+                    RegistryComponentPermission {
+                        publisher: Some("p1".to_string()),
+                        name: Some("n1".to_string()),
+                        version: Some(VersionReq::parse(">=1.0,<2.0").unwrap()),
+                    },
+                )]
             }
 
             #[test]
@@ -318,19 +326,23 @@ mod test {
             use super::*;
 
             fn create_allow_permissions() -> Vec<Permission> {
-                vec![Permission::RegistryComponent(RegistryComponentPermission {
-                    publisher: Some("p1".to_string()),
-                    name: Some("n1".to_string()),
-                    version: Some(VersionReq::parse(">=1.0,<2.0").unwrap()),
-                })]
+                vec![Permission::RegistryComponents(
+                    RegistryComponentPermission {
+                        publisher: Some("p1".to_string()),
+                        name: Some("n1".to_string()),
+                        version: Some(VersionReq::parse(">=1.0,<2.0").unwrap()),
+                    },
+                )]
             }
 
             fn create_deny_permissions() -> Vec<Permission> {
-                vec![Permission::RegistryComponent(RegistryComponentPermission {
-                    publisher: Some("p1".to_string()),
-                    name: Some("n1".to_string()),
-                    version: Some(VersionReq::parse("=1.5.9").unwrap()),
-                })]
+                vec![Permission::RegistryComponents(
+                    RegistryComponentPermission {
+                        publisher: Some("p1".to_string()),
+                        name: Some("n1".to_string()),
+                        version: Some(VersionReq::parse("=1.5.9").unwrap()),
+                    },
+                )]
             }
 
             #[test]
@@ -357,7 +369,7 @@ mod test {
             fn it_should_allow_any_reference() {
                 run_test(
                     "https://slipway-registry.com/p1/n1/1.0.1",
-                    Permissions::allow(&vec![Permission::HttpComponent(UrlPermission::Any {})]),
+                    Permissions::allow(&vec![Permission::HttpComponents(UrlPermission::Any {})]),
                     true,
                 );
             }
@@ -367,7 +379,7 @@ mod test {
             use super::*;
 
             fn create_permissions() -> Vec<Permission> {
-                vec![Permission::HttpComponent(UrlPermission::Exact {
+                vec![Permission::HttpComponents(UrlPermission::Exact {
                     exact: Url::parse("https://slipway-registry.com/p1/n1/1.0.1").unwrap(),
                 })]
             }
@@ -394,7 +406,7 @@ mod test {
             use super::*;
 
             fn create_permissions() -> Vec<Permission> {
-                vec![Permission::HttpComponent(UrlPermission::Prefix {
+                vec![Permission::HttpComponents(UrlPermission::Prefix {
                     prefix: Url::parse("https://slipway-registry.com/p1/").unwrap(),
                 })]
             }
@@ -427,13 +439,13 @@ mod test {
             use super::*;
 
             fn create_allow_permissions() -> Vec<Permission> {
-                vec![Permission::HttpComponent(UrlPermission::Prefix {
+                vec![Permission::HttpComponents(UrlPermission::Prefix {
                     prefix: Url::parse("https://slipway-registry.com/p1/").unwrap(),
                 })]
             }
 
             fn create_deny_permissions() -> Vec<Permission> {
-                vec![Permission::HttpComponent(UrlPermission::Prefix {
+                vec![Permission::HttpComponents(UrlPermission::Prefix {
                     prefix: Url::parse("https://slipway-registry.com/p1/n2/").unwrap(),
                 })]
             }
@@ -475,7 +487,7 @@ mod test {
             fn it_should_allow_any_absolute_reference() {
                 run_test(
                     "file:///path/to/component",
-                    Permissions::allow(&vec![Permission::LocalComponent(
+                    Permissions::allow(&vec![Permission::LocalComponents(
                         LocalComponentPermission::Any {},
                     )]),
                     true,
@@ -486,7 +498,7 @@ mod test {
             fn it_should_allow_any_local_reference() {
                 run_test(
                     "file:path/to/component",
-                    Permissions::allow(&vec![Permission::LocalComponent(
+                    Permissions::allow(&vec![Permission::LocalComponents(
                         LocalComponentPermission::Any {},
                     )]),
                     true,
@@ -498,7 +510,7 @@ mod test {
             use super::*;
 
             fn create_permissions() -> Vec<Permission> {
-                vec![Permission::LocalComponent(
+                vec![Permission::LocalComponents(
                     LocalComponentPermission::Exact {
                         exact: "file:components/foo".to_string(),
                     },
@@ -533,7 +545,7 @@ mod test {
             use super::*;
 
             fn create_allow_permissions() -> Vec<Permission> {
-                vec![Permission::LocalComponent(
+                vec![Permission::LocalComponents(
                     LocalComponentPermission::Exact {
                         exact: "file:components/foo".to_string(),
                     },
@@ -541,7 +553,7 @@ mod test {
             }
 
             fn create_deny_permissions() -> Vec<Permission> {
-                vec![Permission::LocalComponent(
+                vec![Permission::LocalComponents(
                     LocalComponentPermission::Exact {
                         exact: "file:components/foo".to_string(),
                     },

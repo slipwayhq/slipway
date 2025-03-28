@@ -30,8 +30,8 @@
         "echarts_demo": "slipwayhq.echarts_demo.0.0.1"
       },
       "allow": [
-        { "permission": "font" },
-        { "permission": "registry_component" }
+        { "permission": "fonts" },
+        { "permission": "registry_components" }
       ],
       "input": {
         "card": {

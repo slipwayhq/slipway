@@ -26,11 +26,13 @@ async fn permissions_load_component_from_rig(component: &str) {
     let rig = create_rig(
         Permissions::new(
             &vec![Permission::All],
-            &vec![Permission::RegistryComponent(RegistryComponentPermission {
-                name: None,
-                publisher: None,
-                version: None,
-            })],
+            &vec![Permission::RegistryComponents(
+                RegistryComponentPermission {
+                    name: None,
+                    publisher: None,
+                    version: None,
+                },
+            )],
         ),
         component,
     );

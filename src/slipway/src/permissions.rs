@@ -270,7 +270,7 @@ impl CommonPermissionsArgs {
         add_path_permissions(
             &mut allow,
             &mut deny,
-            Permission::File,
+            Permission::Files,
             self.file.allow_file,
             self.file.allow_file_exact,
             self.file.allow_file_within,
@@ -283,7 +283,7 @@ impl CommonPermissionsArgs {
         add_string_permissions(
             &mut allow,
             &mut deny,
-            Permission::Font,
+            Permission::Fonts,
             self.font.allow_fonts,
             self.font.allow_fonts_exact,
             self.font.allow_fonts_prefix,
@@ -313,7 +313,7 @@ impl CommonPermissionsArgs {
         add_url_permissions(
             &mut allow,
             &mut deny,
-            Permission::HttpComponent,
+            Permission::HttpComponents,
             self.http_components.allow_http_components,
             self.http_components.allow_http_components_exact,
             self.http_components.allow_http_components_prefix,
@@ -469,19 +469,23 @@ fn add_local_component_permissions(
     deny_exact: Vec<String>,
 ) {
     if allow_any {
-        allow_list.push(Permission::LocalComponent(LocalComponentPermission::Any {}));
+        allow_list.push(Permission::LocalComponents(
+            LocalComponentPermission::Any {},
+        ));
     }
     for exact in allow_exact {
-        allow_list.push(Permission::LocalComponent(
+        allow_list.push(Permission::LocalComponents(
             LocalComponentPermission::Exact { exact },
         ));
     }
 
     if deny_any {
-        deny_list.push(Permission::LocalComponent(LocalComponentPermission::Any {}));
+        deny_list.push(Permission::LocalComponents(
+            LocalComponentPermission::Any {},
+        ));
     }
     for exact in deny_exact {
-        deny_list.push(Permission::LocalComponent(
+        deny_list.push(Permission::LocalComponents(
             LocalComponentPermission::Exact { exact },
         ));
     }
@@ -497,29 +501,33 @@ fn add_registry_component_permissions(
     deny_exact: Vec<String>,
 ) -> anyhow::Result<()> {
     if allow_any {
-        allow_list.push(Permission::RegistryComponent(RegistryComponentPermission {
-            publisher: None,
-            name: None,
-            version: None,
-        }));
+        allow_list.push(Permission::RegistryComponents(
+            RegistryComponentPermission {
+                publisher: None,
+                name: None,
+                version: None,
+            },
+        ));
     }
 
     for item in allow_exact {
-        allow_list.push(Permission::RegistryComponent(
+        allow_list.push(Permission::RegistryComponents(
             parse_registry_component_permission(&item)?,
         ));
     }
 
     if deny_any {
-        deny_list.push(Permission::RegistryComponent(RegistryComponentPermission {
-            publisher: None,
-            name: None,
-            version: None,
-        }));
+        deny_list.push(Permission::RegistryComponents(
+            RegistryComponentPermission {
+                publisher: None,
+                name: None,
+                version: None,
+            },
+        ));
     }
 
     for item in deny_exact {
-        deny_list.push(Permission::RegistryComponent(
+        deny_list.push(Permission::RegistryComponents(
             parse_registry_component_permission(&item)?,
         ));
     }
@@ -643,12 +651,12 @@ mod tests {
             vec![
                 Permission::All,
                 Permission::Http(UrlPermission::Any {}),
-                Permission::File(PathPermission::Any {}),
-                Permission::Font(StringPermission::Any {}),
+                Permission::Files(PathPermission::Any {}),
+                Permission::Fonts(StringPermission::Any {}),
                 Permission::Env(StringPermission::Any {}),
-                Permission::HttpComponent(UrlPermission::Any {}),
-                Permission::LocalComponent(LocalComponentPermission::Any {}),
-                Permission::RegistryComponent(RegistryComponentPermission {
+                Permission::HttpComponents(UrlPermission::Any {}),
+                Permission::LocalComponents(LocalComponentPermission::Any {}),
+                Permission::RegistryComponents(RegistryComponentPermission {
                     publisher: None,
                     name: None,
                     version: None,
@@ -729,12 +737,12 @@ mod tests {
             vec![
                 Permission::All,
                 Permission::Http(UrlPermission::Any {}),
-                Permission::File(PathPermission::Any {}),
-                Permission::Font(StringPermission::Any {}),
+                Permission::Files(PathPermission::Any {}),
+                Permission::Fonts(StringPermission::Any {}),
                 Permission::Env(StringPermission::Any {}),
-                Permission::HttpComponent(UrlPermission::Any {}),
-                Permission::LocalComponent(LocalComponentPermission::Any {}),
-                Permission::RegistryComponent(RegistryComponentPermission {
+                Permission::HttpComponents(UrlPermission::Any {}),
+                Permission::LocalComponents(LocalComponentPermission::Any {}),
+                Permission::RegistryComponents(RegistryComponentPermission {
                     publisher: None,
                     name: None,
                     version: None,
@@ -903,11 +911,11 @@ mod tests {
         assert_eq!(
             permissions.allow,
             vec![
-                Permission::File(PathPermission::Any {}),
-                Permission::File(PathPermission::Exact {
+                Permission::Files(PathPermission::Any {}),
+                Permission::Files(PathPermission::Exact {
                     exact: PathBuf::from("/foo/bar.json")
                 }),
-                Permission::File(PathPermission::Within {
+                Permission::Files(PathPermission::Within {
                     within: PathBuf::from("/foo2")
                 }),
             ]
@@ -916,11 +924,11 @@ mod tests {
         assert_eq!(
             permissions.deny,
             vec![
-                Permission::File(PathPermission::Any {}),
-                Permission::File(PathPermission::Exact {
+                Permission::Files(PathPermission::Any {}),
+                Permission::Files(PathPermission::Exact {
                     exact: PathBuf::from("foo/bar3.json")
                 }),
-                Permission::File(PathPermission::Within {
+                Permission::Files(PathPermission::Within {
                     within: PathBuf::from("foo4")
                 }),
             ]
@@ -995,14 +1003,14 @@ mod tests {
         assert_eq!(
             permissions.allow,
             vec![
-                Permission::Font(StringPermission::Any {}),
-                Permission::Font(StringPermission::Exact {
+                Permission::Fonts(StringPermission::Any {}),
+                Permission::Fonts(StringPermission::Exact {
                     exact: "Roboto".into()
                 }),
-                Permission::Font(StringPermission::Prefix {
+                Permission::Fonts(StringPermission::Prefix {
                     prefix: "Hack".into()
                 }),
-                Permission::Font(StringPermission::Suffix {
+                Permission::Fonts(StringPermission::Suffix {
                     suffix: "Arial".into()
                 }),
             ]
@@ -1010,14 +1018,14 @@ mod tests {
         assert_eq!(
             permissions.deny,
             vec![
-                Permission::Font(StringPermission::Any {}),
-                Permission::Font(StringPermission::Exact {
+                Permission::Fonts(StringPermission::Any {}),
+                Permission::Fonts(StringPermission::Exact {
                     exact: "Foo".into()
                 }),
-                Permission::Font(StringPermission::Prefix {
+                Permission::Fonts(StringPermission::Prefix {
                     prefix: "Bar".into()
                 }),
-                Permission::Font(StringPermission::Suffix {
+                Permission::Fonts(StringPermission::Suffix {
                     suffix: "Baz".into()
                 }),
             ]
@@ -1189,11 +1197,11 @@ mod tests {
         assert_eq!(
             permissions.allow,
             vec![
-                Permission::HttpComponent(UrlPermission::Any {}),
-                Permission::HttpComponent(UrlPermission::Exact {
+                Permission::HttpComponents(UrlPermission::Any {}),
+                Permission::HttpComponents(UrlPermission::Exact {
                     exact: Url::parse("https://example.com").unwrap()
                 }),
-                Permission::HttpComponent(UrlPermission::Prefix {
+                Permission::HttpComponents(UrlPermission::Prefix {
                     prefix: Url::parse("https://example2.com").unwrap()
                 }),
             ]
@@ -1202,11 +1210,11 @@ mod tests {
         assert_eq!(
             permissions.deny,
             vec![
-                Permission::HttpComponent(UrlPermission::Any {}),
-                Permission::HttpComponent(UrlPermission::Exact {
+                Permission::HttpComponents(UrlPermission::Any {}),
+                Permission::HttpComponents(UrlPermission::Exact {
                     exact: Url::parse("https://example3.com").unwrap()
                 }),
-                Permission::HttpComponent(UrlPermission::Prefix {
+                Permission::HttpComponents(UrlPermission::Prefix {
                     prefix: Url::parse("https://example4.com").unwrap()
                 }),
             ]
@@ -1281,8 +1289,8 @@ mod tests {
         assert_eq!(
             permissions.allow,
             vec![
-                Permission::LocalComponent(LocalComponentPermission::Any {}),
-                Permission::LocalComponent(LocalComponentPermission::Exact {
+                Permission::LocalComponents(LocalComponentPermission::Any {}),
+                Permission::LocalComponents(LocalComponentPermission::Exact {
                     exact: "foo.wasm".into()
                 }),
             ]
@@ -1291,8 +1299,8 @@ mod tests {
         assert_eq!(
             permissions.deny,
             vec![
-                Permission::LocalComponent(LocalComponentPermission::Any {}),
-                Permission::LocalComponent(LocalComponentPermission::Exact {
+                Permission::LocalComponents(LocalComponentPermission::Any {}),
+                Permission::LocalComponents(LocalComponentPermission::Exact {
                     exact: "bar.wasm".into()
                 }),
             ]
@@ -1367,12 +1375,12 @@ mod tests {
         assert_eq!(
             permissions.allow,
             vec![
-                Permission::RegistryComponent(RegistryComponentPermission {
+                Permission::RegistryComponents(RegistryComponentPermission {
                     publisher: None,
                     name: None,
                     version: None,
                 }),
-                Permission::RegistryComponent(RegistryComponentPermission {
+                Permission::RegistryComponents(RegistryComponentPermission {
                     publisher: Some("foo".into()),
                     name: Some("bar".into()),
                     version: Some(VersionReq::parse("1.2.3").unwrap()),
@@ -1383,12 +1391,12 @@ mod tests {
         assert_eq!(
             permissions.deny,
             vec![
-                Permission::RegistryComponent(RegistryComponentPermission {
+                Permission::RegistryComponents(RegistryComponentPermission {
                     publisher: None,
                     name: None,
                     version: None,
                 }),
-                Permission::RegistryComponent(RegistryComponentPermission {
+                Permission::RegistryComponents(RegistryComponentPermission {
                     publisher: None,
                     name: Some("baz".into()),
                     version: Some(VersionReq::parse("1.0.0").unwrap()),

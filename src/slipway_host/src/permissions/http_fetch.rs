@@ -90,7 +90,7 @@ mod test {
         fn it_should_forbid_any_url_for_incorrect_permissions() {
             run_test(
                 "https://example.com/foo/bar.json",
-                Permissions::allow(&vec![Permission::File(PathPermission::Any {})]),
+                Permissions::allow(&vec![Permission::Files(PathPermission::Any {})]),
                 false,
             );
         }

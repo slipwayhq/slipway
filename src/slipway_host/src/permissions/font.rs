@@ -20,7 +20,7 @@ fn ensure_can_query_font_inner(
         fn matches(query: &str, permission: &Permission) -> bool {
             match permission {
                 Permission::All => true,
-                Permission::Font(permission) => permission.matches(query),
+                Permission::Fonts(permission) => permission.matches(query),
                 _ => false,
             }
         }
@@ -106,7 +106,7 @@ mod test {
         fn it_should_allow_any_query() {
             run_test(
                 "Roboto",
-                Permissions::allow(&vec![Permission::Font(StringPermission::Any {})]),
+                Permissions::allow(&vec![Permission::Fonts(StringPermission::Any {})]),
                 true,
             );
         }
@@ -116,7 +116,7 @@ mod test {
         use super::*;
 
         fn create_permissions() -> Vec<Permission> {
-            vec![Permission::Font(StringPermission::Exact {
+            vec![Permission::Fonts(StringPermission::Exact {
                 exact: "Roboto".to_string(),
             })]
         }
@@ -135,7 +135,7 @@ mod test {
         use super::*;
 
         fn create_permissions() -> Vec<Permission> {
-            vec![Permission::Font(StringPermission::Prefix {
+            vec![Permission::Fonts(StringPermission::Prefix {
                 prefix: "Roboto".to_string(),
             })]
         }
@@ -155,7 +155,7 @@ mod test {
         use super::*;
 
         fn create_permissions() -> Vec<Permission> {
-            vec![Permission::Font(StringPermission::Suffix {
+            vec![Permission::Fonts(StringPermission::Suffix {
                 suffix: "Roboto".to_string(),
             })]
         }
@@ -175,13 +175,13 @@ mod test {
         use super::*;
 
         fn create_allow_permissions() -> Vec<Permission> {
-            vec![Permission::Font(StringPermission::Prefix {
+            vec![Permission::Fonts(StringPermission::Prefix {
                 prefix: "Roboto".to_string(),
             })]
         }
 
         fn create_deny_permissions() -> Vec<Permission> {
-            vec![Permission::Font(StringPermission::Exact {
+            vec![Permission::Fonts(StringPermission::Exact {
                 exact: "Roboto Mono".to_string(),
             })]
         }
@@ -218,13 +218,13 @@ mod test {
         use super::*;
 
         fn create_allow_permissions() -> Vec<Permission> {
-            vec![Permission::Font(StringPermission::Prefix {
+            vec![Permission::Fonts(StringPermission::Prefix {
                 prefix: "Roboto".to_string(),
             })]
         }
 
         fn create_deny_permissions() -> Vec<Permission> {
-            vec![Permission::Font(StringPermission::Prefix {
+            vec![Permission::Fonts(StringPermission::Prefix {
                 prefix: "Roboto Mono".to_string(),
             })]
         }

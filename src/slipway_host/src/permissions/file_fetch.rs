@@ -19,7 +19,7 @@ fn ensure_can_fetch_file_inner(
         fn matches(path: &Path, permission: &Permission) -> bool {
             match permission {
                 Permission::All => true,
-                Permission::File(permission) => permission.matches(path),
+                Permission::Files(permission) => permission.matches(path),
                 _ => false,
             }
         }
@@ -113,7 +113,7 @@ mod test {
         fn it_should_allow_any_file_path() {
             run_test(
                 &PathBuf::from("/foo/bar.json"),
-                Permissions::allow(&vec![Permission::File(PathPermission::Any {})]),
+                Permissions::allow(&vec![Permission::Files(PathPermission::Any {})]),
                 true,
             );
         }
@@ -123,7 +123,7 @@ mod test {
         use super::*;
 
         fn create_permissions() -> Vec<Permission> {
-            vec![Permission::File(PathPermission::Exact {
+            vec![Permission::Files(PathPermission::Exact {
                 exact: PathBuf::from("/foo/bar.json"),
             })]
         }
@@ -163,7 +163,7 @@ mod test {
         use super::*;
 
         fn create_permissions() -> Vec<Permission> {
-            vec![Permission::File(PathPermission::Within {
+            vec![Permission::Files(PathPermission::Within {
                 within: PathBuf::from("/foo/"),
             })]
         }
@@ -215,7 +215,7 @@ mod test {
         use super::*;
 
         fn create_permissions() -> Vec<Permission> {
-            vec![Permission::File(PathPermission::Within {
+            vec![Permission::Files(PathPermission::Within {
                 within: PathBuf::from("foo/"),
             })]
         }
@@ -268,13 +268,13 @@ mod test {
         use super::*;
 
         fn create_allow_permissions() -> Vec<Permission> {
-            vec![Permission::File(PathPermission::Within {
+            vec![Permission::Files(PathPermission::Within {
                 within: PathBuf::from("/foo/bar/"),
             })]
         }
 
         fn create_deny_permissions() -> Vec<Permission> {
-            vec![Permission::File(PathPermission::Exact {
+            vec![Permission::Files(PathPermission::Exact {
                 exact: PathBuf::from("/foo/bar/baz.json"),
             })]
         }

@@ -50,7 +50,7 @@
       "component": "slipwayhq.increment.0.0.1",
       "input": "$$.input",
       "allow": [
-        { "permission": "registry_component", "publisher": "slipwayhq", "name": "increment" }
+        { "permission": "registry_components", "publisher": "slipwayhq", "name": "increment" }
       ]
     },
     "output": {

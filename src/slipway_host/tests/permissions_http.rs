@@ -22,7 +22,7 @@ async fn permissions_http_no_allow_js() {
 }
 async fn permissions_http_no_allow(component: &str) {
     run(
-        Permissions::allow(&vec![Permission::LocalComponent(
+        Permissions::allow(&vec![Permission::LocalComponents(
             LocalComponentPermission::Any {},
         )]),
         component,

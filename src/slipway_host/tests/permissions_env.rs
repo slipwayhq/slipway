@@ -45,7 +45,7 @@ async fn permissions_load_env_no_rig_permissions(component: &str) {
     let output = get_rig_output(
         rig,
         "test",
-        Permissions::allow(&vec![Permission::LocalComponent(
+        Permissions::allow(&vec![Permission::LocalComponents(
             LocalComponentPermission::Any {},
         )]),
     )
@@ -72,7 +72,7 @@ async fn permissions_load_env_other_env_permission(component: &str) {
         rig,
         "test",
         Permissions::allow(&vec![
-            Permission::LocalComponent(LocalComponentPermission::Any {}),
+            Permission::LocalComponents(LocalComponentPermission::Any {}),
             Permission::Env(StringPermission::Exact {
                 exact: "ROAD".to_string(),
             }),
@@ -101,7 +101,7 @@ async fn permissions_load_env_single_env_permission(component: &str) {
         rig,
         "test",
         Permissions::allow(&vec![
-            Permission::LocalComponent(LocalComponentPermission::Any {}),
+            Permission::LocalComponents(LocalComponentPermission::Any {}),
             Permission::Env(StringPermission::Exact {
                 exact: "PATH".to_string(),
             }),
@@ -134,7 +134,7 @@ async fn permissions_load_env_env_prefix_permission(component: &str) {
         rig,
         "test",
         Permissions::allow(&vec![
-            Permission::LocalComponent(LocalComponentPermission::Any {}),
+            Permission::LocalComponents(LocalComponentPermission::Any {}),
             Permission::Env(StringPermission::Prefix {
                 prefix: "PA".to_string(),
             }),
@@ -167,7 +167,7 @@ async fn permissions_load_env_any_env_permissions(component: &str) {
         rig,
         "test",
         Permissions::allow(&vec![
-            Permission::LocalComponent(LocalComponentPermission::Any {}),
+            Permission::LocalComponents(LocalComponentPermission::Any {}),
             Permission::Env(StringPermission::Any {}),
         ]),
     )
