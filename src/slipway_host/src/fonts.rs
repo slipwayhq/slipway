@@ -1,14 +1,7 @@
-use std::sync::{Mutex, OnceLock};
-
-use fontique::{
-    Collection, CollectionOptions, FamilyId, GenericFamily, QueryFamily, QueryStatus, SourceCache,
-    SourceCacheOptions,
-};
+use fontique::{FamilyId, GenericFamily, QueryFamily, QueryStatus};
 use serde::Serialize;
-use slipway_engine::ComponentExecutionContext;
+use slipway_engine::{ComponentExecutionContext, FontContext};
 use tracing::{debug, warn};
-
-static CONTEXT: OnceLock<Mutex<FontContext>> = OnceLock::new();
 
 // We can't use the Wasmtime/WIT generated ResolvedFont here, as this crate is host independent,
 // so use our own struct.
@@ -39,16 +32,17 @@ pub async fn font(
         })
         .collect();
 
-    try_resolve_font_families(families)
+    let context_mutex = execution_context.rig_session_options.font_context();
+    let mut context = context_mutex.lock().await;
+
+    try_resolve_font_families(&mut context, families)
 }
 
-fn try_resolve_font_families(families: Vec<String>) -> Option<ResolvedFont> {
-    let context_mutex = get_context();
-    let mut context = context_mutex
-        .lock()
-        .expect("should be able to acquire lock on font context");
-
-    let result = try_resolve_with_context(&mut context, families);
+fn try_resolve_font_families(
+    context: &mut FontContext,
+    families: Vec<String>,
+) -> Option<ResolvedFont> {
+    let result = try_resolve_with_context(context, families);
 
     match result {
         None => None,
@@ -99,60 +93,39 @@ fn try_resolve_with_context(
     result
 }
 
-fn get_context() -> &'static Mutex<FontContext> {
-    CONTEXT.get_or_init(|| Mutex::new(FontContext::new()))
-}
-
-struct FontContext {
-    collection: Collection,
-    source_cache: SourceCache,
-}
-
-impl FontContext {
-    pub fn new() -> Self {
-        Self {
-            collection: Collection::new(CollectionOptions {
-                shared: true,
-                system_fonts: true,
-            }),
-            source_cache: SourceCache::new(SourceCacheOptions { shared: true }),
-        }
-    }
-
-    pub fn spread(&mut self) -> (&mut Collection, &mut SourceCache) {
-        (&mut self.collection, &mut self.source_cache)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn it_should_resolve_common_font() {
+        let mut context = FontContext::new();
         let families = vec!["Arial".to_string()];
-        let result = try_resolve_font_families(families);
+        let result = try_resolve_font_families(&mut context, families);
         assert!(result.is_some(), "Arial font should be resolvable");
     }
 
     #[test]
     fn it_should_resolve_generic_font() {
+        let mut context = FontContext::new();
         let families = vec!["sans-serif".to_string()];
-        let result = try_resolve_font_families(families);
+        let result = try_resolve_font_families(&mut context, families);
         assert!(result.is_some(), "Sans-serif font should be resolvable");
     }
 
     #[test]
     fn it_should_return_none_for_non_existent_font() {
+        let mut context = FontContext::new();
         let families = vec!["NonExistentFont".to_string()];
-        let result = try_resolve_font_families(families);
+        let result = try_resolve_font_families(&mut context, families);
         assert!(result.is_none(), "NonExistentFont should not be resolvable");
     }
 
     #[test]
     fn test_try_resolve_with_fallbacks() {
+        let mut context = FontContext::new();
         let families = vec!["NonExistentFont".to_string(), "sans-serif".to_string()];
-        let result = try_resolve_font_families(families);
+        let result = try_resolve_font_families(&mut context, families);
         assert!(result.is_some(), "Fallback should be resolved");
     }
 }

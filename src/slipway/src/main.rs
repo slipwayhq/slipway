@@ -70,6 +70,10 @@ pub(crate) enum Commands {
         /// The optional file path to save the flattened debug rig to.
         #[arg(short, long)]
         output_debug_rig: Option<std::path::PathBuf>,
+
+        /// The optional folder path where additional fonts are located.
+        #[arg(short, long)]
+        fonts: Option<std::path::PathBuf>,
     },
 
     /// Debug a Slipway rig.
@@ -343,6 +347,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
             common,
             output,
             output_debug_rig,
+            fonts,
         } => {
             let log_level = common.log_level;
             let registry_url = common.registry_url;
@@ -355,6 +360,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
                 registry_url,
                 output,
                 output_debug_rig,
+                fonts,
             )
             .await?;
         }

@@ -12,6 +12,7 @@ use crate::{
     permissions::PERMISSIONS_EMPTY,
     primitives::RigName,
     run_rig::{CliRunEventHandler, WriteComponentOutputsType},
+    serve::repository::file_system::FONTS_FOLDER_NAME,
 };
 
 use super::super::ServeState;
@@ -27,11 +28,13 @@ pub async fn run_rig(
         .build();
 
     let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
-    let session = RigSession::new_with_options(
-        rig,
-        &component_cache,
-        RigSessionOptions::new_for_serve(state.base_path.clone(), state.aot_path.clone()),
-    );
+    let session_options = RigSessionOptions::new_for_serve(
+        state.base_path.clone(),
+        state.aot_path.clone(),
+        state.base_path.join(FONTS_FOLDER_NAME),
+    )
+    .await;
+    let session = RigSession::new_with_options(rig, &component_cache, session_options);
 
     let mut event_handler = CliRunEventHandler::new(
         None,

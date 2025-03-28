@@ -176,6 +176,7 @@ pub(crate) async fn write_to_file<T: Serialize>(
 pub(crate) const RIG_FOLDER_NAME: &str = "rigs";
 pub(crate) const PLAYLIST_FOLDER_NAME: &str = "playlists";
 pub(crate) const DEVICE_FOLDER_NAME: &str = "devices";
+pub(crate) const FONTS_FOLDER_NAME: &str = "fonts";
 
 pub fn get_rig_folder_path(root_path: &Path) -> PathBuf {
     root_path.join(RIG_FOLDER_NAME)

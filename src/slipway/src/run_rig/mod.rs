@@ -26,6 +26,7 @@ pub(super) async fn run_rig(
     registry_urls: Vec<String>,
     save_path: Option<PathBuf>,
     debug_rig_path: Option<PathBuf>,
+    fonts_path: Option<PathBuf>,
 ) -> anyhow::Result<()> {
     writeln!(&mut w, "Launching {}", input.display())?;
 
@@ -39,7 +40,8 @@ pub(super) async fn run_rig(
         .build();
 
     let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
-    let session_options = RigSessionOptions::new_for_run(debug_rig_path.is_some());
+    let session_options =
+        RigSessionOptions::new_for_run(debug_rig_path.is_some(), fonts_path.as_deref()).await;
     let session = RigSession::new_with_options(rig, &component_cache, session_options);
 
     let mut event_handler = CliRunEventHandler::new(

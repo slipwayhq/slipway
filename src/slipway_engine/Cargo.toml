@@ -28,6 +28,7 @@ tokio-util = { workspace = true }
 reqwest = { workspace = true }
 normalize-path = { workspace = true }
 tempfile = { workspace = true }
+fontique = { workspace = true }
 
 [features]
 unstable-test-utils = []

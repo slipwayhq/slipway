@@ -11,6 +11,7 @@ pub use execute::component_state::{
     ComponentInput, ComponentInputOverride, ComponentOutput, ComponentOutputOverride,
     ComponentState,
 };
+pub use execute::fonts::*;
 pub use execute::primitives::*;
 pub use execute::rig_execution_state::*;
 pub use execute::rig_session::*;

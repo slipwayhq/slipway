@@ -24,6 +24,11 @@ pub async fn init(serve_path: PathBuf) -> anyhow::Result<()> {
         crate::serve::repository::file_system::DEVICE_FOLDER_NAME,
     )
     .await?;
+    init_folder(
+        &serve_path,
+        crate::serve::repository::file_system::FONTS_FOLDER_NAME,
+    )
+    .await?;
 
     Ok(())
 }

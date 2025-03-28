@@ -2,6 +2,7 @@ pub(crate) mod component_execution_data;
 pub(crate) mod component_runner;
 pub(crate) mod component_state;
 mod evaluate_component_inputs;
+pub(crate) mod fonts;
 mod initialize;
 pub(crate) mod primitives;
 pub(crate) mod rig_execution_state;

@@ -1,11 +1,14 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
+
+use futures::lock::Mutex;
 
 use crate::errors::RigError;
 use crate::load::ComponentCache;
 use crate::{CallChain, ComponentHandle, ComponentInput, Immutable, SlipwayReference};
 
+use super::fonts::FontContext;
 use super::initialize::initialize;
 use super::rig_execution_state::RigExecutionState;
 use super::run_record::RigRunRecord;
@@ -84,28 +87,45 @@ pub struct RigSessionOptions {
     pub base_path: PathBuf,
     pub aot_path: Option<PathBuf>,
     run_record: Option<RigRunRecord>,
+    font_context: Arc<Mutex<FontContext>>,
 }
 
 impl RigSessionOptions {
-    pub fn new_for_serve(base_path: PathBuf, aot_path: Option<PathBuf>) -> Self {
+    pub async fn new_for_serve(
+        base_path: PathBuf,
+        aot_path: Option<PathBuf>,
+        fonts_path: PathBuf,
+    ) -> Self {
+        let font_context = FontContext::new_with_path(&fonts_path).await;
         RigSessionOptions {
             base_path,
             aot_path,
             run_record: None,
+            font_context: Arc::new(Mutex::new(font_context)),
         }
     }
 
-    pub fn new_for_run(use_run_record: bool) -> Self {
+    pub async fn new_for_run(use_run_record: bool, fonts_path: Option<&Path>) -> Self {
         let run_record = if use_run_record {
             Some(RigRunRecord::new())
         } else {
             None
         };
 
+        let font_context = match fonts_path {
+            None => FontContext::new(),
+            Some(fonts_path) => FontContext::new_with_path(fonts_path).await,
+        };
+
         RigSessionOptions {
             base_path: PathBuf::from("."),
             aot_path: None,
             run_record,
+            font_context: Arc::new(Mutex::new(font_context)),
         }
+    }
+
+    pub fn font_context(&self) -> Arc<Mutex<FontContext>> {
+        Arc::clone(&self.font_context)
     }
 }
