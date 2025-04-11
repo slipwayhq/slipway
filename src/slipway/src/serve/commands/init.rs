@@ -43,6 +43,7 @@ pub async fn init_serve_config(serve_path: &Path) -> anyhow::Result<()> {
     let system_timezone = iana_time_zone::get_timezone()?.parse()?;
 
     let config = SlipwayServeConfig {
+        log_level: Some("info".to_string()),
         registry_urls: vec![
             "file:./components/{publisher}.{name}.{version}.tar".to_string(),
             "file:./components/{publisher}.{name}".to_string(),
