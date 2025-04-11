@@ -83,19 +83,19 @@ impl ServeState {
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 #[serde(deny_unknown_fields)]
 struct SlipwayServeConfig {
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     log_level: Option<String>,
 
     #[serde(default)]
     registry_urls: Vec<String>,
 
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     timezone: Option<Tz>,
 
     #[serde(default)]
     rig_permissions: HashMap<RigName, PermissionsOwned>,
 
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "RepositoryConfig::is_default")]
     repository: RepositoryConfig,
 }
 
@@ -109,6 +109,12 @@ enum RepositoryConfig {
         playlists: HashMap<PlaylistName, Playlist>,
         rigs: HashMap<RigName, slipway_engine::Rig>,
     },
+}
+
+impl RepositoryConfig {
+    pub fn is_default(&self) -> bool {
+        matches!(self, RepositoryConfig::Filesystem)
+    }
 }
 
 pub async fn serve(path: PathBuf, aot_path: Option<PathBuf>) -> anyhow::Result<()> {
