@@ -1,10 +1,10 @@
-use std::{str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc, time::Instant};
 
 use async_trait::async_trait;
 use slipway_engine::{
     BasicComponentCache, Component, ComponentExecutionContext, ComponentExecutionData,
     ComponentHandle, ComponentRigging, ComponentRunner, MultiComponentCache, Rig, RigSession,
-    Rigging, RunComponentError, RunComponentResult, Schema, SlipwayReference,
+    Rigging, RunComponentError, RunComponentResult, RunMetadata, Schema, SlipwayReference,
     SpecialComponentReference, TryRunComponentResult, prime_special_component,
 };
 use slipway_host::run::{run_rig, tracing_event_handler};
@@ -53,6 +53,7 @@ async fn run_component_fragment(
     rigging: &Rigging,
     execution_context: &ComponentExecutionContext<'_, '_, '_>,
 ) -> Result<RunComponentResult, RunComponentError> {
+    let prepare_input_start = Instant::now();
     let input_component_handle = ComponentHandle::from_str(INPUT_COMPONENT_HANDLE)
         .expect("Default input component handle should be valid.");
 
@@ -93,6 +94,9 @@ async fn run_component_fragment(
         rigging: rigging_with_input,
     };
 
+    let prepare_input_duration = prepare_input_start.elapsed();
+    let prepare_component_start = Instant::now();
+
     let component_runners = execution_context.component_runners;
     let call_chain = Arc::clone(&execution_context.call_chain);
 
@@ -107,6 +111,9 @@ async fn run_component_fragment(
         execution_context.rig_session_options.clone(),
     );
 
+    let prepare_component_duration = prepare_component_start.elapsed();
+    let call_start = Instant::now();
+
     let run_result = run_rig::<std::io::Error>(
         &rig_session,
         &mut tracing_event_handler(),
@@ -115,6 +122,9 @@ async fn run_component_fragment(
     )
     .await
     .map_err(|e| RunComponentError::RunCallFailed { source: e.into() })?;
+
+    let call_duration = call_start.elapsed();
+    let process_output_start = Instant::now();
 
     let output_state = run_result
         .component_outputs
@@ -128,9 +138,18 @@ async fn run_component_fragment(
         )));
     };
 
+    let output = output.value.clone();
+
+    let process_output_duration = process_output_start.elapsed();
+
     let result = RunComponentResult {
-        output: output.value.clone(),
-        metadata: output.run_metadata.clone(),
+        output,
+        metadata: RunMetadata {
+            prepare_input_duration,
+            prepare_component_duration,
+            call_duration,
+            process_output_duration,
+        },
     };
 
     Ok(result)
