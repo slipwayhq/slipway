@@ -36,7 +36,7 @@ impl ServeRepository for FileSystemRepository {
 
     async fn set_rig(&self, name: &RigName, value: &slipway_engine::Rig) -> Result<(), ServeError> {
         let path = get_rig_path(&self.root_path, name);
-        write_to_file(&path, "Rig", value).await
+        write_json_to_file(&path, "Rig", value).await
     }
 
     async fn list_rigs(&self) -> Result<Vec<RigName>, ServeError> {
@@ -50,7 +50,7 @@ impl ServeRepository for FileSystemRepository {
 
     async fn set_playlist(&self, name: &PlaylistName, value: &Playlist) -> Result<(), ServeError> {
         let path = get_playlist_path(&self.root_path, name);
-        write_to_file(&path, "Playlist", value).await
+        write_json_to_file(&path, "Playlist", value).await
     }
 
     async fn list_playlists(&self) -> Result<Vec<PlaylistName>, ServeError> {
@@ -64,7 +64,7 @@ impl ServeRepository for FileSystemRepository {
 
     async fn set_device(&self, name: &DeviceName, value: &Device) -> Result<(), ServeError> {
         let path = get_device_path(&self.root_path, name);
-        write_to_file(&path, "Device", value).await
+        write_json_to_file(&path, "Device", value).await
     }
 
     async fn list_devices(&self) -> Result<Vec<DeviceName>, ServeError> {
@@ -150,13 +150,20 @@ async fn load_from_file<T: DeserializeOwned>(
     Ok(result)
 }
 
-pub(crate) async fn write_to_file<T: Serialize>(
+pub(crate) async fn write_json_to_file<T: Serialize>(
     path: &Path,
     type_name: &str,
     value: &T,
 ) -> Result<(), ServeError> {
-    let bytes = serde_json::to_vec_pretty(value).expect("Device should serialize to JSON");
+    let value = serde_json::to_string_pretty(value).expect("Device should serialize to JSON");
+    write_str_to_file(path, type_name, &value).await
+}
 
+pub(crate) async fn write_str_to_file(
+    path: &Path,
+    type_name: &str,
+    value: &str,
+) -> Result<(), ServeError> {
     if let Some(parent) = path.parent() {
         tokio::fs::create_dir_all(parent).await.map_err(|e| {
             ServeError::Internal(anyhow::anyhow!(
@@ -165,7 +172,7 @@ pub(crate) async fn write_to_file<T: Serialize>(
         })?;
     }
 
-    tokio::fs::write(&path, &bytes).await.map_err(|e| {
+    tokio::fs::write(&path, &value).await.map_err(|e| {
         ServeError::Internal(anyhow::anyhow!(
             "Failed to save Slipway {type_name} \"{path:?}\".\n{e}",
         ))

@@ -53,8 +53,12 @@ pub async fn init_serve_config(serve_path: &Path) -> anyhow::Result<()> {
     };
 
     info!("Adding config: {path:?}");
-    crate::serve::repository::file_system::write_to_file(&path, "Slipway Serve Config", &config)
-        .await?;
+    crate::serve::repository::file_system::write_json_to_file(
+        &path,
+        "Slipway Serve Config",
+        &config,
+    )
+    .await?;
 
     Ok(())
 }
@@ -68,8 +72,12 @@ pub async fn init_dockerfile(serve_path: &Path) -> anyhow::Result<()> {
     }
 
     info!("Adding dockerfile: {path:?}");
-    crate::serve::repository::file_system::write_to_file(&path, "Dockerfile", &DOCKERFILE_CONTENT)
-        .await?;
+    crate::serve::repository::file_system::write_str_to_file(
+        &path,
+        "Dockerfile",
+        DOCKERFILE_CONTENT,
+    )
+    .await?;
 
     Ok(())
 }
@@ -82,10 +90,10 @@ pub async fn init_git_ignore(serve_path: &Path) -> anyhow::Result<()> {
     }
 
     info!("Adding .gitignore: {path:?}");
-    crate::serve::repository::file_system::write_to_file(
+    crate::serve::repository::file_system::write_str_to_file(
         &path,
         ".gitignore",
-        &indoc::indoc!(
+        indoc::indoc!(
             r#"
             /aot
 
