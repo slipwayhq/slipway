@@ -522,9 +522,15 @@ enum RigResultFormat {
     Json,
 
     /// Return the image encoded as a data URL.
+    /// We expose this as `html_embed` to the user because while internally this is a data URL,
+    /// the user sees it as an HTML page containing a data URL.
+    #[serde(rename = "html_embed")]
     DataUrl,
 
     /// Return a URL which will generate the image.
+    /// We expose this as `html` to the user because while internally this is a URL,
+    /// the user sees it as an HTML page containing a URL.
+    #[serde(rename = "html")]
     Url,
 }
 
