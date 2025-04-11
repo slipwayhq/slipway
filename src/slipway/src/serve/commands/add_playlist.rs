@@ -17,10 +17,10 @@ pub async fn add_playlist(
     let repository = create_repository(&serve_path, &config.repository);
 
     let playlist = Playlist {
-        items: match rig {
+        schedule: match rig {
             None => vec![],
             Some(rig) => vec![PlaylistItem {
-                times: None,
+                time: None,
                 days: None,
                 refresh: Refresh::Minutes { minutes: 5 },
                 rig,

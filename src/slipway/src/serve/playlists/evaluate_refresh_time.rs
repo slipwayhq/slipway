@@ -63,7 +63,7 @@ fn get_next_playlist_item_boundary_before_end(
     playlist: &Playlist,
 ) -> anyhow::Result<Option<DateTime<Tz>>> {
     let mut boundaries = Vec::new();
-    for item in &playlist.items {
+    for item in &playlist.schedule {
         // Only consider days that might apply between now and the normal_next day
         for day in days_in_range_inclusive(now, end) {
             // If `days` is Some(..) then check if this day of week is included
@@ -73,7 +73,7 @@ fn get_next_playlist_item_boundary_before_end(
                 }
             }
             // Pull from/to boundaries (if any) for this day
-            if let Some(span) = &item.times {
+            if let Some(span) = &item.time {
                 match span {
                     PlaylistTimeSpan::From { from } => {
                         if let Some(boundary) = make_boundary(now, end, day, *from) {
@@ -189,7 +189,7 @@ mod tests {
         // If no item boundaries fall before the normal refresh, we get the normal refresh back.
         let now = dt("2025-01-05 14:15:16");
         let refresh = Refresh::Hours { hours: 1 };
-        let playlist = Playlist { items: vec![] };
+        let playlist = Playlist { schedule: vec![] };
 
         let next = get_next_refresh_time(now, &refresh, &playlist).unwrap();
         assert_eq!(next, dt("2025-01-05 15:15:16"));
@@ -201,14 +201,16 @@ mod tests {
         let days = days.map(HashSet::from_iter);
 
         let item = PlaylistItem {
-            times: Some(PlaylistTimeSpan::From {
+            time: Some(PlaylistTimeSpan::From {
                 from: NaiveTime::from_hms_opt(14, 10, 0).unwrap(),
             }),
             days,
             refresh: Refresh::Hours { hours: 10 },
             rig: rig(),
         };
-        let playlist = Playlist { items: vec![item] };
+        let playlist = Playlist {
+            schedule: vec![item],
+        };
 
         get_next_refresh_time(now, &refresh, &playlist).unwrap()
     }
@@ -247,14 +249,16 @@ mod tests {
         days.insert(Weekday::Sun);
 
         let item = PlaylistItem {
-            times: Some(PlaylistTimeSpan::From {
+            time: Some(PlaylistTimeSpan::From {
                 from: NaiveTime::from_hms_opt(14, 50, 0).unwrap(),
             }),
             days: Some(days),
             refresh: Refresh::Hours { hours: 10 },
             rig: rig(),
         };
-        let playlist = Playlist { items: vec![item] };
+        let playlist = Playlist {
+            schedule: vec![item],
+        };
 
         let next = get_next_refresh_time(now, &refresh, &playlist).unwrap();
         assert_eq!(next, dt("2025-01-05 14:30:00"));
@@ -270,7 +274,7 @@ mod tests {
         days.insert(Weekday::Sun);
 
         let item = PlaylistItem {
-            times: Some(PlaylistTimeSpan::Between {
+            time: Some(PlaylistTimeSpan::Between {
                 from: NaiveTime::from_hms_opt(14, 5, 0).unwrap(),
                 to: NaiveTime::from_hms_opt(14, 15, 0).unwrap(),
             }),
@@ -278,7 +282,9 @@ mod tests {
             refresh: Refresh::Hours { hours: 10 },
             rig: rig(),
         };
-        let playlist = Playlist { items: vec![item] };
+        let playlist = Playlist {
+            schedule: vec![item],
+        };
 
         let next = get_next_refresh_time(now, &refresh, &playlist).unwrap();
         assert_eq!(next, dt("2025-01-05 14:05:00"));
@@ -292,14 +298,16 @@ mod tests {
         };
 
         let item = PlaylistItem {
-            times: Some(PlaylistTimeSpan::From {
+            time: Some(PlaylistTimeSpan::From {
                 from: NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
             }),
             days: None,
             refresh: Refresh::Hours { hours: 10 },
             rig: rig(),
         };
-        let playlist = Playlist { items: vec![item] };
+        let playlist = Playlist {
+            schedule: vec![item],
+        };
 
         let next = get_next_refresh_time(now, &refresh, &playlist).unwrap();
         assert_eq!(next, dt("2025-01-05 15:00:00"));

@@ -10,8 +10,8 @@ use crate::{
 
 use super::{
     super::{
-        repository::{Playlist, PlaylistItem, PlaylistTimeSpan},
         ServeState,
+        repository::{Playlist, PlaylistItem, PlaylistTimeSpan},
     },
     evaluate_refresh_time::get_next_refresh_time,
 };
@@ -56,7 +56,7 @@ fn evaluate_playlist_and_refresh(
 }
 
 fn find_active_playlist_item(playlist: &Playlist, now: DateTime<Tz>) -> Option<&PlaylistItem> {
-    let playlist_item = playlist.items.iter().find(|item| {
+    let playlist_item = playlist.schedule.iter().find(|item| {
         let days = &item.days;
         if let Some(days) = days {
             if !is_today_in_days(days, now) {
@@ -64,7 +64,7 @@ fn find_active_playlist_item(playlist: &Playlist, now: DateTime<Tz>) -> Option<&
             }
         }
 
-        let span = &item.times;
+        let span = &item.time;
         if let Some(span) = span {
             if !is_now_in_timespan(span, now) {
                 return false;
@@ -135,9 +135,9 @@ mod tests {
 
     fn create_playlist() -> Playlist {
         Playlist {
-            items: vec![
+            schedule: vec![
                 PlaylistItem {
-                    times: Some(PlaylistTimeSpan::Between {
+                    time: Some(PlaylistTimeSpan::Between {
                         from: NaiveTime::from_hms_opt(23, 0, 0).unwrap(),
                         to: NaiveTime::from_hms_opt(1, 0, 0).unwrap(),
                     }),
@@ -150,7 +150,7 @@ mod tests {
                     rig: RigName("rig20".to_string()),
                 },
                 PlaylistItem {
-                    times: None,
+                    time: None,
                     days: None,
                     refresh: standard_refresh(),
                     rig: RigName("rig10".to_string()),
@@ -260,9 +260,9 @@ mod tests {
     #[test]
     fn when_no_days_specified_should_apply_to_all_days() {
         let playlist = Playlist {
-            items: vec![
+            schedule: vec![
                 PlaylistItem {
-                    times: Some(PlaylistTimeSpan::Between {
+                    time: Some(PlaylistTimeSpan::Between {
                         from: NaiveTime::from_hms_opt(23, 0, 0).unwrap(),
                         to: NaiveTime::from_hms_opt(1, 0, 0).unwrap(),
                     }),
@@ -271,7 +271,7 @@ mod tests {
                     rig: RigName("rig20".to_string()),
                 },
                 PlaylistItem {
-                    times: None,
+                    time: None,
                     days: None,
                     refresh: standard_refresh(),
                     rig: RigName("rig10".to_string()),
@@ -311,9 +311,9 @@ mod tests {
     #[test]
     fn when_no_times_specified_should_apply_to_all_times() {
         let playlist = Playlist {
-            items: vec![
+            schedule: vec![
                 PlaylistItem {
-                    times: None,
+                    time: None,
                     days: Some(
                         vec![Weekday::Tue, Weekday::Wed, Weekday::Thu]
                             .into_iter()
@@ -323,7 +323,7 @@ mod tests {
                     rig: RigName("rig20".to_string()),
                 },
                 PlaylistItem {
-                    times: None,
+                    time: None,
                     days: None,
                     refresh: standard_refresh(),
                     rig: RigName("rig10".to_string()),

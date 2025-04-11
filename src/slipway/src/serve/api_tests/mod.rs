@@ -49,8 +49,8 @@ fn playlist(name: &str, rig_name: &str) -> (PlaylistName, Playlist) {
     (
         pn(name),
         Playlist {
-            items: vec![PlaylistItem {
-                times: None,
+            schedule: vec![PlaylistItem {
+                time: None,
                 days: None,
                 refresh: Refresh::Hours { hours: 1 },
                 rig: rn(rig_name),

@@ -128,7 +128,7 @@ pub(super) struct TrmnlDevice {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Playlist {
-    pub items: Vec<PlaylistItem>,
+    pub schedule: Vec<PlaylistItem>,
 }
 
 /// A Rig to run on a device along with information on when to run it as part
@@ -139,7 +139,7 @@ pub(super) struct PlaylistItem {
     /// The time span during a day this playlist item should be run.
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub times: Option<PlaylistTimeSpan>,
+    pub time: Option<PlaylistTimeSpan>,
 
     /// The days of the week this playlist item should be run.
     #[serde(default)]
