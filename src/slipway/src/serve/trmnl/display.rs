@@ -71,7 +71,7 @@ pub(crate) async fn trmnl_display(
     Ok(web::Json(serde_json::json!({
         "status": 0,
         "image_url": url_response.url,
-        "image_url_timeout": 10000, // Make the timeout a bit more generous. We should make this configurable.
+        "image_url_timeout": 10, // Make the timeout a bit more generous. We should make this configurable.
         "filename": chrono::Utc::now().format("%Y-%m-%d-%H-%M-%S").to_string(),
         "update_firmware": false,
         "firmware_url": serde_json::Value::Null,
