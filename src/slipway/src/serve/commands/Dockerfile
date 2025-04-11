@@ -8,6 +8,6 @@ COPY ./rigs ./rigs
 COPY ./components ./components
 COPY ./fonts ./fonts
 
-RUN slipway serve . aot-compile
+RUN slipway serve . aot-compile --target x86_64-unknown-linux-gnu
 
 CMD ["slipway", "serve", ".", "--aot"]
