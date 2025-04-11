@@ -166,7 +166,7 @@ macro_rules! create_simple_string_permissions {
 }
 
 create_url_permissions!(HttpPermissionArgs, http, "HTTP request");
-create_path_permissions!(FilePermissionArgs, file, "file request");
+create_path_permissions!(FilePermissionArgs, files, "file request");
 create_string_permissions!(FontPermissionArgs, fonts, "font");
 create_string_permissions!(EnvPermissionArgs, env, "environment variable");
 create_url_permissions!(
@@ -271,12 +271,12 @@ impl CommonPermissionsArgs {
             &mut allow,
             &mut deny,
             Permission::Files,
-            self.file.allow_file,
-            self.file.allow_file_exact,
-            self.file.allow_file_within,
-            self.file.deny_file,
-            self.file.deny_file_exact,
-            self.file.deny_file_within,
+            self.file.allow_files,
+            self.file.allow_files_exact,
+            self.file.allow_files_within,
+            self.file.deny_files,
+            self.file.deny_files_exact,
+            self.file.deny_files_within,
         );
 
         // Fonts
@@ -595,12 +595,12 @@ mod tests {
                 deny_http_prefix: vec![],
             },
             file: FilePermissionArgs {
-                allow_file: true,
-                allow_file_exact: vec![],
-                allow_file_within: vec![],
-                deny_file: false,
-                deny_file_exact: vec![],
-                deny_file_within: vec![],
+                allow_files: true,
+                allow_files_exact: vec![],
+                allow_files_within: vec![],
+                deny_files: false,
+                deny_files_exact: vec![],
+                deny_files_within: vec![],
             },
             font: FontPermissionArgs {
                 allow_fonts: true,
@@ -680,12 +680,12 @@ mod tests {
                 deny_http_prefix: vec![],
             },
             file: FilePermissionArgs {
-                allow_file: false,
-                allow_file_exact: vec![],
-                allow_file_within: vec![],
-                deny_file: true,
-                deny_file_exact: vec![],
-                deny_file_within: vec![],
+                allow_files: false,
+                allow_files_exact: vec![],
+                allow_files_within: vec![],
+                deny_files: true,
+                deny_files_exact: vec![],
+                deny_files_within: vec![],
             },
             font: FontPermissionArgs {
                 allow_fonts: false,
@@ -765,12 +765,12 @@ mod tests {
                 deny_http_prefix: vec![Url::parse("https://example4.com").unwrap()],
             },
             file: FilePermissionArgs {
-                allow_file: false,
-                allow_file_exact: vec![],
-                allow_file_within: vec![],
-                deny_file: false,
-                deny_file_exact: vec![],
-                deny_file_within: vec![],
+                allow_files: false,
+                allow_files_exact: vec![],
+                allow_files_within: vec![],
+                deny_files: false,
+                deny_files_exact: vec![],
+                deny_files_within: vec![],
             },
             font: FontPermissionArgs {
                 allow_fonts: false,
@@ -857,12 +857,12 @@ mod tests {
                 deny_http_prefix: vec![],
             },
             file: FilePermissionArgs {
-                allow_file: true,
-                allow_file_exact: vec![PathBuf::from("/foo/bar.json")],
-                allow_file_within: vec![PathBuf::from("/foo2")],
-                deny_file: true,
-                deny_file_exact: vec![PathBuf::from("foo/bar3.json")],
-                deny_file_within: vec![PathBuf::from("foo4")],
+                allow_files: true,
+                allow_files_exact: vec![PathBuf::from("/foo/bar.json")],
+                allow_files_within: vec![PathBuf::from("/foo2")],
+                deny_files: true,
+                deny_files_exact: vec![PathBuf::from("foo/bar3.json")],
+                deny_files_within: vec![PathBuf::from("foo4")],
             },
             font: FontPermissionArgs {
                 allow_fonts: false,
@@ -949,12 +949,12 @@ mod tests {
                 deny_http_prefix: vec![],
             },
             file: FilePermissionArgs {
-                allow_file: false,
-                allow_file_exact: vec![],
-                allow_file_within: vec![],
-                deny_file: false,
-                deny_file_exact: vec![],
-                deny_file_within: vec![],
+                allow_files: false,
+                allow_files_exact: vec![],
+                allow_files_within: vec![],
+                deny_files: false,
+                deny_files_exact: vec![],
+                deny_files_within: vec![],
             },
             font: FontPermissionArgs {
                 allow_fonts: true,
@@ -1046,12 +1046,12 @@ mod tests {
                 deny_http_prefix: vec![],
             },
             file: FilePermissionArgs {
-                allow_file: false,
-                allow_file_exact: vec![],
-                allow_file_within: vec![],
-                deny_file: false,
-                deny_file_exact: vec![],
-                deny_file_within: vec![],
+                allow_files: false,
+                allow_files_exact: vec![],
+                allow_files_within: vec![],
+                deny_files: false,
+                deny_files_exact: vec![],
+                deny_files_within: vec![],
             },
             font: FontPermissionArgs {
                 allow_fonts: false,
@@ -1143,12 +1143,12 @@ mod tests {
                 deny_http_prefix: vec![],
             },
             file: FilePermissionArgs {
-                allow_file: false,
-                allow_file_exact: vec![],
-                allow_file_within: vec![],
-                deny_file: false,
-                deny_file_exact: vec![],
-                deny_file_within: vec![],
+                allow_files: false,
+                allow_files_exact: vec![],
+                allow_files_within: vec![],
+                deny_files: false,
+                deny_files_exact: vec![],
+                deny_files_within: vec![],
             },
             font: FontPermissionArgs {
                 allow_fonts: false,
@@ -1235,12 +1235,12 @@ mod tests {
                 deny_http_prefix: vec![],
             },
             file: FilePermissionArgs {
-                allow_file: false,
-                allow_file_exact: vec![],
-                allow_file_within: vec![],
-                deny_file: false,
-                deny_file_exact: vec![],
-                deny_file_within: vec![],
+                allow_files: false,
+                allow_files_exact: vec![],
+                allow_files_within: vec![],
+                deny_files: false,
+                deny_files_exact: vec![],
+                deny_files_within: vec![],
             },
             font: FontPermissionArgs {
                 allow_fonts: false,
@@ -1321,12 +1321,12 @@ mod tests {
                 deny_http_prefix: vec![],
             },
             file: FilePermissionArgs {
-                allow_file: false,
-                allow_file_exact: vec![],
-                allow_file_within: vec![],
-                deny_file: false,
-                deny_file_exact: vec![],
-                deny_file_within: vec![],
+                allow_files: false,
+                allow_files_exact: vec![],
+                allow_files_within: vec![],
+                deny_files: false,
+                deny_files_exact: vec![],
+                deny_files_within: vec![],
             },
             font: FontPermissionArgs {
                 allow_fonts: false,
