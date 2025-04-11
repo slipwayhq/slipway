@@ -96,3 +96,4 @@ boa_engine = { git = "https://github.com/boa-dev/boa", branch = "main", package 
 boa_runtime = { git = "https://github.com/boa-dev/boa", branch = "main", package = "boa_runtime" }
 boa_macros = { git = "https://github.com/boa-dev/boa", branch = "main", package = "boa_macros" }
 boa_gc = { git = "https://github.com/boa-dev/boa", branch = "main", package = "boa_gc" }
+target-lexicon = "0.13.2"

@@ -15,7 +15,7 @@ use slipway_engine::{
     TryAotCompileComponentResult, TryRunComponentResult,
 };
 use slipway_host::{SLIPWAY_COMPONENT_WASM_FILE_NAME, hash_bytes};
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 use wasmtime::{Config, Engine};
 
 pub const WASMTIME_COMPONENT_RUNNER_IDENTIFIER: &str = "wasmtime";
@@ -73,7 +73,26 @@ impl ComponentRunner for WasmComponentRunner {
 
         let target = target.map(|t| t.to_string());
         let aot_compiled_bytes = tokio::task::spawn_blocking(move || {
-            let engine = create_engine(target.as_deref())?;
+            let current_host = format!("{}", target_lexicon::Triple::host());
+            let target = if let Some(target) = target {
+                if target == current_host {
+                    info!("Specified AOT target matches host: {target}");
+                } else {
+                    warn!(
+                        "Specified AOT target \"{target}\" does not match host \"{current_host}\"."
+                    );
+                }
+                target
+            } else {
+                info!("No AOT target specified, using host: {current_host}");
+
+                // We explicitly set the current host, as passing in None does not seem to always produce
+                // the expected result. In particular, on fly.io we had issues with the produced
+                // AOT file not being runnable on the final host.
+                current_host
+            };
+
+            let engine = create_engine(Some(&target))?;
             engine.precompile_component(&wasm_bytes)
         })
         .await
