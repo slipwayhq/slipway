@@ -24,14 +24,22 @@ pub struct WasmComponentRunner {
     engine: Engine,
 }
 
-fn create_engine() -> Engine {
-    Engine::new(Config::new().async_support(true))
-        .expect("Should be able to create Wasmtime engine")
+fn create_engine(target: Option<&str>) -> anyhow::Result<Engine> {
+    let mut config = Config::new();
+
+    config.async_support(true);
+
+    if let Some(target) = target {
+        config.target(target)?;
+    }
+
+    Engine::new(&config)
 }
 
 impl WasmComponentRunner {
     pub fn new() -> Self {
-        let engine = create_engine();
+        let engine =
+            create_engine(None).expect("Should be able to create Wasmtime engine with no target");
         Self { engine }
     }
 }
@@ -52,6 +60,7 @@ impl ComponentRunner for WasmComponentRunner {
         &self,
         component_reference: &SlipwayReference,
         aot_path: &Path,
+        target: Option<&str>,
         files: Arc<ComponentFiles>,
     ) -> Result<TryAotCompileComponentResult, RunComponentError> {
         let maybe_wasm_bytes = files.try_get_bin(SLIPWAY_COMPONENT_WASM_FILE_NAME).await?;
@@ -62,8 +71,9 @@ impl ComponentRunner for WasmComponentRunner {
 
         let aot_bytes_path = get_aot_bytes_path(aot_path, &wasm_bytes);
 
+        let target = target.map(|t| t.to_string());
         let aot_compiled_bytes = tokio::task::spawn_blocking(move || {
-            let engine = create_engine();
+            let engine = create_engine(target.as_deref())?;
             engine.precompile_component(&wasm_bytes)
         })
         .await

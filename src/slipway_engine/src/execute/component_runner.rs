@@ -61,6 +61,7 @@ pub trait ComponentRunner: Send + Sync {
         &self,
         _component_reference: &SlipwayReference,
         _aot_path: &Path,
+        _target: Option<&str>,
         _files: Arc<ComponentFiles>,
     ) -> Result<TryAotCompileComponentResult, RunComponentError> {
         Ok(TryAotCompileComponentResult::CannotCompile)

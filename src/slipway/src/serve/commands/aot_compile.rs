@@ -7,6 +7,7 @@ use crate::component_runners::get_component_runners;
 
 pub async fn aot_compile(
     aot_path: PathBuf,
+    target: Option<&str>,
     component_cache: BasicComponentCache,
 ) -> anyhow::Result<()> {
     let component_runners = get_component_runners();
@@ -18,7 +19,7 @@ pub async fn aot_compile(
     for (name, component) in components {
         for runner in component_runners.iter() {
             match runner
-                .aot_compile(&name, &aot_path, Arc::clone(&component.files))
+                .aot_compile(&name, &aot_path, target, Arc::clone(&component.files))
                 .await?
             {
                 slipway_engine::TryAotCompileComponentResult::Compiled => {

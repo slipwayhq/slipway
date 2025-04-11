@@ -164,7 +164,12 @@ enum ServeCommands {
     Consolidate,
 
     /// Try to ahead-of-time compile any WASM components.
-    AotCompile,
+    AotCompile {
+        /// Optional target for cross-compilation. Defaults to the host target.
+        /// This is a target triple, such as `x86_64-unknown-linux-gnu`.
+        #[arg(short, long)]
+        target: Option<String>,
+    },
 
     /// Add a device to use when serving HTTP requests.
     #[command(arg_required_else_help = true)]
@@ -387,11 +392,11 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
                 configure_tracing(Some("debug".to_string()));
                 serve::commands::consolidate(path).await?;
             }
-            Some(ServeCommands::AotCompile) => {
+            Some(ServeCommands::AotCompile { target }) => {
                 configure_tracing(Some("debug".to_string()));
                 let aot_path = path.join(AOT_ARTIFACT_FOLDER_NAME);
                 let cache = serve::commands::consolidate(path.clone()).await?;
-                serve::commands::aot_compile(aot_path, cache).await?;
+                serve::commands::aot_compile(aot_path, target.as_deref(), cache).await?;
             }
             Some(ServeCommands::AddDevice { name, playlist }) => {
                 configure_tracing(Default::default());
