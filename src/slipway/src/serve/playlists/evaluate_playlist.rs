@@ -5,7 +5,7 @@ use chrono_tz::Tz;
 
 use crate::{
     primitives::{PlaylistName, RigName},
-    serve::ServeError,
+    serve::responses::ServeError,
 };
 
 use super::{

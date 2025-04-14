@@ -3,7 +3,8 @@ use slipway_host::hash_string;
 use tracing::{info, instrument, warn};
 
 use crate::serve::{
-    Device, ServeError, ServeState, create_api_key, create_friendly_id,
+    Device, ServeState, create_api_key, create_friendly_id,
+    responses::ServeError,
     trmnl::{get_device_id_from_headers, print_new_device_message},
 };
 

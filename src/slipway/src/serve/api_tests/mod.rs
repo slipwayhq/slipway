@@ -8,6 +8,7 @@ use actix_web::{
 };
 use chrono_tz::Tz;
 use slipway_engine::{Rigging, SpecialComponentReference};
+use slipway_host::hash_string;
 
 use crate::{
     primitives::{DeviceName, PlaylistName, RigName},
@@ -89,6 +90,12 @@ fn get_refresh_rate(response: &ServiceResponse<impl MessageBody>) -> Option<u32>
     refresh_rate
 }
 
+fn create_auth_for_key(key: &str) -> HashMap<String, String> {
+    let mut auth = HashMap::new();
+    auth.insert("default".to_string(), hash_string(key));
+    auth
+}
+
 async fn get_body(response: ServiceResponse<impl MessageBody>) -> String {
     let body = test::read_body(response).await;
     let result = String::from_utf8(body.to_vec()).unwrap();
@@ -110,6 +117,7 @@ async fn when_devices_playlists_and_rigs_do_not_exist_should_return_not_found() 
         registry_urls: vec![],
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
+        hashed_api_keys: create_auth_for_key(""),
         repository: RepositoryConfig::Memory {
             devices: HashMap::new(),
             playlists: HashMap::new(),
@@ -154,6 +162,7 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
         registry_urls: vec![],
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
+        hashed_api_keys: create_auth_for_key(""),
         repository: RepositoryConfig::Memory {
             devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
@@ -212,6 +221,7 @@ async fn when_auth_not_supplied_it_should_return_unauthorized() {
         registry_urls: vec![],
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
+        hashed_api_keys: create_auth_for_key("auth123"),
         repository: RepositoryConfig::Memory {
             devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
@@ -219,13 +229,7 @@ async fn when_auth_not_supplied_it_should_return_unauthorized() {
         },
     };
 
-    let app = test::init_service(create_app(
-        PathBuf::from("."),
-        None,
-        config,
-        Some("auth123".to_string()),
-    ))
-    .await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
 
     async fn assert_response(
         response: Result<ServiceResponse<impl MessageBody>, actix_web::Error>,
@@ -268,6 +272,7 @@ async fn when_auth_incorrect_it_should_return_unauthorized() {
         registry_urls: vec![],
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
+        hashed_api_keys: create_auth_for_key("auth123"),
         repository: RepositoryConfig::Memory {
             devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
@@ -275,13 +280,7 @@ async fn when_auth_incorrect_it_should_return_unauthorized() {
         },
     };
 
-    let app = test::init_service(create_app(
-        PathBuf::from("."),
-        None,
-        config,
-        Some("auth123".to_string()),
-    ))
-    .await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
 
     async fn assert_response(
         response: Result<ServiceResponse<impl MessageBody>, actix_web::Error>,
@@ -327,6 +326,7 @@ async fn when_auth_supplied_it_should_execute_rigs() {
         registry_urls: vec![],
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
+        hashed_api_keys: create_auth_for_key("auth123"),
         repository: RepositoryConfig::Memory {
             devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
@@ -334,13 +334,7 @@ async fn when_auth_supplied_it_should_execute_rigs() {
         },
     };
 
-    let app = test::init_service(create_app(
-        PathBuf::from("."),
-        None,
-        config,
-        Some("auth123".to_string()),
-    ))
-    .await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
 
     async fn assert_response(response: ServiceResponse<impl MessageBody>, has_refresh_rate: bool) {
         let status = response.status();

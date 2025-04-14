@@ -1,9 +1,10 @@
-use actix_web::{post, web, HttpRequest, Responder};
+use actix_web::{HttpRequest, Responder, post, web};
 use tracing::{info, instrument};
 
 use crate::serve::{
+    ServeState,
+    responses::ServeError,
     trmnl::{authenticate_device, get_api_key_from_headers, get_device_id_from_headers},
-    ServeError, ServeState,
 };
 
 #[post("/log")]

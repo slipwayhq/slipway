@@ -8,7 +8,7 @@ use slipway_host::hash_string;
 
 use crate::primitives::{DeviceName, PlaylistName, RigName};
 
-use super::ServeError;
+use super::responses::ServeError;
 
 pub(super) mod file_system;
 pub(super) mod memory;

@@ -2,18 +2,21 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use actix_web::http::StatusCode;
-use actix_web::{get, web, HttpMessage, HttpRequest};
+use actix_web::{HttpRequest, get, web};
 use anyhow::Context;
 use serde::Deserialize;
-use tracing::{info_span, Instrument};
+use tracing::{Instrument, info_span};
 
 use crate::primitives::RigName;
-use crate::serve::{
-    FormatQuery, RigResultFormat, RigResultImageFormat, UrlResponse, API_GET_RIG_PATH,
-    TRMNL_DISPLAY_PATH,
+use crate::serve::auth::compute_signature_parts;
+use crate::serve::{API_GET_RIG_PATH, SLIPWAY_ENCRYPTION_KEY_ENV_KEY, TRMNL_DISPLAY_PATH};
+
+use crate::serve::responses::{
+    FormatQuery, ImageResponse, RigResponse, RigResultFormat, RigResultImageFormat, ServeError,
+    UrlResponse,
 };
 
-use super::super::{ImageResponse, RequestState, RigResponse, ServeError, ServeState};
+use super::super::ServeState;
 
 #[derive(Deserialize)]
 struct GetRigPath {
@@ -116,12 +119,21 @@ pub async fn get_rig_response(
                     .expect("Image format should be a string"),
             );
 
-            if let Some(authorization) = req
-                .extensions()
-                .get::<RequestState>()
-                .and_then(|state| state.required_authorization_header.as_ref())
-            {
-                qs.append_pair("authorization", authorization);
+            let encryption_key = state.encryption_key.as_deref().ok_or_else(|| {
+                ServeError::UserFacing(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!(
+                        "{} environment variable has not been set.",
+                        SLIPWAY_ENCRYPTION_KEY_ENV_KEY
+                    ),
+                )
+            })?;
+
+            let sas_token_parts =
+                compute_signature_parts(encryption_key, chrono::Duration::seconds(60));
+
+            for (sas_key, sas_value) in sas_token_parts {
+                qs.append_pair(&sas_key, &sas_value);
             }
 
             // Used as a nonce to force Trmnl to reload the image.

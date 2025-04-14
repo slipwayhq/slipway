@@ -20,6 +20,7 @@ async fn when_device_already_configured_for_trmnl_it_should_return_new_credentia
         registry_urls: vec![],
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
+        hashed_api_keys: HashMap::new(),
         repository: RepositoryConfig::Memory {
             devices: vec![(
                 dn("d_1"),
@@ -60,6 +61,7 @@ async fn when_device_not_configured_for_trmnl_it_should_return_new_credentials()
         registry_urls: vec![],
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
+        hashed_api_keys: HashMap::new(),
         repository: RepositoryConfig::Memory {
             devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),

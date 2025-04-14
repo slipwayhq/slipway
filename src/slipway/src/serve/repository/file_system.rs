@@ -11,7 +11,7 @@ use tracing::warn;
 
 use crate::{
     primitives::{DeviceName, PlaylistName, RigName},
-    serve::ServeError,
+    serve::responses::ServeError,
 };
 
 use super::{Device, Playlist, ServeRepository};

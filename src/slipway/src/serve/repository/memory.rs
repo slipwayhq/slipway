@@ -5,7 +5,7 @@ use async_trait::async_trait;
 
 use crate::{
     primitives::{DeviceName, PlaylistName, RigName},
-    serve::ServeError,
+    serve::responses::ServeError,
 };
 
 use super::{Device, Playlist, ServeRepository};

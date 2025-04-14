@@ -5,7 +5,7 @@ use chrono_tz::Tz;
 use slipway_host::hash_string;
 
 use crate::serve::api_tests::get_body;
-use crate::serve::{ACCESS_TOKEN_HEADER, ID_HEADER};
+use crate::serve::{ACCESS_TOKEN_HEADER, ID_HEADER, SLIPWAY_ENCRYPTION_KEY_ENV_KEY};
 use crate::serve::{RepositoryConfig, SlipwayServeConfig, create_app, repository::TrmnlDevice};
 
 use super::super::Device;
@@ -16,6 +16,10 @@ const MAC2: &str = "aa:bb:cc:00:00:02";
 const API_KEY: &str = "abcdefg";
 const API_KEY2: &str = "abcdefg2";
 
+fn enc_key() -> Option<String> {
+    Some("encryption_key_123".to_string())
+}
+
 #[test_log::test(actix_web::test)]
 async fn when_no_device_id_header_it_should_return_bad_request() {
     let config = SlipwayServeConfig {
@@ -23,6 +27,7 @@ async fn when_no_device_id_header_it_should_return_bad_request() {
         registry_urls: vec![],
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
+        hashed_api_keys: HashMap::new(),
         repository: RepositoryConfig::Memory {
             devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
@@ -30,7 +35,7 @@ async fn when_no_device_id_header_it_should_return_bad_request() {
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, enc_key())).await;
 
     let request = test::TestRequest::get()
         .uri("/api/display")
@@ -51,6 +56,7 @@ async fn when_no_device_with_matching_id_it_should_return_not_found() {
         registry_urls: vec![],
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
+        hashed_api_keys: HashMap::new(),
         repository: RepositoryConfig::Memory {
             devices: vec![(
                 dn("d_1"),
@@ -71,7 +77,7 @@ async fn when_no_device_with_matching_id_it_should_return_not_found() {
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, enc_key())).await;
 
     let request = test::TestRequest::get()
         .uri("/api/display")
@@ -93,6 +99,50 @@ async fn when_api_key_incorrect_it_should_return_unauthorized() {
         registry_urls: vec![],
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
+        hashed_api_keys: HashMap::new(),
+        repository: RepositoryConfig::Memory {
+            devices: vec![(
+                dn("d_1"),
+                Device {
+                    trmnl: Some(TrmnlDevice {
+                        id: MAC.to_string(),
+                        hashed_api_key: hash_string(API_KEY),
+                        reset_firmware: false,
+                    }),
+                    playlist: Some(pn("p_1")),
+                    context: None,
+                },
+            )]
+            .into_iter()
+            .collect(),
+            playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
+            rigs: vec![rig("r_1")].into_iter().collect(),
+        },
+    };
+
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, enc_key())).await;
+
+    let request = test::TestRequest::get()
+        .uri("/api/display")
+        .append_header((ID_HEADER, MAC))
+        .append_header((ACCESS_TOKEN_HEADER, API_KEY2))
+        .to_request();
+    let response = test::call_service(&app, request).await;
+    let status = response.status();
+    let body = get_body(response).await;
+
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    assert!(body.contains("Invalid credentials"));
+}
+
+#[test_log::test(actix_web::test)]
+async fn when_no_encryption_key_set_it_should_return_internal_server_error() {
+    let config = SlipwayServeConfig {
+        log_level: Some("debug".to_string()),
+        registry_urls: vec![],
+        timezone: Some(Tz::Canada__Eastern),
+        rig_permissions: HashMap::new(),
+        hashed_api_keys: HashMap::new(),
         repository: RepositoryConfig::Memory {
             devices: vec![(
                 dn("d_1"),
@@ -118,14 +168,14 @@ async fn when_api_key_incorrect_it_should_return_unauthorized() {
     let request = test::TestRequest::get()
         .uri("/api/display")
         .append_header((ID_HEADER, MAC))
-        .append_header((ACCESS_TOKEN_HEADER, API_KEY2))
+        .append_header((ACCESS_TOKEN_HEADER, API_KEY))
         .to_request();
     let response = test::call_service(&app, request).await;
     let status = response.status();
     let body = get_body(response).await;
 
-    assert_eq!(status, StatusCode::UNAUTHORIZED);
-    assert!(body.contains("Invalid credentials"));
+    assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(body.contains(SLIPWAY_ENCRYPTION_KEY_ENV_KEY));
 }
 
 #[test_log::test(actix_web::test)]
@@ -135,6 +185,7 @@ async fn when_reset_firmware_set_it_should_return_reset_firmware_flag() {
         registry_urls: vec![],
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
+        hashed_api_keys: HashMap::new(),
         repository: RepositoryConfig::Memory {
             devices: vec![(
                 dn("d_1"),
@@ -155,7 +206,7 @@ async fn when_reset_firmware_set_it_should_return_reset_firmware_flag() {
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, enc_key())).await;
 
     let request = test::TestRequest::get()
         .uri("/api/display")
@@ -177,6 +228,7 @@ async fn when_valid_request_it_should_return_rig_result() {
         registry_urls: vec![],
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
+        hashed_api_keys: HashMap::new(),
         repository: RepositoryConfig::Memory {
             devices: vec![(
                 dn("d_1"),
@@ -197,7 +249,7 @@ async fn when_valid_request_it_should_return_rig_result() {
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, enc_key())).await;
 
     let request = test::TestRequest::get()
         .uri("/api/display")
@@ -214,56 +266,6 @@ async fn when_valid_request_it_should_return_rig_result() {
 
     let image_url = body["image_url"].as_str().unwrap();
     assert!(image_url.contains("/rigs/r_1?format=image&image_format=bmp_1bit&timestamp="));
-}
-
-#[test_log::test(actix_web::test)]
-async fn when_rig_auth_header_required_it_should_return_rig_result_with_auth_header() {
-    let config = SlipwayServeConfig {
-        log_level: Some("debug".to_string()),
-        registry_urls: vec![],
-        timezone: Some(Tz::Canada__Eastern),
-        rig_permissions: HashMap::new(),
-        repository: RepositoryConfig::Memory {
-            devices: vec![(
-                dn("d_1"),
-                Device {
-                    trmnl: Some(TrmnlDevice {
-                        id: MAC.to_string(),
-                        hashed_api_key: hash_string(API_KEY),
-                        reset_firmware: false,
-                    }),
-                    playlist: Some(pn("p_1")),
-                    context: None,
-                },
-            )]
-            .into_iter()
-            .collect(),
-            playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
-            rigs: vec![rig("r_1")].into_iter().collect(),
-        },
-    };
-
-    let app = test::init_service(create_app(
-        PathBuf::from("."),
-        None,
-        config,
-        Some("auth123".to_string()),
-    ))
-    .await;
-
-    let request = test::TestRequest::get()
-        .uri("/api/display")
-        .append_header((ID_HEADER, MAC))
-        .append_header((ACCESS_TOKEN_HEADER, API_KEY))
-        .to_request();
-    let response = test::call_service(&app, request).await;
-    let status = response.status();
-    let body = get_body_json(response).await;
-
-    assert_eq!(status, StatusCode::OK);
-    assert_eq!(body["reset_firmware"].as_bool(), Some(false));
-    assert_eq!(body["status"].as_u64(), Some(0));
-
-    let image_url = body["image_url"].as_str().unwrap();
-    assert!(image_url.contains("/rigs/r_1?format=image&image_format=bmp_1bit&authorization="));
+    assert!(image_url.contains("&sig="));
+    assert!(image_url.contains("&exp="));
 }

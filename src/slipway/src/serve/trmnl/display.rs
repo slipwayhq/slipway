@@ -4,8 +4,9 @@ use tracing::{Instrument, debug, info_span, instrument, warn};
 
 use crate::{
     primitives::DeviceName,
+    serve::responses::{RigResponse, RigResultFormat, RigResultImageFormat, ServeError},
     serve::{
-        RigResponse, RigResultFormat, RigResultImageFormat, ServeError, ServeState,
+        ServeState,
         trmnl::{authenticate_device, get_api_key_from_headers, get_device_id_from_headers},
     },
 };

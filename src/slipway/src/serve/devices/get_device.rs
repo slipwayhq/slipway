@@ -1,14 +1,16 @@
 use std::sync::Arc;
 
 use actix_web::http::StatusCode;
-use actix_web::{get, web, HttpRequest};
+use actix_web::{HttpRequest, get, web};
 use serde::Deserialize;
-use tracing::{debug_span, info_span, Instrument};
+use tracing::{Instrument, debug_span, info_span};
 
 use crate::primitives::DeviceName;
-use crate::serve::{FormatQuery, PlaylistResponse, RigResultFormat, RigResultImageFormat};
+use crate::serve::responses::{
+    FormatQuery, PlaylistResponse, RigResultFormat, RigResultImageFormat,
+};
 
-use super::super::{ServeError, ServeState};
+use super::super::{ServeState, responses::ServeError};
 
 #[derive(Deserialize)]
 struct GetDevicePath {

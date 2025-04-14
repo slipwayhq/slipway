@@ -43,6 +43,7 @@ croner = { workspace = true }
 actix-cors = { workspace = true }
 iana-time-zone = { workspace = true }
 indoc = { workspace = true }
+hmac = { workspace = true }
 
 [dev-dependencies]
 common_test_utils = { workspace = true }

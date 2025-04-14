@@ -12,8 +12,9 @@ use tracing::{debug, info};
 use crate::primitives::DeviceName;
 
 use super::{
-    ACCESS_TOKEN_HEADER, ID_HEADER, ServeError,
+    ACCESS_TOKEN_HEADER, ID_HEADER,
     repository::{Device, TrmnlDevice},
+    responses::ServeError,
 };
 
 fn get_device_id_from_headers(req: &HttpRequest) -> Result<&str, ServeError> {
