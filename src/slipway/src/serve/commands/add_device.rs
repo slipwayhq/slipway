@@ -4,7 +4,7 @@ use tracing::warn;
 
 use crate::{
     primitives::{DeviceName, PlaylistName},
-    serve::{create_repository, load_serve_config, repository::Device},
+    serve::{create_repository, load_serve_config, repository::Device, write_redeploy_warning},
 };
 
 pub async fn add_device(
@@ -16,7 +16,7 @@ pub async fn add_device(
     let repository = create_repository(&serve_path, &config.repository);
 
     warn!("Adding device \"{name}\".");
-    warn!("Don't forget to re-deploy if necessary.");
+    write_redeploy_warning();
 
     let device = Device {
         trmnl: None,

@@ -11,7 +11,7 @@ use slipway_engine::{Rigging, SpecialComponentReference};
 use slipway_host::hash_string;
 
 use crate::{
-    primitives::{DeviceName, PlaylistName, RigName},
+    primitives::{ApiKeyName, DeviceName, PlaylistName, RigName},
     serve::{REFRESH_RATE_HEADER, RepositoryConfig, SlipwayServeConfig, create_app},
 };
 
@@ -90,9 +90,9 @@ fn get_refresh_rate(response: &ServiceResponse<impl MessageBody>) -> Option<u32>
     refresh_rate
 }
 
-fn create_auth_for_key(key: &str) -> HashMap<String, String> {
+fn create_auth_for_key(key: &str) -> HashMap<ApiKeyName, String> {
     let mut auth = HashMap::new();
-    auth.insert("default".to_string(), hash_string(key));
+    auth.insert(ApiKeyName::from_str("default").unwrap(), hash_string(key));
     auth
 }
 

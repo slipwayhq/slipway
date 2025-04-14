@@ -7,6 +7,7 @@ use crate::{
     serve::{
         create_repository, load_serve_config,
         repository::{Device, TrmnlDevice},
+        write_redeploy_warning,
     },
 };
 
@@ -60,7 +61,7 @@ pub async fn add_trmnl_device(
         repository.set_device(&name, &device).await?;
     }
 
-    warn!("Don't forget to re-deploy if necessary.");
+    write_redeploy_warning();
 
     Ok(())
 }

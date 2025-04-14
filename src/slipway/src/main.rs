@@ -23,11 +23,12 @@ use clap::{
     },
 };
 use permissions::CommonPermissionsArgs;
-use primitives::{DeviceName, PlaylistName, RigName};
+use primitives::{ApiKeyName, DeviceName, PlaylistName, RigName};
 use semver::Version;
 use slipway_engine::{Name, Publisher};
+use slipway_host::hash_string;
 use time::{OffsetDateTime, format_description};
-use tracing::Level;
+use tracing::{Level, info};
 use tracing_subscriber::{FmtSubscriber, fmt::time::FormatTime};
 
 const WASM_INTERFACE_TYPE_STR: &str = include_str!("../../../wit/latest/slipway.wit");
@@ -149,6 +150,14 @@ pub(crate) enum Commands {
         log_level: Option<String>,
     },
 
+    /// Generate a hash of a string. You will be prompted if a string isn't provided.
+    /// It isn't recommended to put sensitive data as arguments.
+    #[command(arg_required_else_help = false)]
+    Hash {
+        /// The string to hash.
+        value: Option<String>,
+    },
+
     /// Output the WIT (WASM Interface Type) definition, for building Slipway components.
     #[command()]
     Wit,
@@ -226,6 +235,14 @@ enum ServeCommands {
         /// A name for the rig (lowercase alphanumeric plus underscores).
         #[arg(short, long)]
         name: RigName,
+    },
+
+    /// Add an API key for accessing endpoints. The key itself will be generated and stored hashed.
+    #[command(arg_required_else_help = true)]
+    AddApiKey {
+        /// A name for the API key, to help you identify it (lowercase alphanumeric plus underscores).
+        #[arg(short, long)]
+        name: ApiKeyName,
     },
 }
 
@@ -376,6 +393,23 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
             configure_tracing(log_level);
             package::package_component(&folder_path)?;
         }
+        Commands::Hash { value } => {
+            configure_tracing(Default::default());
+            let value = value.unwrap_or_else(|| {
+                rpassword::prompt_password("Enter the string to hash: ")
+                    .expect("Should be able to read a secret value")
+            });
+            if value.len() > 3 {
+                info!(
+                    "Hashing value starting \"{}\" and ending \"{}\"",
+                    &value[..3],
+                    &value[value.len() - 3..]
+                );
+            } else {
+                info!("Hashing value of length {}", value.len());
+            }
+            println!("{}", hash_string(&value));
+        }
         Commands::Wit => {
             println!("{}", WASM_INTERFACE_TYPE_STR);
         }
@@ -418,6 +452,10 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
             Some(ServeCommands::AddRig { name }) => {
                 configure_tracing(Default::default());
                 serve::commands::add_rig(path, name).await?;
+            }
+            Some(ServeCommands::AddApiKey { name }) => {
+                configure_tracing(Default::default());
+                serve::commands::add_api_key(path, name, None).await?;
             }
             None => {
                 panic!(

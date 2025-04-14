@@ -11,10 +11,10 @@ use chrono_tz::Tz;
 use repository::{Device, Playlist, ServeRepository};
 use serde::{Deserialize, Serialize};
 
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::permissions::PermissionsOwned;
-use crate::primitives::{DeviceName, PlaylistName, RigName};
+use crate::primitives::{ApiKeyName, DeviceName, PlaylistName, RigName};
 
 #[cfg(test)]
 mod api_tests;
@@ -91,7 +91,7 @@ struct SlipwayServeConfig {
     rig_permissions: HashMap<RigName, PermissionsOwned>,
 
     #[serde(default)]
-    hashed_api_keys: HashMap<String, String>,
+    hashed_api_keys: HashMap<ApiKeyName, String>,
 
     #[serde(default, skip_serializing_if = "RepositoryConfig::is_default")]
     repository: RepositoryConfig,
@@ -131,6 +131,24 @@ async fn load_serve_config(root_path: &Path) -> Result<SlipwayServeConfig, anyho
         Err(e) => return Err(e).context("Failed to load Slipway Serve config file.")?,
     };
     Ok(config)
+}
+
+async fn save_serve_config(
+    root_path: &Path,
+    config: &SlipwayServeConfig,
+) -> Result<(), anyhow::Error> {
+    let config_path = root_path.join(SERVE_CONFIG_FILE_NAME);
+    let config_bytes =
+        serde_json::to_vec_pretty(config).context("Failed to serialize Slipway Serve config")?;
+    tokio::fs::write(&config_path, config_bytes)
+        .await
+        .context("Failed to write Slipway Serve config file")?;
+    info!("Saved Slipway Serve config to {}", config_path.display());
+    Ok(())
+}
+
+fn write_redeploy_warning() {
+    warn!("Don't forget to re-deploy if necessary.");
 }
 
 fn get_serve_config_path(root_path: &Path) -> PathBuf {

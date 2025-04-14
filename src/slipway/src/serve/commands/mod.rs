@@ -1,3 +1,4 @@
+mod add_api_key;
 mod add_device;
 mod add_playlist;
 mod add_rig;
@@ -8,6 +9,7 @@ mod init;
 
 const COMPONENTS_PATH: &str = "components";
 
+pub use add_api_key::add_api_key;
 pub use add_device::add_device;
 pub use add_playlist::add_playlist;
 pub use add_rig::add_rig;
