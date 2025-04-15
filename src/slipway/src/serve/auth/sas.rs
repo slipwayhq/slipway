@@ -10,8 +10,8 @@ type HmacSha256 = Hmac<Sha256>;
 
 const DATE_TIME_FORMAT: &str = "%Y-%m-%dT%H-%M-%S";
 
-fn create_hmac_string(encryption_key: &str, input: &str) -> String {
-    let mut mac = HmacSha256::new_from_slice(encryption_key.as_bytes())
+fn create_hmac_string(key: &str, input: &str) -> String {
+    let mut mac = HmacSha256::new_from_slice(key.as_bytes())
         .expect("HMAC can take key of any size");
     mac.update(input.as_bytes());
 
@@ -21,12 +21,12 @@ fn create_hmac_string(encryption_key: &str, input: &str) -> String {
 }
 
 pub(super) fn verify_sas_token(
-    encryption_key: &str,
+    key: &str,
     expiry: &str,
     expected_signature: &str,
 ) -> Result<(), actix_web::Error> {
     let input = create_sas_input(expiry);
-    verify_hmac_string(encryption_key, &input, expected_signature)?;
+    verify_hmac_string(key, &input, expected_signature)?;
 
     let expiry_parsed_naive = chrono::NaiveDateTime::parse_from_str(expiry, DATE_TIME_FORMAT)
         .map_err(|e| {
@@ -54,7 +54,7 @@ pub(super) fn verify_sas_token(
 }
 
 pub(crate) fn compute_signature_parts(
-    encryption_key: &str,
+    key: &str,
     duration: chrono::Duration,
 ) -> Vec<(String, String)> {
     let now = chrono::Utc::now();
@@ -62,7 +62,7 @@ pub(crate) fn compute_signature_parts(
 
     let expiry = expiry.format(DATE_TIME_FORMAT).to_string();
 
-    let signature = create_signature(encryption_key, &expiry);
+    let signature = create_signature(key, &expiry);
 
     vec![
         (super::SHARED_ACCESS_SIGNATURE_KEY.to_string(), signature),
@@ -70,9 +70,9 @@ pub(crate) fn compute_signature_parts(
     ]
 }
 
-fn create_signature(encryption_key: &str, expiry: &str) -> String {
+fn create_signature(key: &str, expiry: &str) -> String {
     let input = create_sas_input(expiry);
-    create_hmac_string(encryption_key, &input)
+    create_hmac_string(key, &input)
 }
 
 fn create_sas_input(expiry: &str) -> String {
@@ -84,11 +84,11 @@ fn create_sas_input(expiry: &str) -> String {
 }
 
 fn verify_hmac_string(
-    encryption_key: &str,
+    key: &str,
     input: &str,
     expected_signature: &str,
 ) -> Result<(), actix_web::Error> {
-    let mut mac = HmacSha256::new_from_slice(encryption_key.as_bytes())
+    let mut mac = HmacSha256::new_from_slice(key.as_bytes())
         .expect("HMAC can take key of any size");
     mac.update(input.as_bytes());
 
@@ -132,38 +132,38 @@ mod tests {
 
     #[test]
     fn it_should_allow_valid_signatures() {
-        let encryption_key = "test_key";
+        let key = "test_key";
         let expiry = "2023-10-01T01-02-03";
 
-        let signature = create_signature(encryption_key, expiry);
+        let signature = create_signature(key, expiry);
         let input = create_sas_input(expiry);
 
-        assert!(verify_hmac_string(encryption_key, &input, &signature).is_ok());
+        assert!(verify_hmac_string(key, &input, &signature).is_ok());
     }
 
     #[test]
     fn it_should_fail_modified_expiry() {
-        let encryption_key = "test_key";
+        let key = "test_key";
         let expiry = "2023-10-01T01-02-03";
         let modified_expiry = "2023-10-02T01-02-03";
 
-        let signature = create_signature(encryption_key, expiry);
+        let signature = create_signature(key, expiry);
         let input = create_sas_input(modified_expiry);
 
-        assert!(verify_hmac_string(encryption_key, &input, &signature).is_err());
+        assert!(verify_hmac_string(key, &input, &signature).is_err());
     }
 
     #[test]
     fn it_should_fail_modified_signature() {
-        let encryption_key = "test_key";
+        let key = "test_key";
         let expiry = "2023-10-01T01-02-03";
 
-        let mut signature = create_signature(encryption_key, expiry);
+        let mut signature = create_signature(key, expiry);
         signature.push_str("88");
 
         let input = create_sas_input(expiry);
 
-        let result = verify_hmac_string(encryption_key, &input, &signature);
+        let result = verify_hmac_string(key, &input, &signature);
 
         match result {
             Ok(_) => panic!("Expected error, but got Ok"),
@@ -175,10 +175,10 @@ mod tests {
 
     #[test]
     fn it_should_return_signature_parts_and_verify() {
-        let encryption_key = "test_key";
+        let key = "test_key";
         let duration = chrono::Duration::seconds(3600);
 
-        let signature_parts = compute_signature_parts(encryption_key, duration);
+        let signature_parts = compute_signature_parts(key, duration);
 
         assert_eq!(signature_parts.len(), 2);
 
@@ -196,7 +196,7 @@ mod tests {
         println!("Signature: {}", signature);
         println!("Expiry: {}", expiry);
 
-        let result = verify_sas_token(encryption_key, expiry, signature);
+        let result = verify_sas_token(key, expiry, signature);
 
         match result {
             Ok(_) => {}
@@ -206,10 +206,10 @@ mod tests {
 
     #[test]
     fn it_should_fail_to_verify_expired_signature() {
-        let encryption_key = "test_key";
+        let key = "test_key";
         let duration = chrono::Duration::seconds(-1);
 
-        let signature_parts = compute_signature_parts(encryption_key, duration);
+        let signature_parts = compute_signature_parts(key, duration);
 
         let expiry = &signature_parts
             .iter()
@@ -222,7 +222,7 @@ mod tests {
             .unwrap()
             .1;
 
-        let result = verify_sas_token(encryption_key, expiry, signature);
+        let result = verify_sas_token(key, expiry, signature);
 
         match result {
             Ok(_) => panic!("Expected error, but got Ok"),

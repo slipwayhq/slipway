@@ -11,7 +11,7 @@ use actix_web::{HttpMessage, web};
 use slipway_host::hash_string;
 use tracing::debug;
 
-use super::SLIPWAY_ENCRYPTION_KEY_ENV_KEY;
+use super::SLIPWAY_SECRET_KEY;
 use super::{RequestState, ServeState, responses::ServeError};
 
 mod sas;
@@ -114,15 +114,15 @@ fn auth_middleware_sas(
         )
     })?;
 
-    let encryption_key = serve_state.encryption_key.as_ref().ok_or_else(|| {
+    let secret = serve_state.secret.as_ref().ok_or_else(|| {
         ServeError::UserFacing(
             StatusCode::BAD_REQUEST,
             format!(
                 "{} environment variable has not been set.",
-                SLIPWAY_ENCRYPTION_KEY_ENV_KEY
+                SLIPWAY_SECRET_KEY
             ),
         )
     })?;
 
-    sas::verify_sas_token(encryption_key, expiry, signature)
+    sas::verify_sas_token(secret, expiry, signature)
 }

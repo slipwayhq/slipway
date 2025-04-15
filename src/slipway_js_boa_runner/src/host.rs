@@ -18,7 +18,7 @@ use slipway_host::{
 
 type JsFunction = dyn Fn(&JsValue, &[JsValue], &mut Context) -> JsResult<JsValue> + 'static;
 
-pub(super) fn prepare_canopy_host<'call, 'rig, 'runners, 'host, 'context>(
+pub(super) fn prepare_slipway_host<'call, 'rig, 'runners, 'host, 'context>(
     host: &'host SlipwayHost<'call, 'rig, 'runners>,
     context: &'context mut Context,
 ) -> Result<(), RunComponentError>

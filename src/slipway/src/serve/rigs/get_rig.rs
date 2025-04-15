@@ -9,7 +9,7 @@ use tracing::{Instrument, info_span};
 
 use crate::primitives::RigName;
 use crate::serve::auth::compute_signature_parts;
-use crate::serve::{API_GET_RIG_PATH, SLIPWAY_ENCRYPTION_KEY_ENV_KEY, TRMNL_DISPLAY_PATH};
+use crate::serve::{API_GET_RIG_PATH, SLIPWAY_SECRET_KEY, TRMNL_DISPLAY_PATH};
 
 use crate::serve::responses::{
     FormatQuery, ImageResponse, RigResponse, RigResultFormat, RigResultImageFormat, ServeError,
@@ -119,18 +119,17 @@ pub async fn get_rig_response(
                     .expect("Image format should be a string"),
             );
 
-            let encryption_key = state.encryption_key.as_deref().ok_or_else(|| {
+            let secret = state.secret.as_deref().ok_or_else(|| {
                 ServeError::UserFacing(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!(
                         "{} environment variable has not been set.",
-                        SLIPWAY_ENCRYPTION_KEY_ENV_KEY
+                        SLIPWAY_SECRET_KEY
                     ),
                 )
             })?;
 
-            let sas_token_parts =
-                compute_signature_parts(encryption_key, chrono::Duration::seconds(60));
+            let sas_token_parts = compute_signature_parts(secret, chrono::Duration::seconds(60));
 
             for (sas_key, sas_value) in sas_token_parts {
                 qs.append_pair(&sas_key, &sas_value);

@@ -12,7 +12,7 @@ use tracing::{debug, warn};
 
 use crate::{
     BOA_RUN_JS_FILE_NAME, BoaComponentDefinition,
-    host::{SlipwayHost, prepare_canopy_host},
+    host::{SlipwayHost, prepare_slipway_host},
 };
 
 pub(super) async fn run_component_javascript(
@@ -25,7 +25,7 @@ pub(super) async fn run_component_javascript(
     let host = SlipwayHost::new(execution_context);
     let mut context =
         super::boa_environment::prepare_environment(Arc::clone(&execution_context.files))?;
-    prepare_canopy_host(&host, &mut context)?;
+    prepare_slipway_host(&host, &mut context)?;
     let prepare_component_duration = prepare_component_start.elapsed();
 
     let prepare_input_start = Instant::now();

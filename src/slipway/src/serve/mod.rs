@@ -28,7 +28,7 @@ mod responses;
 mod rigs;
 pub(super) mod trmnl;
 
-const SLIPWAY_ENCRYPTION_KEY_ENV_KEY: &str = "SLIPWAY_ENCRYPTION_KEY";
+const SLIPWAY_SECRET_KEY: &str = "SLIPWAY_SECRET";
 
 const REFRESH_RATE_HEADER: &str = "refresh-rate";
 const ACCESS_TOKEN_HEADER: &str = "access-token";
@@ -53,7 +53,7 @@ struct ServeState {
     pub base_path: PathBuf,
     pub aot_path: Option<PathBuf>,
     pub config: SlipwayServeConfig,
-    pub encryption_key: Option<String>,
+    pub secret: Option<String>,
     pub repository: Box<dyn ServeRepository>,
 }
 
@@ -62,14 +62,14 @@ impl ServeState {
         base_path: PathBuf,
         aot_path: Option<PathBuf>,
         config: SlipwayServeConfig,
-        encryption_key: Option<String>,
+        secret: Option<String>,
         repository: Box<dyn ServeRepository>,
     ) -> Self {
         Self {
             base_path,
             aot_path,
             config,
-            encryption_key,
+            secret,
             repository,
         }
     }
@@ -181,14 +181,14 @@ async fn serve_with_config(
 
     info!("Starting Slipway Serve with config: {:?}", config);
 
-    let encryption_key = std::env::var(SLIPWAY_ENCRYPTION_KEY_ENV_KEY).ok();
+    let secret = std::env::var(SLIPWAY_SECRET_KEY).ok();
 
     HttpServer::new(move || {
         create_app(
             root.clone(),
             aot_path.clone(),
             config.clone(),
-            encryption_key.clone(),
+            secret.clone(),
         )
     })
     .bind(("0.0.0.0", 8080))?
@@ -202,7 +202,7 @@ fn create_app(
     root: PathBuf,
     aot_path: Option<PathBuf>,
     config: SlipwayServeConfig,
-    encryption_key: Option<String>,
+    secret: Option<String>,
 ) -> App<
     impl ServiceFactory<
         ServiceRequest,
@@ -216,11 +216,7 @@ fn create_app(
 
     App::new()
         .app_data(web::Data::new(ServeState::new(
-            root,
-            aot_path,
-            config,
-            encryption_key,
-            repository,
+            root, aot_path, config, secret, repository,
         )))
         .wrap(
             Cors::default()

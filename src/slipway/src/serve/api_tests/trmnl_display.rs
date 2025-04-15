@@ -5,7 +5,7 @@ use chrono_tz::Tz;
 use slipway_host::hash_string;
 
 use crate::serve::api_tests::get_body;
-use crate::serve::{ACCESS_TOKEN_HEADER, ID_HEADER, SLIPWAY_ENCRYPTION_KEY_ENV_KEY};
+use crate::serve::{ACCESS_TOKEN_HEADER, ID_HEADER, SLIPWAY_SECRET_KEY};
 use crate::serve::{RepositoryConfig, SlipwayServeConfig, create_app, repository::TrmnlDevice};
 
 use super::super::Device;
@@ -16,8 +16,8 @@ const MAC2: &str = "aa:bb:cc:00:00:02";
 const API_KEY: &str = "abcdefg";
 const API_KEY2: &str = "abcdefg2";
 
-fn enc_key() -> Option<String> {
-    Some("encryption_key_123".to_string())
+fn secret() -> Option<String> {
+    Some("secret_123".to_string())
 }
 
 #[test_log::test(actix_web::test)]
@@ -35,7 +35,7 @@ async fn when_no_device_id_header_it_should_return_bad_request() {
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), None, config, enc_key())).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, secret())).await;
 
     let request = test::TestRequest::get()
         .uri("/api/display")
@@ -77,7 +77,7 @@ async fn when_no_device_with_matching_id_it_should_return_not_found() {
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), None, config, enc_key())).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, secret())).await;
 
     let request = test::TestRequest::get()
         .uri("/api/display")
@@ -120,7 +120,7 @@ async fn when_api_key_incorrect_it_should_return_unauthorized() {
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), None, config, enc_key())).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, secret())).await;
 
     let request = test::TestRequest::get()
         .uri("/api/display")
@@ -136,7 +136,7 @@ async fn when_api_key_incorrect_it_should_return_unauthorized() {
 }
 
 #[test_log::test(actix_web::test)]
-async fn when_no_encryption_key_set_it_should_return_internal_server_error() {
+async fn when_no_secret_set_it_should_return_internal_server_error() {
     let config = SlipwayServeConfig {
         log_level: Some("debug".to_string()),
         registry_urls: vec![],
@@ -175,7 +175,7 @@ async fn when_no_encryption_key_set_it_should_return_internal_server_error() {
     let body = get_body(response).await;
 
     assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(body.contains(SLIPWAY_ENCRYPTION_KEY_ENV_KEY));
+    assert!(body.contains(SLIPWAY_SECRET_KEY));
 }
 
 #[test_log::test(actix_web::test)]
@@ -206,7 +206,7 @@ async fn when_reset_firmware_set_it_should_return_reset_firmware_flag() {
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), None, config, enc_key())).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, secret())).await;
 
     let request = test::TestRequest::get()
         .uri("/api/display")
@@ -249,7 +249,7 @@ async fn when_valid_request_it_should_return_rig_result() {
         },
     };
 
-    let app = test::init_service(create_app(PathBuf::from("."), None, config, enc_key())).await;
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, secret())).await;
 
     let request = test::TestRequest::get()
         .uri("/api/display")
