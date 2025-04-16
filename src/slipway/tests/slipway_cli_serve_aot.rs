@@ -1,6 +1,7 @@
 use assert_cmd::Command;
 use common_macros::slipway_test_async;
 use common_test_utils::get_slipway_test_components_path;
+use slipway_host::hash_string;
 use std::process::{Child, Stdio};
 use std::{thread, time::Duration};
 use tempfile::tempdir;
@@ -59,6 +60,9 @@ async fn slipway_cli_serve_aot_and_check_response() {
                 "allow": [ { "permission": "all" } ]
             }
     });
+    config_json["hashed_api_keys"] = serde_json::json!({
+        "test": hash_string("test_api_key")
+    });
 
     let components_path = get_slipway_test_components_path();
     let components_path_string = components_path.to_string_lossy();
@@ -112,7 +116,9 @@ async fn slipway_cli_serve_aot_and_check_response() {
     thread::sleep(Duration::from_secs(1));
 
     // Make a request to check the server's response
-    let maybe_response = reqwest::get("http://localhost:8080/rigs/hello?format=json").await;
+    let maybe_response =
+        reqwest::get("http://localhost:8080/rigs/hello?format=json&authorization=test_api_key")
+            .await;
 
     // Shut down the server
     send_ctrlc(&child); // child.kill().unwrap();
@@ -120,12 +126,13 @@ async fn slipway_cli_serve_aot_and_check_response() {
     let output = child.wait_with_output().unwrap();
 
     let response = maybe_response.unwrap();
-
+    let status_code = response.status();
     println!("{:?}", response);
-    assert_eq!(response.status(), 200);
 
     let body = response.text().await.unwrap();
     println!("{:?}", body);
+
+    assert_eq!(status_code, 200);
     let body_json: serde_json::Value = serde_json::from_str(&body).unwrap();
     assert_eq!(body_json["value"], 2);
 

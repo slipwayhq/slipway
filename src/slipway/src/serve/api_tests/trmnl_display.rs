@@ -265,7 +265,8 @@ async fn when_valid_request_it_should_return_rig_result() {
     assert_eq!(body["status"].as_u64(), Some(0));
 
     let image_url = body["image_url"].as_str().unwrap();
-    assert!(image_url.contains("/rigs/r_1?format=image&image_format=bmp_1bit&timestamp="));
+    assert!(image_url.contains("/rigs/r_1?format=image&image_format=bmp_1bit&"));
     assert!(image_url.contains("&sig="));
     assert!(image_url.contains("&exp="));
+    assert!(image_url.contains("&t="));
 }

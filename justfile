@@ -5,11 +5,11 @@ default:
   
 build configuration="debug": (build-src configuration) (build-components configuration)
 
-test *FLAGS: build-src build-components
-  cd src && RUST_LOG="debug,cranelift_codegen=info,wasmtime_cranelift=info" cargo nextest run --no-fail-fast {{FLAGS}}
+test *FLAGS: (build-src "release") (build-components "release")
+  cd src && RUST_LOG="debug,cranelift_codegen=info,wasmtime_cranelift=info" cargo nextest run --no-fail-fast --release {{FLAGS}}
 
 test-only *FLAGS:
-  cd src && RUST_LOG="debug,cranelift_codegen=info,wasmtime_cranelift=info" cargo nextest run --no-fail-fast {{FLAGS}}
+  cd src && RUST_LOG="debug,cranelift_codegen=info,wasmtime_cranelift=info" cargo nextest run --no-fail-fast --release {{FLAGS}}
 
 clean: clean-src clean-components (clean-component-artifacts "")
 

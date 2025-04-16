@@ -136,8 +136,8 @@ pub async fn get_rig_response(
             }
 
             // Used as a nonce to force Trmnl to reload the image.
-            let timestamp = chrono::Utc::now().format("%Y-%m-%d-%H-%M-%S").to_string();
-            qs.append_pair("timestamp", &timestamp);
+            let timestamp = chrono::Utc::now().format("%Y-%m-%dT%H-%M-%S").to_string();
+            qs.append_pair("t", &timestamp);
 
             let full_url = format!("{}?{}", full_url_without_qs, qs.finish());
 
