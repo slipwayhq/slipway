@@ -53,6 +53,8 @@ assemble-test-components configuration="debug": \
   (tar-component-files "increment_ten" configuration) \
   (tar-component-files "increment_json_schema" configuration) \
   (tar-component-files "fragment" configuration) \
+  (tar-component-files "slipway_increment_invalid_callout_permissions" configuration) \
+  (tar-component-files "slipway_increment_js_invalid_callout_permissions" configuration) \
   
   mkdir -p components/{{publisher}}.increment_ten
   cp src_components/target/increment-ten/wasm32-wasip2/{{configuration}}/slipway_increment_component.wasm components/{{publisher}}.increment_ten/run.wasm
@@ -69,9 +71,15 @@ assemble-test-components configuration="debug": \
   mkdir -p components/{{publisher}}.fragment
   cp src_components/slipway_fragment_component/slipway_component.json components/{{publisher}}.fragment/slipway_component.json
 
-  mkdir -p components/{{publisher}}.increment_js
-  cp src_components/slipway_increment_js_component/slipway_component.json components/{{publisher}}.increment_js/slipway_component.json
-  cp src_components/slipway_increment_js_component/run.js components/{{publisher}}.increment_js/run.js
+  mkdir -p components/{{publisher}}.slipway_increment_invalid_callout_permissions
+  cp components/{{publisher}}.increment/* components/{{publisher}}.slipway_increment_invalid_callout_permissions
+  jq '.name = "increment_invalid_callout_permissions" | del(.callouts.increment.allow)' components/{{publisher}}.slipway_increment_invalid_callout_permissions/slipway_component.json > components/{{publisher}}.slipway_increment_invalid_callout_permissions/slipway_component.temp
+  mv components/{{publisher}}.slipway_increment_invalid_callout_permissions/slipway_component.temp components/{{publisher}}.slipway_increment_invalid_callout_permissions/slipway_component.json
+
+  mkdir -p components/{{publisher}}.slipway_increment_js_invalid_callout_permissions
+  cp components/{{publisher}}.increment_js/* components/{{publisher}}.slipway_increment_js_invalid_callout_permissions
+  jq '.name = "increment_js_invalid_callout_permissions" | del(.callouts.increment.allow)' components/{{publisher}}.slipway_increment_js_invalid_callout_permissions/slipway_component.json > components/{{publisher}}.slipway_increment_js_invalid_callout_permissions/slipway_component.temp
+  mv components/{{publisher}}.slipway_increment_js_invalid_callout_permissions/slipway_component.temp components/{{publisher}}.slipway_increment_js_invalid_callout_permissions/slipway_component.json
 
 tar-component-files name configuration="debug":
   src/target/{{configuration}}/slipway package components/{{publisher}}.{{name}}

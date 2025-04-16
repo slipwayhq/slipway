@@ -12,6 +12,11 @@
     "$ref": "output_schema.json"
   },
   "callouts": {
-    "test": "slipwayhq.increment.0.0.1"
+    "increment": {
+      "component": "slipwayhq.increment.0.0.1",
+      "allow": [
+        { "permission": "registry_components", "publisher": "slipwayhq", "name": "increment" }
+      ]
+    }
   }
 }

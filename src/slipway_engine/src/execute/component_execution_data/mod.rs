@@ -1,7 +1,7 @@
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use crate::{
-    Component, ComponentCache, ComponentFiles, ComponentHandle, ComponentInput,
+    Callout, Component, ComponentCache, ComponentFiles, ComponentHandle, ComponentInput,
     PERMISSIONS_ALL_VEC, PERMISSIONS_NONE_VEC, Permission, RigSessionOptions, Schema,
     SlipwayReference, errors::RigError,
 };
@@ -40,23 +40,21 @@ impl ComponentExecutionContext<'_, '_, '_> {
 
 #[derive(Clone)]
 pub struct CalloutContext<'call, 'rig> {
-    callout_handle_to_reference: HashMap<&'call ComponentHandle, &'rig SlipwayReference>,
+    callout_handle_to_callout: HashMap<&'call ComponentHandle, &'rig Callout>,
 }
 
 impl<'call, 'rig> CalloutContext<'call, 'rig> {
-    pub fn new(
-        callout_handle_to_reference: HashMap<&'call ComponentHandle, &'rig SlipwayReference>,
-    ) -> Self {
+    pub fn new(callout_handle_to_callout: HashMap<&'call ComponentHandle, &'rig Callout>) -> Self {
         Self {
-            callout_handle_to_reference,
+            callout_handle_to_callout,
         }
     }
 
-    pub fn get_component_reference_for_handle(
+    pub fn get_component_callout_for_handle(
         &self,
         handle: &ComponentHandle,
-    ) -> Result<&'rig SlipwayReference, RigError> {
-        self.callout_handle_to_reference
+    ) -> Result<&'rig Callout, RigError> {
+        self.callout_handle_to_callout
             .get(handle)
             .copied()
             .ok_or_else(|| RigError::ComponentNotFound {

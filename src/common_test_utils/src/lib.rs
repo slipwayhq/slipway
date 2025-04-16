@@ -8,6 +8,10 @@ pub const SLIPWAY_INCREMENT_COMPONENT_NAME: &str = "slipwayhq.increment.0.0.1";
 pub const SLIPWAY_INCREMENT_COMPONENT_FOLDER_NAME: &str = "slipwayhq.increment";
 pub const SLIPWAY_INCREMENT_COMPONENT_TAR_NAME: &str = "slipwayhq.increment.0.0.1.tar";
 pub const SLIPWAY_INCREMENT_JS_COMPONENT_TAR_NAME: &str = "slipwayhq.increment_js.0.0.1.tar";
+pub const SLIPWAY_INCREMENT_INVALID_CALLOUT_PERMISSIONS_COMPONENT_TAR_NAME: &str =
+    "slipwayhq.increment_invalid_callout_permissions.0.0.1.tar";
+pub const SLIPWAY_INCREMENT_JS_INVALID_CALLOUT_PERMISSIONS_COMPONENT_TAR_NAME: &str =
+    "slipwayhq.increment_js_invalid_callout_permissions.0.0.1.tar";
 
 pub const SLIPWAY_FETCH_COMPONENT_NAME: &str = "slipwayhq.fetch.0.0.1";
 pub const SLIPWAY_FETCH_COMPONENT_TAR_NAME: &str = "slipwayhq.fetch.0.0.1.tar";

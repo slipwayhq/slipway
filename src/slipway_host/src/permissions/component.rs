@@ -13,9 +13,9 @@ pub fn ensure_can_use_component_handle(
     handle: &ComponentHandle,
     execution_context: &ComponentExecutionContext,
 ) -> Result<(), ComponentError> {
-    let component_reference = execution_context
+    let component_callout = execution_context
         .callout_context
-        .get_component_reference_for_handle(handle)
+        .get_component_callout_for_handle(handle)
         .map_err(|e| ComponentError {
             message: format!(
                 "Failed to component reference for \"{}\"",
@@ -28,7 +28,7 @@ pub fn ensure_can_use_component_handle(
 
     let call_chain = Arc::clone(&execution_context.call_chain);
 
-    ensure_can_use_component_reference(component_reference, call_chain)
+    ensure_can_use_component_reference(&component_callout.component, call_chain)
 }
 
 pub fn ensure_can_use_component_reference(

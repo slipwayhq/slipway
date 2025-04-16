@@ -6,7 +6,7 @@ use futures::lock::Mutex;
 
 use crate::errors::RigError;
 use crate::load::ComponentCache;
-use crate::{CallChain, ComponentHandle, ComponentInput, Immutable, SlipwayReference};
+use crate::{CallChain, Callout, ComponentHandle, ComponentInput, Immutable, SlipwayReference};
 
 use super::fonts::FontContext;
 use super::initialize::initialize;
@@ -62,7 +62,7 @@ impl<'cache> RigSession<'cache> {
         component_reference: SlipwayReference,
         call_chain: Arc<CallChain>,
         input: Arc<ComponentInput>,
-        callouts: Option<HashMap<ComponentHandle, SlipwayReference>>,
+        callouts: Option<HashMap<ComponentHandle, Callout>>,
     ) {
         if let Some(run_record) = &self.options.run_record {
             run_record.push_run_record(component_reference, call_chain, input, callouts);

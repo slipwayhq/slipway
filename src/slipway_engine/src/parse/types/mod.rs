@@ -63,7 +63,19 @@ pub struct Rigging {
     pub components: HashMap<ComponentHandle, ComponentRigging>,
 }
 
-pub type Callouts = HashMap<ComponentHandle, SlipwayReference>;
+pub type Callouts = HashMap<ComponentHandle, Callout>;
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Callout {
+    pub component: SlipwayReference,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allow: Option<Vec<Permission>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deny: Option<Vec<Permission>>,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]

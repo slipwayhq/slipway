@@ -3,7 +3,7 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use crate::{
-    CallChain, ChainItem, ComponentHandle, ComponentInput, ComponentRigging, Description,
+    CallChain, Callout, ChainItem, ComponentHandle, ComponentInput, ComponentRigging, Description,
     Permission, PermissionsChainLink, Rigging, SlipwayReference,
 };
 
@@ -19,7 +19,7 @@ struct ComponentRunRecord {
     component_reference: SlipwayReference,
     permissions: Vec<PermissionsOwned>,
     input: Arc<ComponentInput>,
-    callouts: Option<HashMap<ComponentHandle, SlipwayReference>>,
+    callouts: Option<HashMap<ComponentHandle, Callout>>,
 }
 
 impl RigRunRecord {
@@ -34,7 +34,7 @@ impl RigRunRecord {
         component_reference: SlipwayReference,
         call_chain: Arc<CallChain>,
         input: Arc<ComponentInput>,
-        callouts: Option<HashMap<ComponentHandle, SlipwayReference>>,
+        callouts: Option<HashMap<ComponentHandle, Callout>>,
     ) {
         let component_handle = call_chain.unique_handle();
         let permissions = call_chain

@@ -27,7 +27,7 @@
     "render": {
       "component": "slipwayhq.render.0.0.1",
       "callouts": {
-        "echarts_demo": "slipwayhq.echarts_demo.0.0.1"
+        "echarts_demo": { "component": "slipwayhq.echarts_demo.0.0.1" }
       },
       "allow": [
         { "permission": "fonts" },

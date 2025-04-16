@@ -4,8 +4,9 @@ use std::{
 };
 
 use crate::{
-    Callouts, ChainItem, ComponentCache, ComponentHandle, ComponentInput, Immutable, Instruction,
-    JsonMetadata, Permissions, RigSession, RigSessionOptions, SlipwayReference, errors::RigError,
+    Callout, Callouts, ChainItem, ComponentCache, ComponentHandle, ComponentInput, Immutable,
+    Instruction, JsonMetadata, PERMISSIONS_NONE_VEC, Permissions, RigSession, RigSessionOptions,
+    SlipwayReference, errors::RigError,
 };
 
 use super::{
@@ -131,15 +132,26 @@ pub(super) fn get_component_execution_data_for_callout<'call, 'rig, 'runners>(
 where
     'rig: 'call,
 {
-    let component_reference = execution_context
+    let component_callout = execution_context
         .callout_context
-        .get_component_reference_for_handle(handle)?;
+        .get_component_callout_for_handle(handle)?;
+
+    let component_reference = &component_callout.component;
 
     let component_cache = execution_context.component_cache;
 
     let call_chain = CallChain::new_child_arc(
         handle,
-        ChainItem::Inherit,
+        ChainItem::Some(Permissions::new(
+            component_callout
+                .allow
+                .as_ref()
+                .unwrap_or(&PERMISSIONS_NONE_VEC),
+            component_callout
+                .deny
+                .as_ref()
+                .unwrap_or(&PERMISSIONS_NONE_VEC),
+        )),
         Arc::clone(&execution_context.call_chain),
     );
 
@@ -183,7 +195,7 @@ where
     let files = Arc::clone(&primed_component.files);
     let component_callouts = primed_component.definition.callouts.as_ref();
 
-    let callouts = get_callout_handle_to_reference_map(outer_callouts, component_callouts);
+    let callouts = get_callout_handle_to_callout_map(outer_callouts, component_callouts);
 
     let callout_context = CalloutContext::new(callouts);
 
@@ -202,10 +214,10 @@ where
     })
 }
 
-fn get_callout_handle_to_reference_map<'rig>(
+fn get_callout_handle_to_callout_map<'rig>(
     outer_callouts: Option<&'rig Callouts>,
     component_callouts: Option<&'rig Callouts>,
-) -> HashMap<&'rig ComponentHandle, &'rig SlipwayReference> {
+) -> HashMap<&'rig ComponentHandle, &'rig Callout> {
     let mut callouts = HashMap::new();
     if let Some(callout_overrides) = &outer_callouts {
         for (handle, reference) in callout_overrides.iter() {

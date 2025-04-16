@@ -15,9 +15,9 @@ pub(super) async fn get_component_file_bin(
             .component_handle_trail_for(&handle)
     };
 
-    let component_reference = execution_context
+    let component_callout = execution_context
         .callout_context
-        .get_component_reference_for_handle(&handle)
+        .get_component_callout_for_handle(&handle)
         .map_err(|e| {
             RequestError::for_error(
                 format!(
@@ -28,7 +28,9 @@ pub(super) async fn get_component_file_bin(
             )
         })?;
 
-    let component = execution_context.component_cache.get(component_reference);
+    let component = execution_context
+        .component_cache
+        .get(&component_callout.component);
 
     let path = sanitize_slashes(path);
 

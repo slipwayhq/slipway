@@ -1,4 +1,5 @@
 use crate::BasicComponentCache;
+use crate::Callout;
 use crate::Component;
 use crate::ComponentFiles;
 use crate::ComponentFilesLoader;
@@ -89,9 +90,16 @@ impl ComponentRigging {
             deny: None,
             permissions_chain: None,
             callouts: Some(
-                vec![(ch(callout_handle), callout_reference)]
-                    .into_iter()
-                    .collect(),
+                vec![(
+                    ch(callout_handle),
+                    Callout {
+                        component: callout_reference,
+                        allow: Some(vec![Permission::All]),
+                        deny: None,
+                    },
+                )]
+                .into_iter()
+                .collect(),
             ),
         }
     }
@@ -110,9 +118,16 @@ impl ComponentRigging {
             deny: Some(permissions.deny.clone()),
             permissions_chain: None,
             callouts: Some(
-                vec![(ch(callout_handle), callout_reference)]
-                    .into_iter()
-                    .collect(),
+                vec![(
+                    ch(callout_handle),
+                    Callout {
+                        component: callout_reference,
+                        allow: Some(vec![Permission::All]),
+                        deny: None,
+                    },
+                )]
+                .into_iter()
+                .collect(),
             ),
         }
     }

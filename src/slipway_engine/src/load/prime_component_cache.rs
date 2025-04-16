@@ -4,13 +4,14 @@ use std::{
 };
 
 use crate::{
+    Callout, Component, ComponentHandle, Rig, Schema, SlipwayReference,
     custom_iter_tools::CustomIterTools,
     errors::{ComponentLoadError, ComponentLoadErrorInner},
     load::ComponentsLoader,
-    parse_component, Component, ComponentHandle, Rig, Schema, SlipwayReference,
+    parse_component,
 };
 
-use super::{parse_schema, BasicComponentCache, ComponentCache, ComponentFiles};
+use super::{BasicComponentCache, ComponentCache, ComponentFiles, parse_schema};
 
 pub(super) async fn prime_component_cache(
     rig: &Rig,
@@ -129,10 +130,10 @@ fn get_component_distinct_references<T>(component: &Component<T>) -> HashSet<Sli
 }
 
 fn get_callouts_references<'a>(
-    callouts: &'a Option<HashMap<ComponentHandle, SlipwayReference>>,
+    callouts: &'a Option<HashMap<ComponentHandle, Callout>>,
 ) -> Box<dyn Iterator<Item = &'a SlipwayReference> + 'a> {
     match callouts {
-        Some(callouts) => Box::new(callouts.values()),
+        Some(callouts) => Box::new(callouts.values().map(|v| &v.component)),
         None => Box::new(std::iter::empty()),
     }
 }
