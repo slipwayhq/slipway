@@ -23,13 +23,14 @@ pub async fn add_api_key(
         name, api_key
     );
 
+    config.hashed_api_keys.insert(name, hashed_api_key);
+
+    save_serve_config(&serve_path, &config).await?;
+
     warn!(
         "The unhashed API key is not stored by the server. If you need a record of it, store it securely."
     );
 
-    config.hashed_api_keys.insert(name, hashed_api_key);
-
-    save_serve_config(&serve_path, &config).await?;
     write_redeploy_warning();
 
     Ok(())

@@ -4,9 +4,9 @@ use tracing::{Instrument, debug, info_span, instrument, warn};
 
 use crate::{
     primitives::DeviceName,
-    serve::responses::{RigResponse, RigResultFormat, RigResultImageFormat, ServeError},
     serve::{
-        ServeState,
+        ServeState, ShowApiKeys, SlipwayServeConfig,
+        responses::{RigResponse, RigResultFormat, RigResultImageFormat, ServeError},
         trmnl::{authenticate_device, get_api_key_from_headers, get_device_id_from_headers},
     },
 };
@@ -29,10 +29,10 @@ pub(crate) async fn trmnl_display(
     let (device_name, device) = if let Some((device_name, device)) = maybe_device {
         (device_name, device)
     } else {
-        return Err(print_unknown_device_message(&req, id)?);
+        return Err(print_unknown_device_message(&req, id, &data.config)?);
     };
 
-    let trmnl_device = authenticate_device(id, &req, &device)?;
+    let trmnl_device = authenticate_device(id, &req, &device, data.config.show_api_keys)?;
 
     // We check this before authenticating, so that if the device set itself up
     // and we didn't get the hashed API key we can still reset the firmware.
@@ -81,12 +81,22 @@ pub(crate) async fn trmnl_display(
     })))
 }
 
-fn print_unknown_device_message(req: &HttpRequest, id: &str) -> Result<ServeError, ServeError> {
+fn print_unknown_device_message(
+    req: &HttpRequest,
+    id: &str,
+    config: &SlipwayServeConfig,
+) -> Result<ServeError, ServeError> {
     let api_key = get_api_key_from_headers(req)?;
     let hashed_api_key = hash_string(api_key);
 
+    let display_api_key = match config.show_api_keys {
+        ShowApiKeys::Always => Some(api_key),
+        ShowApiKeys::New => Some(api_key),
+        ShowApiKeys::Never => None,
+    };
+
     warn!("An unknown device with ID \"{id}\" called the TRMNL display API.");
-    super::print_new_device_message(id, api_key, &hashed_api_key, None);
+    super::print_new_device_message(id, display_api_key, &hashed_api_key, None);
 
     Ok(ServeError::UserFacing(
         actix_web::http::StatusCode::NOT_FOUND,

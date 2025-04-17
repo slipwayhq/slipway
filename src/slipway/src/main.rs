@@ -25,7 +25,7 @@ use clap::{
 use permissions::CommonPermissionsArgs;
 use primitives::{ApiKeyName, DeviceName, PlaylistName, RigName};
 use semver::Version;
-use slipway_engine::{Name, Publisher};
+use slipway_engine::{Name, Publisher, clear_components_cache};
 use slipway_host::hash_string;
 use time::{OffsetDateTime, format_description};
 use tracing::{Level, info};
@@ -132,7 +132,7 @@ pub(crate) enum Commands {
         /// This should be used with caution. AOT compiled files
         /// must be compatible with the target machine architecture,
         /// and should be created with this exact version of Slipway.
-        #[arg(long)]
+        #[arg(long, verbatim_doc_comment)]
         aot: bool,
 
         #[command(subcommand)]
@@ -150,9 +150,13 @@ pub(crate) enum Commands {
         log_level: Option<String>,
     },
 
+    /// Clear the local Component cache of downloaded Components (by default located in ~/.slipway).
+    #[command()]
+    ClearComponentCache,
+
     /// Generate a hash of a string. You will be prompted if a string isn't provided.
     /// It isn't recommended to put sensitive data as arguments.
-    #[command(arg_required_else_help = false)]
+    #[command(arg_required_else_help = false, verbatim_doc_comment)]
     Hash {
         /// The string to hash.
         value: Option<String>,
@@ -392,6 +396,10 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
         } => {
             configure_tracing(log_level);
             package::package_component(&folder_path)?;
+        }
+        Commands::ClearComponentCache => {
+            configure_tracing(Default::default());
+            clear_components_cache();
         }
         Commands::Hash { value } => {
             configure_tracing(Default::default());

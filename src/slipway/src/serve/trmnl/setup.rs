@@ -3,7 +3,7 @@ use slipway_host::hash_string;
 use tracing::{info, instrument, warn};
 
 use crate::serve::{
-    Device, ServeState, create_api_key, create_friendly_id,
+    Device, ServeState, ShowApiKeys, create_api_key, create_friendly_id,
     responses::ServeError,
     trmnl::{get_device_id_from_headers, print_new_device_message},
 };
@@ -49,7 +49,13 @@ pub(crate) async fn trmnl_setup(
     let hashed_api_key = hash_string(&api_key);
     let friendly_id = create_friendly_id(&hashed_api_key);
 
-    print_new_device_message(id, &api_key, &hashed_api_key, existing_device_name);
+    let display_api_key = match data.config.show_api_keys {
+        ShowApiKeys::Always => Some(api_key.as_ref()),
+        ShowApiKeys::New => Some(api_key.as_ref()),
+        ShowApiKeys::Never => None,
+    };
+
+    print_new_device_message(id, display_api_key, &hashed_api_key, existing_device_name);
 
     Ok(web::Json(serde_json::json!({
         "status": 200,

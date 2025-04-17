@@ -2,9 +2,10 @@ use actix_web::{HttpRequest, Responder, post, web};
 use tracing::{info, instrument};
 
 use crate::serve::{
-    ServeState,
+    ServeState, ShowApiKeys,
     responses::ServeError,
     trmnl::{authenticate_device, get_api_key_from_headers, get_device_id_from_headers},
+    write_api_key_message,
 };
 
 #[post("/log")]
@@ -23,12 +24,17 @@ pub(crate) async fn trmnl_log(
     let device_name = match id {
         Ok(id) => {
             let (device_name, device) = data.repository.get_device_by_id(id).await?;
-            authenticate_device(id, &req, &device)?;
+            authenticate_device(id, &req, &device, data.config.show_api_keys)?;
             device_name
         }
         Err(_e) => {
             // Older TRMNL firmware doesn't supply the device ID in the log headers.
             let api_key = get_api_key_from_headers(&req)?;
+
+            if matches!(data.config.show_api_keys, ShowApiKeys::Always) {
+                write_api_key_message(api_key);
+            }
+
             let (device_name, _device) = data.repository.get_device_by_api_key(api_key).await?;
             device_name
         }

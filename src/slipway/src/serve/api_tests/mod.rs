@@ -16,8 +16,8 @@ use crate::{
 };
 
 use super::{
-    Device, Playlist,
-    repository::{PlaylistItem, Refresh},
+    Device, Playlist, ShowApiKeys,
+    repository::{PlaylistItem, Refresh, TrmnlDevice},
 };
 
 mod trmnl_display;
@@ -40,6 +40,21 @@ fn device(name: &str, playlist_name: &str) -> (DeviceName, Device) {
         dn(name),
         Device {
             trmnl: None,
+            playlist: Some(pn(playlist_name)),
+            context: None,
+        },
+    )
+}
+
+fn trmnl_device(name: &str, playlist_name: &str, api_key: &str) -> (DeviceName, Device) {
+    (
+        dn(name),
+        Device {
+            trmnl: Some(TrmnlDevice {
+                id: name.to_string(),
+                hashed_api_key: hash_string(api_key),
+                reset_firmware: false,
+            }),
             playlist: Some(pn(playlist_name)),
             context: None,
         },
@@ -118,6 +133,7 @@ async fn when_devices_playlists_and_rigs_do_not_exist_should_return_not_found() 
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key(""),
+        show_api_keys: ShowApiKeys::Never,
         repository: RepositoryConfig::Memory {
             devices: HashMap::new(),
             playlists: HashMap::new(),
@@ -163,6 +179,7 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key(""),
+        show_api_keys: ShowApiKeys::Never,
         repository: RepositoryConfig::Memory {
             devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
@@ -222,6 +239,7 @@ async fn when_auth_not_supplied_it_should_return_unauthorized() {
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key("auth123"),
+        show_api_keys: ShowApiKeys::Never,
         repository: RepositoryConfig::Memory {
             devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
@@ -273,8 +291,11 @@ async fn when_auth_incorrect_it_should_return_unauthorized() {
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key("auth123"),
+        show_api_keys: ShowApiKeys::Never,
         repository: RepositoryConfig::Memory {
-            devices: vec![device("d_1", "p_1")].into_iter().collect(),
+            devices: vec![trmnl_device("d_1", "p_1", "auth456")]
+                .into_iter()
+                .collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
             rigs: vec![rig("r_1")].into_iter().collect(),
         },
@@ -327,8 +348,11 @@ async fn when_auth_supplied_it_should_execute_rigs() {
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key("auth123"),
+        show_api_keys: ShowApiKeys::Never,
         repository: RepositoryConfig::Memory {
-            devices: vec![device("d_1", "p_1")].into_iter().collect(),
+            devices: vec![trmnl_device("d_1", "p_1", "auth456")]
+                .into_iter()
+                .collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
             rigs: vec![rig("r_1")].into_iter().collect(),
         },
@@ -375,6 +399,71 @@ async fn when_auth_supplied_it_should_execute_rigs() {
         let request = test::TestRequest::get()
             .uri("/rigs/r_1?format=json")
             .append_header(("Authorization", "auth123"))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_response(response, false).await;
+    }
+}
+
+#[test_log::test(actix_web::test)]
+async fn when_device_auth_supplied_it_should_execute_rigs() {
+    let config = SlipwayServeConfig {
+        log_level: Some("debug".to_string()),
+        registry_urls: vec![],
+        timezone: Some(Tz::Canada__Eastern),
+        rig_permissions: HashMap::new(),
+        hashed_api_keys: create_auth_for_key("auth123"),
+        show_api_keys: ShowApiKeys::Never,
+        repository: RepositoryConfig::Memory {
+            devices: vec![trmnl_device("d_1", "p_1", "auth456")]
+                .into_iter()
+                .collect(),
+            playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
+            rigs: vec![rig("r_1")].into_iter().collect(),
+        },
+    };
+
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
+
+    async fn assert_response(response: ServiceResponse<impl MessageBody>, has_refresh_rate: bool) {
+        let status = response.status();
+        let refresh_rate = get_refresh_rate(&response);
+        let body = get_body_json(response).await;
+
+        assert_eq!(status, StatusCode::OK);
+        if has_refresh_rate {
+            let Some(refresh_rate) = refresh_rate else {
+                panic!("Expected refresh rate.");
+            };
+            assert!(refresh_rate > 3598 && refresh_rate < 3602);
+        } else {
+            assert!(refresh_rate.is_none());
+        }
+        assert_eq!(body, serde_json::json!({ "foo": "bar"}));
+    }
+
+    {
+        let request = test::TestRequest::get()
+            .uri("/devices/d_1?format=json")
+            .append_header(("Authorization", "auth456"))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_response(response, true).await;
+    }
+
+    {
+        // Auth in the query string.
+        let request = test::TestRequest::get()
+            .uri("/playlists/p_1?format=json&authorization=auth456")
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_response(response, true).await;
+    }
+
+    {
+        let request = test::TestRequest::get()
+            .uri("/rigs/r_1?format=json")
+            .append_header(("Authorization", "auth456"))
             .to_request();
         let response = test::call_service(&app, request).await;
         assert_response(response, false).await;

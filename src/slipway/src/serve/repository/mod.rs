@@ -76,6 +76,12 @@ pub(super) trait ServeRepository: std::fmt::Debug {
             "Failed to find device for the given API key.".to_string(),
         ))
     }
+    async fn try_get_device_by_api_key(
+        &self,
+        api_key: &str,
+    ) -> Result<Option<(DeviceName, Device)>, ServeError> {
+        try_load(self.get_device_by_api_key(api_key).await)
+    }
 }
 
 fn try_load<T>(maybe_result: Result<T, ServeError>) -> Result<Option<T>, ServeError> {

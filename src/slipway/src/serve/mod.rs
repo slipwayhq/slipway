@@ -11,7 +11,7 @@ use chrono_tz::Tz;
 use repository::{Device, Playlist, ServeRepository};
 use serde::{Deserialize, Serialize};
 
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 use crate::permissions::PermissionsOwned;
 use crate::primitives::{ApiKeyName, DeviceName, PlaylistName, RigName};
@@ -95,6 +95,9 @@ struct SlipwayServeConfig {
     #[serde(default)]
     hashed_api_keys: HashMap<ApiKeyName, String>,
 
+    #[serde(default, skip_serializing_if = "ShowApiKeys::is_default")]
+    show_api_keys: ShowApiKeys,
+
     #[serde(default, skip_serializing_if = "RepositoryConfig::is_default")]
     repository: RepositoryConfig,
 }
@@ -114,6 +117,21 @@ enum RepositoryConfig {
 impl RepositoryConfig {
     pub fn is_default(&self) -> bool {
         matches!(self, RepositoryConfig::Filesystem)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default)]
+#[serde(rename_all = "snake_case")]
+enum ShowApiKeys {
+    #[default]
+    Never,
+    New,
+    Always,
+}
+
+impl ShowApiKeys {
+    pub fn is_default(&self) -> bool {
+        matches!(self, ShowApiKeys::Never)
     }
 }
 
@@ -151,6 +169,10 @@ async fn save_serve_config(
 
 fn write_redeploy_warning() {
     warn!("Don't forget to re-deploy if necessary.");
+}
+
+fn write_api_key_message(api_key: &str) {
+    debug!("The API key sent by the device was: {}", api_key);
 }
 
 fn get_serve_config_path(root_path: &Path) -> PathBuf {

@@ -11,6 +11,8 @@ use actix_web::{HttpMessage, web};
 use slipway_host::hash_string;
 use tracing::debug;
 
+use crate::serve::{ShowApiKeys, write_api_key_message};
+
 use super::SLIPWAY_SECRET_KEY;
 use super::{RequestState, ServeState, responses::ServeError};
 
@@ -52,17 +54,17 @@ pub(super) async fn auth_middleware(
         debug!("Shared access signature found in query string.");
         auth_middleware_sas(serve_state, query_map)?;
     } else {
-        auth_middleware_api_key(&req, serve_state, query_map)?;
+        auth_middleware_api_key(&req, serve_state, query_map).await?;
     }
 
     req.extensions_mut().insert(RequestState {});
     next.call(req).await
 }
 
-fn auth_middleware_api_key(
+async fn auth_middleware_api_key(
     req: &ServiceRequest,
     serve_state: &Data<ServeState>,
-    query_map: HashMap<Cow<str>, Cow<str>>,
+    query_map: HashMap<Cow<'_, str>, Cow<'_, str>>,
 ) -> Result<(), actix_web::Error> {
     let hashed_api_keys = &serve_state.config.hashed_api_keys;
 
@@ -75,17 +77,44 @@ fn auth_middleware_api_key(
             query_auth.cloned().unwrap_or(Cow::Borrowed(""))
         });
 
-    let hashed_api_key = if let Some(full_authorization_header) =
-        full_authorization_header.strip_prefix(BEARER_PREFIX)
-    {
-        hash_string(full_authorization_header)
-    } else {
-        hash_string(full_authorization_header.as_ref())
+    let api_key =
+        if let Some(authorization_header) = full_authorization_header.strip_prefix(BEARER_PREFIX) {
+            authorization_header
+        } else {
+            full_authorization_header.as_ref()
+        };
+
+    let hashed_api_key = hash_string(api_key);
+
+    let used_api_key_name = {
+        // First search the hashed API keys in the config.
+        let used_api_key_name = hashed_api_keys.iter().find_map(|(n, v)| {
+            if hashed_api_key == **v {
+                Some(Cow::Borrowed(&n.0))
+            } else {
+                None
+            }
+        });
+
+        match used_api_key_name {
+            Some(used_api_key_name) => Some(used_api_key_name),
+            None => serve_state
+                .repository
+                .try_get_device_by_api_key(api_key)
+                .await?
+                .map(|(device_name, _)| Cow::Owned(format!("trmnl_{device_name}"))),
+        }
     };
 
-    let used_api_key = hashed_api_keys.iter().find(|(_, v)| hashed_api_key == **v);
+    if matches!(serve_state.config.show_api_keys, ShowApiKeys::Always) {
+        write_api_key_message(api_key);
+    }
 
-    let Some((used_api_key_name, _)) = used_api_key else {
+    let Some(used_api_key_name) = used_api_key_name else {
+        if matches!(serve_state.config.show_api_keys, ShowApiKeys::New) {
+            write_api_key_message(api_key);
+        }
+
         return Err(
             ServeError::UserFacing(StatusCode::UNAUTHORIZED, "Unauthorized".to_string()).into(),
         );
@@ -123,6 +152,10 @@ fn auth_middleware_sas(
             ),
         )
     })?;
+
+    if matches!(serve_state.config.show_api_keys, ShowApiKeys::Always) {
+        debug!("The device authenticated using a shared access signature.");
+    }
 
     sas::verify_sas_token(secret, expiry, signature)
 }

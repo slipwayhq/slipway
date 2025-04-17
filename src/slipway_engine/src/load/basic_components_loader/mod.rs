@@ -7,7 +7,7 @@ use std::{
 use super::component_io_abstractions::{ComponentIOAbstractions, ComponentIOAbstractionsImpl};
 use async_trait::async_trait;
 use futures::future::join_all;
-use tracing::{debug, trace};
+use tracing::{debug, error, trace};
 
 use crate::{
     SlipwayReference,
@@ -26,6 +26,18 @@ const DEFAULT_REGISTRY_LOOKUP_URL: &str =
 fn get_default_slipway_components_cache_dir() -> PathBuf {
     let home_dir = dirs::home_dir().expect("Home directory required for caching components");
     home_dir.join(".slipway/components")
+}
+
+pub fn clear_components_cache() {
+    let components_cache_path = get_default_slipway_components_cache_dir();
+    if components_cache_path.exists() {
+        std::fs::remove_dir_all(&components_cache_path).unwrap_or_else(|e| {
+            error!(
+                "Failed to clear components cache at: {}\n{e}",
+                components_cache_path.display()
+            )
+        });
+    }
 }
 
 pub struct BasicComponentsLoader {

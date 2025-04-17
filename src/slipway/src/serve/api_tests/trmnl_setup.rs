@@ -4,7 +4,7 @@ use actix_web::{http::StatusCode, test};
 use chrono_tz::Tz;
 use slipway_host::hash_string;
 
-use crate::serve::ID_HEADER;
+use crate::serve::{ID_HEADER, ShowApiKeys};
 use crate::serve::{RepositoryConfig, SlipwayServeConfig, create_app, repository::TrmnlDevice};
 
 use super::super::Device;
@@ -21,6 +21,7 @@ async fn when_device_already_configured_for_trmnl_it_should_return_new_credentia
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
         hashed_api_keys: HashMap::new(),
+        show_api_keys: ShowApiKeys::Never,
         repository: RepositoryConfig::Memory {
             devices: vec![(
                 dn("d_1"),
@@ -62,6 +63,7 @@ async fn when_device_not_configured_for_trmnl_it_should_return_new_credentials()
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
         hashed_api_keys: HashMap::new(),
+        show_api_keys: ShowApiKeys::Never,
         repository: RepositoryConfig::Memory {
             devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),

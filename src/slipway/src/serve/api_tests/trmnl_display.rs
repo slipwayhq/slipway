@@ -5,7 +5,7 @@ use chrono_tz::Tz;
 use slipway_host::hash_string;
 
 use crate::serve::api_tests::get_body;
-use crate::serve::{ACCESS_TOKEN_HEADER, ID_HEADER, SLIPWAY_SECRET_KEY};
+use crate::serve::{ACCESS_TOKEN_HEADER, ID_HEADER, SLIPWAY_SECRET_KEY, ShowApiKeys};
 use crate::serve::{RepositoryConfig, SlipwayServeConfig, create_app, repository::TrmnlDevice};
 
 use super::super::Device;
@@ -28,6 +28,7 @@ async fn when_no_device_id_header_it_should_return_bad_request() {
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
         hashed_api_keys: HashMap::new(),
+        show_api_keys: ShowApiKeys::Never,
         repository: RepositoryConfig::Memory {
             devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
@@ -57,6 +58,7 @@ async fn when_no_device_with_matching_id_it_should_return_not_found() {
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
         hashed_api_keys: HashMap::new(),
+        show_api_keys: ShowApiKeys::Never,
         repository: RepositoryConfig::Memory {
             devices: vec![(
                 dn("d_1"),
@@ -100,6 +102,7 @@ async fn when_api_key_incorrect_it_should_return_unauthorized() {
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
         hashed_api_keys: HashMap::new(),
+        show_api_keys: ShowApiKeys::Never,
         repository: RepositoryConfig::Memory {
             devices: vec![(
                 dn("d_1"),
@@ -143,6 +146,7 @@ async fn when_no_secret_set_it_should_return_internal_server_error() {
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
         hashed_api_keys: HashMap::new(),
+        show_api_keys: ShowApiKeys::Never,
         repository: RepositoryConfig::Memory {
             devices: vec![(
                 dn("d_1"),
@@ -186,6 +190,7 @@ async fn when_reset_firmware_set_it_should_return_reset_firmware_flag() {
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
         hashed_api_keys: HashMap::new(),
+        show_api_keys: ShowApiKeys::Never,
         repository: RepositoryConfig::Memory {
             devices: vec![(
                 dn("d_1"),
@@ -229,6 +234,7 @@ async fn when_valid_request_it_should_return_rig_result() {
         timezone: Some(Tz::Canada__Eastern),
         rig_permissions: HashMap::new(),
         hashed_api_keys: HashMap::new(),
+        show_api_keys: ShowApiKeys::Never,
         repository: RepositoryConfig::Memory {
             devices: vec![(
                 dn("d_1"),
