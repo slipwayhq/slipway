@@ -40,12 +40,14 @@ const API_GET_RIG_PATH: &str = "/rigs";
 
 const SERVE_CONFIG_FILE_NAME: &str = "slipway_serve.json";
 
+const GENERATED_API_KEY_LENGTH: usize = 52;
+
 fn create_friendly_id(hashed_api_key: &str) -> String {
     hashed_api_key[..6].to_string()
 }
 
 fn create_api_key() -> String {
-    nanoid::nanoid!(64)
+    nanoid::nanoid!(GENERATED_API_KEY_LENGTH)
 }
 
 #[derive(Debug)]
