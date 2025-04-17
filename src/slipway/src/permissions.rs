@@ -196,7 +196,7 @@ pub(super) struct RegistryComponentPermissionArgs {
     ///   "slipwayhq.."
     ///   ".render."
     #[arg(long, verbatim_doc_comment)]
-    allow_registry_components_exact: Vec<String>,
+    allow_registry_components_matching: Vec<String>,
 
     /// Deny any registry components at the rig level.
     #[arg(long)]
@@ -205,7 +205,7 @@ pub(super) struct RegistryComponentPermissionArgs {
     /// Deny the rig to use specific registry components.
     /// See the corresponding allow permission for formatting.
     #[arg(long, verbatim_doc_comment)]
-    deny_registry_components_exact: Vec<String>,
+    deny_registry_components_matching: Vec<String>,
 }
 
 #[derive(Debug, Args)]
@@ -337,9 +337,9 @@ impl CommonPermissionsArgs {
             &mut allow,
             &mut deny,
             self.registry_components.allow_registry_components,
-            self.registry_components.allow_registry_components_exact,
+            self.registry_components.allow_registry_components_matching,
             self.registry_components.deny_registry_components,
-            self.registry_components.deny_registry_components_exact,
+            self.registry_components.deny_registry_components_matching,
         )?;
 
         Ok(PermissionsOwned { allow, deny })
@@ -638,9 +638,9 @@ mod tests {
             },
             registry_components: RegistryComponentPermissionArgs {
                 allow_registry_components: true,
-                allow_registry_components_exact: vec![],
+                allow_registry_components_matching: vec![],
                 deny_registry_components: false,
-                deny_registry_components_exact: vec![],
+                deny_registry_components_matching: vec![],
             },
         };
 
@@ -723,9 +723,9 @@ mod tests {
             },
             registry_components: RegistryComponentPermissionArgs {
                 allow_registry_components: false,
-                allow_registry_components_exact: vec![],
+                allow_registry_components_matching: vec![],
                 deny_registry_components: true,
-                deny_registry_components_exact: vec![],
+                deny_registry_components_matching: vec![],
             },
         };
 
@@ -808,9 +808,9 @@ mod tests {
             },
             registry_components: RegistryComponentPermissionArgs {
                 allow_registry_components: false,
-                allow_registry_components_exact: vec![],
+                allow_registry_components_matching: vec![],
                 deny_registry_components: false,
-                deny_registry_components_exact: vec![],
+                deny_registry_components_matching: vec![],
             },
         };
 
@@ -900,9 +900,9 @@ mod tests {
             },
             registry_components: RegistryComponentPermissionArgs {
                 allow_registry_components: false,
-                allow_registry_components_exact: vec![],
+                allow_registry_components_matching: vec![],
                 deny_registry_components: false,
-                deny_registry_components_exact: vec![],
+                deny_registry_components_matching: vec![],
             },
         };
 
@@ -992,9 +992,9 @@ mod tests {
             },
             registry_components: RegistryComponentPermissionArgs {
                 allow_registry_components: false,
-                allow_registry_components_exact: vec![],
+                allow_registry_components_matching: vec![],
                 deny_registry_components: false,
-                deny_registry_components_exact: vec![],
+                deny_registry_components_matching: vec![],
             },
         };
 
@@ -1089,9 +1089,9 @@ mod tests {
             },
             registry_components: RegistryComponentPermissionArgs {
                 allow_registry_components: false,
-                allow_registry_components_exact: vec![],
+                allow_registry_components_matching: vec![],
                 deny_registry_components: false,
-                deny_registry_components_exact: vec![],
+                deny_registry_components_matching: vec![],
             },
         };
 
@@ -1186,9 +1186,9 @@ mod tests {
             },
             registry_components: RegistryComponentPermissionArgs {
                 allow_registry_components: false,
-                allow_registry_components_exact: vec![],
+                allow_registry_components_matching: vec![],
                 deny_registry_components: false,
-                deny_registry_components_exact: vec![],
+                deny_registry_components_matching: vec![],
             },
         };
 
@@ -1278,9 +1278,9 @@ mod tests {
             },
             registry_components: RegistryComponentPermissionArgs {
                 allow_registry_components: false,
-                allow_registry_components_exact: vec![],
+                allow_registry_components_matching: vec![],
                 deny_registry_components: false,
-                deny_registry_components_exact: vec![],
+                deny_registry_components_matching: vec![],
             },
         };
 
@@ -1364,9 +1364,9 @@ mod tests {
             },
             registry_components: RegistryComponentPermissionArgs {
                 allow_registry_components: true,
-                allow_registry_components_exact: vec!["foo.bar.1.2.3".to_string()],
+                allow_registry_components_matching: vec!["foo.bar.1.2.3".to_string()],
                 deny_registry_components: true,
-                deny_registry_components_exact: vec![".baz.1.0.0".to_string()],
+                deny_registry_components_matching: vec![".baz.1.0.0".to_string()],
             },
         };
 

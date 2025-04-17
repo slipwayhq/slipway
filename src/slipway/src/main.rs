@@ -55,20 +55,20 @@ fn get_styles() -> Styles {
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
-    /// Run a Slipway rig.
+    /// Run a Slipway Rig.
     #[command(arg_required_else_help = true)]
     Run {
-        /// The path to the rig file.
+        /// The path to the Rig file.
         rig: PathBuf,
 
         #[command(flatten)]
         common: CommonRunArgs,
 
-        /// The optional folder path to save the rig outputs to.
+        /// The optional folder path to save the Rig outputs to.
         #[arg(short, long)]
         output: Option<std::path::PathBuf>,
 
-        /// The optional file path to save the flattened debug rig to.
+        /// The optional file path to save the flattened debug Rig to.
         #[arg(short, long)]
         output_debug_rig: Option<std::path::PathBuf>,
 
@@ -77,23 +77,23 @@ pub(crate) enum Commands {
         fonts: Option<std::path::PathBuf>,
     },
 
-    /// Debug a Slipway rig.
+    /// Debug a Slipway Rig.
     #[command(arg_required_else_help = true)]
     Debug {
-        /// The path to the rig file.
+        /// The path to the Rig file.
         rig: PathBuf,
 
         #[command(flatten)]
         common: CommonRunArgs,
     },
 
-    /// Debug a Slipway component.
+    /// Debug a Slipway Component.
     #[command(arg_required_else_help = true)]
     DebugComponent {
-        /// The path to the component file.
+        /// The path to the Component file.
         component: PathBuf,
 
-        /// The optional path to the file containing the component's input.
+        /// The optional path to the file containing the Component's input.
         #[arg(short, long)]
         input: Option<PathBuf>,
 
@@ -101,22 +101,22 @@ pub(crate) enum Commands {
         common: CommonRunArgs,
     },
 
-    /// Create default configuration for a component.
+    /// Create default configuration for a Component.
     #[command(arg_required_else_help = true)]
     InitComponent {
-        /// The component publisher name (lowercase alphanumeric plus underscores).
+        /// The Component publisher name (lowercase alphanumeric plus underscores).
         #[arg(short, long)]
         publisher: Publisher,
 
-        /// The component name (lowercase alphanumeric plus underscores).
+        /// The Component name (lowercase alphanumeric plus underscores).
         #[arg(short, long)]
         name: Name,
     },
 
-    /// Create default configuration for a rig.
+    /// Create default configuration for a Rig.
     #[command(arg_required_else_help = true)]
     InitRig {
-        /// The rig name (lowercase alphanumeric plus underscores).
+        /// The Rig name (lowercase alphanumeric plus underscores).
         #[arg(short, long)]
         name: RigName,
     },
@@ -139,10 +139,10 @@ pub(crate) enum Commands {
         subcommand: Option<ServeCommands>,
     },
 
-    /// Package up a Slipway component into a .tar file.
+    /// Package up a Slipway Component into a .tar file.
     #[command(arg_required_else_help = true)]
     Package {
-        /// The path to the directory containing the component files.
+        /// The path to the directory containing the Component files.
         folder_path: PathBuf,
 
         /// The log level (error, warn, info, debug, trace).
@@ -158,7 +158,7 @@ pub(crate) enum Commands {
         value: Option<String>,
     },
 
-    /// Output the WIT (WASM Interface Type) definition, for building Slipway components.
+    /// Output the WIT (WASM Interface Type) definition, for building Slipway Components.
     #[command()]
     Wit,
 }
@@ -169,10 +169,10 @@ enum ServeCommands {
     /// Create basic configuration files and directory structure.
     Init,
 
-    /// Download all required components to the local components folder.
+    /// Download all required Components to the local Components folder.
     Consolidate,
 
-    /// Try to ahead-of-time compile any WASM components.
+    /// Try to ahead-of-time compile any WASM Components.
     AotCompile {
         /// Optional target for cross-compilation. Defaults to the host target.
         /// This is a target triple, such as `x86_64-unknown-linux-gnu`.
@@ -223,16 +223,16 @@ enum ServeCommands {
         #[arg(short, long)]
         name: PlaylistName,
 
-        /// The optional name of the rig to populate the playlist with
+        /// The optional name of the Rig to populate the playlist with
         /// (lowercase alphanumeric plus underscores).
         #[arg(short, long)]
         rig: Option<RigName>,
     },
 
-    /// Add a rig to use when serving HTTP requests.
+    /// Add a Rig to use when serving HTTP requests.
     #[command(arg_required_else_help = true)]
     AddRig {
-        /// A name for the rig (lowercase alphanumeric plus underscores).
+        /// A name for the Rig (lowercase alphanumeric plus underscores).
         #[arg(short, long)]
         name: RigName,
     },
