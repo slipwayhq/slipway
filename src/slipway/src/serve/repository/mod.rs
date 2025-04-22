@@ -13,6 +13,8 @@ use super::responses::ServeError;
 pub(super) mod file_system;
 pub(super) mod memory;
 
+pub(super) use file_system::DEVICE_FOLDER_NAME;
+
 #[async_trait(?Send)]
 pub(super) trait ServeRepository: std::fmt::Debug {
     async fn get_rig(&self, name: &RigName) -> Result<slipway_engine::Rig, ServeError>;

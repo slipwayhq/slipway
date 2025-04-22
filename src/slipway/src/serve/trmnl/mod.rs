@@ -2,7 +2,10 @@ mod display;
 mod log;
 mod setup;
 
-use actix_web::{HttpRequest, http::StatusCode};
+use actix_web::{
+    HttpRequest,
+    http::{StatusCode, header::HeaderMap},
+};
 pub(super) use display::trmnl_display;
 pub(super) use log::trmnl_log;
 pub(super) use setup::trmnl_setup;
@@ -50,6 +53,25 @@ fn get_api_key_from_headers(req: &HttpRequest) -> Result<&str, ServeError> {
                 ),
             )
         })
+}
+
+pub(super) fn try_get_api_key_from_headers(
+    headers: &HeaderMap,
+) -> Result<Option<&str>, ServeError> {
+    headers
+        .get(ACCESS_TOKEN_HEADER)
+        .map(|v| {
+            v.to_str().map_err(|e| {
+                ServeError::UserFacing(
+                    StatusCode::BAD_REQUEST,
+                    format!(
+                        "Failed to parse {ACCESS_TOKEN_HEADER} header as a string: {}",
+                        e
+                    ),
+                )
+            })
+        })
+        .transpose()
 }
 
 fn authenticate_device<'d>(

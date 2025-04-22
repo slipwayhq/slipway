@@ -135,6 +135,11 @@ impl ShowApiKeys {
     }
 }
 
+#[derive(Clone)]
+struct RequestState {
+    pub supplied_api_key: Option<String>,
+}
+
 pub async fn serve(path: PathBuf, aot_path: Option<PathBuf>) -> anyhow::Result<()> {
     let config = load_serve_config(&path).await?;
     serve_with_config(path, aot_path, config).await?;
@@ -266,6 +271,3 @@ fn create_app(
                 .service(devices::get_device::get_device),
         )
 }
-
-#[derive(Clone)]
-struct RequestState {}

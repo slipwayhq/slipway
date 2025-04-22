@@ -2,14 +2,14 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use actix_web::http::StatusCode;
-use actix_web::{HttpRequest, get, web};
+use actix_web::{HttpMessage, HttpRequest, get, web};
 use anyhow::Context;
 use serde::Deserialize;
 use tracing::{Instrument, info_span};
 
 use crate::primitives::RigName;
 use crate::serve::auth::compute_signature_parts;
-use crate::serve::{API_GET_RIG_PATH, SLIPWAY_SECRET_KEY, TRMNL_DISPLAY_PATH};
+use crate::serve::{API_GET_RIG_PATH, RequestState, TRMNL_DISPLAY_PATH};
 
 use crate::serve::responses::{
     FormatQuery, ImageResponse, RigResponse, RigResultFormat, RigResultImageFormat, ServeError,
@@ -119,20 +119,22 @@ pub async fn get_rig_response(
                     .expect("Image format should be a string"),
             );
 
-            let secret = state.secret.as_deref().ok_or_else(|| {
-                ServeError::UserFacing(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!(
-                        "{} environment variable has not been set.",
-                        SLIPWAY_SECRET_KEY
-                    ),
-                )
-            })?;
+            let maybe_secret = state.secret.as_deref();
+            if let Some(secret) = maybe_secret {
+                // If we have a SLIPWAY_SECRET, we generate a SAS token.
+                let sas_token_parts =
+                    compute_signature_parts(secret, chrono::Duration::seconds(60));
 
-            let sas_token_parts = compute_signature_parts(secret, chrono::Duration::seconds(60));
-
-            for (sas_key, sas_value) in sas_token_parts {
-                qs.append_pair(&sas_key, &sas_value);
+                for (sas_key, sas_value) in sas_token_parts {
+                    qs.append_pair(&sas_key, &sas_value);
+                }
+            } else if let Some(authorization) = req
+                .extensions()
+                .get::<RequestState>()
+                .and_then(|state| state.supplied_api_key.as_ref())
+            {
+                // If we don't have a SLIPWAY_SECRET, we use the API key as a bearer token.
+                qs.append_pair("authorization", authorization);
             }
 
             // Used as a nonce to force Trmnl to reload the image.

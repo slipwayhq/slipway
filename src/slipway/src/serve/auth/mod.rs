@@ -11,6 +11,7 @@ use actix_web::{HttpMessage, web};
 use slipway_host::hash_string;
 use tracing::debug;
 
+use crate::serve::repository::DEVICE_FOLDER_NAME;
 use crate::serve::{ShowApiKeys, write_api_key_message};
 
 use super::SLIPWAY_SECRET_KEY;
@@ -31,7 +32,13 @@ pub(super) async fn trmnl_auth_middleware(
     next: Next<impl MessageBody>,
 ) -> Result<ServiceResponse<impl MessageBody>, actix_web::Error> {
     debug!("Running trmnl_auth_middleware for {}", req.request().path());
-    req.extensions_mut().insert(RequestState {});
+
+    let maybe_api_key =
+        super::trmnl::try_get_api_key_from_headers(req.headers())?.map(|v| v.to_string());
+    req.extensions_mut().insert(RequestState {
+        supplied_api_key: maybe_api_key,
+    });
+
     next.call(req).await
 }
 
@@ -52,12 +59,11 @@ pub(super) async fn auth_middleware(
 
     if query_map.contains_key(SHARED_ACCESS_SIGNATURE_KEY) {
         debug!("Shared access signature found in query string.");
-        auth_middleware_sas(serve_state, query_map)?;
+        auth_middleware_sas(&req, serve_state, query_map)?;
     } else {
         auth_middleware_api_key(&req, serve_state, query_map).await?;
     }
 
-    req.extensions_mut().insert(RequestState {});
     next.call(req).await
 }
 
@@ -84,6 +90,10 @@ async fn auth_middleware_api_key(
             full_authorization_header.as_ref()
         };
 
+    req.extensions_mut().insert(RequestState {
+        supplied_api_key: Some(api_key.to_string()),
+    });
+
     let hashed_api_key = hash_string(api_key);
 
     let used_api_key_name = {
@@ -102,7 +112,7 @@ async fn auth_middleware_api_key(
                 .repository
                 .try_get_device_by_api_key(api_key)
                 .await?
-                .map(|(device_name, _)| Cow::Owned(format!("trmnl_{device_name}"))),
+                .map(|(device_name, _)| Cow::Owned(format!("{DEVICE_FOLDER_NAME}/{device_name}",))),
         }
     };
 
@@ -126,6 +136,7 @@ async fn auth_middleware_api_key(
 }
 
 fn auth_middleware_sas(
+    req: &ServiceRequest,
     serve_state: &Data<ServeState>,
     query_map: HashMap<Cow<str>, Cow<str>>,
 ) -> Result<(), actix_web::Error> {
@@ -156,6 +167,10 @@ fn auth_middleware_sas(
     if matches!(serve_state.config.show_api_keys, ShowApiKeys::Always) {
         debug!("The device authenticated using a shared access signature.");
     }
+
+    req.extensions_mut().insert(RequestState {
+        supplied_api_key: None,
+    });
 
     sas::verify_sas_token(secret, expiry, signature)
 }
