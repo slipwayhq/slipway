@@ -154,9 +154,14 @@ pub(crate) enum Commands {
     #[command()]
     ClearComponentCache,
 
-    /// Generate a hash of a string. You will be prompted if a string isn't provided.
+    /// Generates a long, random key, suitable for use as an API key or for the SLIPWAY_SECRET
+    /// environment variable.
+    #[command(arg_required_else_help = false)]
+    GenerateKey,
+
+    /// Generate a hash of a string. You will be prompted if a string one isn't provided.
     /// It isn't recommended to put sensitive data as arguments.
-    #[command(arg_required_else_help = false, verbatim_doc_comment)]
+    #[command(arg_required_else_help = false)]
     Hash {
         /// The string to hash.
         value: Option<String>,
@@ -400,6 +405,11 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
         Commands::ClearComponentCache => {
             configure_tracing(Default::default());
             clear_components_cache();
+        }
+        Commands::GenerateKey => {
+            configure_tracing(Default::default());
+            let key = serve::create_api_key();
+            println!("{}", key);
         }
         Commands::Hash { value } => {
             configure_tracing(Default::default());

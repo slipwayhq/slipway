@@ -46,7 +46,7 @@ fn create_friendly_id(hashed_api_key: &str) -> String {
     hashed_api_key[..6].to_string()
 }
 
-fn create_api_key() -> String {
+pub(super) fn create_api_key() -> String {
     nanoid::nanoid!(GENERATED_API_KEY_LENGTH)
 }
 

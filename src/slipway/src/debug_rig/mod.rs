@@ -122,7 +122,6 @@ pub(crate) async fn debug_rig_from_component_file<W: Write>(
     registry_urls: Vec<String>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Debugging {}", component_path.display())?;
-    writeln!(w)?;
 
     if !component_path.exists() {
         writeln!(w, "Component file does not exist")?;
@@ -182,7 +181,6 @@ pub(crate) async fn debug_rig_from_rig_file<W: Write>(
     registry_urls: Vec<String>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Debugging {}", input.display())?;
-    writeln!(w)?;
 
     let file_contents = std::fs::read_to_string(input.clone())
         .with_context(|| format!("Failed to read component from {}", input.display()))?;
@@ -267,7 +265,6 @@ async fn debug_rig<W: Write>(
                     {
                         Ok(HandleCommandResult::Continue(Some(s))) => {
                             state = s;
-                            writeln!(w)?;
                             write_state::<_, anyhow::Error>(w, &state)?;
                         }
                         Ok(HandleCommandResult::Continue(None)) => {}
@@ -280,7 +277,6 @@ async fn debug_rig<W: Write>(
                                 e,
                                 color::Fg(color::Reset)
                             )?;
-                            writeln!(w)?;
                             write_state::<_, anyhow::Error>(w, &state)?;
                         }
                     }

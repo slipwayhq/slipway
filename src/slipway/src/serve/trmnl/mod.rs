@@ -135,14 +135,14 @@ fn print_new_device_message(
 
     info!("    --id \"{id}\" \\");
     info!("    --hashed-api-key \"{hashed_api_key}\" \\");
-    info!("    --playlist <?PLAYLIST?>");
+    info!("    --playlist <PLAYLIST>");
     info!("");
     info!("Then re-deploy the server if necessary.");
 
     if let Some(api_key) = api_key {
         info!("The API key sent to the device was: {api_key}");
         info!(
-            "The API key is not stored by the server. If you need a record of it, store it securely."
+            "The API key is not stored by the server. If you need a record of it, store it securely now."
         );
     }
     info!("See the Slipway documentation for more information.");
