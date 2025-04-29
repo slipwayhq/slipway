@@ -98,7 +98,4 @@ assemble-js-component name configuration="debug": \
 
   mkdir -p components/{{publisher}}.{{name}}
   cp src_components/slipway_{{name}}_component/* components/{{publisher}}.{{name}}
-
-push-docker-image:
-  docker buildx build --platform linux/amd64,linux/arm64 -t slipwayhq/slipway:latest . --push
   
