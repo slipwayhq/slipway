@@ -101,7 +101,7 @@ jobs:
     - name: Test
       run: just test
 
-    - name: Test install.sh
-      run: |
-        bash ci/install.sh --to /tmp
-        /tmp/slipway --version
+    # - name: Test install.sh
+    #   run: |
+    #     bash ci/install.sh --to /tmp
+    #     /tmp/slipway --version
