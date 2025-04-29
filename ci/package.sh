@@ -23,10 +23,12 @@ pushd src
 cargo set-version $VERSION
 test -f Cargo.lock || cargo generate-lockfile
 
+# We use vendored-openssl to avoid cross-compilation issues with OpenSSL:
+# https://github.com/cross-rs/cross/issues/229#issuecomment-597898074
 if [[ "$TARGET" == *"musl"* ]]; then
   RUSTFLAGS="--deny warnings $TARGET_RUSTFLAGS" cross build --bin slipway --target $TARGET --release --features vendored-openssl
 else
-  RUSTFLAGS="--deny warnings $TARGET_RUSTFLAGS" cargo build --bin slipway --target $TARGET --release
+  RUSTFLAGS="--deny warnings $TARGET_RUSTFLAGS" cargo build --bin slipway --target $TARGET --release --features vendored-openssl
 fi
 
 popd
