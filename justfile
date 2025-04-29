@@ -98,4 +98,7 @@ assemble-js-component name configuration="debug": \
 
   mkdir -p components/{{publisher}}.{{name}}
   cp src_components/slipway_{{name}}_component/* components/{{publisher}}.{{name}}
-  
+
+release version:
+  git tag -a "{{version}}" -m "Release {{version}}"
+  git push origin "{{version}}"

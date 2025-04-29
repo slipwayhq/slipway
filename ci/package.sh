@@ -11,8 +11,6 @@ cargo install cargo-edit
 
 echo "Packaging Slipway $VERSION for $TARGET..."
 
-test -f Cargo.lock || cargo generate-lockfile
-
 echo "Installing rust toolchain for $TARGET..."
 rustup target add $TARGET
 
@@ -23,6 +21,7 @@ fi
 echo "Building Slipway..."
 pushd src
 cargo set-version $VERSION
+test -f Cargo.lock || cargo generate-lockfile
 RUSTFLAGS="--deny warnings $TARGET_RUSTFLAGS" \
   cargo build --bin slipway --target $TARGET --release
 popd

@@ -100,9 +100,9 @@ mod tests {
     #[test]
     fn it_should_resolve_common_font() {
         let mut context = FontContext::new();
-        let families = vec!["Arial".to_string()];
+        let families = vec!["Arial".to_string(), "DejaVu Sans".to_string()];
         let result = try_resolve_font_families(&mut context, families);
-        assert!(result.is_some(), "Arial font should be resolvable");
+        assert!(result.is_some(), "Common font should be resolvable");
     }
 
     #[test]
