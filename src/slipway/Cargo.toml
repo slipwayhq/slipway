@@ -45,6 +45,7 @@ iana-time-zone = { workspace = true }
 indoc = { workspace = true }
 hmac = { workspace = true }
 rpassword = { workspace = true }
+openssl = { workspace = true }
 
 [dev-dependencies]
 common_test_utils = { workspace = true }
@@ -55,3 +56,6 @@ tempfile = { workspace = true }
 reqwest = { workspace = true }
 indoc = { workspace = true }
 nix = { workspace = true }
+
+[features]
+vendored-openssl = ["openssl/vendored"]

@@ -99,3 +99,4 @@ boa_gc = { git = "https://github.com/boa-dev/boa", branch = "main", package = "b
 target-lexicon = "0.13.2"
 hmac = "0.12.1"
 rpassword = "7.3"
+openssl = { version = "0.10.72" }
