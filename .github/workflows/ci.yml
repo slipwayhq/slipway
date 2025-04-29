@@ -79,6 +79,12 @@ jobs:
     - name: Install Just
       run: cargo install just
 
+    - name: Install Linux Dependencies
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install libsixel-bin
+
     - name: Test
       run: just test
 
