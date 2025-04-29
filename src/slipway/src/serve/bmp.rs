@@ -31,7 +31,7 @@ fn encode_1bit_bmp_custom(dithered: GrayImage) -> Vec<u8> {
     // but we’ll specify a negative height in the BMP header to flip it.
     let width = dithered.width();
     let height = dithered.height();
-    let row_bytes = ((width + 31) / 32) * 4; // each row is 4-byte aligned
+    let row_bytes = width.div_ceil(32) * 4; // each row is 4-byte aligned
     let mut pixel_data = vec![0u8; (row_bytes * height) as usize];
 
     for y in 0..height {
