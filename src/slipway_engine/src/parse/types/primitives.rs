@@ -1,5 +1,5 @@
-use crate::errors::RigError;
 use crate::SLIPWAY_ALPHANUMERIC_NAME_REGEX_STR;
+use crate::errors::RigError;
 use std::str::FromStr;
 
 const MAXIMUM_PUBLISHER_LENGTH: usize = 64;

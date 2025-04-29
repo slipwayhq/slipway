@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{errors::RigError, ComponentState, Immutable, RigExecutionState, RigSession};
+use crate::{ComponentState, Immutable, RigExecutionState, RigSession, errors::RigError};
 
 use super::evaluate_component_inputs::evaluate_component_inputs;
 

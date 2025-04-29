@@ -2,7 +2,7 @@ mod errors;
 
 use std::path::PathBuf;
 
-use base64::{prelude::BASE64_STANDARD, Engine};
+use base64::{Engine, prelude::BASE64_STANDARD};
 use image::{DynamicImage, ImageBuffer, RgbaImage};
 use slipway_engine::ComponentHandle;
 

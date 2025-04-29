@@ -9,9 +9,9 @@ use async_trait::async_trait;
 use super::super::component_io_abstractions::ComponentIOAbstractions;
 
 use crate::{
-    errors::{ComponentLoadError, ComponentLoadErrorInner},
-    load::{is_safe_path::is_safe_path, SLIPWAY_COMPONENT_FILE_NAME},
     ComponentFiles, ComponentFilesLoader, LoadedComponent, SlipwayReference,
+    errors::{ComponentLoadError, ComponentLoadErrorInner},
+    load::{SLIPWAY_COMPONENT_FILE_NAME, is_safe_path::is_safe_path},
 };
 
 pub(super) async fn load_from_directory(

@@ -19,7 +19,7 @@ pub(super) fn map_dependencies_to_rig_handles(
                 None => {
                     return Err(RigError::RigValidationFailed {
                         error: format!("dependency {} not found in rigging component keys", d),
-                    })
+                    });
                 }
             };
             refs.insert(*kr);

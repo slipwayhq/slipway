@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{errors::RigError, ComponentHandle, Immutable, RigExecutionState};
+use crate::{ComponentHandle, Immutable, RigExecutionState, errors::RigError};
 
 use super::evaluate_component_inputs::evaluate_component_inputs;
 

@@ -1,4 +1,4 @@
-use crate::{errors::RigError, ComponentHandle, ComponentInput, RigExecutionState};
+use crate::{ComponentHandle, ComponentInput, RigExecutionState, errors::RigError};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -11,7 +11,7 @@ use self::{
 
 use super::{
     topological_sort::sort_and_group,
-    validate_component_io::{validate_component_io_from_session, ValidationData},
+    validate_component_io::{ValidationData, validate_component_io_from_session},
 };
 
 mod evaluate_input;

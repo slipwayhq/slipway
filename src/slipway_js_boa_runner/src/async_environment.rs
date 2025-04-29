@@ -7,9 +7,9 @@ use std::{
 };
 
 use boa_engine::{
+    Context, JsResult,
     context::time::{JsDuration, JsInstant},
     job::{Job, JobExecutor, NativeAsyncJob, PromiseJob, TimeoutJob},
-    Context, JsResult,
 };
 use futures_concurrency::future::FutureGroup;
 use futures_lite::StreamExt;

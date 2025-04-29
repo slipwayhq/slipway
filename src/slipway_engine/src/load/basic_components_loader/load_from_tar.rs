@@ -10,9 +10,9 @@ use tar::Archive;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
 use crate::{
-    errors::{ComponentLoadError, ComponentLoadErrorInner},
-    load::{component_io_abstractions::FileHandle, SLIPWAY_COMPONENT_FILE_NAME},
     ComponentFiles, ComponentFilesLoader, LoadedComponent, SlipwayReference,
+    errors::{ComponentLoadError, ComponentLoadErrorInner},
+    load::{SLIPWAY_COMPONENT_FILE_NAME, component_io_abstractions::FileHandle},
 };
 
 use super::super::component_io_abstractions::ComponentIOAbstractions;

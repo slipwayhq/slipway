@@ -37,7 +37,7 @@ fn decode_bin_inner(
 
 #[cfg(test)]
 mod tests {
-    use slipway_engine::{utils::ch, ComponentHandle, Permissions};
+    use slipway_engine::{ComponentHandle, Permissions, utils::ch};
 
     use super::*;
 

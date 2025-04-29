@@ -3,7 +3,7 @@ use url::Url;
 
 use crate::run::run_component_callout;
 
-use super::{apply_json_change, BinResponse, RequestError, RequestOptions};
+use super::{BinResponse, RequestError, RequestOptions, apply_json_change};
 
 pub(super) async fn run_component_from_url(
     execution_context: &ComponentExecutionContext<'_, '_, '_>,

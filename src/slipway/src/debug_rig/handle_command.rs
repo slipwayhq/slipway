@@ -1,7 +1,7 @@
 use std::{io::Write, sync::Arc};
 
 use slipway_engine::{CallChain, ComponentHandle, ComponentRunner, Immutable, RigExecutionState};
-use slipway_host::{render_state::write_state, render_state::to_view_model::to_shortcuts};
+use slipway_host::{render_state::to_view_model::to_shortcuts, render_state::write_state};
 
 use super::{DebugCli, DebuggerCommand, errors::SlipwayDebugError, json_editor::JsonEditor};
 

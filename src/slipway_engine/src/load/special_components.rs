@@ -7,7 +7,7 @@ use crate::{
 
 use std::{str::FromStr, sync::Arc};
 
-use super::{prime_component_cache::parse_component_with_json, ComponentFiles};
+use super::{ComponentFiles, prime_component_cache::parse_component_with_json};
 
 const SLIPWAY_PUBLISHER: &str = "slipwayhq";
 

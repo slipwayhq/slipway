@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use crate::{
+    ComponentInputOverride, ComponentOutput, ComponentOutputOverride, RigExecutionState,
     errors::RigError,
     execute::{
         primitives::JsonMetadata,
-        validate_component_io::{validate_component_io_from_session, ValidationData},
+        validate_component_io::{ValidationData, validate_component_io_from_session},
     },
-    ComponentInputOverride, ComponentOutput, ComponentOutputOverride, RigExecutionState,
 };
 
 use super::Instruction;

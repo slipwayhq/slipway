@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::{
-    errors::{RigError, SchemaValidationFailures, ValidationType},
     ComponentHandle, ComponentState, RigSession, Schema,
+    errors::{RigError, SchemaValidationFailures, ValidationType},
 };
 
 pub(super) fn validate_component_io_from_session<'rig>(
@@ -124,10 +124,10 @@ mod tests {
     use serde_json::json;
 
     use crate::{
+        BasicComponentCache, ComponentRigging, Instruction, Rig, Rigging,
         errors::SchemaValidationFailure,
         test_utils::{schema_any, schema_valid},
         utils::ch,
-        BasicComponentCache, ComponentRigging, Instruction, Rig, Rigging,
     };
 
     use super::*;

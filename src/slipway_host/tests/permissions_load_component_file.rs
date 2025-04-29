@@ -7,8 +7,8 @@ use common_test_utils::{
 };
 use serde_json::json;
 use slipway_engine::{
-    utils::ch, ComponentHandle, ComponentRigging, Permissions, Rig, Rigging, RunComponentError,
-    RunError, SlipwayReference,
+    ComponentHandle, ComponentRigging, Permissions, Rig, Rigging, RunComponentError, RunError,
+    SlipwayReference, utils::ch,
 };
 
 mod common;

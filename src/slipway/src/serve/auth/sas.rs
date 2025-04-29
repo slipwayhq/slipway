@@ -11,8 +11,8 @@ type HmacSha256 = Hmac<Sha256>;
 const DATE_TIME_FORMAT: &str = "%Y-%m-%dT%H-%M-%S";
 
 fn create_hmac_string(key: &str, input: &str) -> String {
-    let mut mac = HmacSha256::new_from_slice(key.as_bytes())
-        .expect("HMAC can take key of any size");
+    let mut mac =
+        HmacSha256::new_from_slice(key.as_bytes()).expect("HMAC can take key of any size");
     mac.update(input.as_bytes());
 
     let result = mac.finalize();
@@ -88,8 +88,8 @@ fn verify_hmac_string(
     input: &str,
     expected_signature: &str,
 ) -> Result<(), actix_web::Error> {
-    let mut mac = HmacSha256::new_from_slice(key.as_bytes())
-        .expect("HMAC can take key of any size");
+    let mut mac =
+        HmacSha256::new_from_slice(key.as_bytes()).expect("HMAC can take key of any size");
     mac.update(input.as_bytes());
 
     let expected_bytes = string_to_bytes(expected_signature).unwrap();

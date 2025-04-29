@@ -6,10 +6,9 @@ use serde::{Deserialize, Deserializer, Serialize};
 use crate::errors::RigError;
 
 use super::{
-    parse_component_version,
+    REGISTRY_PUBLISHER_SEPARATOR, VERSION_SEPARATOR, parse_component_version,
     primitives::{Name, Publisher},
     slipway_reference::REGISTRY_REGEX,
-    REGISTRY_PUBLISHER_SEPARATOR, VERSION_SEPARATOR,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
