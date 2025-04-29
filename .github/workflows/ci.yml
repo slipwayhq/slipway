@@ -77,7 +77,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
 
     - name: Install Cargo Dependencies
-      run: cargo install just nextest
+      run: cargo install just cargo-nextest
 
     - name: Install WASI Preview 2
       run: rustup target add wasm32-wasip2
