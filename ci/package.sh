@@ -14,16 +14,21 @@ echo "Packaging Slipway $VERSION for $TARGET..."
 echo "Installing rust toolchain for $TARGET..."
 rustup target add $TARGET
 
-if [[ $TARGET == aarch64-unknown-linux-musl ]]; then
-  export CC=aarch64-linux-gnu-gcc
-fi
+# if [[ $TARGET == aarch64-unknown-linux-musl ]]; then
+#   export CC=aarch64-linux-gnu-gcc
+# fi
 
 echo "Building Slipway..."
 pushd src
 cargo set-version $VERSION
 test -f Cargo.lock || cargo generate-lockfile
-RUSTFLAGS="--deny warnings $TARGET_RUSTFLAGS" \
-  cargo build --bin slipway --target $TARGET --release
+
+if [[ "$TARGET" == *"musl"* ]]; then
+  RUSTFLAGS="--deny warnings $TARGET_RUSTFLAGS" cross build --bin slipway --target $TARGET --release
+else
+  RUSTFLAGS="--deny warnings $TARGET_RUSTFLAGS" cargo build --bin slipway --target $TARGET --release
+fi
+
 popd
 EXECUTABLE=src/target/$TARGET/release/slipway
 
