@@ -9,8 +9,8 @@ defaults:
   run:
     shell: bash
 
-env:
-  RUSTFLAGS: --deny warnings
+permissions:
+  contents: write
 
 jobs:
   prerelease:
@@ -94,6 +94,8 @@ jobs:
         REF: ${{ github.ref }}
         OS: ${{ matrix.os }}
         TARGET_RUSTFLAGS: ${{ matrix.target_rustflags }}
+        RUSTFLAGS: ${{ env.RUSTFLAGS }}
+        DYLD_FALLBACK_LIBRARY_PATH: ${{ env.DYLD_FALLBACK_LIBRARY_PATH }}
       run: ./ci/package.sh
       shell: bash
 
