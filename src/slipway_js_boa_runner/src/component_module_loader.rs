@@ -64,7 +64,7 @@ impl ModuleLoader for ComponentModuleLoader {
                 return Ok(module);
             }
 
-            // TODO: Do this asynchronously, or pre-load all module files.
+            // IMPROVEMENT: Do this asynchronously, or pre-load all module files.
             let file_text = tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(async {
                     // Call your async function here
