@@ -25,11 +25,17 @@ jobs:
     - uses: Swatinem/rust-cache@v2
 
     - name: Clippy
-      run: cargo clippy --all --all-targets
+      run: cd src && cargo clippy --all --all-targets
+
+    - name: Clippy Components
+      run: cd src_components && cargo clippy --all --all-targets
 
     - name: Format
-      run: cargo fmt --all -- --check
+      run: cd src && cargo fmt --all -- --check
 
+    - name: Format Components
+      run: cd src_components && cargo fmt --all -- --check
+ 
     - name: Install Dependencies
       run: |
         sudo apt-get update
@@ -54,7 +60,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
 
     - name: Check
-      run: cargo check
+      run: cd src && cargo check
 
   test:
     strategy:
