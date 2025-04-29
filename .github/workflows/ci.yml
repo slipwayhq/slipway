@@ -79,6 +79,9 @@ jobs:
     - name: Install Just
       run: cargo install just
 
+    - name: Install WASI Preview 2
+      run: rustup target add wasm32-wasip2
+
     - name: Install Linux Dependencies
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
