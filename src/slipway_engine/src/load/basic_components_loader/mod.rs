@@ -21,7 +21,7 @@ mod load_from_directory;
 mod load_from_tar;
 
 const DEFAULT_REGISTRY_LOOKUP_URL: &str =
-    "https://slipwayhq.com/components/{publisher}.{name}.{version}.tar";
+    "https://registry.slipwayhq.com/components/{publisher}.{name}.{version}.tar";
 
 fn get_default_slipway_components_cache_dir() -> PathBuf {
     let home_dir = dirs::home_dir().expect("Home directory required for caching components");
