@@ -170,6 +170,10 @@ pub(crate) enum Commands {
     /// Output the WIT (WASM Interface Type) definition, for building Slipway Components.
     #[command()]
     Wit,
+
+    /// Output the current Slipway version.
+    #[command()]
+    Version,
 }
 
 #[derive(Debug, Subcommand)]
@@ -430,6 +434,10 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
         }
         Commands::Wit => {
             println!("{}", WASM_INTERFACE_TYPE_STR);
+        }
+        Commands::Version => {
+            let version = env!("CARGO_PKG_VERSION");
+            println!("{}", version);
         }
         Commands::Serve {
             path,

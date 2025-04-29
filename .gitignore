@@ -1,5 +1,6 @@
 /temp
 /artifacts
 /components
+/dist
 
 .DS_Store
