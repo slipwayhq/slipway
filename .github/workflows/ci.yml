@@ -76,15 +76,8 @@ jobs:
 
     - uses: Swatinem/rust-cache@v2
 
-    - name: Install Linux Dependencies
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: |
-        sudo apt-get update
-        sudo apt-get install just
-
-    - name: Install MacOS Dependencies
-      if: ${{ matrix.os == 'macos-latest' }}
-      run: brew install just
+    - name: Install Just
+      run: cargo install just
 
     - name: Test
       run: just test
