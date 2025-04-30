@@ -22,7 +22,7 @@ semver = { workspace = true }
 jtd = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-viuer = { workspace = true, features = ["sixel"] }
+viuer = { workspace = true }
 base64 = { workspace = true }
 image = { workspace = true }
 time = { workspace = true, features = ["formatting"] }
@@ -58,4 +58,6 @@ indoc = { workspace = true }
 nix = { workspace = true }
 
 [features]
+default = ["sixel"]
+sixel = ["viuer/sixel"]
 vendored-openssl = ["openssl/vendored"]

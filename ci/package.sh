@@ -27,8 +27,9 @@ ALL_RUSTFLAGS="--deny warnings --codegen target-feature=+crt-static $TARGET_RUST
 
 # We use vendored-openssl to avoid cross-compilation issues with OpenSSL:
 # https://github.com/cross-rs/cross/issues/229#issuecomment-597898074
+# We remove sixel (via --no-default-features) because it is not supported on musl.
 if [[ "$TARGET" == *"musl"* ]]; then
-  RUSTFLAGS="$ALL_RUSTFLAGS" cross build --bin slipway --target $TARGET --release --features vendored-openssl
+  RUSTFLAGS="$ALL_RUSTFLAGS" cross build --bin slipway --target $TARGET --release --no-default-features --features vendored-openssl
 else
   RUSTFLAGS="$ALL_RUSTFLAGS" cargo build --bin slipway --target $TARGET --release --features vendored-openssl
 fi
