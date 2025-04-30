@@ -58,18 +58,16 @@ impl ModuleLoader for ComponentModuleLoader {
         let result = (|| {
             let short_path = specifier.to_std_string_escaped();
 
-            // let referrer_path = referrer.path().unwrap_or(Path::new("/"));
             let path = resolve_module_specifier(None, &specifier, referrer.path(), context)?;
             if let Some(module) = self.get(&path) {
                 return Ok(module);
             }
 
-            // IMPROVEMENT: Do this asynchronously, or pre-load all module files.
+            // IMPROVEMENT: Do this asynchronously.
+            // https://github.com/boa-dev/boa/blob/main/examples/src/bin/module_fetch_async.rs
             let file_text = tokio::task::block_in_place(|| {
-                tokio::runtime::Handle::current().block_on(async {
-                    // Call your async function here
-                    self.files.get_text(&path.to_string_lossy()).await
-                })
+                tokio::runtime::Handle::current()
+                    .block_on(async { self.files.get_text(&path.to_string_lossy()).await })
             })
             .map_err(|err| {
                 error!("Failed to read file `{}`\n{}", short_path, err);
@@ -77,11 +75,6 @@ impl ModuleLoader for ComponentModuleLoader {
                     .with_message(format!("could not read file `{short_path}`"))
                     .with_cause(JsError::from_opaque(js_string!(err.to_string()).into()))
             })?;
-            // let file_text = self.files.try_get_text(&path).await.map_err(|err| {
-            //     JsNativeError::typ()
-            //         .with_message(format!("could not read file `{short_path}`"))
-            //         .with_cause(JsError::from_opaque(js_string!(err.to_string()).into()))
-            // })?;
 
             let source = Source::from_bytes(&*file_text).with_path(&path);
             let module = Module::parse(source, None, context).map_err(|err| {
