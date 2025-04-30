@@ -31,7 +31,7 @@ use time::{OffsetDateTime, format_description};
 use tracing::{Level, info};
 use tracing_subscriber::{FmtSubscriber, fmt::time::FormatTime};
 
-const WASM_INTERFACE_TYPE_STR: &str = include_str!("../../../wit/latest/slipway.wit");
+const WASM_INTERFACE_TYPE_STR: &str = include_str!("../../wit/latest/slipway.wit");
 const SLIPWAY_COMPONENT_FILE_NAME: &str = "slipway_component.json";
 const AOT_ARTIFACT_FOLDER_NAME: &str = "aot";
 

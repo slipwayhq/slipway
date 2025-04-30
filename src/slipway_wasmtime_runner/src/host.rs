@@ -18,7 +18,7 @@ use wasmtime_wasi::{
 // https://component-model.bytecodealliance.org/language-support/rust.html
 // https://lib.rs/crates/wasmtime-wasi
 wasmtime::component::bindgen!({
-    path: "../../wit/latest",
+    path: "../wit/latest",
     async: true
 });
 

@@ -34,7 +34,7 @@ in a consistent manner both from the point of view of Slipway and the running Co
 
 Runs Slipway Components which have been compiled to WebAssembly (WASM). This runner uses Wasmtime crate to execute the components.
 
-It uses the WIT file in `/wit/latest` to define the interface between the host and the Component.
+It uses the WIT file in `/src/wit/latest` to define the interface between the host and the Component.
 
 ### `/src/slipway_js_boa_runner`
 
@@ -67,7 +67,7 @@ Test utilities used by other crates in this repository.
 
 The source code of Slipway Components used for testing.
 
-## `/wit/latest`
+## `/src/wit/latest`
 
 The current WebAssembly Interface Type (WIT) file describing the interface between WASM
 Slipway Components and the Slipway host.
