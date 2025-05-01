@@ -1,9 +1,58 @@
 # Slipway
 
-Slipway is an application written in Rust which allows the user to render useful information
-using reusable components which can be displayed on any device you like.
+Slipway is an open source framework for displaying useful information on your devices,
+from eInk screens to phones to monitor walls.
 
 For more information please see [our website](https://slipwayhq.com/).
+
+# Contributing
+
+Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening any PRs.
+
+# Compiling
+
+## Prerequisites
+We use [Just](https://github.com/casey/just) to automate building this repository,
+and [Nextest](https://github.com/nextest-rs/nextest) to run tests.
+You can install both of these with:
+```sh
+cargo install just cargo-nextest
+```
+
+You'll also want to have the WASI Preview 2 target installed:
+```sh
+rustup target add wasm32-wasip2
+```
+
+When building on Linux there are a few dependencies, which you can install with your package manager, for example:
+```sh
+sudo apt-get install libssl-dev libsixel-bin fontconfig
+```
+
+## Building
+
+To build the repository, run:
+```sh
+just build
+```
+
+## Running Tests
+
+To run the tests, run:
+```sh
+just test
+```
+
+## Using
+
+We provide a shell script `symlink.sh` which will symlink `~/bin/slipway` to the release build,
+and `~/bin/slipwayd` to the debug build.
+
+This allows you to easily run your locally compiled version of Slipway on path:
+
+```sh
+slipway --help
+```
 
 # Project Structure
 
