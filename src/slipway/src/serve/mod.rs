@@ -22,6 +22,7 @@ mod auth;
 mod bmp;
 pub(super) mod commands;
 mod devices;
+mod favicon;
 mod playlists;
 mod repository;
 mod responses;
@@ -34,7 +35,7 @@ const REFRESH_RATE_HEADER: &str = "refresh-rate";
 const ACCESS_TOKEN_HEADER: &str = "access-token";
 const ID_HEADER: &str = "id";
 
-const TRMNL_PATH: &str = "/api";
+const TRMNL_PATH: &str = "/trmnl/api";
 const TRMNL_DISPLAY_PATH: &str = "/api/display";
 const API_GET_RIG_PATH: &str = "/rigs";
 
@@ -253,6 +254,7 @@ fn create_app(
                 .allow_any_method()
                 .allow_any_header(),
         )
+        .service(favicon::get_favicon)
         .service(
             // Trmnl services.
             web::scope(TRMNL_PATH)
