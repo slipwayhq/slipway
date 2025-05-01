@@ -50,7 +50,7 @@ jobs:
           target_rustflags: ''
         - target: aarch64-unknown-linux-musl
           os: ubuntu-latest
-          target_rustflags: '--codegen linker=aarch64-linux-gnu-gcc'
+          target_rustflags: '--codegen linker=aarch64-linux-musl-gcc'
         # - target: arm-unknown-linux-musleabihf
         #   os: ubuntu-latest
         #   target_rustflags: '--codegen linker=arm-linux-gnueabihf-gcc'
@@ -72,12 +72,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install AArch64 Toolchain
-      if: ${{ matrix.target == 'aarch64-unknown-linux-musl' }}
-      run: |
-        sudo apt-get update
-        sudo apt-get install gcc-aarch64-linux-gnu libc6-dev-i386
-        
+    # - name: Install AArch64 Toolchain
+    #   if: ${{ matrix.target == 'aarch64-unknown-linux-musl' }}
+    #   run: |
+    #     sudo apt-get update
+    #     sudo apt-get install gcc-aarch64-linux-gnu libc6-dev-i386
+
     - name: Install Linux Dependencies
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
