@@ -1,7 +1,6 @@
 FROM rust:1.86 AS builder
 WORKDIR /usr
 COPY ./src ./src
-COPY ./wit ./wit
 WORKDIR /usr/src
 RUN cargo build --release -p slipway
 
