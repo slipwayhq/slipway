@@ -45,7 +45,7 @@ async fn when_device_already_configured_for_trmnl_it_should_return_new_credentia
     let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
 
     let request = test::TestRequest::get()
-        .uri("/api/setup")
+        .uri("/trmnl/api/setup")
         .append_header((ID_HEADER, MAC))
         .to_request();
     let response = test::call_service(&app, request).await;
@@ -74,7 +74,7 @@ async fn when_device_not_configured_for_trmnl_it_should_return_new_credentials()
     let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
 
     let request = test::TestRequest::get()
-        .uri("/api/setup")
+        .uri("/trmnl/api/setup")
         .append_header((ID_HEADER, MAC))
         .to_request();
     let response = test::call_service(&app, request).await;

@@ -39,7 +39,7 @@ async fn when_no_device_id_header_it_should_return_bad_request() {
     let app = test::init_service(create_app(PathBuf::from("."), None, config, secret())).await;
 
     let request = test::TestRequest::get()
-        .uri("/api/display")
+        .uri("/trmnl/api/display")
         .append_header((ACCESS_TOKEN_HEADER, API_KEY))
         .to_request();
     let response = test::call_service(&app, request).await;
@@ -82,7 +82,7 @@ async fn when_no_device_with_matching_id_it_should_return_not_found() {
     let app = test::init_service(create_app(PathBuf::from("."), None, config, secret())).await;
 
     let request = test::TestRequest::get()
-        .uri("/api/display")
+        .uri("/trmnl/api/display")
         .append_header((ID_HEADER, MAC))
         .append_header((ACCESS_TOKEN_HEADER, API_KEY))
         .to_request();
@@ -126,7 +126,7 @@ async fn when_api_key_incorrect_it_should_return_unauthorized() {
     let app = test::init_service(create_app(PathBuf::from("."), None, config, secret())).await;
 
     let request = test::TestRequest::get()
-        .uri("/api/display")
+        .uri("/trmnl/api/display")
         .append_header((ID_HEADER, MAC))
         .append_header((ACCESS_TOKEN_HEADER, API_KEY2))
         .to_request();
@@ -170,7 +170,7 @@ async fn when_reset_firmware_set_it_should_return_reset_firmware_flag() {
     let app = test::init_service(create_app(PathBuf::from("."), None, config, secret())).await;
 
     let request = test::TestRequest::get()
-        .uri("/api/display")
+        .uri("/trmnl/api/display")
         .append_header((ID_HEADER, MAC))
         .append_header((ACCESS_TOKEN_HEADER, API_KEY))
         .to_request();
@@ -214,7 +214,7 @@ async fn when_valid_request_and_secret_it_should_return_rig_result_with_sas() {
     let app = test::init_service(create_app(PathBuf::from("."), None, config, secret())).await;
 
     let request = test::TestRequest::get()
-        .uri("/api/display")
+        .uri("/trmnl/api/display")
         .append_header((ID_HEADER, MAC))
         .append_header((ACCESS_TOKEN_HEADER, API_KEY))
         .to_request();
@@ -266,7 +266,7 @@ async fn when_valid_request_and_no_secret_it_should_return_rig_result_with_api_k
     let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
 
     let request = test::TestRequest::get()
-        .uri("/api/display")
+        .uri("/trmnl/api/display")
         .append_header((ID_HEADER, MAC))
         .append_header((ACCESS_TOKEN_HEADER, API_KEY))
         .to_request();

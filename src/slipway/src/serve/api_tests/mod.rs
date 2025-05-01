@@ -284,6 +284,30 @@ async fn when_auth_not_supplied_it_should_return_unauthorized() {
 }
 
 #[test_log::test(actix_web::test)]
+async fn when_auth_not_supplied_it_should_allow_favicon_requests() {
+    let config = SlipwayServeConfig {
+        log_level: Some("debug".to_string()),
+        registry_urls: vec![],
+        timezone: Some(Tz::Canada__Eastern),
+        rig_permissions: HashMap::new(),
+        hashed_api_keys: create_auth_for_key("auth123"),
+        show_api_keys: ShowApiKeys::Never,
+        repository: RepositoryConfig::Memory {
+            devices: vec![device("d_1", "p_1")].into_iter().collect(),
+            playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
+            rigs: vec![rig("r_1")].into_iter().collect(),
+        },
+    };
+
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
+
+    let request = test::TestRequest::get().uri("/favicon.ico").to_request();
+    let response = test::try_call_service(&app, request).await.unwrap();
+    let status = response.status();
+    assert_eq!(status, StatusCode::OK);
+}
+
+#[test_log::test(actix_web::test)]
 async fn when_auth_incorrect_it_should_return_unauthorized() {
     let config = SlipwayServeConfig {
         log_level: Some("debug".to_string()),
