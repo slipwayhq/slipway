@@ -70,9 +70,13 @@ impl Responder for PlaylistResponse {
 
     fn respond_to(self, req: &HttpRequest) -> HttpResponse<Self::Body> {
         let mut response = match self.rig_response {
-            RigResponse::Image(image) => image.respond_to(req).map_into_right_body(),
+            RigResponse::Image(image) => image
+                .respond_with_refresh(req, self.refresh_rate_seconds)
+                .map_into_right_body(),
             RigResponse::Json(json) => json.respond_to(req),
-            RigResponse::Url(url) => url.respond_to(req).map_into_right_body(),
+            RigResponse::Url(url) => url
+                .respond_with_refresh(req, self.refresh_rate_seconds)
+                .map_into_right_body(),
         };
 
         response.headers_mut().append(
@@ -88,20 +92,35 @@ impl Responder for PlaylistResponse {
 pub(super) struct UrlResponse {
     pub url: Url,
 }
-
-impl Responder for UrlResponse {
-    type Body = BoxBody;
-
-    fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
+impl UrlResponse {
+    fn respond_with_refresh(
+        self,
+        _req: &HttpRequest,
+        refresh_rate_seconds: u32,
+    ) -> HttpResponse<BoxBody> {
         let url = self.url;
+
+        let meta_refresh = if refresh_rate_seconds > 0 {
+            format!(r#"<meta http-equiv="refresh" content="{refresh_rate_seconds}">"#)
+        } else {
+            String::new()
+        };
+
         let html = format!(
-            r#"<html><body style="margin:0px"><img src="{}"/></body></html>"#,
+            r#"<html><head>{meta_refresh}</head><body style="margin:0px"><img src="{}"/></body></html>"#,
             url
         );
 
         HttpResponse::Ok()
             .content_type(ContentType::html())
             .body(html)
+    }
+}
+impl Responder for UrlResponse {
+    type Body = BoxBody;
+
+    fn respond_to(self, req: &HttpRequest) -> HttpResponse<Self::Body> {
+        self.respond_with_refresh(req, 0)
     }
 }
 
@@ -111,10 +130,12 @@ pub(super) struct ImageResponse {
     pub wrap_in_html: bool,
 }
 
-impl Responder for ImageResponse {
-    type Body = BoxBody;
-
-    fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
+impl ImageResponse {
+    fn respond_with_refresh(
+        self,
+        _req: &HttpRequest,
+        refresh_rate_seconds: u32,
+    ) -> HttpResponse<BoxBody> {
         let width = self.image.width();
 
         let maybe_image_bytes = match self.format {
@@ -133,8 +154,13 @@ impl Responder for ImageResponse {
         info!("Responding with image of size {} bytes.", image_bytes.len());
 
         if self.wrap_in_html {
+            let meta_refresh = if refresh_rate_seconds > 0 {
+                format!(r#"<meta http-equiv="refresh" content="{refresh_rate_seconds}">"#)
+            } else {
+                String::new()
+            };
             let html = format!(
-                r#"<html><head><meta name="viewport" content="width={width}"></head><body style="margin:0px; width={width}px"><img src="data:image/png;base64,{}"/></body></html>"#,
+                r#"<html><head>{meta_refresh}<meta name="viewport" content="width={width}"></head><body style="margin:0px; width={width}px"><img src="data:image/png;base64,{}"/></body></html>"#,
                 BASE64_STANDARD.encode(&image_bytes)
             );
 
@@ -183,6 +209,14 @@ impl Responder for ImageResponse {
         };
 
         response.body(body)
+    }
+}
+
+impl Responder for ImageResponse {
+    type Body = BoxBody;
+
+    fn respond_to(self, req: &HttpRequest) -> HttpResponse<Self::Body> {
+        self.respond_with_refresh(req, 0)
     }
 }
 
