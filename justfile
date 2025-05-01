@@ -3,7 +3,7 @@ publisher := "slipwayhq"
 default:
   just --list
   
-build configuration="debug": (build-src configuration) (build-components configuration)
+build configuration="release": (build-src configuration) (build-components configuration)
 
 test *FLAGS: (build-src "release") (build-components "release")
   cd src && RUST_LOG="debug,cranelift_codegen=info,wasmtime_cranelift=info" cargo nextest run --no-fail-fast --release {{FLAGS}}
@@ -17,10 +17,10 @@ clean-component-artifacts configuration:
   mkdir -p components
   rm -rf components
 
-build-src configuration="debug":
+build-src configuration="release":
   cd src && cargo build {{ if configuration == "release" { "--release" } else { "" } }}
 
-build-components configuration="debug": && (assemble-test-components configuration)
+build-components configuration="release": && (assemble-test-components configuration)
   cp src/wit/latest/slipway.wit src_components/slipway_increment_component/wit/slipway.wit
   cp src/wit/latest/slipway.wit src_components/slipway_component_file_component/wit/slipway.wit
   cp src/wit/latest/slipway.wit src_components/slipway_fetch_component/wit/slipway.wit
@@ -36,7 +36,7 @@ clean-src:
 clean-components:
   cd src_components && cargo clean
 
-assemble-test-components configuration="debug": \
+assemble-test-components configuration="release": \
   (clean-component-artifacts configuration) \
   (assemble-rust-component "increment" configuration) \
   (assemble-rust-component "component_file" configuration) \
@@ -81,10 +81,10 @@ assemble-test-components configuration="debug": \
   jq '.name = "increment_js_invalid_callout_permissions" | del(.callouts.increment.allow)' components/{{publisher}}.slipway_increment_js_invalid_callout_permissions/slipway_component.json > components/{{publisher}}.slipway_increment_js_invalid_callout_permissions/slipway_component.temp
   mv components/{{publisher}}.slipway_increment_js_invalid_callout_permissions/slipway_component.temp components/{{publisher}}.slipway_increment_js_invalid_callout_permissions/slipway_component.json
 
-tar-component-files name configuration="debug":
+tar-component-files name configuration="release":
   src/target/{{configuration}}/slipway package components/{{publisher}}.{{name}}
 
-assemble-rust-component name configuration="debug": \
+assemble-rust-component name configuration="release": \
   && \
   (tar-component-files name configuration) \
 
@@ -92,7 +92,7 @@ assemble-rust-component name configuration="debug": \
   cp src_components/target/wasm32-wasip2/{{configuration}}/slipway_{{name}}_component.wasm components/{{publisher}}.{{name}}/run.wasm
   cp src_components/slipway_{{name}}_component/slipway_component.json components/{{publisher}}.{{name}}/slipway_component.json
 
-assemble-js-component name configuration="debug": \
+assemble-js-component name configuration="release": \
   && \
   (tar-component-files name configuration) \
 
