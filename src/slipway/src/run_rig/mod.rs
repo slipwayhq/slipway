@@ -1,9 +1,10 @@
+use crate::json_editor::JsonEditorImpl;
 use std::{io::Write, path::PathBuf, sync::Arc};
 
 use anyhow::Context;
 use slipway_engine::{
-    BasicComponentCache, BasicComponentsLoader, CallChain, Permissions, RigSession,
-    RigSessionOptions, parse_rig,
+    BasicComponentCache, BasicComponentsLoader, CallChain, Permissions, Rig, RigSession,
+    RigSessionOptions, SlipwayReference, parse_rig,
 };
 use slipway_host::{
     render_state::{
@@ -19,6 +20,35 @@ use crate::{
     host_error::HostError,
 };
 
+pub(super) async fn run_rig_from_component_file(
+    mut w: Box<dyn Write>,
+    component_reference: SlipwayReference,
+    input_path: Option<std::path::PathBuf>,
+    engine_permissions: Permissions<'_>,
+    registry_urls: Vec<String>,
+    save_path: Option<PathBuf>,
+    fonts_path: Option<PathBuf>,
+) -> anyhow::Result<()> {
+    let json_editor = JsonEditorImpl::new();
+    let initial_input = super::debug_rig::get_component_input(&mut w, input_path, &json_editor)?;
+    let rig = super::debug_rig::get_component_rig(
+        component_reference,
+        &engine_permissions,
+        initial_input,
+    );
+
+    run_rig_inner(
+        w,
+        rig,
+        engine_permissions,
+        registry_urls,
+        save_path,
+        None,
+        fonts_path,
+    )
+    .await
+}
+
 pub(super) async fn run_rig(
     mut w: Box<dyn Write>,
     input: std::path::PathBuf,
@@ -29,12 +59,31 @@ pub(super) async fn run_rig(
     fonts_path: Option<PathBuf>,
 ) -> anyhow::Result<()> {
     writeln!(&mut w, "Launching {}", input.display())?;
-
     let file_contents = tokio::fs::read_to_string(input.clone())
         .await
         .with_context(|| format!("Failed to read component from {}", input.display()))?;
     let rig = parse_rig(&file_contents)?;
+    run_rig_inner(
+        w,
+        rig,
+        engine_permissions,
+        registry_urls,
+        save_path,
+        debug_rig_path,
+        fonts_path,
+    )
+    .await
+}
 
+pub(super) async fn run_rig_inner(
+    w: Box<dyn Write>,
+    rig: Rig,
+    engine_permissions: Permissions<'_>,
+    registry_urls: Vec<String>,
+    save_path: Option<PathBuf>,
+    debug_rig_path: Option<PathBuf>,
+    fonts_path: Option<PathBuf>,
+) -> anyhow::Result<()> {
     let components_loader = BasicComponentsLoader::builder()
         .registry_lookup_urls(registry_urls)
         .build();

@@ -3,7 +3,9 @@ use std::{io::Write, sync::Arc};
 use slipway_engine::{CallChain, ComponentHandle, ComponentRunner, Immutable, RigExecutionState};
 use slipway_host::{render_state::to_view_model::to_shortcuts, render_state::write_state};
 
-use super::{DebugCli, DebuggerCommand, errors::SlipwayDebugError, json_editor::JsonEditor};
+use crate::json_editor::JsonEditor;
+
+use super::{DebugCli, DebuggerCommand, errors::SlipwayDebugError};
 
 pub(super) async fn handle_command<'rig, 'cache, W: Write>(
     w: &mut W,

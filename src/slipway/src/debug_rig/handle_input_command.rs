@@ -1,6 +1,7 @@
 use slipway_engine::{ComponentHandle, Immutable, Instruction, RigExecutionState};
 
-use super::{errors::SlipwayDebugError, json_editor::JsonEditor};
+use super::errors::SlipwayDebugError;
+use crate::json_editor::JsonEditor;
 
 pub(super) fn handle_input_command<'rig, 'cache>(
     handle: &'rig ComponentHandle,

@@ -1,6 +1,6 @@
 use std::io::ErrorKind;
 
-use super::errors::SlipwayDebugError;
+use crate::debug_rig::SlipwayDebugError;
 
 pub(super) trait JsonEditor {
     fn edit(&self, template: &serde_json::Value) -> Result<serde_json::Value, SlipwayDebugError>;

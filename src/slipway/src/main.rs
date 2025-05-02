@@ -4,6 +4,7 @@ mod canvas;
 mod component_runners;
 mod debug_rig;
 mod host_error;
+mod json_editor;
 mod package;
 mod permissions;
 mod primitives;
@@ -25,7 +26,7 @@ use clap::{
 use permissions::CommonPermissionsArgs;
 use primitives::{ApiKeyName, DeviceName, PlaylistName, RigName};
 use semver::Version;
-use slipway_engine::{Name, Publisher, clear_components_cache};
+use slipway_engine::{Name, Publisher, SlipwayReference, clear_components_cache};
 use slipway_host::hash_string;
 use time::{OffsetDateTime, format_description};
 use tracing::{Level, info};
@@ -85,13 +86,17 @@ pub(crate) enum Commands {
 
         #[command(flatten)]
         common: CommonRunArgs,
+
+        /// The optional folder path where additional fonts are located.
+        #[arg(short, long)]
+        fonts: Option<std::path::PathBuf>,
     },
 
-    /// Debug a Slipway Component.
+    /// Run a Slipway component.
     #[command(arg_required_else_help = true)]
-    DebugComponent {
-        /// The path to the Component file.
-        component: PathBuf,
+    RunComponent {
+        /// The Component reference. If you want to debug a local component you can use a `file://`` reference.
+        component: SlipwayReference,
 
         /// The optional path to the file containing the Component's input.
         #[arg(short, long)]
@@ -99,6 +104,32 @@ pub(crate) enum Commands {
 
         #[command(flatten)]
         common: CommonRunArgs,
+
+        /// The optional folder path to save the component output to.
+        #[arg(short, long)]
+        output: Option<std::path::PathBuf>,
+
+        /// The optional folder path where additional fonts are located.
+        #[arg(short, long)]
+        fonts: Option<std::path::PathBuf>,
+    },
+
+    /// Debug a Slipway Component.
+    #[command(arg_required_else_help = true)]
+    DebugComponent {
+        /// The Component reference. If you want to debug a local component you can use a `file://`` reference.
+        component: SlipwayReference,
+
+        /// The optional path to the file containing the Component's input.
+        #[arg(short, long)]
+        input: Option<PathBuf>,
+
+        #[command(flatten)]
+        common: CommonRunArgs,
+
+        /// The optional folder path where additional fonts are located.
+        #[arg(short, long)]
+        fonts: Option<std::path::PathBuf>,
     },
 
     /// Create default configuration for a Component.
@@ -317,7 +348,29 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
     set_ctrl_c_handler();
 
     match args.command {
-        Commands::Debug { rig, common } => {
+        Commands::Run {
+            rig,
+            common,
+            output,
+            output_debug_rig,
+            fonts,
+        } => {
+            let log_level = common.log_level;
+            let registry_url = common.registry_url;
+            configure_tracing(log_level);
+            let permissions = common.permissions.into_permissions()?;
+            run_rig::run_rig(
+                Box::new(std::io::stdout()),
+                rig,
+                (&permissions).into(),
+                registry_url,
+                output,
+                output_debug_rig,
+                fonts,
+            )
+            .await?;
+        }
+        Commands::Debug { rig, common, fonts } => {
             let log_level = common.log_level;
             let registry_url = common.registry_url;
             configure_tracing(log_level);
@@ -327,6 +380,29 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
                 rig,
                 (&permissions).into(),
                 registry_url,
+                fonts,
+            )
+            .await?;
+        }
+        Commands::RunComponent {
+            component,
+            input,
+            common,
+            output,
+            fonts,
+        } => {
+            let log_level = common.log_level;
+            let registry_url = common.registry_url;
+            configure_tracing(log_level);
+            let permissions = common.permissions.into_permissions()?;
+            run_rig::run_rig_from_component_file(
+                Box::new(std::io::stdout()),
+                component,
+                input,
+                (&permissions).into(),
+                registry_url,
+                output,
+                fonts,
             )
             .await?;
         }
@@ -334,6 +410,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
             component,
             input,
             common,
+            fonts,
         } => {
             let log_level = common.log_level;
             let registry_url = common.registry_url;
@@ -345,6 +422,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
                 input,
                 (&permissions).into(),
                 registry_url,
+                fonts,
             )
             .await?;
         }
@@ -376,28 +454,6 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
             };
 
             serde_json::to_writer_pretty(std::fs::File::create(name.to_string() + ".json")?, &rig)?;
-        }
-        Commands::Run {
-            rig,
-            common,
-            output,
-            output_debug_rig,
-            fonts,
-        } => {
-            let log_level = common.log_level;
-            let registry_url = common.registry_url;
-            configure_tracing(log_level);
-            let permissions = common.permissions.into_permissions()?;
-            run_rig::run_rig(
-                Box::new(std::io::stdout()),
-                rig,
-                (&permissions).into(),
-                registry_url,
-                output,
-                output_debug_rig,
-                fonts,
-            )
-            .await?;
         }
         Commands::Package {
             folder_path,

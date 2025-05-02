@@ -1,16 +1,17 @@
+use crate::json_editor::{JsonEditor, JsonEditorImpl};
 use anyhow::Context;
 use handle_command::{HandleCommandResult, handle_command};
-use json_editor::{JsonEditor, JsonEditorImpl};
 use serde_json::json;
 use slipway_host::render_state::write_state;
 use std::io::{self, Write};
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use termion::{color, style};
 
 use slipway_engine::{
     BasicComponentCache, BasicComponentsLoader, CallChain, ComponentHandle, ComponentRigging,
-    Permissions, Rig, RigSession, Rigging, SlipwayReference, parse_rig,
+    Permissions, Rig, RigSession, RigSessionOptions, Rigging, SlipwayReference, parse_rig,
 };
 
 use crate::component_runners::get_component_runners;
@@ -23,7 +24,8 @@ mod handle_input_command;
 mod handle_output_command;
 mod handle_render_command;
 mod handle_run_command;
-mod json_editor;
+
+pub(crate) use errors::SlipwayDebugError;
 
 use clap::{Parser, Subcommand};
 
@@ -116,42 +118,34 @@ impl DebugCli {
 
 pub(crate) async fn debug_rig_from_component_file<W: Write>(
     w: &mut W,
-    component_path: std::path::PathBuf,
+    component_reference: SlipwayReference,
     input_path: Option<std::path::PathBuf>,
     engine_permissions: Permissions<'_>,
     registry_urls: Vec<String>,
+    fonts_path: Option<PathBuf>,
 ) -> anyhow::Result<()> {
-    writeln!(w, "Debugging {}", component_path.display())?;
-
-    if !component_path.exists() {
-        writeln!(w, "Component file does not exist")?;
-        return Ok(());
-    }
-
-    let component_path = redirect_to_json_if_wasm(&component_path);
-
-    let component_reference = match component_path.is_absolute() {
-        true => {
-            SlipwayReference::from_str(&format!("file://{}", component_path.to_string_lossy()))?
-        }
-        false => SlipwayReference::from_str(&format!("file:{}", component_path.to_string_lossy()))?,
-    };
-
+    writeln!(w, "Debugging {}", component_reference)?;
     let json_editor = JsonEditorImpl::new();
+    let initial_input = get_component_input(w, input_path, &json_editor)?;
+    let rig = get_component_rig(component_reference, &engine_permissions, initial_input);
 
-    writeln!(w, "Enter initial component input...")?;
-    let initial_input = match input_path {
-        None => json_editor.edit(&json!({}))?,
-        Some(input_path) => serde_json::from_str(
-            &std::fs::read_to_string(input_path.clone())
-                .with_context(|| format!("Failed to read input from {}", input_path.display()))?,
-        )?,
-    };
+    debug_rig(
+        w,
+        rig,
+        json_editor,
+        engine_permissions,
+        registry_urls,
+        fonts_path,
+    )
+    .await
+}
 
-    writeln!(w, "...done")?;
-    writeln!(w)?;
-
-    let rig = Rig {
+pub(super) fn get_component_rig(
+    component_reference: SlipwayReference,
+    engine_permissions: &Permissions<'_>,
+    initial_input: serde_json::Value,
+) -> Rig {
+    Rig {
         description: None,
         constants: None,
         rigging: Rigging {
@@ -160,8 +154,8 @@ pub(crate) async fn debug_rig_from_component_file<W: Write>(
                 ComponentRigging {
                     component: component_reference,
                     input: Some(initial_input),
-                    allow: None,
-                    deny: None,
+                    allow: Some(engine_permissions.allow.to_vec()),
+                    deny: Some(engine_permissions.deny.to_vec()),
                     permissions_chain: None,
                     callouts: None,
                 },
@@ -169,9 +163,28 @@ pub(crate) async fn debug_rig_from_component_file<W: Write>(
             .into_iter()
             .collect(),
         },
-    };
+    }
+}
 
-    debug_rig(w, rig, json_editor, engine_permissions, registry_urls).await
+pub(super) fn get_component_input<W: Write>(
+    w: &mut W,
+    input_path: Option<PathBuf>,
+    json_editor: &JsonEditorImpl,
+) -> Result<serde_json::Value, anyhow::Error> {
+    let initial_input = match input_path {
+        None => {
+            writeln!(w, "Enter initial component input...")?;
+            let input = json_editor.edit(&json!({}))?;
+            writeln!(w, "...done")?;
+            writeln!(w)?;
+            input
+        }
+        Some(input_path) => serde_json::from_str(
+            &std::fs::read_to_string(input_path.clone())
+                .with_context(|| format!("Failed to read input from {}", input_path.display()))?,
+        )?,
+    };
+    Ok(initial_input)
 }
 
 pub(crate) async fn debug_rig_from_rig_file<W: Write>(
@@ -179,6 +192,7 @@ pub(crate) async fn debug_rig_from_rig_file<W: Write>(
     input: std::path::PathBuf,
     engine_permissions: Permissions<'_>,
     registry_urls: Vec<String>,
+    fonts_path: Option<PathBuf>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Debugging {}", input.display())?;
 
@@ -188,7 +202,15 @@ pub(crate) async fn debug_rig_from_rig_file<W: Write>(
 
     let json_editor = JsonEditorImpl::new();
 
-    debug_rig(w, rig, json_editor, engine_permissions, registry_urls).await
+    debug_rig(
+        w,
+        rig,
+        json_editor,
+        engine_permissions,
+        registry_urls,
+        fonts_path,
+    )
+    .await
 }
 
 fn redirect_to_json_if_wasm(input: &std::path::Path) -> std::path::PathBuf {
@@ -207,13 +229,15 @@ async fn debug_rig<W: Write>(
     json_editor: impl JsonEditor,
     engine_permissions: Permissions<'_>,
     registry_urls: Vec<String>,
+    fonts_path: Option<PathBuf>,
 ) -> anyhow::Result<()> {
     let components_loader = BasicComponentsLoader::builder()
         .registry_lookup_urls(registry_urls)
         .build();
 
     let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
-    let session = RigSession::new(rig, &component_cache);
+    let session_options = RigSessionOptions::new_for_run(false, fonts_path.as_deref()).await;
+    let session = RigSession::new_with_options(rig, &component_cache, session_options);
     let mut state = session.initialize()?;
 
     let component_runners = get_component_runners();
