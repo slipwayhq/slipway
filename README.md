@@ -3,7 +3,7 @@
 Slipway is an open source framework for displaying useful information on your devices,
 from eInk screens to phones to monitor walls.
 
-For more information please see [our website](https://slipwayhq.com/).
+For more information please see [our website](https://slipway.co/).
 
 # Contributing
 
