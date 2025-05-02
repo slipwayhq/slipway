@@ -45,8 +45,13 @@ impl<'rig, 'cache> RunEventHandler<'rig, 'cache, std::io::Error> for TracingRunE
 
     fn handle_component_run_end(
         &mut self,
-        _event: crate::run::ComponentRunEndEvent<'rig>,
+        event: crate::run::ComponentRunEndEvent<'rig>,
     ) -> Result<(), std::io::Error> {
+        writeln!(
+            self.w,
+            r#"Component "{}" finished running."#,
+            event.component_handle
+        )?;
         Ok(())
     }
 

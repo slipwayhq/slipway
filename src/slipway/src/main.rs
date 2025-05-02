@@ -98,9 +98,13 @@ pub(crate) enum Commands {
         /// The Component reference. If you want to debug a local component you can use a `file://`` reference.
         component: SlipwayReference,
 
-        /// The optional path to the file containing the Component's input.
+        /// The optional Component's input.
         #[arg(short, long)]
-        input: Option<PathBuf>,
+        input: Option<String>,
+
+        /// The optional path to the file containing the Component's input.
+        #[arg(short('f'), long)]
+        input_file: Option<PathBuf>,
 
         #[command(flatten)]
         common: CommonRunArgs,
@@ -120,9 +124,13 @@ pub(crate) enum Commands {
         /// The Component reference. If you want to debug a local component you can use a `file://`` reference.
         component: SlipwayReference,
 
-        /// The optional path to the file containing the Component's input.
+        /// The optional Component's input.
         #[arg(short, long)]
-        input: Option<PathBuf>,
+        input: Option<String>,
+
+        /// The optional path to the file containing the Component's input.
+        #[arg(short('f'), long)]
+        input_file: Option<PathBuf>,
 
         #[command(flatten)]
         common: CommonRunArgs,
@@ -387,6 +395,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
         Commands::RunComponent {
             component,
             input,
+            input_file,
             common,
             output,
             fonts,
@@ -399,6 +408,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
                 Box::new(std::io::stdout()),
                 component,
                 input,
+                input_file,
                 (&permissions).into(),
                 registry_url,
                 output,
@@ -409,6 +419,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
         Commands::DebugComponent {
             component,
             input,
+            input_file,
             common,
             fonts,
         } => {
@@ -420,6 +431,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
                 &mut std::io::stdout(),
                 component,
                 input,
+                input_file,
                 (&permissions).into(),
                 registry_url,
                 fonts,

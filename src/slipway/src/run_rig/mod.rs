@@ -20,27 +20,36 @@ use crate::{
     host_error::HostError,
 };
 
+#[allow(clippy::too_many_arguments)] // For now at least.
 pub(super) async fn run_rig_from_component_file(
     mut w: Box<dyn Write>,
     component_reference: SlipwayReference,
+    input: Option<String>,
     input_path: Option<std::path::PathBuf>,
-    engine_permissions: Permissions<'_>,
+    component_permissions: Permissions<'_>,
     registry_urls: Vec<String>,
     save_path: Option<PathBuf>,
     fonts_path: Option<PathBuf>,
 ) -> anyhow::Result<()> {
     let json_editor = JsonEditorImpl::new();
-    let initial_input = super::debug_rig::get_component_input(&mut w, input_path, &json_editor)?;
+    let initial_input =
+        super::debug_rig::get_component_input(&mut w, input, input_path, &json_editor)?;
     let rig = super::debug_rig::get_component_rig(
         component_reference,
-        &engine_permissions,
+        &component_permissions,
         initial_input,
     );
+
+    // We created the rig, so we can trust it to only pass on the user specified
+    // component_permissions to the component.
+    // At minimum we would need component_permissions plus permission to load the
+    // component, but there is no advantage to being more restrictive here.
+    let rig_permissions = Permissions::allow_all();
 
     run_rig_inner(
         w,
         rig,
-        engine_permissions,
+        rig_permissions,
         registry_urls,
         save_path,
         None,

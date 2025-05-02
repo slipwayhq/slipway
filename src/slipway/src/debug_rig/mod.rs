@@ -119,21 +119,28 @@ impl DebugCli {
 pub(crate) async fn debug_rig_from_component_file<W: Write>(
     w: &mut W,
     component_reference: SlipwayReference,
+    input: Option<String>,
     input_path: Option<std::path::PathBuf>,
-    engine_permissions: Permissions<'_>,
+    component_permissions: Permissions<'_>,
     registry_urls: Vec<String>,
     fonts_path: Option<PathBuf>,
 ) -> anyhow::Result<()> {
     writeln!(w, "Debugging {}", component_reference)?;
     let json_editor = JsonEditorImpl::new();
-    let initial_input = get_component_input(w, input_path, &json_editor)?;
-    let rig = get_component_rig(component_reference, &engine_permissions, initial_input);
+    let initial_input = get_component_input(w, input, input_path, &json_editor)?;
+    let rig = get_component_rig(component_reference, &component_permissions, initial_input);
+
+    // We created the rig, so we can trust it to only pass on the user specified
+    // component_permissions to the component.
+    // At minimum we would need component_permissions plus permission to load the
+    // component, but there is no advantage to being more restrictive here.
+    let rig_permissions = Permissions::allow_all();
 
     debug_rig(
         w,
         rig,
         json_editor,
-        engine_permissions,
+        rig_permissions,
         registry_urls,
         fonts_path,
     )
@@ -142,7 +149,7 @@ pub(crate) async fn debug_rig_from_component_file<W: Write>(
 
 pub(super) fn get_component_rig(
     component_reference: SlipwayReference,
-    engine_permissions: &Permissions<'_>,
+    component_permissions: &Permissions<'_>,
     initial_input: serde_json::Value,
 ) -> Rig {
     Rig {
@@ -150,12 +157,12 @@ pub(super) fn get_component_rig(
         constants: None,
         rigging: Rigging {
             components: [(
-                ComponentHandle::from_str("test").unwrap(),
+                ComponentHandle::from_str("wrapped").unwrap(),
                 ComponentRigging {
                     component: component_reference,
                     input: Some(initial_input),
-                    allow: Some(engine_permissions.allow.to_vec()),
-                    deny: Some(engine_permissions.deny.to_vec()),
+                    allow: Some(component_permissions.allow.to_vec()),
+                    deny: Some(component_permissions.deny.to_vec()),
                     permissions_chain: None,
                     callouts: None,
                 },
@@ -168,21 +175,27 @@ pub(super) fn get_component_rig(
 
 pub(super) fn get_component_input<W: Write>(
     w: &mut W,
+    input: Option<String>,
     input_path: Option<PathBuf>,
     json_editor: &JsonEditorImpl,
 ) -> Result<serde_json::Value, anyhow::Error> {
-    let initial_input = match input_path {
-        None => {
-            writeln!(w, "Enter initial component input...")?;
-            let input = json_editor.edit(&json!({}))?;
-            writeln!(w, "...done")?;
-            writeln!(w)?;
-            input
-        }
-        Some(input_path) => serde_json::from_str(
-            &std::fs::read_to_string(input_path.clone())
-                .with_context(|| format!("Failed to read input from {}", input_path.display()))?,
-        )?,
+    let initial_input = match input {
+        None => match input_path {
+            None => {
+                writeln!(w, "Enter initial component input...")?;
+                let input = json_editor.edit(&json!({}))?;
+                writeln!(w, "...done")?;
+                writeln!(w)?;
+                input
+            }
+            Some(input_path) => {
+                serde_json::from_str(&std::fs::read_to_string(input_path.clone()).with_context(
+                    || format!("Failed to read input from {}", input_path.display()),
+                )?)?
+            }
+        },
+        Some(input) => serde_json::from_str(&input)
+            .with_context(|| format!("Failed to parse JSON input from string: {}", input))?,
     };
     Ok(initial_input)
 }
