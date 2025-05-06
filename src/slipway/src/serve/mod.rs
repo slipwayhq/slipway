@@ -36,7 +36,7 @@ const ACCESS_TOKEN_HEADER: &str = "access-token";
 const ID_HEADER: &str = "id";
 
 const TRMNL_PATH: &str = "/trmnl/api";
-const TRMNL_DISPLAY_PATH: &str = "/api/display";
+const TRMNL_DISPLAY_PATH: &str = "/trmnl/api/display";
 const API_GET_RIG_PATH: &str = "/rigs";
 
 const SERVE_CONFIG_FILE_NAME: &str = "slipway_serve.json";
