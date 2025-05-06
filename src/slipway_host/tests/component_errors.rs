@@ -120,7 +120,7 @@ async fn assert_run_errors_with(rig: Rig, expected_messages: &[&str]) {
         .unwrap();
     let component_runners = get_component_runners();
     let call_chain = CallChain::full_trust_arc();
-    let session = RigSession::new(rig, &component_cache);
+    let session = RigSession::new_for_test(rig, &component_cache);
 
     let result = run_rig::<()>(
         &session,

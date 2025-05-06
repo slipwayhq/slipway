@@ -38,13 +38,14 @@ pub async fn get_playlist(
     let image_format = query.output.image_format.unwrap_or_default();
     let format = query.output.format.unwrap_or_default();
 
-    get_playlist_response(playlist_name, format, image_format, state, req)
+    get_playlist_response(playlist_name, None, format, image_format, state, req)
         .instrument(info_span!("playlist", %playlist_name))
         .await
 }
 
 pub async fn get_playlist_response(
     playlist_name: &PlaylistName,
+    device_context: Option<serde_json::Value>,
     format: RigResultFormat,
     image_format: RigResultImageFormat,
     state: Arc<ServeState>,
@@ -63,10 +64,16 @@ pub async fn get_playlist_response(
     let rig_name = playlist_item.rig;
     let refresh_rate_seconds = playlist_item.refresh_rate_seconds;
 
-    let rig_response =
-        super::super::rigs::get_rig::get_rig_response(&rig_name, format, image_format, state, req)
-            .instrument(debug_span!("rig", %rig_name))
-            .await?;
+    let rig_response = super::super::rigs::get_rig::get_rig_response(
+        &rig_name,
+        device_context,
+        format,
+        image_format,
+        state,
+        req,
+    )
+    .instrument(debug_span!("rig", %rig_name))
+    .await?;
 
     Ok(PlaylistResponse {
         refresh_rate_seconds,

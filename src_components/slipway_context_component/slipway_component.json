@@ -1,0 +1,15 @@
+{
+  "publisher": "slipwayhq",
+  "name": "context",
+  "description": "Returns the current timezone and the passed in input.",
+  "version": "0.0.1",
+  "input": {},
+  "output": {
+    "properties": {
+      "tz": {
+        "type": "string"
+      },
+      "input": {}
+    }
+  }
+}

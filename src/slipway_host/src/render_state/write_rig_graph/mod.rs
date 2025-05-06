@@ -497,7 +497,7 @@ mod tests {
         });
 
         let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-        let rig_session = RigSession::new(rig, &component_cache);
+        let rig_session = RigSession::new_for_test(rig, &component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         state = state
@@ -643,7 +643,7 @@ mod tests {
         });
 
         let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-        let rig_session = RigSession::new(rig, &component_cache);
+        let rig_session = RigSession::new_for_test(rig, &component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         let metadata = RunMetadata {

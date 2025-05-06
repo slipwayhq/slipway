@@ -15,6 +15,8 @@ use super::run_record::RigRunRecord;
 
 use crate::parse::types::Rig;
 
+pub const TEST_TIMEZONE: &str = "Canada/Eastern";
+
 pub struct RigSession<'cache> {
     pub(crate) rig: Rig,
     pub(crate) component_cache: &'cache dyn ComponentCache,
@@ -34,11 +36,17 @@ impl<'cache> RigSession<'cache> {
         }
     }
 
-    pub fn new(rig: Rig, component_cache: &'cache dyn ComponentCache) -> Self {
+    pub fn new_for_test(rig: Rig, component_cache: &'cache dyn ComponentCache) -> Self {
         RigSession {
             rig,
             component_cache,
-            options: Default::default(),
+            options: RigSessionOptions::new_for_test(
+                TEST_TIMEZONE.to_string(),
+                Some(serde_json::json!({
+                    "width": 800,
+                    "height": 480,
+                })),
+            ),
         }
     }
 
@@ -82,10 +90,12 @@ impl<'cache> RigSession<'cache> {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct RigSessionOptions {
     pub base_path: PathBuf,
     pub aot_path: Option<PathBuf>,
+    pub timezone: String,
+    pub rig_additional_context: serde_json::Value,
     run_record: Option<RigRunRecord>,
     font_context: Arc<Mutex<FontContext>>,
 }
@@ -95,17 +105,27 @@ impl RigSessionOptions {
         base_path: PathBuf,
         aot_path: Option<PathBuf>,
         fonts_path: PathBuf,
+        timezone: String,
+        device_context: Option<serde_json::Value>,
     ) -> Self {
         let font_context = FontContext::new_with_path(&fonts_path).await;
+        let rig_additional_context = get_rig_additional_context(&timezone, device_context);
+
         RigSessionOptions {
             base_path,
             aot_path,
+            timezone,
+            rig_additional_context,
             run_record: None,
             font_context: Arc::new(Mutex::new(font_context)),
         }
     }
 
-    pub async fn new_for_run(use_run_record: bool, fonts_path: Option<&Path>) -> Self {
+    pub async fn new_for_run(
+        use_run_record: bool,
+        fonts_path: Option<&Path>,
+        timezone: String,
+    ) -> Self {
         let run_record = if use_run_record {
             Some(RigRunRecord::new())
         } else {
@@ -117,15 +137,42 @@ impl RigSessionOptions {
             Some(fonts_path) => FontContext::new_with_path(fonts_path).await,
         };
 
+        let rig_additional_context = get_rig_additional_context(&timezone, None);
+
         RigSessionOptions {
             base_path: PathBuf::from("."),
             aot_path: None,
+            timezone,
+            rig_additional_context,
             run_record,
             font_context: Arc::new(Mutex::new(font_context)),
+        }
+    }
+
+    pub fn new_for_test(timezone: String, device_context: Option<serde_json::Value>) -> Self {
+        let rig_additional_context = get_rig_additional_context(&timezone, device_context);
+
+        RigSessionOptions {
+            base_path: PathBuf::from("."),
+            aot_path: None,
+            timezone,
+            rig_additional_context,
+            run_record: None,
+            font_context: Arc::new(Mutex::new(FontContext::new())),
         }
     }
 
     pub fn font_context(&self) -> Arc<Mutex<FontContext>> {
         Arc::clone(&self.font_context)
     }
+}
+
+fn get_rig_additional_context(
+    timezone: &str,
+    device_context: Option<serde_json::Value>,
+) -> serde_json::Value {
+    serde_json::json!({
+        "timezone": timezone,
+        "device": device_context,
+    })
 }

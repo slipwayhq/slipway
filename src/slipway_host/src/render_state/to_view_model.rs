@@ -163,7 +163,7 @@ mod tests {
         });
 
         let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-        let rig_session = RigSession::new(rig, &component_cache);
+        let rig_session = RigSession::new_for_test(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let view_model = to_view_model(&state);
 
@@ -203,7 +203,7 @@ mod tests {
         });
 
         let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-        let rig_session = RigSession::new(rig, &component_cache);
+        let rig_session = RigSession::new_for_test(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let view_model = to_view_model(&state);
 
@@ -264,7 +264,7 @@ mod tests {
         });
 
         let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-        let rig_session = RigSession::new(rig, &component_cache);
+        let rig_session = RigSession::new_for_test(rig, &component_cache);
         let state = rig_session.initialize().unwrap();
         let view_model = to_view_model(&state);
 

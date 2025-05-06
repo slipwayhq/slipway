@@ -44,13 +44,14 @@ pub async fn get_rig(
     let image_format = query.output.image_format.unwrap_or_default();
     let format = query.output.format.unwrap_or_default();
 
-    get_rig_response(&rig_name, format, image_format, state, req)
+    get_rig_response(&rig_name, None, format, image_format, state, req)
         .instrument(info_span!("rig", %rig_name))
         .await
 }
 
 pub async fn get_rig_response(
     rig_name: &RigName,
+    device_context: Option<serde_json::Value>,
     format: RigResultFormat,
     image_format: RigResultImageFormat,
     state: Arc<ServeState>,
@@ -60,7 +61,7 @@ pub async fn get_rig_response(
 
     match format {
         RigResultFormat::Image | RigResultFormat::DataUrl | RigResultFormat::Json => {
-            let result = super::run_rig::run_rig(state, rig, rig_name)
+            let result = super::run_rig::run_rig(state, rig, rig_name, device_context)
                 .await
                 .map_err(ServeError::Internal)?;
 

@@ -183,7 +183,7 @@ mod tests {
         )
         .await;
 
-        let rig_session = RigSession::new(rig, &component_cache);
+        let rig_session = RigSession::new_for_test(rig, &component_cache);
 
         let mut s = rig_session.initialize().unwrap();
 
@@ -238,7 +238,7 @@ mod tests {
         )
         .await;
 
-        let rig_session = RigSession::new(rig, &component_cache);
+        let rig_session = RigSession::new_for_test(rig, &component_cache);
 
         let s = rig_session.initialize().unwrap();
         let s_result = s.step(Instruction::SetOutput {
@@ -309,7 +309,7 @@ mod tests {
         )
         .await;
 
-        let rig_session = RigSession::new(rig, &component_cache);
+        let rig_session = RigSession::new_for_test(rig, &component_cache);
 
         let mut s = rig_session.initialize().unwrap();
         s = s
@@ -359,7 +359,7 @@ mod tests {
         )
         .await;
 
-        let rig_session = RigSession::new(rig, &component_cache);
+        let rig_session = RigSession::new_for_test(rig, &component_cache);
 
         let s = rig_session.initialize().unwrap();
         let s_result = s.step(Instruction::SetOutput {
@@ -432,7 +432,7 @@ mod tests {
         )
         .await;
 
-        let rig_session = RigSession::new(rig, &component_cache);
+        let rig_session = RigSession::new_for_test(rig, &component_cache);
 
         let mut s = rig_session.initialize().unwrap();
 
@@ -492,7 +492,7 @@ mod tests {
         )
         .await;
 
-        let rig_session = RigSession::new(rig, &component_cache);
+        let rig_session = RigSession::new_for_test(rig, &component_cache);
 
         let s = rig_session.initialize().unwrap();
         let s_result = s.step(Instruction::SetOutput {

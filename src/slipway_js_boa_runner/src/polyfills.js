@@ -2,7 +2,6 @@
 global = {};
 setTimeout = () => {};
 clearTimeout = () => {};
-process = { env: {} };
 
 // Polyfill btoa, which takes a binary string and returns a base64 string.
 function btoa(str) {

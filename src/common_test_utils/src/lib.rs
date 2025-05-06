@@ -31,6 +31,10 @@ pub const SLIPWAY_ENV_COMPONENT_NAME: &str = "slipwayhq.env.0.0.1";
 pub const SLIPWAY_ENV_COMPONENT_TAR_NAME: &str = "slipwayhq.env.0.0.1.tar";
 pub const SLIPWAY_ENV_JS_COMPONENT_TAR_NAME: &str = "slipwayhq.env_js.0.0.1.tar";
 
+pub const SLIPWAY_CONTEXT_COMPONENT_NAME: &str = "slipwayhq.context.0.0.1";
+pub const SLIPWAY_CONTEXT_COMPONENT_TAR_NAME: &str = "slipwayhq.context.0.0.1.tar";
+pub const SLIPWAY_CONTEXT_JS_COMPONENT_TAR_NAME: &str = "slipwayhq.context_js.0.0.1.tar";
+
 pub const SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_NAME: &str =
     "slipwayhq.increment_json_schema.0.0.1";
 pub const SLIPWAY_INCREMENT_JSON_SCHEMA_COMPONENT_FOLDER_NAME: &str =

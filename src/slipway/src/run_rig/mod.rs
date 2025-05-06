@@ -97,9 +97,14 @@ pub(super) async fn run_rig_inner(
         .registry_lookup_urls(registry_urls)
         .build();
 
+    let system_timezone = iana_time_zone::get_timezone()?;
     let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
-    let session_options =
-        RigSessionOptions::new_for_run(debug_rig_path.is_some(), fonts_path.as_deref()).await;
+    let session_options = RigSessionOptions::new_for_run(
+        debug_rig_path.is_some(),
+        fonts_path.as_deref(),
+        system_timezone,
+    )
+    .await;
     let session = RigSession::new_with_options(rig, &component_cache, session_options);
 
     let mut event_handler = CliRunEventHandler::new(

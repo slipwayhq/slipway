@@ -63,6 +63,7 @@ pub async fn get_device_response(
 
     super::super::playlists::get_playlist::get_playlist_response(
         playlist_name,
+        device.context,
         format,
         image_format,
         state,

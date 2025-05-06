@@ -152,7 +152,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-            let rig_session = RigSession::new(rig, &component_cache);
+            let rig_session = RigSession::new_for_test(rig, &component_cache);
 
             let execution_state = rig_session.initialize().unwrap();
 
@@ -164,7 +164,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-            let rig_session = RigSession::new(rig, &component_cache);
+            let rig_session = RigSession::new_for_test(rig, &component_cache);
 
             let s = rig_session.initialize().unwrap();
 
@@ -184,7 +184,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-            let rig_session = RigSession::new(rig, &component_cache);
+            let rig_session = RigSession::new_for_test(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 
@@ -204,7 +204,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-            let rig_session = RigSession::new(rig, &component_cache);
+            let rig_session = RigSession::new_for_test(rig, &component_cache);
 
             let s = rig_session.initialize().unwrap();
 
@@ -231,7 +231,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-            let rig_session = RigSession::new(rig, &component_cache);
+            let rig_session = RigSession::new_for_test(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 
@@ -252,7 +252,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-            let rig_session = RigSession::new(rig, &component_cache);
+            let rig_session = RigSession::new_for_test(rig, &component_cache);
 
             let s = rig_session.initialize().unwrap();
 
@@ -280,7 +280,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-            let rig_session = RigSession::new(rig, &component_cache);
+            let rig_session = RigSession::new_for_test(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 
@@ -302,7 +302,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-            let rig_session = RigSession::new(rig, &component_cache);
+            let rig_session = RigSession::new_for_test(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 
@@ -413,7 +413,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-            let rig_session = RigSession::new(rig, &component_cache);
+            let rig_session = RigSession::new_for_test(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 
@@ -469,7 +469,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-            let rig_session = RigSession::new(rig, &component_cache);
+            let rig_session = RigSession::new_for_test(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 
@@ -600,7 +600,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-            let rig_session = RigSession::new(rig, &component_cache);
+            let rig_session = RigSession::new_for_test(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 
@@ -632,7 +632,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-            let rig_session = RigSession::new(rig, &component_cache);
+            let rig_session = RigSession::new_for_test(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 
@@ -691,7 +691,7 @@ mod tests {
             let rig = create_rig();
 
             let component_cache = BasicComponentCache::for_test_permissive(&rig).await;
-            let rig_session = RigSession::new(rig, &component_cache);
+            let rig_session = RigSession::new_for_test(rig, &component_cache);
 
             let mut s = rig_session.initialize().unwrap();
 

@@ -5,6 +5,7 @@ members = [
     "slipway_fetch_component",
     "slipway_font_component",
     "slipway_env_component",
+    "slipway_context_component",
 ]
 resolver = "2"
 

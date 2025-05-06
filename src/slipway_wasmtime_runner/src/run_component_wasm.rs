@@ -37,7 +37,11 @@ pub async fn run_component_wasm(
     // Create a WASI context, including stdin and stdout pipes
     let stdout = OutputObserverStream::new(OutputObserverType::Stdout);
     let stderr = OutputObserverStream::new(OutputObserverType::Stderr);
-    let wasi_ctx = WasiCtxBuilder::new().stdout(stdout).stderr(stderr).build();
+    let wasi_ctx = WasiCtxBuilder::new()
+        .stdout(stdout)
+        .stderr(stderr)
+        .env("TZ", &execution_context.rig_session_options.timezone)
+        .build();
 
     // Create a store
     let mut store = Store::new(engine, SlipwayHost::new(execution_context, wasi_ctx));

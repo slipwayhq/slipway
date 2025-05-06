@@ -25,6 +25,7 @@ build-components configuration="release": && (assemble-test-components configura
   cp src/wit/latest/slipway.wit src_components/slipway_component_file_component/wit/slipway.wit
   cp src/wit/latest/slipway.wit src_components/slipway_fetch_component/wit/slipway.wit
   cp src/wit/latest/slipway.wit src_components/slipway_env_component/wit/slipway.wit
+  cp src/wit/latest/slipway.wit src_components/slipway_context_component/wit/slipway.wit
   cp src/wit/latest/slipway.wit src_components/slipway_font_component/wit/slipway.wit
   cd src_components && \
     cargo build --target wasm32-wasip2 {{ if configuration == "release" { "--release" } else { "" } }} && \
@@ -43,12 +44,14 @@ assemble-test-components configuration="release": \
   (assemble-rust-component "fetch" configuration) \
   (assemble-rust-component "font" configuration) \
   (assemble-rust-component "env" configuration) \
+  (assemble-rust-component "context" configuration) \
   (assemble-js-component "increment_js" configuration) \
   (assemble-js-component "component_file_js" configuration) \
   (assemble-js-component "fetch_js" configuration) \
   (assemble-js-component "fetch_error_js" configuration) \
   (assemble-js-component "font_js" configuration) \
   (assemble-js-component "env_js" configuration) \
+  (assemble-js-component "context_js" configuration) \
   && \
   (tar-component-files "increment_ten" configuration) \
   (tar-component-files "increment_json_schema" configuration) \

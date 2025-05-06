@@ -6,6 +6,7 @@ use slipway_engine::{
 
 use boa_engine::{
     Context, JsError, JsValue, Module, Script, Source, builtins::promise::PromiseState, js_string,
+    property::Attribute,
 };
 use slipway_host::ComponentError;
 use tracing::{debug, warn};
@@ -25,6 +26,7 @@ pub(super) async fn run_component_javascript(
     let host = SlipwayHost::new(execution_context);
     let mut context =
         super::boa_environment::prepare_environment(Arc::clone(&execution_context.files))?;
+    set_process_env(&mut context, execution_context)?;
     prepare_slipway_host(&host, &mut context)?;
     let prepare_component_duration = prepare_component_start.elapsed();
 
@@ -56,6 +58,27 @@ pub(super) async fn run_component_javascript(
             process_output_duration,
         },
     })
+}
+
+fn set_process_env(
+    context: &mut Context,
+    execution_context: &ComponentExecutionContext<'_, '_, '_>,
+) -> Result<(), RunComponentError> {
+    let process = serde_json::json!({
+        "env": {
+            "TZ": execution_context.rig_session_options.timezone,
+        }
+    });
+
+    let js_process = JsValue::from_json(&process, context).map_err(|e| {
+        RunComponentError::Other(format!("Failed to convert process object.\n{}", e))
+    })?;
+
+    context
+        .register_global_property(js_string!("process"), js_process, Attribute::default())
+        .expect("process property shouldn't exist");
+
+    Ok(())
 }
 
 fn convert_input(

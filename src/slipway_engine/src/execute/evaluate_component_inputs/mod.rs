@@ -21,6 +21,7 @@ mod map_dependencies_to_rig_handles;
 mod simple_json_path;
 
 const RIGGING_KEY: &str = "rigging";
+const RIG_CONTEXT_KEY: &str = "context";
 const INPUT_KEY: &str = "input";
 const OUTPUT_KEY: &str = "output";
 
@@ -82,6 +83,10 @@ pub(super) fn evaluate_component_inputs<'rig, 'cache>(
         // Serialize the rig state to a JSON value.
         let mut serialized_rig_state = serde_json::to_value(&state.session.rig)
             .map_err(|error| RigError::RigParseFailed { error })?;
+
+        // Add the additional rig context to the serialized rig state.
+        serialized_rig_state[RIG_CONTEXT_KEY] =
+            state.session.options.rig_additional_context.clone();
 
         // For each component handle, in execution order.
         for &component_handle in execution_order.iter() {

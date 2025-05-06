@@ -139,7 +139,7 @@ mod tests {
         let w = &mut std::io::sink();
         let (ch1, ch2, ch3) = component_handles();
         let rig_parts = get_rig_parts().await;
-        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
+        let rig_session = RigSession::new_for_test(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         verify_state(&state, (true, false, false), (false, false, false)).await;
@@ -175,7 +175,7 @@ mod tests {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
         let rig_parts = get_rig_parts().await;
-        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
+        let rig_session = RigSession::new_for_test(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
@@ -204,7 +204,7 @@ mod tests {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
         let rig_parts = get_rig_parts().await;
-        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
+        let rig_session = RigSession::new_for_test(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         verify_state(&state, (true, false, false), (false, false, false)).await;
@@ -238,7 +238,7 @@ mod tests {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
         let rig_parts = get_rig_parts().await;
-        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
+        let rig_session = RigSession::new_for_test(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
@@ -272,7 +272,7 @@ mod tests {
         let w = &mut std::io::sink();
         let (ch1, ch2, _) = component_handles();
         let rig_parts = get_rig_parts().await;
-        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
+        let rig_session = RigSession::new_for_test(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
@@ -301,7 +301,7 @@ mod tests {
         let w = &mut std::io::sink();
         let (_, ch2, ch3) = component_handles();
         let rig_parts = get_rig_parts().await;
-        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
+        let rig_session = RigSession::new_for_test(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
@@ -332,7 +332,7 @@ mod tests {
         let w = &mut std::io::sink();
         let (_, ch2, ch3) = component_handles();
         let rig_parts = get_rig_parts().await;
-        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
+        let rig_session = RigSession::new_for_test(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
@@ -362,7 +362,7 @@ mod tests {
         let w = &mut std::io::sink();
         let (ch1, _, _) = component_handles();
         let rig_parts = get_rig_parts().await;
-        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
+        let rig_session = RigSession::new_for_test(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         assert_input_value(&state, &ch1, 1);
@@ -392,7 +392,7 @@ mod tests {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
         let rig_parts = get_rig_parts().await;
-        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
+        let rig_session = RigSession::new_for_test(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.
@@ -428,7 +428,7 @@ mod tests {
         let w = &mut std::io::sink();
         let (_, ch2, _) = component_handles();
         let rig_parts = get_rig_parts().await;
-        let rig_session = RigSession::new(rig_parts.rig, &rig_parts.component_cache);
+        let rig_session = RigSession::new_for_test(rig_parts.rig, &rig_parts.component_cache);
         let mut state = rig_session.initialize().unwrap();
 
         // Run the first component.

@@ -21,17 +21,27 @@ pub async fn run_rig(
     state: Arc<ServeState>,
     rig: Rig,
     rig_name: &RigName,
+    device_context: Option<serde_json::Value>,
 ) -> anyhow::Result<RunRigResult> {
     let components_loader = BasicComponentsLoader::builder()
         .local_base_directory(&state.base_path)
         .registry_lookup_urls(state.config.registry_urls.clone())
         .build();
 
+    let timezone = state
+        .config
+        .timezone
+        .as_ref()
+        .map(|tz| tz.name().to_string())
+        .unwrap_or_else(|| iana_time_zone::get_timezone().expect("Failed to get system timezone"));
+
     let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
     let session_options = RigSessionOptions::new_for_serve(
         state.base_path.clone(),
         state.aot_path.clone(),
         state.base_path.join(FONTS_FOLDER_NAME),
+        timezone,
+        device_context,
     )
     .await;
     let session = RigSession::new_with_options(rig, &component_cache, session_options);

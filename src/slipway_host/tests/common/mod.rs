@@ -37,7 +37,7 @@ pub async fn get_rig_output(
         .unwrap();
     let component_runners = get_component_runners();
     let call_chain = Arc::new(CallChain::new(permissions));
-    let session = RigSession::new(rig, &component_cache);
+    let session = RigSession::new_for_test(rig, &component_cache);
 
     let result = run_rig(
         &session,
