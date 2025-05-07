@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use async_trait::async_trait;
 
 use crate::{
-    ComponentExecutionData, ComponentRunner, RunComponentError, RunComponentResult, RunMetadata,
+    ComponentExecutionContext, ComponentRunner, RunComponentError, RunComponentResult, RunMetadata,
     SlipwayReference, SpecialComponentReference, TryRunComponentResult,
 };
 
@@ -19,15 +19,14 @@ impl ComponentRunner for SpecialComponentRunner {
 
     async fn run<'call>(
         &self,
-        execution_data: &'call ComponentExecutionData<'call, '_, '_>,
+        input: &serde_json::Value,
+        context: &'call ComponentExecutionContext<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError> {
-        let reference = execution_data.context.component_reference;
+        let reference = context.component_reference;
 
         let SlipwayReference::Special(inner) = reference else {
             return Ok(TryRunComponentResult::CannotRun);
         };
-
-        let input = &execution_data.input.value;
 
         match inner {
             SpecialComponentReference::Passthrough => {

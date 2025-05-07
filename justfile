@@ -52,6 +52,7 @@ assemble-test-components configuration="release": \
   (assemble-js-component "font_js" configuration) \
   (assemble-js-component "env_js" configuration) \
   (assemble-js-component "context_js" configuration) \
+  (assemble-js-component "rigging_js" configuration) \
   && \
   (tar-component-files "increment_ten" configuration) \
   (tar-component-files "increment_json_schema" configuration) \

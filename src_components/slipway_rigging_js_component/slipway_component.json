@@ -1,0 +1,29 @@
+{
+  "publisher": "slipwayhq",
+  "name": "rigging_js",
+  "description": "A component that contains both JS and rigging. It will multiply by 10 then increment.",
+  "version": "0.0.1",
+  "input": {
+    "properties": {
+      "value": {
+        "type": "int32"
+      }
+    }
+  },
+  "output": {
+    "properties": {
+      "value": {
+        "type": "int32"
+      }
+    }
+  },
+  "rigging": {
+    "output": {
+      "component": "slipwayhq.increment.0.0.1",
+      "input": {
+        "type": "increment",
+        "value": "$$.input.run.value"
+      }
+    }
+  }
+}

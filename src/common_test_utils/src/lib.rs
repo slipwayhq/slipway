@@ -48,6 +48,9 @@ pub const SLIPWAY_INCREMENT_TEN_COMPONENT_TAR_NAME: &str = "slipwayhq.increment_
 pub const SLIPWAY_FRAGMENT_COMPONENT_NAME: &str = "slipwayhq.fragment.0.0.1";
 pub const SLIPWAY_FRAGMENT_COMPONENT_TAR_NAME: &str = "slipwayhq.fragment.0.0.1.tar";
 
+pub const SLIPWAY_RIGGING_JS_COMPONENT_NAME: &str = "slipwayhq.rigging_js.0.0.1";
+pub const SLIPWAY_RIGGING_JS_COMPONENT_TAR_NAME: &str = "slipwayhq.rigging_js.0.0.1.tar";
+
 pub fn get_slipway_test_components_path() -> PathBuf {
     find_ancestor_path(PathBuf::from(SLIPWAY_TEST_COMPONENTS_PATH))
 }

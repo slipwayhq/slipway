@@ -61,6 +61,27 @@ impl RunMetadata {
             .and_then(|d| d.checked_add(self.process_output_duration))
             .expect("Duration overflow")
     }
+
+    pub fn add(&self, other: &RunMetadata) -> RunMetadata {
+        RunMetadata {
+            prepare_input_duration: self
+                .prepare_input_duration
+                .checked_add(other.prepare_input_duration)
+                .expect("Duration overflow"),
+            prepare_component_duration: self
+                .prepare_component_duration
+                .checked_add(other.prepare_component_duration)
+                .expect("Duration overflow"),
+            call_duration: self
+                .call_duration
+                .checked_add(other.call_duration)
+                .expect("Duration overflow"),
+            process_output_duration: self
+                .process_output_duration
+                .checked_add(other.process_output_duration)
+                .expect("Duration overflow"),
+        }
+    }
 }
 
 pub(super) fn step<'rig, 'cache>(

@@ -2,10 +2,10 @@ use std::{str::FromStr, sync::Arc, time::Instant};
 
 use async_trait::async_trait;
 use slipway_engine::{
-    BasicComponentCache, Component, ComponentExecutionContext, ComponentExecutionData,
-    ComponentHandle, ComponentRigging, ComponentRunner, MultiComponentCache, Rig, RigSession,
-    Rigging, RunComponentError, RunComponentResult, RunMetadata, Schema, SlipwayReference,
-    SpecialComponentReference, TryRunComponentResult, prime_special_component,
+    BasicComponentCache, Component, ComponentExecutionContext, ComponentHandle, ComponentRigging,
+    ComponentRunner, MultiComponentCache, Rig, RigSession, Rigging, RunComponentError,
+    RunComponentResult, RunMetadata, Schema, SlipwayReference, SpecialComponentReference,
+    TryRunComponentResult, prime_special_component,
 };
 use slipway_host::run::{run_rig, tracing_event_handler};
 use tracing::Instrument;
@@ -24,24 +24,19 @@ impl ComponentRunner for FragmentComponentRunner {
 
     async fn run<'call>(
         &self,
-        execution_data: &'call ComponentExecutionData<'call, '_, '_>,
+        input: &serde_json::Value,
+        context: &'call ComponentExecutionContext<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError> {
-        let component_definition = &execution_data.context.component_definition;
+        let component_definition = &context.component_definition;
 
         let Some(rigging) = component_definition.rigging.as_ref() else {
             return Ok(TryRunComponentResult::CannotRun);
         };
 
-        let input = &execution_data.input.value;
-
-        let run_result = run_component_fragment(
-            input,
-            Arc::clone(component_definition),
-            rigging,
-            &execution_data.context,
-        )
-        .instrument(tracing::info_span!("fragment"))
-        .await?;
+        let run_result =
+            run_component_fragment(input, Arc::clone(component_definition), rigging, context)
+                .instrument(tracing::info_span!("fragment"))
+                .await?;
 
         Ok(TryRunComponentResult::Ran { result: run_result })
     }

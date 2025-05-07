@@ -11,8 +11,8 @@ use async_trait::async_trait;
 use run_component_wasm::WasmData;
 pub use run_component_wasm::run_component_wasm;
 use slipway_engine::{
-    ComponentExecutionData, ComponentFiles, ComponentRunner, RunComponentError, SlipwayReference,
-    TryAotCompileComponentResult, TryRunComponentResult,
+    ComponentExecutionContext, ComponentFiles, ComponentRunner, RunComponentError,
+    SlipwayReference, TryAotCompileComponentResult, TryRunComponentResult,
 };
 use slipway_host::{SLIPWAY_COMPONENT_WASM_FILE_NAME, hash_bytes};
 use tracing::{debug, info, warn};
@@ -117,10 +117,10 @@ impl ComponentRunner for WasmComponentRunner {
 
     async fn run<'call>(
         &self,
-        execution_data: &'call ComponentExecutionData<'call, '_, '_>,
+        input: &serde_json::Value,
+        context: &'call ComponentExecutionContext<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError> {
-        let maybe_wasm_bytes = execution_data
-            .context
+        let maybe_wasm_bytes = context
             .files
             .try_get_bin(SLIPWAY_COMPONENT_WASM_FILE_NAME)
             .await?;
@@ -129,50 +129,46 @@ impl ComponentRunner for WasmComponentRunner {
             return Ok(TryRunComponentResult::CannotRun);
         };
 
-        let input = &execution_data.input.value;
-
-        let wasm_data = if let Some(aot_path) = &execution_data.context.rig_session_options.aot_path
-        {
+        let wasm_data = if let Some(aot_path) = &context.rig_session_options.aot_path {
             let aot_bytes_path = get_aot_bytes_path(aot_path, &wasm_bytes);
             if tokio::fs::try_exists(aot_bytes_path.clone())
                 .await
                 .with_context(|| {
                     format!(
                         "Failed to check if AOT compiled file exists for WASM component: {}",
-                        execution_data.context.component_reference
+                        context.component_reference
                     )
                 })?
             {
                 let aot_bytes = tokio::fs::read(&aot_bytes_path).await.with_context(|| {
                     format!(
                         "Failed to read AOT compiled file for WASM component: {}",
-                        execution_data.context.component_reference
+                        context.component_reference
                     )
                 })?;
 
                 debug!(
                     "Using AOT compiled WASM component: {}",
-                    execution_data.context.component_reference
+                    context.component_reference
                 );
 
                 WasmData::Aot(aot_bytes)
             } else {
                 warn!(
                     "AOT compiled file not found for WASM component: {}",
-                    execution_data.context.component_reference
+                    context.component_reference
                 );
                 WasmData::Wasm(Arc::clone(&wasm_bytes))
             }
         } else {
             debug!(
                 "JIT compiling WASM component: {}",
-                execution_data.context.component_reference
+                context.component_reference
             );
             WasmData::Wasm(Arc::clone(&wasm_bytes))
         };
 
-        let run_result =
-            run_component_wasm(input, wasm_data, &self.engine, &execution_data.context).await?;
+        let run_result = run_component_wasm(input, wasm_data, &self.engine, context).await?;
 
         Ok(TryRunComponentResult::Ran { result: run_result })
     }

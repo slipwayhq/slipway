@@ -13,9 +13,9 @@ use slipway_host::run::{no_event_handler, run_rig};
 pub fn get_component_runners() -> Vec<Box<dyn ComponentRunner>> {
     vec![
         Box::new(slipway_engine::SpecialComponentRunner {}),
-        Box::new(slipway_fragment_runner::FragmentComponentRunner {}),
-        Box::new(slipway_wasmtime_runner::WasmComponentRunner::new()),
         Box::new(slipway_js_boa_runner::BoaComponentRunner {}),
+        Box::new(slipway_wasmtime_runner::WasmComponentRunner::new()),
+        Box::new(slipway_fragment_runner::FragmentComponentRunner {}),
     ]
 }
 

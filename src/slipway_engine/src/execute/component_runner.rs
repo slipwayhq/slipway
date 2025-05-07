@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc};
+use std::{borrow::Cow, path::Path, sync::Arc};
 
 use crate::{
     CallChain, ComponentExecutionContext, ComponentFiles, ComponentHandle, RigExecutionState,
@@ -69,7 +69,8 @@ pub trait ComponentRunner: Send + Sync {
 
     async fn run<'call>(
         &self,
-        execution_data: &'call ComponentExecutionData<'call, '_, '_>,
+        input: &serde_json::Value,
+        context: &'call ComponentExecutionContext<'call, '_, '_>,
     ) -> Result<TryRunComponentResult, RunComponentError>;
 }
 
@@ -156,11 +157,26 @@ pub async fn run_component_callout<THostError>(
 async fn run_component_inner<THostError>(
     execution_data: &ComponentExecutionData<'_, '_, '_>,
 ) -> Result<RunComponentResult, RunError<THostError>> {
-    let handle = format!("{}", execution_data.context.component_handle());
+    const RUN_RESULT_KEY: &str = "run";
 
+    let handle = get_handle_for_instrumentation(execution_data);
+
+    // Execute each component runner in order, feeding the output of the previous one
+    // into the next one alongside the original input.
+    // If a runner returns `CannotRun`, we skip it and move to the next one.
+    let mut results: Vec<RunComponentResult> = vec![];
     for runner in execution_data.context.component_runners {
+        let input = match results.last() {
+            Some(result) => {
+                let mut input = execution_data.input.value.clone();
+                input[RUN_RESULT_KEY] = result.output.clone();
+                Cow::Owned(input)
+            }
+            None => Cow::Borrowed(&execution_data.input.value),
+        };
+
         let result = runner
-            .run(execution_data)
+            .run(input.as_ref(), &execution_data.context)
             .instrument(info_span!("component", %handle))
             .await
             .map_err(|e| RunError::RunComponentFailed {
@@ -170,12 +186,95 @@ async fn run_component_inner<THostError>(
             })?;
 
         match result {
-            TryRunComponentResult::Ran { result } => return Ok(result),
+            TryRunComponentResult::Ran { result } => results.push(result),
             TryRunComponentResult::CannotRun => {}
         }
     }
 
-    Err(RunError::ComponentRunnerNotFound {
-        component_handle: execution_data.context.component_handle().clone(),
-    })
+    if results.is_empty() {
+        return Err(RunError::ComponentRunnerNotFound {
+            component_handle: execution_data.context.component_handle().clone(),
+        });
+    }
+
+    Ok(get_run_component_result(results))
+}
+
+fn get_handle_for_instrumentation(execution_data: &ComponentExecutionData<'_, '_, '_>) -> String {
+    let handle = format!("{}", execution_data.context.component_handle());
+    match execution_data.context.component_reference {
+        SlipwayReference::Registry {
+            publisher,
+            name,
+            version: _,
+        } => {
+            format!("{handle}:{publisher}.{name}")
+        }
+        SlipwayReference::Special(inner) => {
+            format!("{handle}:{inner}")
+        }
+        SlipwayReference::Local { path: _ } => {
+            format!("{handle}:local")
+        }
+        SlipwayReference::Http { url: _ } => {
+            format!("{handle}:http")
+        }
+    }
+}
+
+fn get_run_component_result(results: Vec<RunComponentResult>) -> RunComponentResult {
+    let (mut outputs, metadata): (Vec<serde_json::Value>, Vec<RunMetadata>) =
+        results.into_iter().map(|r| (r.output, r.metadata)).unzip();
+
+    let combined_metadata = metadata.into_iter().reduce(|a, b| a.add(&b));
+
+    let last_result = outputs.pop().expect("results should not be empty");
+    let combined_metadata = combined_metadata.expect("total duration should not be empty");
+    RunComponentResult {
+        output: last_result,
+        metadata: combined_metadata,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::*;
+
+    #[test]
+    fn get_run_component_result_should_combine_durations() {
+        let result1 = RunComponentResult {
+            output: serde_json::json!({"key": "value1"}),
+            metadata: RunMetadata {
+                prepare_input_duration: Duration::from_secs(1),
+                prepare_component_duration: Duration::from_secs(2),
+                call_duration: Duration::from_secs(3),
+                process_output_duration: Duration::from_secs(4),
+            },
+        };
+
+        let result2 = RunComponentResult {
+            output: serde_json::json!({"key": "value2"}),
+            metadata: RunMetadata {
+                prepare_input_duration: Duration::from_secs(5),
+                prepare_component_duration: Duration::from_secs(6),
+                call_duration: Duration::from_secs(7),
+                process_output_duration: Duration::from_secs(8),
+            },
+        };
+
+        let combined_result = get_run_component_result(vec![result1, result2]);
+
+        assert_eq!(combined_result.output, serde_json::json!({"key": "value2"}));
+        assert_eq!(
+            combined_result.metadata,
+            RunMetadata {
+                prepare_input_duration: Duration::from_secs(6),
+                prepare_component_duration: Duration::from_secs(8),
+                call_duration: Duration::from_secs(10),
+                process_output_duration: Duration::from_secs(12),
+            }
+        );
+    }
 }
