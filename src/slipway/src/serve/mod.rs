@@ -38,6 +38,7 @@ const ID_HEADER: &str = "id";
 const TRMNL_PATH: &str = "/trmnl/api";
 const TRMNL_DISPLAY_PATH: &str = "/trmnl/api/display";
 const API_GET_RIG_PATH: &str = "/rigs";
+const API_GET_DEVICE_PATH: &str = "/devices";
 
 const SERVE_CONFIG_FILE_NAME: &str = "slipway_serve.json";
 

@@ -9,6 +9,7 @@ use crate::primitives::DeviceName;
 use crate::serve::responses::{
     FormatQuery, PlaylistResponse, RigResultFormat, RigResultImageFormat,
 };
+use crate::serve::rigs::get_rig::RequestingDevice;
 
 use super::super::{ServeState, responses::ServeError};
 
@@ -63,7 +64,10 @@ pub async fn get_device_response(
 
     super::super::playlists::get_playlist::get_playlist_response(
         playlist_name,
-        device.context,
+        Some(RequestingDevice {
+            name: device_name.to_string(),
+            context: device.context,
+        }),
         format,
         image_format,
         state,

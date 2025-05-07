@@ -9,7 +9,7 @@ use tracing::{Instrument, info_span};
 
 use crate::primitives::RigName;
 use crate::serve::auth::compute_signature_parts;
-use crate::serve::{API_GET_RIG_PATH, RequestState, TRMNL_DISPLAY_PATH};
+use crate::serve::{API_GET_DEVICE_PATH, RequestState, TRMNL_DISPLAY_PATH};
 
 use crate::serve::responses::{
     FormatQuery, ImageResponse, RigResponse, RigResultFormat, RigResultImageFormat, ServeError,
@@ -49,9 +49,14 @@ pub async fn get_rig(
         .await
 }
 
+pub struct RequestingDevice {
+    pub name: String,
+    pub context: Option<serde_json::Value>,
+}
+
 pub async fn get_rig_response(
     rig_name: &RigName,
-    device_context: Option<serde_json::Value>,
+    device: Option<RequestingDevice>,
     format: RigResultFormat,
     image_format: RigResultImageFormat,
     state: Arc<ServeState>,
@@ -61,9 +66,10 @@ pub async fn get_rig_response(
 
     match format {
         RigResultFormat::Image | RigResultFormat::DataUrl | RigResultFormat::Json => {
-            let result = super::run_rig::run_rig(state, rig, rig_name, device_context)
-                .await
-                .map_err(ServeError::Internal)?;
+            let result =
+                super::run_rig::run_rig(state, rig, rig_name, device.and_then(|d| d.context))
+                    .await
+                    .map_err(ServeError::Internal)?;
 
             if matches!(format, RigResultFormat::Json) {
                 Ok(RigResponse::Json(web::Json(result.output)))
@@ -93,7 +99,14 @@ pub async fn get_rig_response(
                 let path = uri.path();
                 if path.ends_with(TRMNL_DISPLAY_PATH) {
                     let path_without_trmnl = &path[0..path.len() - TRMNL_DISPLAY_PATH.len()];
-                    Cow::Owned(format!("{path_without_trmnl}{API_GET_RIG_PATH}/{rig_name}"))
+                    let path = match device {
+                        Some(device) => {
+                            let device_name = device.name;
+                            format!("{path_without_trmnl}{API_GET_DEVICE_PATH}/{device_name}")
+                        }
+                        None => panic!("TRMNL display requests should provide a device"),
+                    };
+                    Cow::Owned(path)
                 } else {
                     Cow::Borrowed(path)
                 }

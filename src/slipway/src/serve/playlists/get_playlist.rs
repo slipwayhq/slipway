@@ -9,6 +9,7 @@ use crate::primitives::PlaylistName;
 use crate::serve::responses::{
     FormatQuery, PlaylistResponse, RigResultFormat, RigResultImageFormat, ServeError,
 };
+use crate::serve::rigs::get_rig::RequestingDevice;
 
 use super::super::ServeState;
 
@@ -45,7 +46,7 @@ pub async fn get_playlist(
 
 pub async fn get_playlist_response(
     playlist_name: &PlaylistName,
-    device_context: Option<serde_json::Value>,
+    device: Option<RequestingDevice>,
     format: RigResultFormat,
     image_format: RigResultImageFormat,
     state: Arc<ServeState>,
@@ -66,7 +67,7 @@ pub async fn get_playlist_response(
 
     let rig_response = super::super::rigs::get_rig::get_rig_response(
         &rig_name,
-        device_context,
+        device,
         format,
         image_format,
         state,

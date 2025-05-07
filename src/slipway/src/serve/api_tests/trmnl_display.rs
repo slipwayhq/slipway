@@ -227,7 +227,7 @@ async fn when_valid_request_and_secret_it_should_return_rig_result_with_sas() {
     assert_eq!(body["status"].as_u64(), Some(0));
 
     let image_url = body["image_url"].as_str().unwrap();
-    assert!(image_url.contains("/rigs/r_1?format=image&image_format=bmp_1bit&"));
+    assert!(image_url.contains("/devices/d_1?format=image&image_format=bmp_1bit&"));
     assert!(!image_url.contains("&authorization="));
     assert!(image_url.contains("&sig="));
     assert!(image_url.contains("&exp="));
@@ -279,7 +279,7 @@ async fn when_valid_request_and_no_secret_it_should_return_rig_result_with_api_k
     assert_eq!(body["status"].as_u64(), Some(0));
 
     let image_url = body["image_url"].as_str().unwrap();
-    assert!(image_url.contains("/rigs/r_1?format=image&image_format=bmp_1bit&"));
+    assert!(image_url.contains("/devices/d_1?format=image&image_format=bmp_1bit&"));
     assert!(image_url.contains("&authorization="));
     assert!(!image_url.contains("&sig="));
     assert!(!image_url.contains("&exp="));

@@ -280,6 +280,9 @@ async fn slipway_cli_serve_trmnl() {
 
     // Create a rig.
     let rig_path = path.join("rigs");
+
+    // We include a reference to the context to ensure the context gets passed through
+    // for a TRMNL device.
     std::fs::write(
         rig_path.join("hello.json"),
         indoc::indoc! {r#"
@@ -288,6 +291,7 @@ async fn slipway_cli_serve_trmnl() {
                 "output": {
                     "component": "passthrough",
                     "input": {
+                        "context": "$.context.device.foo",
                         "canvas": {
                             "width": 20,
                             "height": 20,
