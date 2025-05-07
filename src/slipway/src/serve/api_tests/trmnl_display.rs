@@ -64,7 +64,7 @@ async fn when_no_device_with_matching_id_it_should_return_not_found() {
                 dn("d_1"),
                 Device {
                     trmnl: Some(TrmnlDevice {
-                        id: MAC2.to_string(),
+                        hashed_id: hash_string(MAC2),
                         hashed_api_key: hash_string(API_KEY),
                         reset_firmware: false,
                     }),
@@ -108,7 +108,7 @@ async fn when_api_key_incorrect_it_should_return_unauthorized() {
                 dn("d_1"),
                 Device {
                     trmnl: Some(TrmnlDevice {
-                        id: MAC.to_string(),
+                        hashed_id: hash_string(MAC),
                         hashed_api_key: hash_string(API_KEY),
                         reset_firmware: false,
                     }),
@@ -152,7 +152,7 @@ async fn when_reset_firmware_set_it_should_return_reset_firmware_flag() {
                 dn("d_1"),
                 Device {
                     trmnl: Some(TrmnlDevice {
-                        id: MAC.to_string(),
+                        hashed_id: hash_string(MAC),
                         hashed_api_key: hash_string(API_KEY),
                         reset_firmware: true,
                     }),
@@ -196,7 +196,7 @@ async fn when_valid_request_and_secret_it_should_return_rig_result_with_sas() {
                 dn("d_1"),
                 Device {
                     trmnl: Some(TrmnlDevice {
-                        id: MAC.to_string(),
+                        hashed_id: hash_string(MAC),
                         hashed_api_key: hash_string(API_KEY),
                         reset_firmware: false,
                     }),
@@ -248,7 +248,7 @@ async fn when_valid_request_and_no_secret_it_should_return_rig_result_with_api_k
                 dn("d_1"),
                 Device {
                     trmnl: Some(TrmnlDevice {
-                        id: MAC.to_string(),
+                        hashed_id: hash_string(MAC),
                         hashed_api_key: hash_string(API_KEY),
                         reset_firmware: false,
                     }),

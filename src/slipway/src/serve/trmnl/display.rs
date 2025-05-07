@@ -25,7 +25,12 @@ pub(crate) async fn trmnl_display(
         id
     );
 
-    let maybe_device = data.repository.try_get_device_by_id(id).await?;
+    let hashed_id = hash_string(id);
+
+    let maybe_device = data
+        .repository
+        .try_get_device_by_hashed_id(&hashed_id)
+        .await?;
     let (device_name, device) = if let Some((device_name, device)) = maybe_device {
         (device_name, device)
     } else {
@@ -87,16 +92,16 @@ fn print_unknown_device_message(
     config: &SlipwayServeConfig,
 ) -> Result<ServeError, ServeError> {
     let api_key = get_api_key_from_headers(req)?;
+    let hashed_id = hash_string(id);
     let hashed_api_key = hash_string(api_key);
 
-    let display_api_key = match config.show_api_keys {
-        ShowApiKeys::Always => Some(api_key),
-        ShowApiKeys::New => Some(api_key),
+    let unhashed_data = match config.show_api_keys {
+        ShowApiKeys::Always | ShowApiKeys::New => Some(super::UnhashedData { api_key, id }),
         ShowApiKeys::Never => None,
     };
 
     warn!("An unknown device with ID \"{id}\" called the TRMNL display API.");
-    super::print_new_device_message(id, display_api_key, &hashed_api_key, None);
+    super::print_new_device_message(&hashed_id, &hashed_api_key, unhashed_data, None);
 
     Ok(ServeError::UserFacing(
         actix_web::http::StatusCode::NOT_FOUND,

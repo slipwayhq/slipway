@@ -13,7 +13,7 @@ use crate::{
 
 pub async fn add_trmnl_device(
     serve_path: PathBuf,
-    id: String,
+    hashed_id: String,
     hashed_api_key: String,
     name: DeviceName,
     playlist: Option<PlaylistName>,
@@ -21,10 +21,12 @@ pub async fn add_trmnl_device(
     let config = load_serve_config(&serve_path).await?;
     let repository = create_repository(&serve_path, &config.repository);
 
-    let existing_device_by_id = repository.try_get_device_by_id(&id).await?;
+    let existing_device_by_id = repository.try_get_device_by_hashed_id(&hashed_id).await?;
     let existing_device = if let Some((existing_name, existing_device)) = existing_device_by_id {
         if existing_name != name {
-            anyhow::bail!("Device with ID {id} already exists with name {existing_name}.",);
+            anyhow::bail!(
+                "Device with hashed ID {hashed_id} already exists with name {existing_name}.",
+            );
         }
         Some(existing_device)
     } else {
@@ -35,7 +37,7 @@ pub async fn add_trmnl_device(
         warn!("Updating existing device \"{name}\".");
 
         existing_device.trmnl = Some(TrmnlDevice {
-            id,
+            hashed_id,
             hashed_api_key,
             reset_firmware: false,
         });
@@ -50,7 +52,7 @@ pub async fn add_trmnl_device(
 
         let device = Device {
             trmnl: Some(TrmnlDevice {
-                id,
+                hashed_id,
                 hashed_api_key,
                 reset_firmware: false,
             }),

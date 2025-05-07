@@ -90,9 +90,13 @@ fn authenticate_device<'d>(
     let api_key = get_api_key_from_headers(req)?;
 
     let hashed_api_key = hash_string(api_key);
-    if id != trmnl_device.id || hashed_api_key != trmnl_device.hashed_api_key {
+    let hashed_id = hash_string(id);
+    if hashed_id != trmnl_device.hashed_id || hashed_api_key != trmnl_device.hashed_api_key {
         debug!("Device authentication failed.");
-        debug!("Expected ID: {}, received: {}", trmnl_device.id, id);
+        debug!(
+            "Expected hashed ID: {}, received: {}",
+            trmnl_device.hashed_id, hashed_id
+        );
         debug!(
             "Expected hashed key: {}, received: {}",
             trmnl_device.hashed_api_key, hashed_api_key
@@ -118,9 +122,9 @@ fn get_optional_header<'a>(req: &'a HttpRequest, header: &str) -> Option<&'a str
 }
 
 fn print_new_device_message(
-    id: &str,
-    api_key: Option<&str>,
+    hashed_id: &str,
     hashed_api_key: &str,
+    unhashed_data: Option<UnhashedData>,
     existing_device_name: Option<DeviceName>,
 ) {
     info!("To allow this device, run the following command from your Slipway serve root:");
@@ -133,17 +137,26 @@ fn print_new_device_message(
         info!("    --name \"<NAME>\" \\");
     }
 
-    info!("    --id \"{id}\" \\");
+    info!("    --hashed-id \"{hashed_id}\" \\");
     info!("    --hashed-api-key \"{hashed_api_key}\" \\");
     info!("    --playlist <PLAYLIST>");
     info!("");
     info!("Then re-deploy the server if necessary.");
 
-    if let Some(api_key) = api_key {
-        info!("The API key sent to the device was: {api_key}");
+    if let Some(unhashed_data) = unhashed_data {
+        info!("The ID key sent by the device was: {}", unhashed_data.id);
         info!(
-            "The API key is not stored by the server. If you need a record of it, store it securely now."
+            "The API key sent by the device was: {}",
+            unhashed_data.api_key
+        );
+        info!(
+            "The ID and API key are not stored by the server. If you need a record of them, store them securely now."
         );
     }
     info!("See the Slipway documentation for more information.");
+}
+
+struct UnhashedData<'a> {
+    id: &'a str,
+    api_key: &'a str,
 }

@@ -5,8 +5,6 @@ use reqwest::Client;
 use reqwest::header::{HeaderMap, HeaderValue};
 use slipway_engine::TEST_TIMEZONE;
 use slipway_host::hash_string;
-use std::process::Child;
-use std::{thread, time::Duration};
 use tempfile::tempdir;
 
 mod common;
@@ -18,10 +16,6 @@ async fn slipway_cli_serve_and_check_response() {
     // Create a temp dir for the server configuration.
     let dir = tempdir().unwrap();
     let path = dir.path();
-
-    // Get the path to the slipway binary.
-    let slipway_cmd = Command::cargo_bin("slipway").unwrap();
-    let slipway_path = slipway_cmd.get_program();
 
     // Initialize the slipway server folder.
     Command::cargo_bin("slipway")
@@ -112,23 +106,12 @@ async fn slipway_cli_serve_and_check_response() {
     print_dir_structure(path, 2).unwrap();
 
     // Spawn the server as a child process
-    let mut child: Child = std::process::Command::new(slipway_path)
-        .arg("serve")
-        .arg(path)
-        .spawn()
-        .expect("Failed to start slipway server");
-
-    // Wait a moment for it to start
-    thread::sleep(Duration::from_secs(1));
+    let _server_guard = ServerGuard::new(path, false);
 
     // Make a request to check the server's response
     let maybe_response =
         reqwest::get("http://localhost:8080/rigs/hello?format=json&authorization=test_api_key")
             .await;
-
-    // Shut down the server
-    send_ctrlc(&child); // child.kill().unwrap();
-    child.wait().unwrap();
 
     let response = maybe_response.unwrap();
     let status_code = response.status();
@@ -149,10 +132,6 @@ async fn slipway_cli_serve_device_and_check_context() {
     // Create a temp dir for the server configuration.
     let dir = tempdir().unwrap();
     let path = dir.path();
-
-    // Get the path to the slipway binary.
-    let slipway_cmd = Command::cargo_bin("slipway").unwrap();
-    let slipway_path = slipway_cmd.get_program();
 
     // Initialize the slipway server folder.
     Command::cargo_bin("slipway")
@@ -248,24 +227,13 @@ async fn slipway_cli_serve_device_and_check_context() {
     print_dir_structure(path, 2).unwrap();
 
     // Spawn the server as a child process
-    let mut child: Child = std::process::Command::new(slipway_path)
-        .arg("serve")
-        .arg(path)
-        .spawn()
-        .expect("Failed to start slipway server");
-
-    // Wait a moment for it to start
-    thread::sleep(Duration::from_secs(1));
+    let _server_guard = ServerGuard::new(path, false);
 
     // Make a request to check the server's response
     let maybe_response = reqwest::get(
         "http://localhost:8080/devices/hello_device?format=json&authorization=test_api_key",
     )
     .await;
-
-    // Shut down the server
-    send_ctrlc(&child); // child.kill().unwrap();
-    child.wait().unwrap();
 
     let response = maybe_response.unwrap();
     let status_code = response.status();
@@ -300,10 +268,6 @@ async fn slipway_cli_serve_trmnl() {
     // Create a temp dir for the server configuration.
     let dir = tempdir().unwrap();
     let path = dir.path();
-
-    // Get the path to the slipway binary.
-    let slipway_cmd = Command::cargo_bin("slipway").unwrap();
-    let slipway_path = slipway_cmd.get_program();
 
     // Initialize the slipway server folder.
     Command::cargo_bin("slipway")
@@ -362,7 +326,7 @@ async fn slipway_cli_serve_trmnl() {
         {
             "playlist": "hello_playlist",
             "trmnl": {
-                "id": "my_trmnl_id",
+                "hashed_id": hash_string("my_trmnl_id"),
                 "hashed_api_key": hash_string("trmnl_test_api_key"),
                 "reset_firmware": false
             },
@@ -409,15 +373,7 @@ async fn slipway_cli_serve_trmnl() {
     print_dir_structure(path, 2).unwrap();
 
     // Spawn the server as a child process
-    let mut child: Child = std::process::Command::new(slipway_path)
-        .arg("serve")
-        .arg(path)
-        .env("SLIPWAY_SECRET", "test_slipway_secret")
-        .spawn()
-        .expect("Failed to start slipway server");
-
-    // Wait a moment for it to start
-    thread::sleep(Duration::from_secs(1));
+    let _server_guard = ServerGuard::new(path, false);
 
     // Make a request to check the server's response
     let client = Client::new();
@@ -427,6 +383,7 @@ async fn slipway_cli_serve_trmnl() {
         "access-token",
         HeaderValue::from_static("trmnl_test_api_key"),
     );
+
     let maybe_response = client
         .get("http://localhost:8080/trmnl/api/display")
         .headers(headers)
@@ -446,10 +403,6 @@ async fn slipway_cli_serve_trmnl() {
 
     let maybe_response = client.get(image_url).send().await;
 
-    // Shut down the server
-    send_ctrlc(&child); // child.kill().unwrap();
-    child.wait().unwrap();
-
     let response = maybe_response.unwrap();
     println!("{:?}", response);
 
@@ -462,4 +415,7 @@ async fn slipway_cli_serve_trmnl() {
     let body = response.bytes().await.unwrap();
     println!("Body length: {}", body.len());
     assert!(body.len() > (20 * 20) / 8);
+
+    // When the function returns (even on panic), server_guard will be dropped,
+    // shutting down the server once at the end.
 }

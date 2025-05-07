@@ -27,7 +27,7 @@ async fn when_device_already_configured_for_trmnl_it_should_return_new_credentia
                 dn("d_1"),
                 Device {
                     trmnl: Some(TrmnlDevice {
-                        id: MAC.to_string(),
+                        hashed_id: hash_string(MAC),
                         hashed_api_key: HASHED_API_KEY.to_string(),
                         reset_firmware: false,
                     }),

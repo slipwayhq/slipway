@@ -38,11 +38,14 @@ pub(super) trait ServeRepository: std::fmt::Debug {
     async fn set_device(&self, name: &DeviceName, value: &Device) -> Result<(), ServeError>;
     async fn list_devices(&self) -> Result<Vec<DeviceName>, ServeError>;
 
-    async fn get_device_by_id(&self, id: &str) -> Result<(DeviceName, Device), ServeError> {
+    async fn get_device_by_hashed_id(
+        &self,
+        hashed_id: &str,
+    ) -> Result<(DeviceName, Device), ServeError> {
         for device_name in self.list_devices().await? {
             let device = self.get_device(&device_name).await?;
             if let Some(trmnl_device) = &device.trmnl {
-                if trmnl_device.id == id {
+                if trmnl_device.hashed_id == hashed_id {
                     return Ok((device_name, device));
                 }
             }
@@ -50,14 +53,14 @@ pub(super) trait ServeRepository: std::fmt::Debug {
 
         Err(ServeError::UserFacing(
             StatusCode::NOT_FOUND,
-            format!("Failed to find device with ID {id}."),
+            format!("Failed to find device with hashed ID {hashed_id}."),
         ))
     }
-    async fn try_get_device_by_id(
+    async fn try_get_device_by_hashed_id(
         &self,
-        id: &str,
+        hashed_id: &str,
     ) -> Result<Option<(DeviceName, Device)>, ServeError> {
-        try_load(self.get_device_by_id(id).await)
+        try_load(self.get_device_by_hashed_id(hashed_id).await)
     }
     async fn get_device_by_api_key(
         &self,
@@ -119,8 +122,8 @@ pub(super) struct Device {
 #[serde(deny_unknown_fields)]
 pub(super) struct TrmnlDevice {
     /// When the device calls the TRMNL API, this is the value it uses for the ID header.
-    /// It is usually the MAC address of the device.
-    pub id: String,
+    /// It is usually the MAC address of the device, which is why we hash it.
+    pub hashed_id: String,
 
     /// The hash of the API key given to the device during setup.
     pub hashed_api_key: String,

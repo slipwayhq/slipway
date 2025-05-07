@@ -254,9 +254,9 @@ enum ServeCommands {
         #[arg(short, long)]
         name: DeviceName,
 
-        /// The ID the device uses to register itself (typically a MAC address).
+        /// The hashed version of the ID the device uses to register itself (typically a MAC address).
         #[arg(long)]
-        id: String,
+        hashed_id: String,
 
         /// The hashed version of the API key the device uses to authenticate itself.
         #[arg(short('k'), long)]
@@ -531,13 +531,14 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
                 serve::commands::add_device(path, name, playlist).await?;
             }
             Some(ServeCommands::AddTrmnlDevice {
-                id,
+                hashed_id,
                 hashed_api_key,
                 name,
                 playlist,
             }) => {
                 configure_tracing(Default::default());
-                serve::commands::add_trmnl_device(path, id, hashed_api_key, name, playlist).await?;
+                serve::commands::add_trmnl_device(path, hashed_id, hashed_api_key, name, playlist)
+                    .await?;
             }
             Some(ServeCommands::AddPlaylist { name, rig }) => {
                 configure_tracing(Default::default());

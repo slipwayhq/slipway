@@ -1,4 +1,5 @@
 use actix_web::{HttpRequest, Responder, post, web};
+use slipway_host::hash_string;
 use tracing::{info, instrument};
 
 use crate::serve::{
@@ -23,7 +24,8 @@ pub(crate) async fn trmnl_log(
     let id = get_device_id_from_headers(&req);
     let device_name = match id {
         Ok(id) => {
-            let (device_name, device) = data.repository.get_device_by_id(id).await?;
+            let hashed_id = hash_string(id);
+            let (device_name, device) = data.repository.get_device_by_hashed_id(&hashed_id).await?;
             authenticate_device(id, &req, &device, data.config.show_api_keys)?;
             device_name
         }

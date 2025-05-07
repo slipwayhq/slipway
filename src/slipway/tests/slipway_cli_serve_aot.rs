@@ -2,7 +2,6 @@ use assert_cmd::Command;
 use common_macros::slipway_test_async;
 use common_test_utils::get_slipway_test_components_path;
 use slipway_host::hash_string;
-use std::process::{Child, Stdio};
 use std::{thread, time::Duration};
 use tempfile::tempdir;
 
@@ -15,10 +14,6 @@ async fn slipway_cli_serve_aot_and_check_response() {
     // Create a temp dir for the server configuration.
     let dir = tempdir().unwrap();
     let path = dir.path();
-
-    // Get the path to the slipway binary.
-    let slipway_cmd = Command::cargo_bin("slipway").unwrap();
-    let slipway_path = slipway_cmd.get_program();
 
     // Initialize the slipway server folder.
     Command::cargo_bin("slipway")
@@ -104,13 +99,7 @@ async fn slipway_cli_serve_aot_and_check_response() {
     assert_eq!(count, 1);
 
     // Spawn the server as a child process
-    let child: Child = std::process::Command::new(slipway_path)
-        .arg("serve")
-        .arg("--aot")
-        .arg(path)
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("Failed to start slipway server");
+    let mut server_guard = ServerGuard::new(path, true);
 
     // Wait a moment for it to start
     thread::sleep(Duration::from_secs(1));
@@ -121,9 +110,7 @@ async fn slipway_cli_serve_aot_and_check_response() {
             .await;
 
     // Shut down the server
-    send_ctrlc(&child); // child.kill().unwrap();
-
-    let output = child.wait_with_output().unwrap();
+    let output = server_guard.kill_and_get_output().unwrap();
 
     let response = maybe_response.unwrap();
     let status_code = response.status();
