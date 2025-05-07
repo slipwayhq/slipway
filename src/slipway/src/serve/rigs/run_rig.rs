@@ -77,6 +77,23 @@ pub async fn run_rig(
 fn get_component_output(
     result: slipway_host::run::RunRigResult<'_>,
 ) -> Result<RunRigResult, anyhow::Error> {
+    if result.component_outputs.len() == 1 {
+        let (&handle, output) = result
+            .component_outputs
+            .iter()
+            .next()
+            .expect("Should be able to get the only component in a rig.");
+
+        let output = output
+            .as_ref()
+            .expect("The only component in a rig should have an output.");
+
+        return Ok(RunRigResult {
+            handle: handle.clone(),
+            output: output.value.clone(),
+        });
+    }
+
     const OUTPUT_COMPONENT_NAMES: [&str; 2] = ["render", "output"];
 
     for name in OUTPUT_COMPONENT_NAMES.iter() {
@@ -93,7 +110,10 @@ fn get_component_output(
         }
     }
 
-    Err(anyhow::anyhow!("Failed to find output component."))
+    Err(anyhow::anyhow!(
+        "Failed to identify output component. Expected handles are: {:?}",
+        OUTPUT_COMPONENT_NAMES
+    ))
 }
 
 #[derive(Debug, Default, serde::Deserialize)]
