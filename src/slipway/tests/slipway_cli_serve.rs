@@ -96,7 +96,7 @@ async fn slipway_cli_serve_and_check_response() {
     config_json["hashed_api_keys"] = serde_json::json!({
         "test": hash_string("test_api_key")
     });
-    config_json["port"] = serde_json::Value::Number(8080.into());
+    config_json["port"] = serde_json::Value::Number(8081.into());
     std::fs::write(
         path.join("slipway_serve.json"),
         serde_json::to_string_pretty(&config_json).unwrap(),
@@ -205,7 +205,7 @@ async fn slipway_cli_serve_device_and_check_context() {
     config_json["hashed_api_keys"] = serde_json::json!({
         "test": hash_string("test_api_key")
     });
-    config_json["port"] = serde_json::Value::Number(8080.into());
+    config_json["port"] = serde_json::Value::Number(8081.into());
     config_json["timezone"] = serde_json::Value::String(TEST_TIMEZONE.to_string());
 
     let components_path = get_slipway_test_components_path();
@@ -359,7 +359,7 @@ async fn slipway_cli_serve_trmnl() {
     config_json["hashed_api_keys"] = serde_json::json!({
         "test": hash_string("test_api_key")
     });
-    config_json["port"] = serde_json::Value::Number(8080.into());
+    config_json["port"] = serde_json::Value::Number(8081.into());
     config_json["timezone"] = serde_json::Value::String(TEST_TIMEZONE.to_string());
 
     let components_path = get_slipway_test_components_path();

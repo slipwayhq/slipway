@@ -9,12 +9,40 @@ use crate::{ComponentFiles, errors::ComponentLoadErrorInner};
 use crate::parse::types::Schema;
 
 const DEFAULT_BASE_URL_PREFIX: &str = "file:///";
+const CANVAS_SCHEMA_SHORTCUT: &str = "canvas";
 
 pub async fn parse_schema(
     schema_name: &str,
     schema: serde_json::Value,
     component_files: Arc<ComponentFiles>,
 ) -> Result<Schema, ComponentLoadErrorInner> {
+    // If schema is the string "canvas", then we return a JsonTypeDef canvas schema.
+    if schema == CANVAS_SCHEMA_SHORTCUT {
+        return parse_json_typedef_schema(
+            serde_json::json!({
+              "properties": {
+                "canvas": {
+                  "properties": {
+                    "width": {
+                      "type": "uint32"
+                    },
+                    "height": {
+                      "type": "uint32"
+                    },
+                    "data": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Encoded vector of RGBA unsigned bytes."
+                      }
+                    }
+                  }
+                }
+              }
+            }),
+            schema_name,
+        );
+    }
+
     if let Some(serde_json::Value::String(schema_uri)) = schema.get("$schema") {
         if schema_uri.contains("://json-schema.org/") {
             // If the schema contains a $schema field that refers to a JSON Schema
@@ -230,6 +258,45 @@ mod tests {
                         ValidationErrorIndicator {
                             instance_path: vec!["age".into()],
                             schema_path: vec!["properties".into(), "age".into(), "type".into()],
+                        },
+                    ],
+                    jtd::validate(&schema, &input_bad, Default::default()).unwrap(),
+                );
+            }
+            _ => panic!("expected JsonTypeDef"),
+        }
+    }
+
+    #[slipway_test_async]
+    async fn it_should_parse_canvas_shortcut() {
+        let schema = serde_json::json!("canvas");
+
+        let component_files = mock_component_files(HashMap::new());
+
+        let input_bad = json!({
+            "canvas": {
+                "width": "10",
+                "height": 20,
+                "data": "foo"
+            }
+        });
+
+        let schema = parse_schema("test", schema, component_files).await.unwrap();
+
+        match schema {
+            Schema::JsonTypeDef { schema } => {
+                assert_eq!(
+                    vec![
+                        // "age" has the wrong type (required by "/properties/age/type")
+                        ValidationErrorIndicator {
+                            instance_path: vec!["canvas".into(), "width".into()],
+                            schema_path: vec![
+                                "properties".into(),
+                                "canvas".into(),
+                                "properties".into(),
+                                "width".into(),
+                                "type".into()
+                            ],
                         },
                     ],
                     jtd::validate(&schema, &input_bad, Default::default()).unwrap(),
