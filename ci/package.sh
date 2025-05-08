@@ -23,16 +23,18 @@ pushd src
 cargo set-version $VERSION
 test -f Cargo.lock || cargo generate-lockfile
 
-ALL_RUSTFLAGS="--deny warnings --codegen target-feature=+crt-static $TARGET_RUSTFLAGS $RUSTFLAGS"
 
 # We use vendored-openssl to avoid cross-compilation issues with OpenSSL:
 # https://github.com/cross-rs/cross/issues/229#issuecomment-597898074
 # We remove sixel (via --no-default-features) because it is not supported on musl.
 if [[ "$TARGET" == *"musl"* ]]; then
+  ALL_RUSTFLAGS="--deny warnings --codegen target-feature=+crt-static $TARGET_RUSTFLAGS $RUSTFLAGS"
   RUSTFLAGS="$ALL_RUSTFLAGS" cross build --bin slipway --target $TARGET --release --no-default-features --features vendored-openssl
 elif [[ "$TARGET" == *"aarch64-unknown-linux-gnu"* ]]; then
+  ALL_RUSTFLAGS="--deny warnings $TARGET_RUSTFLAGS $RUSTFLAGS"
   RUSTFLAGS="$ALL_RUSTFLAGS" cross build --bin slipway --target $TARGET --release --features vendored-openssl
 else
+  ALL_RUSTFLAGS="--deny warnings $TARGET_RUSTFLAGS $RUSTFLAGS"
   RUSTFLAGS="$ALL_RUSTFLAGS" cargo build --bin slipway --target $TARGET --release --features vendored-openssl
 fi
 
