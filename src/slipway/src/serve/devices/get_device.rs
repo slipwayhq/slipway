@@ -40,7 +40,7 @@ pub async fn get_device(
     let image_format = query.output.image_format.unwrap_or_default();
 
     get_device_response(device_name, format, image_format, state, req)
-        .instrument(info_span!("device", %device_name))
+        .instrument(info_span!("device", ""=%device_name))
         .await
 }
 
@@ -73,6 +73,6 @@ pub async fn get_device_response(
         state,
         req,
     )
-    .instrument(debug_span!("playlist", %playlist_name))
+    .instrument(debug_span!("playlist", ""=%playlist_name))
     .await
 }

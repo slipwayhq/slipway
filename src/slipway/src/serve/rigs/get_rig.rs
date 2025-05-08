@@ -55,7 +55,7 @@ pub async fn get_rig(
     };
 
     get_rig_response(&rig_name, device, format, image_format, state, req)
-        .instrument(info_span!("rig", %rig_name))
+        .instrument(info_span!("rig", ""=%rig_name))
         .await
 }
 

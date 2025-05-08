@@ -35,7 +35,7 @@ impl ComponentRunner for FragmentComponentRunner {
 
         let run_result =
             run_component_fragment(input, Arc::clone(component_definition), rigging, context)
-                .instrument(tracing::info_span!("fragment"))
+                .instrument(tracing::info_span!("rigging"))
                 .await?;
 
         Ok(TryRunComponentResult::Ran { result: run_result })

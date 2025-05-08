@@ -67,7 +67,7 @@ pub(crate) async fn trmnl_display(
         data.into_inner(),
         req,
     )
-    .instrument(info_span!("device", %device_name))
+    .instrument(info_span!("device", ""=%device_name))
     .await?;
 
     let RigResponse::Url(url_response) = device_response.rig_response else {

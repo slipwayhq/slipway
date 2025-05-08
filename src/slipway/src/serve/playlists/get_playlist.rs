@@ -50,7 +50,7 @@ pub async fn get_playlist(
     };
 
     get_playlist_response(playlist_name, device, format, image_format, state, req)
-        .instrument(info_span!("playlist", %playlist_name))
+        .instrument(info_span!("playlist", ""=%playlist_name))
         .await
 }
 
@@ -83,7 +83,7 @@ pub async fn get_playlist_response(
         state,
         req,
     )
-    .instrument(debug_span!("rig", %rig_name))
+    .instrument(debug_span!("rig", ""=%rig_name))
     .await?;
 
     Ok(PlaylistResponse {

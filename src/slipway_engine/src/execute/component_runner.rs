@@ -177,7 +177,7 @@ async fn run_component_inner<THostError>(
 
         let result = runner
             .run(input.as_ref(), &execution_data.context)
-            .instrument(info_span!("component", %handle))
+            .instrument(info_span!("component", ""=%handle))
             .await
             .map_err(|e| RunError::RunComponentFailed {
                 component_handle: execution_data.context.component_handle().clone(),
