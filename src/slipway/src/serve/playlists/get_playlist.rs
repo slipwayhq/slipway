@@ -5,7 +5,7 @@ use actix_web::{HttpRequest, get, web};
 use serde::Deserialize;
 use tracing::{Instrument, debug_span, info_span};
 
-use crate::primitives::PlaylistName;
+use crate::primitives::{DeviceName, PlaylistName};
 use crate::serve::responses::{
     FormatQuery, PlaylistResponse, RigResultFormat, RigResultImageFormat, ServeError,
 };
@@ -22,6 +22,8 @@ struct GetPlaylistPath {
 struct GetPlaylistQuery {
     #[serde(flatten)]
     output: FormatQuery,
+
+    device: Option<DeviceName>,
 }
 
 #[get("/playlists/{playlist_name}")]
@@ -39,7 +41,15 @@ pub async fn get_playlist(
     let image_format = query.output.image_format.unwrap_or_default();
     let format = query.output.format.unwrap_or_default();
 
-    get_playlist_response(playlist_name, None, format, image_format, state, req)
+    let device = match query.device {
+        Some(device_name) => {
+            let device = state.repository.get_device(&device_name).await?;
+            Some(RequestingDevice::from(device_name, device))
+        }
+        None => None,
+    };
+
+    get_playlist_response(playlist_name, device, format, image_format, state, req)
         .instrument(info_span!("playlist", %playlist_name))
         .await
 }

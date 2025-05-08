@@ -100,6 +100,9 @@ struct SlipwayServeConfig {
     #[serde(default, skip_serializing_if = "ShowApiKeys::is_default")]
     show_api_keys: ShowApiKeys,
 
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    port: Option<u16>,
+
     #[serde(default, skip_serializing_if = "RepositoryConfig::is_default")]
     repository: RepositoryConfig,
 }
@@ -213,6 +216,7 @@ async fn serve_with_config(
     info!("Starting Slipway Serve with config: {:?}", config);
 
     let secret = std::env::var(SLIPWAY_SECRET_KEY).ok();
+    let port = config.port.unwrap_or(8080);
 
     HttpServer::new(move || {
         create_app(
@@ -222,7 +226,7 @@ async fn serve_with_config(
             secret.clone(),
         )
     })
-    .bind(("0.0.0.0", 8080))?
+    .bind(("0.0.0.0", port))?
     .run()
     .await?;
 

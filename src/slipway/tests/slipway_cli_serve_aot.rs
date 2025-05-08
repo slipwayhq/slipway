@@ -58,6 +58,7 @@ async fn slipway_cli_serve_aot_and_check_response() {
     config_json["hashed_api_keys"] = serde_json::json!({
         "test": hash_string("test_api_key")
     });
+    config_json["port"] = serde_json::Value::Number(8081.into());
 
     let components_path = get_slipway_test_components_path();
     let components_path_string = components_path.to_string_lossy();
@@ -106,7 +107,7 @@ async fn slipway_cli_serve_aot_and_check_response() {
 
     // Make a request to check the server's response
     let maybe_response =
-        reqwest::get("http://localhost:8080/rigs/hello?format=json&authorization=test_api_key")
+        reqwest::get("http://localhost:8081/rigs/hello?format=json&authorization=test_api_key")
             .await;
 
     // Shut down the server

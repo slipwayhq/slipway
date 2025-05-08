@@ -96,6 +96,7 @@ async fn slipway_cli_serve_and_check_response() {
     config_json["hashed_api_keys"] = serde_json::json!({
         "test": hash_string("test_api_key")
     });
+    config_json["port"] = serde_json::Value::Number(8080.into());
     std::fs::write(
         path.join("slipway_serve.json"),
         serde_json::to_string_pretty(&config_json).unwrap(),
@@ -110,7 +111,7 @@ async fn slipway_cli_serve_and_check_response() {
 
     // Make a request to check the server's response
     let maybe_response =
-        reqwest::get("http://localhost:8080/rigs/hello?format=json&authorization=test_api_key")
+        reqwest::get("http://localhost:8081/rigs/hello?format=json&authorization=test_api_key")
             .await;
 
     let response = maybe_response.unwrap();
@@ -204,6 +205,7 @@ async fn slipway_cli_serve_device_and_check_context() {
     config_json["hashed_api_keys"] = serde_json::json!({
         "test": hash_string("test_api_key")
     });
+    config_json["port"] = serde_json::Value::Number(8080.into());
     config_json["timezone"] = serde_json::Value::String(TEST_TIMEZONE.to_string());
 
     let components_path = get_slipway_test_components_path();
@@ -229,37 +231,40 @@ async fn slipway_cli_serve_device_and_check_context() {
     // Spawn the server as a child process
     let _server_guard = ServerGuard::new(path, false);
 
-    // Make a request to check the server's response
-    let maybe_response = reqwest::get(
-        "http://localhost:8080/devices/hello_device?format=json&authorization=test_api_key",
-    )
-    .await;
+    for url in [
+        "http://localhost:8081/devices/hello_device?format=json&authorization=test_api_key",
+        "http://localhost:8081/playlists/hello_playlist?device=hello_device&format=json&authorization=test_api_key",
+        "http://localhost:8081/rigs/hello?device=hello_device&format=json&authorization=test_api_key",
+    ] {
+        // Make a request to check the server's response
+        let maybe_response = reqwest::get(url).await;
 
-    let response = maybe_response.unwrap();
-    let status_code = response.status();
-    println!("{:?}", response);
+        let response = maybe_response.unwrap();
+        let status_code = response.status();
+        println!("{:?}", response);
 
-    let body = response.text().await.unwrap();
-    println!("{:?}", body);
+        let body = response.text().await.unwrap();
+        println!("{:?}", body);
 
-    assert_eq!(status_code, 200);
+        assert_eq!(status_code, 200);
 
-    println!("{:?}", body);
-    let body_json: serde_json::Value = serde_json::from_str(&body).unwrap();
-    assert_eq!(
-        body_json,
-        serde_json::json!({
-            "tz": TEST_TIMEZONE,
-            "input": {
-                "context": {
-                    "timezone": TEST_TIMEZONE,
-                    "device": {
-                        "foo": "bar",
+        println!("{:?}", body);
+        let body_json: serde_json::Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(
+            body_json,
+            serde_json::json!({
+                "tz": TEST_TIMEZONE,
+                "input": {
+                    "context": {
+                        "timezone": TEST_TIMEZONE,
+                        "device": {
+                            "foo": "bar",
+                        }
                     }
                 }
-            }
-        })
-    );
+            })
+        );
+    }
 }
 
 /// This test checks the TRMNL display API is working.
@@ -354,6 +359,7 @@ async fn slipway_cli_serve_trmnl() {
     config_json["hashed_api_keys"] = serde_json::json!({
         "test": hash_string("test_api_key")
     });
+    config_json["port"] = serde_json::Value::Number(8080.into());
     config_json["timezone"] = serde_json::Value::String(TEST_TIMEZONE.to_string());
 
     let components_path = get_slipway_test_components_path();
@@ -389,7 +395,7 @@ async fn slipway_cli_serve_trmnl() {
     );
 
     let maybe_response = client
-        .get("http://localhost:8080/trmnl/api/display")
+        .get("http://localhost:8081/trmnl/api/display")
         .headers(headers)
         .send()
         .await;

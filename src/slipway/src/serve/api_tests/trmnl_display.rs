@@ -29,6 +29,7 @@ async fn when_no_device_id_header_it_should_return_bad_request() {
         rig_permissions: HashMap::new(),
         hashed_api_keys: HashMap::new(),
         show_api_keys: ShowApiKeys::Never,
+        port: None,
         repository: RepositoryConfig::Memory {
             devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
@@ -59,6 +60,7 @@ async fn when_no_device_with_matching_id_it_should_return_not_found() {
         rig_permissions: HashMap::new(),
         hashed_api_keys: HashMap::new(),
         show_api_keys: ShowApiKeys::Never,
+        port: None,
         repository: RepositoryConfig::Memory {
             devices: vec![(
                 dn("d_1"),
@@ -103,6 +105,7 @@ async fn when_api_key_incorrect_it_should_return_unauthorized() {
         rig_permissions: HashMap::new(),
         hashed_api_keys: HashMap::new(),
         show_api_keys: ShowApiKeys::Never,
+        port: None,
         repository: RepositoryConfig::Memory {
             devices: vec![(
                 dn("d_1"),
@@ -147,6 +150,7 @@ async fn when_reset_firmware_set_it_should_return_reset_firmware_flag() {
         rig_permissions: HashMap::new(),
         hashed_api_keys: HashMap::new(),
         show_api_keys: ShowApiKeys::Never,
+        port: None,
         repository: RepositoryConfig::Memory {
             devices: vec![(
                 dn("d_1"),
@@ -191,6 +195,7 @@ async fn when_valid_request_and_secret_it_should_return_rig_result_with_sas() {
         rig_permissions: HashMap::new(),
         hashed_api_keys: HashMap::new(),
         show_api_keys: ShowApiKeys::Never,
+        port: None,
         repository: RepositoryConfig::Memory {
             devices: vec![(
                 dn("d_1"),
@@ -227,8 +232,9 @@ async fn when_valid_request_and_secret_it_should_return_rig_result_with_sas() {
     assert_eq!(body["status"].as_u64(), Some(0));
 
     let image_url = body["image_url"].as_str().unwrap();
-    assert!(image_url.contains("/devices/d_1?format=image&image_format=bmp_1bit&"));
+    assert!(image_url.contains("/rigs/r_1?format=image&image_format=bmp_1bit&"));
     assert!(!image_url.contains("&authorization="));
+    assert!(image_url.contains("&device=d_1"));
     assert!(image_url.contains("&sig="));
     assert!(image_url.contains("&exp="));
     assert!(image_url.contains("&t="));
@@ -243,6 +249,7 @@ async fn when_valid_request_and_no_secret_it_should_return_rig_result_with_api_k
         rig_permissions: HashMap::new(),
         hashed_api_keys: HashMap::new(),
         show_api_keys: ShowApiKeys::Never,
+        port: None,
         repository: RepositoryConfig::Memory {
             devices: vec![(
                 dn("d_1"),
@@ -279,8 +286,9 @@ async fn when_valid_request_and_no_secret_it_should_return_rig_result_with_api_k
     assert_eq!(body["status"].as_u64(), Some(0));
 
     let image_url = body["image_url"].as_str().unwrap();
-    assert!(image_url.contains("/devices/d_1?format=image&image_format=bmp_1bit&"));
+    assert!(image_url.contains("/rigs/r_1?format=image&image_format=bmp_1bit&"));
     assert!(image_url.contains("&authorization="));
+    assert!(image_url.contains("&device=d_1"));
     assert!(!image_url.contains("&sig="));
     assert!(!image_url.contains("&exp="));
     assert!(image_url.contains("&t="));

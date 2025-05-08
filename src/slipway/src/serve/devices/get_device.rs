@@ -65,7 +65,7 @@ pub async fn get_device_response(
     super::super::playlists::get_playlist::get_playlist_response(
         playlist_name,
         Some(RequestingDevice {
-            name: device_name.to_string(),
+            name: device_name.clone(),
             context: device.context,
         }),
         format,

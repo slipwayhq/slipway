@@ -134,6 +134,7 @@ async fn when_devices_playlists_and_rigs_do_not_exist_should_return_not_found() 
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key(""),
         show_api_keys: ShowApiKeys::Never,
+        port: None,
         repository: RepositoryConfig::Memory {
             devices: HashMap::new(),
             playlists: HashMap::new(),
@@ -180,6 +181,7 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key(""),
         show_api_keys: ShowApiKeys::Never,
+        port: None,
         repository: RepositoryConfig::Memory {
             devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
@@ -240,6 +242,7 @@ async fn when_auth_not_supplied_it_should_return_unauthorized() {
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key("auth123"),
         show_api_keys: ShowApiKeys::Never,
+        port: None,
         repository: RepositoryConfig::Memory {
             devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
@@ -292,6 +295,7 @@ async fn when_auth_not_supplied_it_should_allow_favicon_requests() {
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key("auth123"),
         show_api_keys: ShowApiKeys::Never,
+        port: None,
         repository: RepositoryConfig::Memory {
             devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
@@ -316,6 +320,7 @@ async fn when_auth_incorrect_it_should_return_unauthorized() {
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key("auth123"),
         show_api_keys: ShowApiKeys::Never,
+        port: None,
         repository: RepositoryConfig::Memory {
             devices: vec![trmnl_device("d_1", "p_1", "auth456")]
                 .into_iter()
@@ -373,6 +378,7 @@ async fn when_auth_supplied_it_should_execute_rigs() {
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key("auth123"),
         show_api_keys: ShowApiKeys::Never,
+        port: None,
         repository: RepositoryConfig::Memory {
             devices: vec![trmnl_device("d_1", "p_1", "auth456")]
                 .into_iter()
@@ -438,6 +444,7 @@ async fn when_device_auth_supplied_it_should_execute_rigs() {
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key("auth123"),
         show_api_keys: ShowApiKeys::Never,
+        port: None,
         repository: RepositoryConfig::Memory {
             devices: vec![trmnl_device("d_1", "p_1", "auth456")]
                 .into_iter()

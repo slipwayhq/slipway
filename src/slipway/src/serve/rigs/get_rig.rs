@@ -7,9 +7,9 @@ use anyhow::Context;
 use serde::Deserialize;
 use tracing::{Instrument, info_span};
 
-use crate::primitives::RigName;
+use crate::primitives::{DeviceName, RigName};
 use crate::serve::auth::compute_signature_parts;
-use crate::serve::{API_GET_DEVICE_PATH, RequestState, TRMNL_DISPLAY_PATH};
+use crate::serve::{API_GET_RIG_PATH, Device, RequestState, TRMNL_DISPLAY_PATH};
 
 use crate::serve::responses::{
     FormatQuery, ImageResponse, RigResponse, RigResultFormat, RigResultImageFormat, ServeError,
@@ -27,6 +27,8 @@ struct GetRigPath {
 struct GetRigQuery {
     #[serde(flatten)]
     output: FormatQuery,
+
+    device: Option<DeviceName>,
 }
 
 #[get("/rigs/{rig_name}")]
@@ -44,14 +46,31 @@ pub async fn get_rig(
     let image_format = query.output.image_format.unwrap_or_default();
     let format = query.output.format.unwrap_or_default();
 
-    get_rig_response(&rig_name, None, format, image_format, state, req)
+    let device = match query.device {
+        Some(device_name) => {
+            let device = state.repository.get_device(&device_name).await?;
+            Some(RequestingDevice::from(device_name, device))
+        }
+        None => None,
+    };
+
+    get_rig_response(&rig_name, device, format, image_format, state, req)
         .instrument(info_span!("rig", %rig_name))
         .await
 }
 
 pub struct RequestingDevice {
-    pub name: String,
+    pub name: DeviceName,
     pub context: Option<serde_json::Value>,
+}
+
+impl RequestingDevice {
+    pub fn from(name: DeviceName, device: Device) -> Self {
+        Self {
+            name,
+            context: device.context,
+        }
+    }
 }
 
 pub async fn get_rig_response(
@@ -99,14 +118,7 @@ pub async fn get_rig_response(
                 let path = uri.path();
                 if path.ends_with(TRMNL_DISPLAY_PATH) {
                     let path_without_trmnl = &path[0..path.len() - TRMNL_DISPLAY_PATH.len()];
-                    let path = match device {
-                        Some(device) => {
-                            let device_name = device.name;
-                            format!("{path_without_trmnl}{API_GET_DEVICE_PATH}/{device_name}")
-                        }
-                        None => panic!("TRMNL display requests should provide a device"),
-                    };
-                    Cow::Owned(path)
+                    Cow::Owned(format!("{path_without_trmnl}{API_GET_RIG_PATH}/{rig_name}"))
                 } else {
                     Cow::Borrowed(path)
                 }
@@ -132,6 +144,10 @@ pub async fn get_rig_response(
                     .as_str()
                     .expect("Image format should be a string"),
             );
+
+            if let Some(device) = device {
+                qs.append_pair("device", &device.name.0);
+            }
 
             let maybe_secret = state.secret.as_deref();
             if let Some(secret) = maybe_secret {
