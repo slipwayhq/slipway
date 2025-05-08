@@ -47,6 +47,16 @@ hmac = { workspace = true }
 rpassword = { workspace = true }
 openssl = { workspace = true }
 
+# These are temporary until temporal_rs is updated
+icu_calendar = "=2.0.0-beta2"
+icu_calendar_data = "=2.0.0-beta2"
+icu_collections = "=2.0.0-beta2"
+icu_locale = "=2.0.0-beta2"
+icu_locale_core = "=2.0.0-beta2"
+icu_locale_data = "=2.0.0-beta2"
+icu_provider = "=2.0.0-beta2"
+icu_provider_baked = "=2.0.0-beta2"
+
 [dev-dependencies]
 common_test_utils = { workspace = true }
 common_macros = { workspace = true }
