@@ -30,6 +30,8 @@ ALL_RUSTFLAGS="--deny warnings --codegen target-feature=+crt-static $TARGET_RUST
 # We remove sixel (via --no-default-features) because it is not supported on musl.
 if [[ "$TARGET" == *"musl"* ]]; then
   RUSTFLAGS="$ALL_RUSTFLAGS" cross build --bin slipway --target $TARGET --release --no-default-features --features vendored-openssl
+elif [[ "$TARGET" == *"gnu"* ]]; then
+  RUSTFLAGS="$ALL_RUSTFLAGS" cross build --bin slipway --target $TARGET --release --features vendored-openssl
 else
   RUSTFLAGS="$ALL_RUSTFLAGS" cargo build --bin slipway --target $TARGET --release --features vendored-openssl
 fi
