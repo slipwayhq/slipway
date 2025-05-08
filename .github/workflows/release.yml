@@ -35,6 +35,7 @@ jobs:
         target:
         - aarch64-apple-darwin
         - aarch64-unknown-linux-musl
+        - aarch64-unknown-linux-gnu
         # These older ARM targets are disabled because cranelift (used by wasmtime)
         # only supports aarch64 ARM. It's potentially possible to use an alternative to cranelift.
         # https://github.com/bytecodealliance/wasmtime/issues/1173
@@ -44,6 +45,7 @@ jobs:
         # I've not looked into this much.
         #- x86_64-apple-darwin
         - x86_64-unknown-linux-musl
+        - x86_64-unknown-linux-gnu
         include:
         - target: aarch64-apple-darwin
           os: macos-latest
@@ -51,6 +53,9 @@ jobs:
         - target: aarch64-unknown-linux-musl
           os: ubuntu-latest
           target_rustflags: '--codegen linker=aarch64-linux-musl-gcc'
+        - target: aarch64-unknown-linux-gnu
+          os: ubuntu-latest
+          target_rustflags: ''
         # - target: arm-unknown-linux-musleabihf
         #   os: ubuntu-latest
         #   target_rustflags: '--codegen linker=arm-linux-gnueabihf-gcc'
@@ -61,6 +66,9 @@ jobs:
         #   os: macos-latest
         #   target_rustflags: ''
         - target: x86_64-unknown-linux-musl
+          os: ubuntu-latest
+          target_rustflags: ''
+        - target: x86_64-unknown-linux-gnu
           os: ubuntu-latest
           target_rustflags: ''
 
