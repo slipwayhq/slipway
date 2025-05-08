@@ -287,7 +287,7 @@ mod tests {
             Schema::JsonTypeDef { schema } => {
                 assert_eq!(
                     vec![
-                        // "age" has the wrong type (required by "/properties/age/type")
+                        // "width" has the wrong type
                         ValidationErrorIndicator {
                             instance_path: vec!["canvas".into(), "width".into()],
                             schema_path: vec![
