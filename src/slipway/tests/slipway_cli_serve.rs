@@ -3,7 +3,7 @@ use common_macros::slipway_test_async;
 use common_test_utils::get_slipway_test_components_path;
 use reqwest::Client;
 use reqwest::header::{HeaderMap, HeaderValue};
-use slipway_engine::TEST_TIMEZONE;
+use slipway_engine::{TEST_LOCALE, TEST_TIMEZONE};
 use slipway_host::hash_string;
 use tempfile::tempdir;
 
@@ -207,6 +207,7 @@ async fn slipway_cli_serve_device_and_check_context() {
     });
     config_json["port"] = serde_json::Value::Number(8081.into());
     config_json["timezone"] = serde_json::Value::String(TEST_TIMEZONE.to_string());
+    config_json["locale"] = serde_json::Value::String(TEST_LOCALE.to_string());
 
     let components_path = get_slipway_test_components_path();
     let components_path_string = components_path.to_string_lossy();
@@ -236,6 +237,8 @@ async fn slipway_cli_serve_device_and_check_context() {
         "http://localhost:8081/playlists/hello_playlist?device=hello_device&format=json&authorization=test_api_key",
         "http://localhost:8081/rigs/hello?device=hello_device&format=json&authorization=test_api_key",
     ] {
+        println!("Making request to: {}", url);
+
         // Make a request to check the server's response
         let maybe_response = reqwest::get(url).await;
 
@@ -254,9 +257,11 @@ async fn slipway_cli_serve_device_and_check_context() {
             body_json,
             serde_json::json!({
                 "tz": TEST_TIMEZONE,
+                "lc": TEST_LOCALE,
                 "input": {
                     "context": {
                         "timezone": TEST_TIMEZONE,
+                        "locale": TEST_LOCALE,
                         "device": {
                             "foo": "bar",
                         }

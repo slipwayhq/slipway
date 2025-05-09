@@ -11,7 +11,8 @@ use termion::{color, style};
 
 use slipway_engine::{
     BasicComponentCache, BasicComponentsLoader, CallChain, ComponentHandle, ComponentRigging,
-    Permissions, Rig, RigSession, RigSessionOptions, Rigging, SlipwayReference, parse_rig,
+    Environment, Permissions, Rig, RigSession, RigSessionOptions, Rigging, SlipwayReference,
+    parse_rig,
 };
 
 use crate::component_runners::get_component_runners;
@@ -248,10 +249,15 @@ async fn debug_rig<W: Write>(
         .registry_lookup_urls(registry_urls)
         .build();
 
-    let system_timezone = iana_time_zone::get_timezone()?;
+    let timezone = iana_time_zone::get_timezone()?;
+    let locale = sys_locale::get_locale().unwrap_or(crate::DEFAULT_LOCALE.to_string());
     let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
-    let session_options =
-        RigSessionOptions::new_for_run(false, fonts_path.as_deref(), system_timezone).await;
+    let session_options = RigSessionOptions::new_for_run(
+        false,
+        fonts_path.as_deref(),
+        Environment { timezone, locale },
+    )
+    .await;
     let session = RigSession::new_with_options(rig, &component_cache, session_options);
     let mut state = session.initialize()?;
 

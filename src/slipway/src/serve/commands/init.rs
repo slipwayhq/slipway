@@ -2,7 +2,9 @@ use std::path::{Path, PathBuf};
 
 use tracing::info;
 
-use crate::serve::{RepositoryConfig, SlipwayServeConfig, get_serve_config_path};
+use crate::serve::{
+    RepositoryConfig, SlipwayServeConfig, SlipwayServeEnvironment, get_serve_config_path,
+};
 
 pub async fn init(serve_path: PathBuf) -> anyhow::Result<()> {
     init_serve_config(&serve_path).await?;
@@ -41,6 +43,7 @@ pub async fn init_serve_config(serve_path: &Path) -> anyhow::Result<()> {
     }
 
     let system_timezone = iana_time_zone::get_timezone()?.parse()?;
+    let system_locale = sys_locale::get_locale().unwrap_or(crate::DEFAULT_LOCALE.to_string());
 
     let config = SlipwayServeConfig {
         log_level: Some("info".to_string()),
@@ -48,7 +51,10 @@ pub async fn init_serve_config(serve_path: &Path) -> anyhow::Result<()> {
             "file:./components/{publisher}.{name}.{version}.tar".to_string(),
             "file:./components/{publisher}.{name}".to_string(),
         ],
-        timezone: Some(system_timezone),
+        environment: SlipwayServeEnvironment {
+            timezone: Some(system_timezone),
+            locale: Some(system_locale),
+        },
         repository: RepositoryConfig::Filesystem,
         ..SlipwayServeConfig::default()
     };

@@ -66,7 +66,9 @@ fn set_process_env(
 ) -> Result<(), RunComponentError> {
     let process = serde_json::json!({
         "env": {
-            "TZ": execution_context.rig_session_options.timezone,
+            "TZ": execution_context.rig_session_options.environment.timezone,
+            "LC": execution_context.rig_session_options.environment.locale,
+            "LC_ALL": execution_context.rig_session_options.environment.locale,
         }
     });
 

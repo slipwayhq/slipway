@@ -46,6 +46,7 @@ indoc = { workspace = true }
 hmac = { workspace = true }
 rpassword = { workspace = true }
 openssl = { workspace = true }
+sys-locale = { workspace = true }
 
 # These are temporary until temporal_rs is updated
 icu_calendar = "=2.0.0-beta2"

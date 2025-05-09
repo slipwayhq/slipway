@@ -16,6 +16,7 @@ use super::run_record::RigRunRecord;
 use crate::parse::types::Rig;
 
 pub const TEST_TIMEZONE: &str = "Canada/Eastern";
+pub const TEST_LOCALE: &str = "fr-CA";
 
 pub struct RigSession<'cache> {
     pub(crate) rig: Rig,
@@ -41,7 +42,10 @@ impl<'cache> RigSession<'cache> {
             rig,
             component_cache,
             options: RigSessionOptions::new_for_test(
-                TEST_TIMEZONE.to_string(),
+                Environment {
+                    timezone: TEST_TIMEZONE.to_string(),
+                    locale: TEST_LOCALE.to_string(),
+                },
                 Some(serde_json::json!({
                     "width": 800,
                     "height": 480,
@@ -94,10 +98,25 @@ impl<'cache> RigSession<'cache> {
 pub struct RigSessionOptions {
     pub base_path: PathBuf,
     pub aot_path: Option<PathBuf>,
-    pub timezone: String,
+    pub environment: Environment,
     pub rig_additional_context: serde_json::Value,
     run_record: Option<RigRunRecord>,
     font_context: Arc<Mutex<FontContext>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Environment {
+    pub timezone: String,
+    pub locale: String,
+}
+
+impl Environment {
+    pub fn for_test() -> Self {
+        Environment {
+            timezone: TEST_TIMEZONE.to_string(),
+            locale: TEST_LOCALE.to_string(),
+        }
+    }
 }
 
 impl RigSessionOptions {
@@ -105,16 +124,16 @@ impl RigSessionOptions {
         base_path: PathBuf,
         aot_path: Option<PathBuf>,
         fonts_path: PathBuf,
-        timezone: String,
+        environment: Environment,
         device_context: Option<serde_json::Value>,
     ) -> Self {
         let font_context = FontContext::new_with_path(&fonts_path).await;
-        let rig_additional_context = get_rig_additional_context(&timezone, device_context);
+        let rig_additional_context = get_rig_additional_context(&environment, device_context);
 
         RigSessionOptions {
             base_path,
             aot_path,
-            timezone,
+            environment,
             rig_additional_context,
             run_record: None,
             font_context: Arc::new(Mutex::new(font_context)),
@@ -124,7 +143,7 @@ impl RigSessionOptions {
     pub async fn new_for_run(
         use_run_record: bool,
         fonts_path: Option<&Path>,
-        timezone: String,
+        environment: Environment,
     ) -> Self {
         let run_record = if use_run_record {
             Some(RigRunRecord::new())
@@ -137,25 +156,28 @@ impl RigSessionOptions {
             Some(fonts_path) => FontContext::new_with_path(fonts_path).await,
         };
 
-        let rig_additional_context = get_rig_additional_context(&timezone, None);
+        let rig_additional_context = get_rig_additional_context(&environment, None);
 
         RigSessionOptions {
             base_path: PathBuf::from("."),
             aot_path: None,
-            timezone,
+            environment,
             rig_additional_context,
             run_record,
             font_context: Arc::new(Mutex::new(font_context)),
         }
     }
 
-    pub fn new_for_test(timezone: String, device_context: Option<serde_json::Value>) -> Self {
-        let rig_additional_context = get_rig_additional_context(&timezone, device_context);
+    pub fn new_for_test(
+        environment: Environment,
+        device_context: Option<serde_json::Value>,
+    ) -> Self {
+        let rig_additional_context = get_rig_additional_context(&environment, device_context);
 
         RigSessionOptions {
             base_path: PathBuf::from("."),
             aot_path: None,
-            timezone,
+            environment,
             rig_additional_context,
             run_record: None,
             font_context: Arc::new(Mutex::new(FontContext::new())),
@@ -168,11 +190,12 @@ impl RigSessionOptions {
 }
 
 fn get_rig_additional_context(
-    timezone: &str,
+    environment: &Environment,
     device_context: Option<serde_json::Value>,
 ) -> serde_json::Value {
     serde_json::json!({
-        "timezone": timezone,
+        "timezone": environment.timezone,
+        "locale": environment.locale,
         "device": device_context,
     })
 }

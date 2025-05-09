@@ -16,6 +16,7 @@ impl Guest for Component {
 
         let output = Output {
             tz: std::env::var("TZ").ok(),
+            lc: std::env::var("LC").ok(),
             input,
         };
 
@@ -29,6 +30,9 @@ export!(Component);
 struct Output {
     #[serde(skip_serializing_if = "Option::is_none")]
     tz: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    lc: Option<String>,
 
     input: serde_json::Value,
 }

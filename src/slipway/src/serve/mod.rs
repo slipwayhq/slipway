@@ -11,6 +11,7 @@ use chrono_tz::Tz;
 use repository::{Device, Playlist, ServeRepository};
 use serde::{Deserialize, Serialize};
 
+use slipway_engine::TEST_TIMEZONE;
 use tracing::{debug, info, warn};
 
 use crate::permissions::PermissionsOwned;
@@ -88,8 +89,8 @@ struct SlipwayServeConfig {
     #[serde(default)]
     registry_urls: Vec<String>,
 
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    timezone: Option<Tz>,
+    #[serde(flatten)]
+    environment: SlipwayServeEnvironment,
 
     #[serde(default)]
     rig_permissions: HashMap<RigName, PermissionsOwned>,
@@ -105,6 +106,25 @@ struct SlipwayServeConfig {
 
     #[serde(default, skip_serializing_if = "RepositoryConfig::is_default")]
     repository: RepositoryConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(deny_unknown_fields)]
+struct SlipwayServeEnvironment {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    timezone: Option<Tz>,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    locale: Option<String>,
+}
+
+impl SlipwayServeEnvironment {
+    pub fn for_test() -> Self {
+        SlipwayServeEnvironment {
+            timezone: Some(Tz::Canada__Eastern),
+            locale: Some(TEST_TIMEZONE.to_string()),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]

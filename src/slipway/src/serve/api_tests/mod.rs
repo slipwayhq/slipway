@@ -6,13 +6,15 @@ use actix_web::{
     http::{StatusCode, header::HeaderName},
     test,
 };
-use chrono_tz::Tz;
 use slipway_engine::{Rigging, SpecialComponentReference};
 use slipway_host::hash_string;
 
 use crate::{
     primitives::{ApiKeyName, DeviceName, PlaylistName, RigName},
-    serve::{REFRESH_RATE_HEADER, RepositoryConfig, SlipwayServeConfig, create_app},
+    serve::{
+        REFRESH_RATE_HEADER, RepositoryConfig, SlipwayServeConfig, SlipwayServeEnvironment,
+        create_app,
+    },
 };
 
 use super::{
@@ -130,7 +132,7 @@ async fn when_devices_playlists_and_rigs_do_not_exist_should_return_not_found() 
     let config = SlipwayServeConfig {
         log_level: Some("debug".to_string()),
         registry_urls: vec![],
-        timezone: Some(Tz::Canada__Eastern),
+        environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key(""),
         show_api_keys: ShowApiKeys::Never,
@@ -177,7 +179,7 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
     let config = SlipwayServeConfig {
         log_level: Some("debug".to_string()),
         registry_urls: vec![],
-        timezone: Some(Tz::Canada__Eastern),
+        environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key(""),
         show_api_keys: ShowApiKeys::Never,
@@ -238,7 +240,7 @@ async fn when_auth_not_supplied_it_should_return_unauthorized() {
     let config = SlipwayServeConfig {
         log_level: Some("debug".to_string()),
         registry_urls: vec![],
-        timezone: Some(Tz::Canada__Eastern),
+        environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key("auth123"),
         show_api_keys: ShowApiKeys::Never,
@@ -291,7 +293,7 @@ async fn when_auth_not_supplied_it_should_allow_favicon_requests() {
     let config = SlipwayServeConfig {
         log_level: Some("debug".to_string()),
         registry_urls: vec![],
-        timezone: Some(Tz::Canada__Eastern),
+        environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key("auth123"),
         show_api_keys: ShowApiKeys::Never,
@@ -316,7 +318,7 @@ async fn when_auth_incorrect_it_should_return_unauthorized() {
     let config = SlipwayServeConfig {
         log_level: Some("debug".to_string()),
         registry_urls: vec![],
-        timezone: Some(Tz::Canada__Eastern),
+        environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key("auth123"),
         show_api_keys: ShowApiKeys::Never,
@@ -374,7 +376,7 @@ async fn when_auth_supplied_it_should_execute_rigs() {
     let config = SlipwayServeConfig {
         log_level: Some("debug".to_string()),
         registry_urls: vec![],
-        timezone: Some(Tz::Canada__Eastern),
+        environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key("auth123"),
         show_api_keys: ShowApiKeys::Never,
@@ -440,7 +442,7 @@ async fn when_device_auth_supplied_it_should_execute_rigs() {
     let config = SlipwayServeConfig {
         log_level: Some("debug".to_string()),
         registry_urls: vec![],
-        timezone: Some(Tz::Canada__Eastern),
+        environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
         hashed_api_keys: create_auth_for_key("auth123"),
         show_api_keys: ShowApiKeys::Never,

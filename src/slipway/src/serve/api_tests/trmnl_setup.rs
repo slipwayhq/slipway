@@ -1,10 +1,9 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use actix_web::{http::StatusCode, test};
-use chrono_tz::Tz;
 use slipway_host::hash_string;
 
-use crate::serve::{ID_HEADER, ShowApiKeys};
+use crate::serve::{ID_HEADER, ShowApiKeys, SlipwayServeEnvironment};
 use crate::serve::{RepositoryConfig, SlipwayServeConfig, create_app, repository::TrmnlDevice};
 
 use super::super::Device;
@@ -18,7 +17,7 @@ async fn when_device_already_configured_for_trmnl_it_should_return_new_credentia
     let config = SlipwayServeConfig {
         log_level: Some("debug".to_string()),
         registry_urls: vec![],
-        timezone: Some(Tz::Canada__Eastern),
+        environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
         hashed_api_keys: HashMap::new(),
         show_api_keys: ShowApiKeys::Never,
@@ -61,7 +60,7 @@ async fn when_device_not_configured_for_trmnl_it_should_return_new_credentials()
     let config = SlipwayServeConfig {
         log_level: Some("debug".to_string()),
         registry_urls: vec![],
-        timezone: Some(Tz::Canada__Eastern),
+        environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
         hashed_api_keys: HashMap::new(),
         show_api_keys: ShowApiKeys::Never,

@@ -26,7 +26,7 @@ pub(super) async fn evaluate_playlist(
     playlist_name: &PlaylistName,
 ) -> Result<Option<PlaylistResult>, ServeError> {
     let playlist = state.repository.get_playlist(playlist_name).await?;
-    let timezone = state.config.timezone.unwrap_or_default();
+    let timezone = state.config.environment.timezone.unwrap_or_default();
     evaluate_playlist_and_refresh(playlist, timezone).map_err(ServeError::Internal)
 }
 

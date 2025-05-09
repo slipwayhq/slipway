@@ -35,6 +35,7 @@ use tracing_subscriber::{FmtSubscriber, fmt::time::FormatTime};
 const WASM_INTERFACE_TYPE_STR: &str = include_str!("../../wit/latest/slipway.wit");
 const SLIPWAY_COMPONENT_FILE_NAME: &str = "slipway_component.json";
 const AOT_ARTIFACT_FOLDER_NAME: &str = "aot";
+const DEFAULT_LOCALE: &str = "en-US";
 
 #[derive(Debug, Parser)]
 #[command(name = "slipway")]

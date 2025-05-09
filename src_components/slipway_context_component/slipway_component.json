@@ -9,6 +9,9 @@
       "tz": {
         "type": "string"
       },
+      "lc": {
+        "type": "string"
+      },
       "input": {}
     }
   }

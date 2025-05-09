@@ -37,10 +37,14 @@ pub async fn run_component_wasm(
     // Create a WASI context, including stdin and stdout pipes
     let stdout = OutputObserverStream::new(OutputObserverType::Stdout);
     let stderr = OutputObserverStream::new(OutputObserverType::Stderr);
+
+    let environment = &execution_context.rig_session_options.environment;
     let wasi_ctx = WasiCtxBuilder::new()
         .stdout(stdout)
         .stderr(stderr)
-        .env("TZ", &execution_context.rig_session_options.timezone)
+        .env("TZ", &environment.timezone)
+        .env("LC", &environment.locale)
+        .env("LC_ALL", &environment.locale)
         .build();
 
     // Create a store

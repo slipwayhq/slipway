@@ -7,7 +7,8 @@ use common_test_utils::{
 use serde::Deserialize;
 use serde_json::json;
 use slipway_engine::{
-    ComponentHandle, ComponentRigging, Permissions, Rig, Rigging, SlipwayReference, TEST_TIMEZONE,
+    ComponentHandle, ComponentRigging, Permissions, Rig, Rigging, SlipwayReference, TEST_LOCALE,
+    TEST_TIMEZONE,
 };
 
 mod common;
@@ -46,12 +47,14 @@ async fn run(component: &str) {
     let output = serde_json::from_value::<Output>(component_output.value.clone()).unwrap();
 
     assert_eq!(output.tz.as_deref(), Some(TEST_TIMEZONE));
+    assert_eq!(output.lc.as_deref(), Some(TEST_LOCALE));
 
     assert_eq!(
         output.input,
         json!({
             "context": {
                 "timezone": TEST_TIMEZONE,
+                "locale": TEST_LOCALE,
                 "device": {
                     "width": 800,
                     "height": 480,
@@ -64,5 +67,6 @@ async fn run(component: &str) {
 #[derive(Deserialize)]
 struct Output {
     tz: Option<String>,
+    lc: Option<String>,
     input: serde_json::Value,
 }
