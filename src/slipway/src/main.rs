@@ -311,7 +311,7 @@ struct CommonRunArgs {
     ///   https://registry.example.com/{publisher}/{name}/{version}
     ///   file:../slipway_{name}/components/{publisher}.{name}.{version}.tar
     #[arg(short, long, verbatim_doc_comment)]
-    registry_url: Vec<String>,
+    registry: Vec<String>,
 
     #[command(flatten)]
     permissions: CommonPermissionsArgs,
@@ -365,7 +365,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
             fonts,
         } => {
             let log_level = common.log_level;
-            let registry_url = common.registry_url;
+            let registry_url = common.registry;
             configure_tracing(log_level);
             let permissions = common.permissions.into_permissions()?;
             run_rig::run_rig(
@@ -381,7 +381,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
         }
         Commands::Debug { rig, common, fonts } => {
             let log_level = common.log_level;
-            let registry_url = common.registry_url;
+            let registry_url = common.registry;
             configure_tracing(log_level);
             let permissions = common.permissions.into_permissions()?;
             debug_rig::debug_rig_from_rig_file(
@@ -402,7 +402,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
             fonts,
         } => {
             let log_level = common.log_level;
-            let registry_url = common.registry_url;
+            let registry_url = common.registry;
             configure_tracing(log_level);
             let permissions = common.permissions.into_permissions()?;
             run_rig::run_rig_from_component_file(
@@ -425,7 +425,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
             fonts,
         } => {
             let log_level = common.log_level;
-            let registry_url = common.registry_url;
+            let registry_url = common.registry;
             configure_tracing(log_level);
             let permissions = common.permissions.into_permissions()?;
             debug_rig::debug_rig_from_component_file(
