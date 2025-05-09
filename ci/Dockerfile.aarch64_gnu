@@ -1,4 +1,0 @@
-FROM ghcr.io/cross-rs/aarch64-unknown-linux-gnu:latest
-
-RUN apt-get update && \
-    apt-get install --assume-yes libssl-dev:arm64 libsixel-dev:arm64 fontconfig:arm64

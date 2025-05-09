@@ -35,7 +35,7 @@ jobs:
         target:
         - aarch64-apple-darwin
         - aarch64-unknown-linux-musl
-        - aarch64-unknown-linux-gnu
+        # - aarch64-unknown-linux-gnu
         # These older ARM targets are disabled because cranelift (used by wasmtime)
         # only supports aarch64 ARM. It's potentially possible to use an alternative to cranelift.
         # https://github.com/bytecodealliance/wasmtime/issues/1173
@@ -53,9 +53,9 @@ jobs:
         - target: aarch64-unknown-linux-musl
           os: ubuntu-latest
           target_rustflags: '--codegen linker=aarch64-linux-musl-gcc'
-        - target: aarch64-unknown-linux-gnu
-          os: ubuntu-latest
-          target_rustflags: ''
+        # - target: aarch64-unknown-linux-gnu
+        #   os: ubuntu-latest
+        #   target_rustflags: ''
         # - target: arm-unknown-linux-musleabihf
         #   os: ubuntu-latest
         #   target_rustflags: '--codegen linker=arm-linux-gnueabihf-gcc'
@@ -80,11 +80,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install AArch64 Dependencies
-      if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
-      run: |
-        sudo apt-get update
-        sudo apt-get install gcc-aarch64-linux-gnu libc6-dev
+    # - name: Install AArch64 Dependencies
+    #   if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
+    #   run: |
+    #     sudo apt-get update
+    #     sudo apt-get install gcc-aarch64-linux-gnu libc6-dev
 
     - name: Install Linux Dependencies
       if: ${{ matrix.os == 'ubuntu-latest' }}
