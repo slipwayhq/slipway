@@ -80,18 +80,17 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Install AArch64 Dependencies
+      if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install gcc-aarch64-linux-gnu libc6-dev
+
     - name: Install Linux Dependencies
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
         sudo apt-get update
         sudo apt-get install libssl-dev libsixel-bin fontconfig
-
-    - name: Install AArch64 Dependencies
-      if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
-      run: |
-        sudo dpkg --add-architecture arm64
-        sudo apt-get update
-        sudo apt-get install gcc-aarch64-linux-gnu libc6-dev libsixel-dev:arm64
 
     # macOS bits needed by libsixel’s ./configure script + a working dylib
     - name: Install MacOS deps for sixel
