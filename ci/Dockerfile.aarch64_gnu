@@ -1,4 +1,5 @@
-FROM ghcr.io/cross-rs/aarch64-unknown-linux-gnu:edge
+FROM ghcr.io/cross-rs/aarch64-unknown-linux-gnu:latest
 
-RUN apt-get update && \
-    apt-get install -y libssl-dev:arm64 libsixel-dev:arm64 fontconfig:arm64
+RUN dpkg --add-architecture arm64 && \
+    apt-get update && \
+    apt-get install --assume-yes libssl-dev:arm64 libsixel-dev:arm64 fontconfig:arm64

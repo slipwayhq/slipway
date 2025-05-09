@@ -32,7 +32,7 @@ if [[ "$TARGET" == *"musl"* ]]; then
   RUSTFLAGS="$ALL_RUSTFLAGS" cross build --bin slipway --target $TARGET --release --no-default-features --features vendored-openssl
 elif [[ "$TARGET" == *"aarch64-unknown-linux-gnu"* ]]; then
   ALL_RUSTFLAGS="--deny warnings $TARGET_RUSTFLAGS $RUSTFLAGS"
-  RUSTFLAGS="$ALL_RUSTFLAGS" cross build --bin slipway --target $TARGET --release --features vendored-openssl --dockerfile ../ci/Dockerfile.aarch64_gnu
+  RUSTFLAGS="$ALL_RUSTFLAGS" cross build --bin slipway --target $TARGET --release --features vendored-openssl
 else
   ALL_RUSTFLAGS="--deny warnings $TARGET_RUSTFLAGS $RUSTFLAGS"
   RUSTFLAGS="$ALL_RUSTFLAGS" cargo build --bin slipway --target $TARGET --release --features vendored-openssl
