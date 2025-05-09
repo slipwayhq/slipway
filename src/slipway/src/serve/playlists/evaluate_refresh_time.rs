@@ -45,6 +45,7 @@ fn get_next_specified_refresh_time(
         Refresh::Hours { hours } => Ok(now + chrono::Duration::hours(*hours as i64)),
         Refresh::Cron { cron } => {
             let cron_evaluator = croner::Cron::new(cron)
+                .with_seconds_optional()
                 .parse()
                 .with_context(|| format!("Failed to parse cron schedule: {cron}"))?;
             let next = cron_evaluator

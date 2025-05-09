@@ -46,7 +46,9 @@ fn evaluate_playlist_and_refresh(
     let next = get_next_refresh_time(now, &playlist_item.refresh, &playlist)?;
 
     let duration = next - now;
-    let refresh_rate_seconds = duration.num_seconds() as u32;
+    let refresh_rate_seconds = (duration.num_milliseconds() as f64 / 1000.0)
+        .ceil()
+        .max(1.0) as u32;
 
     let rig = playlist_item.rig.clone();
     Ok(Some(PlaylistResult {
