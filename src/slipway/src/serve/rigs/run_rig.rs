@@ -34,15 +34,14 @@ pub async fn run_rig(
         .timezone
         .as_ref()
         .map(|tz| tz.name().to_string())
-        .unwrap_or_else(|| iana_time_zone::get_timezone().expect("Failed to get system timezone"));
+        .unwrap_or_else(crate::utils::get_system_timezone);
 
     let locale = state
         .config
         .environment
         .locale
         .clone()
-        .or_else(sys_locale::get_locale)
-        .unwrap_or(crate::DEFAULT_LOCALE.to_string());
+        .unwrap_or_else(crate::utils::get_system_timezone);
 
     let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
     let session_options = RigSessionOptions::new_for_serve(

@@ -249,8 +249,8 @@ async fn debug_rig<W: Write>(
         .registry_lookup_urls(registry_urls)
         .build();
 
-    let timezone = iana_time_zone::get_timezone()?;
-    let locale = sys_locale::get_locale().unwrap_or(crate::DEFAULT_LOCALE.to_string());
+    let timezone = crate::utils::get_system_timezone();
+    let locale = crate::utils::get_system_locale();
     let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
     let session_options = RigSessionOptions::new_for_run(
         false,

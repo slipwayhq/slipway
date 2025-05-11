@@ -42,8 +42,8 @@ pub async fn init_serve_config(serve_path: &Path) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let system_timezone = iana_time_zone::get_timezone()?.parse()?;
-    let system_locale = sys_locale::get_locale().unwrap_or(crate::DEFAULT_LOCALE.to_string());
+    let system_timezone = crate::utils::get_system_timezone().parse()?;
+    let system_locale = crate::utils::get_system_locale();
 
     let config = SlipwayServeConfig {
         log_level: Some("info".to_string()),
