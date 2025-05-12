@@ -127,11 +127,6 @@ pub(super) struct TrmnlDevice {
 
     /// The hash of the API key given to the device during setup.
     pub hashed_api_key: String,
-
-    /// If set to true, then a header value is returned to the device from the `display` API
-    /// indicating it should reset its firmware.
-    #[serde(default)]
-    pub reset_firmware: bool,
 }
 
 /// A playlist is a collection of Rigs which are run on a device

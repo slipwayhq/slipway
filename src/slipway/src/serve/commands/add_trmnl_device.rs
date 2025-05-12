@@ -39,7 +39,6 @@ pub async fn add_trmnl_device(
         existing_device.trmnl = Some(TrmnlDevice {
             hashed_id,
             hashed_api_key,
-            reset_firmware: false,
         });
 
         if let Some(playlist) = playlist {
@@ -54,7 +53,6 @@ pub async fn add_trmnl_device(
             trmnl: Some(TrmnlDevice {
                 hashed_id,
                 hashed_api_key,
-                reset_firmware: false,
             }),
             playlist,
             context: None,

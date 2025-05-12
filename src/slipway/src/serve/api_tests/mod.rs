@@ -55,7 +55,6 @@ fn trmnl_device(name: &str, playlist_name: &str, api_key: &str) -> (DeviceName, 
             trmnl: Some(TrmnlDevice {
                 hashed_id: hash_string(name),
                 hashed_api_key: hash_string(api_key),
-                reset_firmware: false,
             }),
             playlist: Some(pn(playlist_name)),
             context: None,

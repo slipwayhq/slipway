@@ -341,8 +341,7 @@ async fn slipway_cli_serve_trmnl() {
             "playlist": "hello_playlist",
             "trmnl": {
                 "hashed_id": hash_string("my_trmnl_id"),
-                "hashed_api_key": hash_string("trmnl_test_api_key"),
-                "reset_firmware": false
+                "hashed_api_key": hash_string("trmnl_test_api_key")
             },
             "context": {
                 "foo": "bar"
@@ -406,10 +405,16 @@ async fn slipway_cli_serve_trmnl() {
         .await;
 
     let response = maybe_response.unwrap();
-    let status_code = response.status();
     println!("{:?}", response);
 
-    assert_eq!(status_code, 200);
+    let status_code = response.status();
+    println!("Response: {:?}", response);
+
+    if status_code != 200 {
+        let body = response.text().await.unwrap();
+        println!("{:?}", body);
+        panic!("Unexpected status code: {}", status_code);
+    }
 
     let body = response.json::<serde_json::Value>().await.unwrap();
     println!("{:?}", body);

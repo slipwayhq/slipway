@@ -37,26 +37,7 @@ pub(crate) async fn trmnl_display(
         return Err(print_unknown_device_message(&req, id, &data.config)?);
     };
 
-    let trmnl_device = authenticate_device(id, &req, &device, data.config.show_api_keys)?;
-
-    // We check this before authenticating, so that if the device set itself up
-    // and we didn't get the hashed API key we can still reset the firmware.
-    if trmnl_device.reset_firmware {
-        warn!(
-            "Device \"{}\" JSON configuration is set to trigger a firmware reset. This will be done now.",
-            device_name
-        );
-
-        return Ok(web::Json(serde_json::json!({
-            "status": 0,
-            "image_url": serde_json::Value::Null,
-            "filename": serde_json::Value::Null,
-            "update_firmware": false,
-            "firmware_url": serde_json::Value::Null,
-            "refresh_rate": serde_json::Value::Null,
-            "reset_firmware": true
-        })));
-    }
+    let _trmnl_device = authenticate_device(id, &req, &device, data.config.show_api_keys)?;
 
     print_optional_headers(&req, &device_name);
 
@@ -79,10 +60,7 @@ pub(crate) async fn trmnl_display(
         "image_url": url_response.url,
         "image_url_timeout": 10, // Make the timeout a bit more generous. We should make this configurable.
         "filename": chrono::Utc::now().format("%Y-%m-%d-%H-%M-%S").to_string(),
-        "update_firmware": false,
-        "firmware_url": serde_json::Value::Null,
         "refresh_rate": device_response.refresh_rate_seconds,
-        "reset_firmware": false,
     })))
 }
 
