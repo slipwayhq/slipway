@@ -31,6 +31,15 @@ pub(super) async fn fetch_http(
         url,
     );
 
+    request_builder = request_builder.header(
+        "User-Agent",
+        format!(
+            "Slipway/{} ({})",
+            env!("CARGO_PKG_VERSION"),
+            env!("CARGO_PKG_REPOSITORY")
+        ),
+    );
+
     if let Some(headers) = &opts.headers {
         for (name, value) in headers {
             request_builder = request_builder.header(name, value);
