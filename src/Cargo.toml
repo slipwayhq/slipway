@@ -87,7 +87,7 @@ syn = "2.0.100"
 normalize-path = "0.2.1"
 assert_cmd = "2.0.16"
 clap = "4.3.22"
-nix = "0.29.0"
+nix = { version = "0.30.1", features = ["signal"] }
 boa_engine = { git = "https://github.com/boa-dev/boa", rev = "29e6fc1", package = "boa_engine", features = [
     "annex-b",
     "experimental",
