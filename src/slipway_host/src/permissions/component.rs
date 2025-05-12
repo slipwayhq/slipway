@@ -18,7 +18,7 @@ pub fn ensure_can_use_component_handle(
         .get_component_callout_for_handle(handle)
         .map_err(|e| ComponentError {
             message: format!(
-                "Failed to component reference for \"{}\"",
+                "Failed to locate callout component reference for \"{}\"",
                 execution_context
                     .call_chain
                     .component_handle_trail_for(handle)

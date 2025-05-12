@@ -6,31 +6,37 @@ use super::{BinResponse, RequestError};
 
 pub(super) async fn get_component_file_bin(
     execution_context: &ComponentExecutionContext<'_, '_, '_>,
-    handle: ComponentHandle,
+    handle: Option<ComponentHandle>,
     path: &str,
 ) -> Result<BinResponse, RequestError> {
     let handle_trail = || -> String {
-        execution_context
-            .call_chain
-            .component_handle_trail_for(&handle)
+        execution_context.call_chain.component_handle_trail_for(
+            handle
+                .as_ref()
+                .unwrap_or_else(|| execution_context.component_handle()),
+        )
     };
 
-    let component_callout = execution_context
-        .callout_context
-        .get_component_callout_for_handle(&handle)
-        .map_err(|e| {
-            RequestError::for_error(
-                format!(
-                    "Failed to find component to load binary file at \"{}\"",
-                    handle_trail(),
-                ),
-                e,
-            )
-        })?;
+    let component_reference = match handle.as_ref() {
+        None => execution_context.component_reference,
+        Some(handle) => {
+            let component_callout = execution_context
+                .callout_context
+                .get_component_callout_for_handle(handle)
+                .map_err(|e| {
+                    RequestError::for_error(
+                        format!(
+                            "Failed to find component to load binary file at \"{}\"",
+                            handle_trail(),
+                        ),
+                        e,
+                    )
+                })?;
+            &component_callout.component
+        }
+    };
 
-    let component = execution_context
-        .component_cache
-        .get(&component_callout.component);
+    let component = execution_context.component_cache.get(component_reference);
 
     let path = sanitize_slashes(path);
 
