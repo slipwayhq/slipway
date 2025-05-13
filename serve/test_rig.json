@@ -76,7 +76,7 @@
             }
           ]
         },
-        "hostConfig": "$$.modify_theme.data",
+        "host_config": "$$.modify_theme.data",
         "canvas": {
           "width": "$.constants.width",
           "height": "$.constants.height"
