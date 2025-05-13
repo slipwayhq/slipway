@@ -48,7 +48,7 @@ pub enum RigError {
     },
 
     #[error(
-        "Component {validation_type} validation failed for \"{component_handle}\".\nFailures:\n{validation_failures:#?}\nData:\n{validated_data:#}"
+        "Component {validation_type} validation failed for \"{component_handle}\".\nData:\n{validated_data:#}\nFailures:\n{validation_failures:#?}"
     )]
     ComponentValidationFailed {
         component_handle: ComponentHandle,
