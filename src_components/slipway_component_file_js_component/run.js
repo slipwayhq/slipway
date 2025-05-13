@@ -1,3 +1,5 @@
+import { BINARY } from './constants_module.js';
+
 export async function run(input) {
   if (input.file_type === TEXT) {
     var text = await slipway_host.load_text(input.handle, input.path);
