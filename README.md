@@ -5,6 +5,10 @@ from eInk screens to phones to monitor walls.
 
 For more information please see [our website](https://slipway.co/).
 
+# Installation
+
+For installation instructions, please see [here](https://slipway.co/docs/getting-started/installing-slipway).
+
 # Contributing
 
 Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening any PRs.
