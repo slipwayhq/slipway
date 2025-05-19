@@ -90,6 +90,7 @@ pub(super) enum HandleCommandResult<'rig, 'cache> {
     Exit,
 }
 
+#[allow(clippy::result_large_err)] // Ignoring this. Will fix once https://github.com/rust-lang/rust/issues/87121 is stable.
 fn get_handle<'rig>(
     handle_str: &str,
     state: &RigExecutionState<'rig, '_>,

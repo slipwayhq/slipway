@@ -116,6 +116,7 @@ where
     Ok(state)
 }
 
+#[allow(clippy::result_large_err)] // Ignoring this. Will fix once https://github.com/rust-lang/rust/issues/87121 is stable.
 fn check_rig_component_permissions<THostError>(
     rig_session: &RigSession<'_>,
     call_chain: &Arc<CallChain<'_>>,

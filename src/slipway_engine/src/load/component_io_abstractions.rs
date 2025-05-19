@@ -149,9 +149,7 @@ impl ComponentIOAbstractions for ComponentIOAbstractionsImpl {
         }
 
         let stream = response.bytes_stream();
-        let mut reader = StreamReader::new(
-            stream.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e)),
-        );
+        let mut reader = StreamReader::new(stream.map_err(std::io::Error::other));
 
         // We download to a temp file and then move it to the cache to avoid
         // race conditions with other threads trying to download or access the same file.

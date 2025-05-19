@@ -2,6 +2,7 @@ use std::io::ErrorKind;
 
 use crate::debug_rig::SlipwayDebugError;
 
+#[allow(clippy::result_large_err)] // Ignoring this. Will fix once https://github.com/rust-lang/rust/issues/87121 is stable.
 pub(super) trait JsonEditor {
     fn edit(&self, template: &serde_json::Value) -> Result<serde_json::Value, SlipwayDebugError>;
 }

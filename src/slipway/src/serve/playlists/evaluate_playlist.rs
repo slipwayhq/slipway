@@ -58,7 +58,7 @@ fn evaluate_playlist_and_refresh(
 }
 
 fn find_active_playlist_item(playlist: &Playlist, now: DateTime<Tz>) -> Option<&PlaylistItem> {
-    let playlist_item = playlist.schedule.iter().find(|item| {
+    playlist.schedule.iter().find(|item| {
         let days = &item.days;
         if let Some(days) = days {
             if !is_today_in_days(days, now) {
@@ -74,9 +74,7 @@ fn find_active_playlist_item(playlist: &Playlist, now: DateTime<Tz>) -> Option<&
         }
 
         true
-    });
-
-    playlist_item
+    })
 }
 
 fn is_today_in_days(days: &HashSet<Weekday>, now: DateTime<Tz>) -> bool {

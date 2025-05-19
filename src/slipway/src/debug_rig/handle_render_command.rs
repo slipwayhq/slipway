@@ -6,6 +6,7 @@ use crate::canvas::render_canvas;
 
 use super::errors::SlipwayDebugError;
 
+#[allow(clippy::result_large_err)] // Ignoring this. Will fix once https://github.com/rust-lang/rust/issues/87121 is stable.
 pub(super) fn handle_render_command<'rig>(
     handle: &'rig ComponentHandle,
     state: &RigExecutionState<'rig, '_>,

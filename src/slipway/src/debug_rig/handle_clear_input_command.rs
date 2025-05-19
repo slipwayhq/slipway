@@ -2,6 +2,7 @@ use slipway_engine::{ComponentHandle, Immutable, Instruction, RigExecutionState}
 
 use super::errors::SlipwayDebugError;
 
+#[allow(clippy::result_large_err)] // Ignoring this. Will fix once https://github.com/rust-lang/rust/issues/87121 is stable.
 pub(super) fn handle_clear_input_command<'rig, 'cache>(
     handle: &'rig ComponentHandle,
     state: &RigExecutionState<'rig, 'cache>,
