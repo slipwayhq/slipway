@@ -1,8 +1,8 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use slipway_engine::{
-    CallChain, ComponentExecutionContext, ComponentHandle, ComponentOutput, ComponentRunner,
-    Immutable, Instruction, RigExecutionState, RigSession, RunComponentError, RunError,
+    CallChain, ComponentExecutionContext, ComponentHandle, ComponentRunner, Immutable, Instruction,
+    RigExecutionState, RigSession, RunComponentError, RunError,
     errors::{ComponentLoadError, ComponentLoadErrorInner},
     run_component,
 };
@@ -43,10 +43,6 @@ pub trait RunEventHandler<'rig, 'cache, THostError> {
     ) -> Result<RigExecutionStateViewModel<'state>, THostError>;
 }
 
-pub struct RunRigResult<'rig> {
-    pub component_outputs: HashMap<&'rig ComponentHandle, Option<Arc<ComponentOutput>>>,
-}
-
 pub fn no_event_handler<'rig, 'cache>() -> impl RunEventHandler<'rig, 'cache, ()> {
     sink_run_event_handler::SinkRunEventHandler::new()
 }
@@ -60,7 +56,7 @@ pub async fn run_rig<'rig, 'cache, 'runners, THostError>(
     event_handler: &mut impl RunEventHandler<'rig, 'cache, THostError>,
     component_runners: &'runners [Box<dyn ComponentRunner>],
     call_chain: Arc<CallChain<'rig>>,
-) -> Result<RunRigResult<'rig>, RunError<THostError>>
+) -> Result<Immutable<RigExecutionState<'rig, 'cache>>, RunError<THostError>>
 where
     'cache: 'rig,
 {
@@ -117,13 +113,7 @@ where
         }
     }
 
-    Ok(RunRigResult {
-        component_outputs: state
-            .component_states
-            .iter()
-            .map(|(&k, v)| (k, v.execution_output.as_ref().map(Arc::clone)))
-            .collect(),
-    })
+    Ok(state)
 }
 
 fn check_rig_component_permissions<THostError>(

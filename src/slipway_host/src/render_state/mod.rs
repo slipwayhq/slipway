@@ -1,9 +1,9 @@
 pub mod to_view_model;
 mod write_rig_graph;
 
-use std::{io::Write, path::PathBuf};
+use std::{io::Write, path::Path};
 
-use slipway_engine::RigExecutionState;
+use slipway_engine::{Immutable, RigExecutionState};
 
 use crate::render_state::to_view_model::{RigExecutionStateViewModel, to_view_model};
 
@@ -22,7 +22,8 @@ pub trait WriteComponentOutputs<W: Write, TError> {
     fn write_component_outputs(
         &self,
         w: &mut W,
-        save_path: Option<&PathBuf>,
+        save_path: Option<&Path>,
+        state: &Immutable<RigExecutionState<'_, '_>>,
         view_model: &RigExecutionStateViewModel,
     ) -> Result<(), TError>;
 }

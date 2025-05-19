@@ -1,6 +1,5 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
-use anyhow::Context;
 use slipway_engine::{
     BasicComponentCache, BasicComponentsLoader, CallChain, ComponentHandle, Environment,
     Permission, Rig, RigSession, RigSessionOptions,
@@ -79,49 +78,12 @@ pub async fn run_rig(
     )
     .await?;
 
-    get_component_output(result)
-}
+    let rig_output = crate::get_rig_output::get_rig_output(&result)?;
 
-fn get_component_output(
-    result: slipway_host::run::RunRigResult<'_>,
-) -> Result<RunRigResult, anyhow::Error> {
-    if result.component_outputs.len() == 1 {
-        let (&handle, output) = result
-            .component_outputs
-            .iter()
-            .next()
-            .expect("Should be able to get the only component in a rig.");
-
-        let output = output
-            .as_ref()
-            .expect("The only component in a rig should have an output.");
-
-        return Ok(RunRigResult {
-            handle: handle.clone(),
-            output: output.value.clone(),
-        });
-    }
-
-    const OUTPUT_COMPONENT_NAMES: [&str; 2] = ["render", "output"];
-
-    for name in OUTPUT_COMPONENT_NAMES.iter() {
-        let handle =
-            &ComponentHandle::from_str(name).context("Failed to parse output component name.")?;
-
-        if let Some(output) = result.component_outputs.get(handle) {
-            if let Some(output) = output.as_ref() {
-                return Ok(RunRigResult {
-                    handle: handle.clone(),
-                    output: output.value.clone(),
-                });
-            }
-        }
-    }
-
-    Err(anyhow::anyhow!(
-        "Failed to identify output component. Expected handles are: {:?}",
-        OUTPUT_COMPONENT_NAMES
-    ))
+    Ok(RunRigResult {
+        handle: rig_output.handle.clone(),
+        output: rig_output.output.value.clone(),
+    })
 }
 
 #[derive(Debug, Default, serde::Deserialize)]

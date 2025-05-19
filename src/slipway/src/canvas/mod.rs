@@ -1,6 +1,6 @@
 mod errors;
 
-use std::path::PathBuf;
+use std::path::Path;
 
 use base64::{Engine, prelude::BASE64_STANDARD};
 use image::{DynamicImage, ImageBuffer, RgbaImage};
@@ -32,7 +32,7 @@ pub(super) fn get_canvas_image<'rig>(
 pub(super) fn render_canvas<'rig>(
     handle: &'rig ComponentHandle,
     output: &'rig serde_json::Value,
-    save_path: Option<PathBuf>,
+    save_path: Option<&Path>,
 ) -> Result<(), CanvasError> {
     let image = get_canvas_image(handle, output)?;
 
@@ -46,7 +46,7 @@ pub(super) fn render_canvas<'rig>(
 pub(super) fn render_canvas_if_exists<'rig>(
     handle: &'rig ComponentHandle,
     output: &'rig serde_json::Value,
-    save_path: Option<PathBuf>,
+    save_path: Option<&Path>,
 ) -> Result<bool, CanvasError> {
     let image = get_canvas_image(handle, output);
 
@@ -66,13 +66,13 @@ pub(super) fn render_canvas_if_exists<'rig>(
 fn save_image(
     handle: &ComponentHandle,
     image: RgbaImage,
-    save_path: PathBuf,
+    save_path: &Path,
 ) -> Result<(), CanvasError> {
     image
-        .save(save_path.clone())
+        .save(save_path)
         .map_err(|error| CanvasError::SaveFailed {
             handle: handle.clone(),
-            path: save_path,
+            path: save_path.to_path_buf(),
             error,
         })?;
 

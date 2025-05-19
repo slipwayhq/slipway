@@ -122,9 +122,11 @@ async fn run_component_fragment(
     let process_output_start = Instant::now();
 
     let output_state = run_result
-        .component_outputs
+        .component_states
         .get(&output_component_handle)
-        .expect("Output component should exist.");
+        .expect("Output component should exist.")
+        .execution_output
+        .clone();
 
     let Some(output) = output_state.as_ref() else {
         return Err(RunComponentError::Other(format!(

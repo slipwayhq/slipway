@@ -1,10 +1,14 @@
 use crate::json_editor::JsonEditorImpl;
-use std::{io::Write, path::PathBuf, sync::Arc};
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use anyhow::Context;
 use slipway_engine::{
-    BasicComponentCache, BasicComponentsLoader, CallChain, Environment, Permissions, Rig,
-    RigSession, RigSessionOptions, SlipwayReference, parse_rig,
+    BasicComponentCache, BasicComponentsLoader, CallChain, Environment, Immutable, Permissions,
+    Rig, RigExecutionState, RigSession, RigSessionOptions, SlipwayReference, parse_rig,
 };
 use slipway_host::{
     render_state::{
@@ -187,19 +191,21 @@ impl<'rig, 'cache> RunEventHandler<'rig, 'cache, HostError> for CliRunEventHandl
     ) -> Result<RigExecutionStateViewModel<'state>, HostError> {
         let is_complete = event.is_complete;
 
+        let state = event.state;
         let view_model = self
             .inner
             .handle_state_changed(event)
             .map_err(HostError::from)?;
 
         if is_complete {
-            let write_component_outputs = SlipwayWriteComponentsOutputs {
+            let write_component_outputs = SlipwayWriteMultipleComponentOutputs {
                 write_outputs_type: self.write_outputs_type,
             };
 
             write_component_outputs.write_component_outputs(
                 self.inner.writer(),
-                self.save_path.as_ref(),
+                self.save_path.as_deref(),
+                state,
                 &view_model,
             )?;
         }
@@ -208,38 +214,92 @@ impl<'rig, 'cache> RunEventHandler<'rig, 'cache, HostError> for CliRunEventHandl
     }
 }
 
-struct SlipwayWriteComponentsOutputs {
+struct SlipwayWriteMultipleComponentOutputs {
     write_outputs_type: WriteComponentOutputsType,
 }
 
-impl<W: Write> WriteComponentOutputs<W, HostError> for SlipwayWriteComponentsOutputs {
+impl<W: Write> WriteComponentOutputs<W, HostError> for SlipwayWriteMultipleComponentOutputs {
     fn write_component_outputs(
         &self,
         w: &mut W,
-        save_path: Option<&PathBuf>,
+        save_path: Option<&Path>,
+        state: &Immutable<RigExecutionState<'_, '_>>,
         view_model: &slipway_host::render_state::to_view_model::RigExecutionStateViewModel,
     ) -> Result<(), HostError> {
-        match self.write_outputs_type {
-            WriteComponentOutputsType::None => {}
-            WriteComponentOutputsType::LeafComponents => {
-                for group in view_model.groups.iter() {
-                    for component in group.components.iter() {
-                        if !component.output_row_indexes.is_empty() {
-                            continue;
-                        }
+        let extension = save_path.and_then(|p| p.extension().and_then(|ext| ext.to_str()));
+        match extension {
+            Some(extension) => {
+                let rig_output = crate::get_rig_output::get_rig_output(state)
+                    .map_err(|e| HostError::Other(format!("{e}")))?;
 
-                        write_component_output(w, save_path, component)?;
+                let save_path_unwrapped = save_path.unwrap();
+                writeln!(
+                    w,
+                    "Writing \"{}\" output to: {}",
+                    rig_output.handle,
+                    save_path_unwrapped.to_string_lossy()
+                )?;
+
+                match extension {
+                    "json" => {
+                        let output_file =
+                            std::fs::File::create(save_path_unwrapped).map_err(|error| {
+                                HostError::Other(format!(
+                                    "Failed to create output file for rig: {}",
+                                    error
+                                ))
+                            })?;
+
+                        serde_json::to_writer_pretty(output_file, &rig_output.output.value)
+                            .map_err(|error| {
+                                HostError::Other(format!(
+                                    "Failed to write output file for rig: {}",
+                                    error
+                                ))
+                            })?;
+                    }
+                    "png" => {
+                        if !render_canvas_if_exists(
+                            rig_output.handle,
+                            &rig_output.output.value,
+                            save_path,
+                        )? {
+                            return Err(HostError::Other(format!(
+                                "No canvas found for rig output: {}",
+                                rig_output.handle
+                            )));
+                        }
+                    }
+                    _ => {
+                        return Err(HostError::Other(format!(
+                            "File extension should be \"json\" or \"png\". Extension was \"{}\".",
+                            extension
+                        )));
                     }
                 }
             }
-            WriteComponentOutputsType::AllComponents => {
-                for group in view_model.groups.iter() {
-                    for component in group.components.iter() {
-                        write_component_output(w, save_path, component)?;
+            None => match self.write_outputs_type {
+                WriteComponentOutputsType::None => {}
+                WriteComponentOutputsType::LeafComponents => {
+                    for group in view_model.groups.iter() {
+                        for component in group.components.iter() {
+                            if !component.output_row_indexes.is_empty() {
+                                continue;
+                            }
+
+                            write_component_output(w, save_path, component)?;
+                        }
                     }
                 }
-            }
-        };
+                WriteComponentOutputsType::AllComponents => {
+                    for group in view_model.groups.iter() {
+                        for component in group.components.iter() {
+                            write_component_output(w, save_path, component)?;
+                        }
+                    }
+                }
+            },
+        }
 
         Ok(())
     }
@@ -254,7 +314,7 @@ pub(super) enum WriteComponentOutputsType {
 
 fn write_component_output<W: Write>(
     w: &mut W,
-    save_path: Option<&PathBuf>,
+    save_path: Option<&Path>,
     component: &ComponentViewModel,
 ) -> Result<(), HostError> {
     if let Some(save_path) = save_path.as_ref() {
@@ -267,15 +327,24 @@ fn write_component_output<W: Write>(
     }
 
     if let Some(output) = component.state.output() {
-        writeln!(w, r#"Component "{}" output:"#, component.handle)?;
+        if let Some(save_path) = save_path {
+            writeln!(
+                w,
+                "Writing \"{}\" output to folder: {}",
+                component.handle,
+                save_path.to_string_lossy()
+            )?;
+        } else {
+            writeln!(w, "Component \"{}\" output:", component.handle)?;
+        }
 
         if !render_canvas_if_exists(
             component.handle,
             output,
-            save_path.map(|p| p.join(format!("{}.png", component.handle.0))),
+            save_path
+                .map(|p| p.join(format!("{}.png", component.handle.0)))
+                .as_deref(),
         )? {
-            writeln!(w, "{:#}", output)?;
-
             if let Some(save_path) = save_path {
                 let output_path = save_path.join(format!("{}.json", component.handle.0));
                 let output_file = std::fs::File::create(output_path).map_err(|error| {
@@ -291,6 +360,8 @@ fn write_component_output<W: Write>(
                         component.handle, error
                     ))
                 })?;
+            } else {
+                writeln!(w, "{:#}", output)?;
             }
         }
 

@@ -3,6 +3,7 @@
 mod canvas;
 mod component_runners;
 mod debug_rig;
+mod get_rig_output;
 mod host_error;
 mod json_editor;
 mod package;

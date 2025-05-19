@@ -31,5 +31,5 @@ pub(super) fn handle_render_command<'rig>(
         }
     }
 
-    render_canvas(handle, output, save_path).map_err(SlipwayDebugError::CanvasError)
+    render_canvas(handle, output, save_path.as_deref()).map_err(SlipwayDebugError::CanvasError)
 }

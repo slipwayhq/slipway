@@ -48,9 +48,10 @@ pub async fn get_rig_output(
     .await?;
 
     let output = result
-        .component_outputs
+        .component_states
         .get(&ComponentHandle::from_str(output_handle_str).unwrap())
         .expect("Output handle should exist")
+        .execution_output
         .as_ref()
         .expect("Output should be populated");
 
