@@ -69,7 +69,8 @@ pub(crate) enum Commands {
         #[command(flatten)]
         common: CommonRunArgs,
 
-        /// The optional folder path to save the Rig outputs to.
+        /// The optional path to save the Rig output to.
+        /// The path can be a `.png` file, a `.json` file, or a folder.
         #[arg(short, long)]
         output: Option<std::path::PathBuf>,
 
@@ -113,7 +114,8 @@ pub(crate) enum Commands {
         #[command(flatten)]
         common: CommonRunArgs,
 
-        /// The optional folder path to save the component output to.
+        /// The optional path to save the Rig output to.
+        /// The path can be a `.png` file, a `.json` file, or a folder.
         #[arg(short, long)]
         output: Option<std::path::PathBuf>,
 
