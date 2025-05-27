@@ -293,6 +293,9 @@ enum ServeCommands {
         /// A name for the Rig (lowercase alphanumeric plus underscores).
         #[arg(short, long)]
         name: RigName,
+
+        #[command(flatten)]
+        permissions: CommonPermissionsArgs,
     },
 
     /// Add an API key for accessing endpoints. The key itself will be generated and stored hashed.
@@ -550,9 +553,9 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
                 configure_tracing(Default::default());
                 serve::commands::add_playlist(path, name, rig).await?;
             }
-            Some(ServeCommands::AddRig { name }) => {
+            Some(ServeCommands::AddRig { name, permissions }) => {
                 configure_tracing(Default::default());
-                serve::commands::add_rig(path, name).await?;
+                serve::commands::add_rig(path, name, permissions).await?;
             }
             Some(ServeCommands::AddApiKey { name }) => {
                 configure_tracing(Default::default());
