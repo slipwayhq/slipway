@@ -184,10 +184,16 @@ impl BasicComponentsLoader {
                     ));
                 }
 
+                let namespace = match name.split_once("__") {
+                    Some((ns, _)) => ns,
+                    None => name,
+                };
+
                 for registry_lookup_url in self.registry_lookup_urls.iter() {
                     let resolved_registry_lookup_url = registry_lookup_url
                         .replace("{publisher}", publisher)
                         .replace("{name}", name)
+                        .replace("{namespace}", namespace)
                         .replace("{version}", &version.to_string());
 
                     let processed_url =
@@ -1087,6 +1093,40 @@ mod tests {
                 .build();
 
             assert_result(loader, component_reference, data, "path/to/p1.n1.1.2.3.tar").await;
+        }
+
+        #[slipway_test_async]
+        async fn it_should_load_from_local_registry_with_namespace() {
+            const URL: &str = "file:path/to/slipway_{namespace}/{publisher}.{name}.{version}.tar";
+            let component_reference = SlipwayReference::Registry {
+                publisher: "p1".to_string(),
+                name: "ns1__n1_test".to_string(),
+                version: Version::parse("1.2.3").expect("Invalid version"),
+            };
+
+            let data = MockData::new();
+            let tar_data = create_tar(&data);
+
+            let io_abstractions = MockComponentIOAbstractions {
+                files: HashMap::from([(
+                    "path/to/slipway_ns1/p1.ns1__n1_test.1.2.3.tar".to_string(),
+                    tar_data.clone(),
+                )]),
+                url_to_file_map: HashMap::new(),
+            };
+
+            let loader = BasicComponentsLoaderBuilder::new()
+                .registry_lookup_url(URL)
+                .io_abstractions(Arc::new(io_abstractions))
+                .build();
+
+            assert_result(
+                loader,
+                component_reference,
+                data,
+                "path/to/slipway_ns1/p1.ns1__n1_test.1.2.3.tar",
+            )
+            .await;
         }
     }
 }
