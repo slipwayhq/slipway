@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use tracing::info;
 
@@ -6,28 +6,28 @@ use crate::serve::{
     RepositoryConfig, SlipwayServeConfig, SlipwayServeEnvironment, get_serve_config_path,
 };
 
-pub async fn init(serve_path: PathBuf) -> anyhow::Result<()> {
-    init_serve_config(&serve_path).await?;
-    init_dockerfile(&serve_path).await?;
+pub async fn init(serve_path: &Path) -> anyhow::Result<()> {
+    init_serve_config(serve_path).await?;
+    init_dockerfile(serve_path).await?;
 
-    init_folder(&serve_path, super::COMPONENTS_PATH).await?;
+    init_folder(serve_path, super::COMPONENTS_PATH).await?;
     init_folder(
-        &serve_path,
+        serve_path,
         crate::serve::repository::file_system::RIG_FOLDER_NAME,
     )
     .await?;
     init_folder(
-        &serve_path,
+        serve_path,
         crate::serve::repository::file_system::PLAYLIST_FOLDER_NAME,
     )
     .await?;
     init_folder(
-        &serve_path,
+        serve_path,
         crate::serve::repository::file_system::DEVICE_FOLDER_NAME,
     )
     .await?;
     init_folder(
-        &serve_path,
+        serve_path,
         crate::serve::repository::file_system::FONTS_FOLDER_NAME,
     )
     .await?;
@@ -50,6 +50,7 @@ pub async fn init_serve_config(serve_path: &Path) -> anyhow::Result<()> {
         registry_urls: vec![
             "file:./components/{publisher}.{name}.{version}.tar".to_string(),
             "file:./components/{publisher}.{name}".to_string(),
+            "file:./components/{localname}".to_string(),
         ],
         environment: SlipwayServeEnvironment {
             timezone: Some(system_timezone),

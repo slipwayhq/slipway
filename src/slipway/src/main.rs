@@ -227,6 +227,9 @@ enum ServeCommands {
     /// Create basic configuration files and directory structure.
     Init,
 
+    /// Create basic slipway_serve.json configuration file, without creating other files and folders.
+    InitConfig,
+
     /// Download all required Components to the local Components folder.
     Consolidate,
 
@@ -523,7 +526,11 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
         } => match subcommand {
             Some(ServeCommands::Init) => {
                 configure_tracing(Default::default());
-                serve::commands::init(path).await?;
+                serve::commands::init(&path).await?;
+            }
+            Some(ServeCommands::InitConfig) => {
+                configure_tracing(Default::default());
+                serve::commands::init_serve_config(&path).await?;
             }
             Some(ServeCommands::Consolidate) => {
                 configure_tracing(Some("debug".to_string()));

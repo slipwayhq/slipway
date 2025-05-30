@@ -17,3 +17,4 @@ pub use add_trmnl_device::add_trmnl_device;
 pub use aot_compile::aot_compile;
 pub use consolidate::consolidate;
 pub use init::init;
+pub use init::init_serve_config;

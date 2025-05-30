@@ -184,9 +184,9 @@ impl BasicComponentsLoader {
                     ));
                 }
 
-                let namespace = match name.split_once("__") {
-                    Some((ns, _)) => ns,
-                    None => name,
+                let (namespace, localname) = match name.split_once("__") {
+                    Some((ns, l)) => (ns, l),
+                    None => (name.as_str(), name.as_str()),
                 };
 
                 for registry_lookup_url in self.registry_lookup_urls.iter() {
@@ -194,7 +194,10 @@ impl BasicComponentsLoader {
                         .replace("{publisher}", publisher)
                         .replace("{name}", name)
                         .replace("{namespace}", namespace)
+                        .replace("{localname}", localname)
                         .replace("{version}", &version.to_string());
+
+                    println!("Resolved URL: {resolved_registry_lookup_url}");
 
                     let processed_url =
                         process_url_str(&resolved_registry_lookup_url).map_err(|e| {
@@ -1096,8 +1099,8 @@ mod tests {
         }
 
         #[slipway_test_async]
-        async fn it_should_load_from_local_registry_with_namespace() {
-            const URL: &str = "file:path/to/slipway_{namespace}/{publisher}.{name}.{version}.tar";
+        async fn it_should_load_from_local_registry_with_namespace_and_localname() {
+            const URL: &str = "file:path/to/slipway_{namespace}/components/{localname}.tar";
             let component_reference = SlipwayReference::Registry {
                 publisher: "p1".to_string(),
                 name: "ns1__n1_test".to_string(),
@@ -1109,7 +1112,7 @@ mod tests {
 
             let io_abstractions = MockComponentIOAbstractions {
                 files: HashMap::from([(
-                    "path/to/slipway_ns1/p1.ns1__n1_test.1.2.3.tar".to_string(),
+                    "path/to/slipway_ns1/components/n1_test.tar".to_string(),
                     tar_data.clone(),
                 )]),
                 url_to_file_map: HashMap::new(),
@@ -1124,7 +1127,7 @@ mod tests {
                 loader,
                 component_reference,
                 data,
-                "path/to/slipway_ns1/p1.ns1__n1_test.1.2.3.tar",
+                "path/to/slipway_ns1/components/n1_test.tar",
             )
             .await;
         }
