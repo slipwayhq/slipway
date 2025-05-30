@@ -197,8 +197,6 @@ impl BasicComponentsLoader {
                         .replace("{localname}", localname)
                         .replace("{version}", &version.to_string());
 
-                    println!("Resolved URL: {resolved_registry_lookup_url}");
-
                     let processed_url =
                         process_url_str(&resolved_registry_lookup_url).map_err(|e| {
                             ComponentLoadError::new(
