@@ -67,7 +67,7 @@ pub(crate) enum Commands {
         rig: PathBuf,
 
         #[command(flatten)]
-        common: CommonRunArgs,
+        common: Box<CommonRunArgs>,
 
         /// The optional path to save the Rig output to.
         /// The path can be a `.png` file, a `.json` file, or a folder.
@@ -90,7 +90,7 @@ pub(crate) enum Commands {
         rig: PathBuf,
 
         #[command(flatten)]
-        common: CommonRunArgs,
+        common: Box<CommonRunArgs>,
 
         /// The optional folder path where additional fonts are located.
         #[arg(short, long)]
@@ -112,7 +112,7 @@ pub(crate) enum Commands {
         input_file: Option<PathBuf>,
 
         #[command(flatten)]
-        common: CommonRunArgs,
+        common: Box<CommonRunArgs>,
 
         /// The optional path to save the Rig output to.
         /// The path can be a `.png` file, a `.json` file, or a folder.
@@ -139,7 +139,7 @@ pub(crate) enum Commands {
         input_file: Option<PathBuf>,
 
         #[command(flatten)]
-        common: CommonRunArgs,
+        common: Box<CommonRunArgs>,
 
         /// The optional folder path where additional fonts are located.
         #[arg(short, long)]
@@ -298,7 +298,7 @@ enum ServeCommands {
         name: RigName,
 
         #[command(flatten)]
-        permissions: CommonPermissionsArgs,
+        permissions: Box<CommonPermissionsArgs>,
     },
 
     /// Add an API key for accessing endpoints. The key itself will be generated and stored hashed.
@@ -562,7 +562,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
             }
             Some(ServeCommands::AddRig { name, permissions }) => {
                 configure_tracing(Default::default());
-                serve::commands::add_rig(path, name, permissions).await?;
+                serve::commands::add_rig(path, name, *permissions).await?;
             }
             Some(ServeCommands::AddApiKey { name }) => {
                 configure_tracing(Default::default());

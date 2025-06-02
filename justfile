@@ -2,10 +2,12 @@ publisher := "slipwayhq"
 
 default:
   just --list
-  
+
 build configuration="release": (build-src configuration) (build-components configuration)
 
 test *FLAGS: (build-src "release") (build-components "release")
+  cd src && cargo clippy --all --all-targets
+  cd src_components && cargo clippy --all --all-targets
   cd src && RUST_LOG="debug,cranelift_codegen=info,wasmtime_cranelift=info" cargo nextest run --no-fail-fast --release {{FLAGS}}
 
 test-only *FLAGS:
@@ -30,7 +32,7 @@ build-components configuration="release": && (assemble-test-components configura
   cd src_components && \
     cargo build --target wasm32-wasip2 {{ if configuration == "release" { "--release" } else { "" } }} && \
     cargo build -p slipway_increment_component --features increment-ten --target-dir target/increment-ten --target wasm32-wasip2 {{ if configuration == "release" { "--release" } else { "" } }}
-  
+
 clean-src:
   cd src && cargo clean
 
@@ -59,7 +61,7 @@ assemble-test-components configuration="release": \
   (tar-component-files "fragment" configuration) \
   (tar-component-files "slipway_increment_invalid_callout_permissions" configuration) \
   (tar-component-files "slipway_increment_js_invalid_callout_permissions" configuration) \
-  
+
   mkdir -p components/{{publisher}}.increment_ten
   cp src_components/target/increment-ten/wasm32-wasip2/{{configuration}}/slipway_increment_component.wasm components/{{publisher}}.increment_ten/run.wasm
   cp src_components/slipway_increment_component/slipway_component.json components/{{publisher}}.increment_ten/slipway_component.json
