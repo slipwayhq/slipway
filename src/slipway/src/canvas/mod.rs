@@ -26,6 +26,8 @@ pub(super) fn get_canvas_image<'rig>(
             message: "Data could not be converted into an image".to_string(),
         })?;
 
+    let image = to_straight_alpha(image);
+
     Ok(image)
 }
 
@@ -153,6 +155,25 @@ fn read_canvas_data(
         height: height as u32,
         data: data.to_string(),
     })
+}
+
+pub(crate) fn to_straight_alpha(mut img: RgbaImage) -> RgbaImage {
+    for px in img.pixels_mut() {
+        let [r, g, b, a] = px.0;
+        if a > 0 {
+            let af = a as f32 / 255.0;
+            let inv_af = 1.0 / af;
+            px.0 = [
+                (r as f32 * inv_af).min(255.0).round() as u8,
+                (g as f32 * inv_af).min(255.0).round() as u8,
+                (b as f32 * inv_af).min(255.0).round() as u8,
+                a,
+            ];
+        } else {
+            px.0 = [0, 0, 0, 0]; // avoid NaNs or garbage
+        }
+    }
+    img
 }
 
 struct CanvasResult {
