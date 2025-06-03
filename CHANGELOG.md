@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0
+
+Canvases should now use premultiplied alpha, and are converted to straight alpha during export.
+
 ## 0.5.2
 
 Updated CLI help for the `--output` argument.
