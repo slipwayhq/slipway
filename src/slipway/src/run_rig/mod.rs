@@ -105,6 +105,7 @@ pub(super) async fn run_rig_inner(
     let locale = crate::utils::get_system_locale();
     let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
     let session_options = RigSessionOptions::new_for_run(
+        &rig,
         debug_rig_path.is_some(),
         fonts_path.as_deref(),
         Environment { timezone, locale },

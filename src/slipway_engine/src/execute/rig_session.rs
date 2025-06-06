@@ -38,19 +38,22 @@ impl<'cache> RigSession<'cache> {
     }
 
     pub fn new_for_test(rig: Rig, component_cache: &'cache dyn ComponentCache) -> Self {
+        let options = RigSessionOptions::new_for_test(
+            &rig,
+            Environment {
+                timezone: TEST_TIMEZONE.to_string(),
+                locale: TEST_LOCALE.to_string(),
+            },
+            Some(serde_json::json!({
+                "width": 800,
+                "height": 480,
+            })),
+        );
+
         RigSession {
             rig,
             component_cache,
-            options: RigSessionOptions::new_for_test(
-                Environment {
-                    timezone: TEST_TIMEZONE.to_string(),
-                    locale: TEST_LOCALE.to_string(),
-                },
-                Some(serde_json::json!({
-                    "width": 800,
-                    "height": 480,
-                })),
-            ),
+            options,
         }
     }
 
@@ -121,6 +124,7 @@ impl Environment {
 
 impl RigSessionOptions {
     pub async fn new_for_serve(
+        rig: &Rig,
         base_path: PathBuf,
         aot_path: Option<PathBuf>,
         fonts_path: PathBuf,
@@ -128,6 +132,7 @@ impl RigSessionOptions {
         device_context: Option<serde_json::Value>,
     ) -> Self {
         let font_context = FontContext::new_with_path(&fonts_path).await;
+        let device_context = device_context.or_else(|| rig.context.clone().and_then(|c| c.device));
         let rig_additional_context = get_rig_additional_context(&environment, device_context);
 
         RigSessionOptions {
@@ -141,6 +146,7 @@ impl RigSessionOptions {
     }
 
     pub async fn new_for_run(
+        rig: &Rig,
         use_run_record: bool,
         fonts_path: Option<&Path>,
         environment: Environment,
@@ -156,7 +162,8 @@ impl RigSessionOptions {
             Some(fonts_path) => FontContext::new_with_path(fonts_path).await,
         };
 
-        let rig_additional_context = get_rig_additional_context(&environment, None);
+        let device_context = rig.context.clone().and_then(|c| c.device);
+        let rig_additional_context = get_rig_additional_context(&environment, device_context);
 
         RigSessionOptions {
             base_path: PathBuf::from("."),
@@ -169,9 +176,11 @@ impl RigSessionOptions {
     }
 
     pub fn new_for_test(
+        rig: &Rig,
         environment: Environment,
         device_context: Option<serde_json::Value>,
     ) -> Self {
+        let device_context = device_context.or_else(|| rig.context.clone().and_then(|c| c.device));
         let rig_additional_context = get_rig_additional_context(&environment, device_context);
 
         RigSessionOptions {

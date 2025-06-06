@@ -89,6 +89,8 @@ impl RigRunRecord {
             );
         }
 
+        // We don't need to specify constants or context for a debug rig because all the
+        // Component inputs are already resolved.
         Rig {
             description: Some(
                 Description::from_str("Automatically generated debug rig.")
@@ -98,6 +100,7 @@ impl RigRunRecord {
             rigging: Rigging {
                 components: rigging,
             },
+            context: None,
         }
     }
 }

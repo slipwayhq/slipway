@@ -475,6 +475,7 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
                 rigging: slipway_engine::Rigging {
                     components: Default::default(),
                 },
+                context: None,
             };
 
             serde_json::to_writer_pretty(std::fs::File::create(name.to_string() + ".json")?, &rig)?;

@@ -171,6 +171,7 @@ pub(super) fn get_component_rig(
             .into_iter()
             .collect(),
         },
+        context: None,
     }
 }
 
@@ -253,6 +254,7 @@ async fn debug_rig<W: Write>(
     let locale = crate::utils::get_system_locale();
     let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
     let session_options = RigSessionOptions::new_for_run(
+        &rig,
         false,
         fonts_path.as_deref(),
         Environment { timezone, locale },

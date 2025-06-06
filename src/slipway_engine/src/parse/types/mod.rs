@@ -54,6 +54,16 @@ pub struct Rig {
     pub constants: Option<serde_json::Value>,
 
     pub rigging: Rigging,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context: Option<DefaultRigContext>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct DefaultRigContext {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device: Option<serde_json::Value>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]

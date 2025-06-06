@@ -44,6 +44,7 @@ pub async fn run_rig(
 
     let component_cache = BasicComponentCache::primed(&rig, &components_loader).await?;
     let session_options = RigSessionOptions::new_for_serve(
+        &rig,
         state.base_path.clone(),
         state.aot_path.clone(),
         state.base_path.join(FONTS_FOLDER_NAME),

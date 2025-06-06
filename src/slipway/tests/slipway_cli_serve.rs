@@ -156,6 +156,11 @@ async fn slipway_cli_serve_device_and_check_context() {
                         "context": "$.context"
                     }
                 }
+            },
+            "context": {
+                "device": {
+                    "foo": "default"
+                }
             }
         }"#},
     )
@@ -232,10 +237,23 @@ async fn slipway_cli_serve_device_and_check_context() {
     // Spawn the server as a child process
     let _server_guard = ServerGuard::new(path, false);
 
-    for url in [
-        "http://localhost:8081/devices/hello_device?format=json&authorization=test_api_key",
-        "http://localhost:8081/playlists/hello_playlist?device=hello_device&format=json&authorization=test_api_key",
-        "http://localhost:8081/rigs/hello?device=hello_device&format=json&authorization=test_api_key",
+    for (default_context, url) in [
+        (
+            false,
+            "http://localhost:8081/devices/hello_device?format=json&authorization=test_api_key",
+        ),
+        (
+            false,
+            "http://localhost:8081/playlists/hello_playlist?device=hello_device&format=json&authorization=test_api_key",
+        ),
+        (
+            false,
+            "http://localhost:8081/rigs/hello?device=hello_device&format=json&authorization=test_api_key",
+        ),
+        (
+            true,
+            "http://localhost:8081/rigs/hello?format=json&authorization=test_api_key",
+        ),
     ] {
         println!("Making request to: {}", url);
 
@@ -253,22 +271,42 @@ async fn slipway_cli_serve_device_and_check_context() {
 
         println!("{:?}", body);
         let body_json: serde_json::Value = serde_json::from_str(&body).unwrap();
-        assert_eq!(
-            body_json,
-            serde_json::json!({
-                "tz": TEST_TIMEZONE,
-                "lc": TEST_LOCALE,
-                "input": {
-                    "context": {
-                        "timezone": TEST_TIMEZONE,
-                        "locale": TEST_LOCALE,
-                        "device": {
-                            "foo": "bar",
+
+        if default_context {
+            assert_eq!(
+                body_json,
+                serde_json::json!({
+                    "tz": TEST_TIMEZONE,
+                    "lc": TEST_LOCALE,
+                    "input": {
+                        "context": {
+                            "timezone": TEST_TIMEZONE,
+                            "locale": TEST_LOCALE,
+                            "device": {
+                                "foo": "default",
+                            }
                         }
                     }
-                }
-            })
-        );
+                })
+            );
+        } else {
+            assert_eq!(
+                body_json,
+                serde_json::json!({
+                    "tz": TEST_TIMEZONE,
+                    "lc": TEST_LOCALE,
+                    "input": {
+                        "context": {
+                            "timezone": TEST_TIMEZONE,
+                            "locale": TEST_LOCALE,
+                            "device": {
+                                "foo": "bar",
+                            }
+                        }
+                    }
+                })
+            );
+        }
     }
 }
 

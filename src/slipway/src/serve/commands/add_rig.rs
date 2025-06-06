@@ -20,6 +20,7 @@ pub async fn add_rig(
         rigging: slipway_engine::Rigging {
             components: Default::default(),
         },
+        context: None,
     };
 
     repository.set_rig(&name, &rig).await?;

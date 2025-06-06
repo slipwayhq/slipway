@@ -5,6 +5,7 @@ use crate::ComponentFiles;
 use crate::ComponentFilesLoader;
 use crate::ComponentHandle;
 use crate::ComponentRigging;
+use crate::DefaultRigContext;
 use crate::Description;
 use crate::Name;
 use crate::Permission;
@@ -36,6 +37,9 @@ impl Rig {
             description: Some(Description::from_str("test_description").unwrap()),
             constants: Some(json!({"test_constant": "test_constant_value"})),
             rigging,
+            context: Some(DefaultRigContext {
+                device: Some(json!({"test_device_context": "test_device_context_value"})),
+            }),
         }
     }
 }

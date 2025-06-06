@@ -87,6 +87,7 @@ async fn run_component_fragment(
         description: None,
         constants: component_definition.constants.clone(),
         rigging: rigging_with_input,
+        context: None,
     };
 
     let prepare_input_duration = prepare_input_start.elapsed();
