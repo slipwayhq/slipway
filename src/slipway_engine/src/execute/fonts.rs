@@ -11,11 +11,15 @@ pub struct FontContext {
 
 impl FontContext {
     pub fn new() -> Self {
+        let mut collection = Collection::new(CollectionOptions {
+            shared: true,
+            system_fonts: true,
+        });
+
+        add_default_fonts(&mut collection);
+
         Self {
-            collection: Collection::new(CollectionOptions {
-                shared: true,
-                system_fonts: true,
-            }),
+            collection,
             source_cache: SourceCache::new(SourceCacheOptions { shared: true }),
         }
     }
@@ -25,6 +29,8 @@ impl FontContext {
             shared: true,
             system_fonts: true,
         });
+
+        add_default_fonts(&mut collection);
 
         // Add all the fonts in the font_path directory to the collection.
         if font_path.exists() && font_path.is_dir() {
@@ -56,5 +62,12 @@ impl FontContext {
 
     pub fn spread(&mut self) -> (&mut Collection, &mut SourceCache) {
         (&mut self.collection, &mut self.source_cache)
+    }
+}
+
+fn add_default_fonts(collection: &mut Collection) {
+    // Add default slipway fonts.
+    for font_data in [crate::ROBOTO_FONT, crate::ROBOTO_MONO_FONT] {
+        collection.register_fonts(font_data.to_vec());
     }
 }

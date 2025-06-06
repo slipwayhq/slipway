@@ -60,3 +60,9 @@ pub const SLIPWAY_ALPHANUMERIC_NAME_REGEX_STR: &str = r"^[a-z0-9_]+$";
 pub static SLIPWAY_ALPHANUMERIC_NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(SLIPWAY_ALPHANUMERIC_NAME_REGEX_STR).expect("Regex should be valid")
 });
+
+pub const DEFAULT_FONT_SANS_SERIF: &str = "Roboto";
+const ROBOTO_FONT: &[u8] = include_bytes!("../../../fonts/Roboto.ttf");
+
+pub const DEFAULT_FONT_MONOSPACE: &str = "Roboto Mono";
+const ROBOTO_MONO_FONT: &[u8] = include_bytes!("../../../fonts/RobotoMono.ttf");

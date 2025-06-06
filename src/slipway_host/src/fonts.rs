@@ -74,6 +74,18 @@ fn try_resolve_with_context(
     for name in names.iter() {
         match GenericFamily::parse(name) {
             Some(family) => {
+                match family {
+                    // Add the default provided fonts for common generic families.
+                    // These fonts are added automatically to FontContext, and we always
+                    // provide them for compatibility and consistency across platforms.
+                    GenericFamily::SansSerif => {
+                        families.push(QueryFamily::Named(slipway_engine::DEFAULT_FONT_SANS_SERIF));
+                    }
+                    GenericFamily::Monospace => {
+                        families.push(QueryFamily::Named(slipway_engine::DEFAULT_FONT_MONOSPACE));
+                    }
+                    _ => {}
+                }
                 families.push(QueryFamily::Generic(family));
             }
             None => {

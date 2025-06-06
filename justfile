@@ -20,6 +20,7 @@ clean-component-artifacts configuration:
   rm -rf components
 
 build-src configuration="release":
+  ./download_fonts.sh
   cd src && cargo build {{ if configuration == "release" { "--release" } else { "" } }}
 
 build-components configuration="release": && (assemble-test-components configuration)

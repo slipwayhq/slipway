@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.0
+
+Rigs can now specify a default device context, which will be overridden by devices.
+
+Image rotation can now be specified as a `rotate` query string parameter.
+
+Devices can now specify default values for `format`, `image_format` and `rotate`.
+These defaults can be overridden by query string parameters.
+
+Roboto and Roboto Mono fonts are now bundled and used by default for `sans-serif` and `monospace` font families.
+
+
 ## 0.6.0
 
 Canvases should now use premultiplied alpha, and are converted to straight alpha during export.
