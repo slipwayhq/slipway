@@ -103,6 +103,7 @@ fn try_load<T>(maybe_result: Result<T, ServeError>) -> Result<Option<T>, ServeEr
 pub(super) struct Device {
     // Any Trmnl API specific settings for the device.
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub trmnl: Option<TrmnlDevice>,
 
     /// The playlist to use for this device.
