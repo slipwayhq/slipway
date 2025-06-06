@@ -32,6 +32,7 @@ async fn when_device_already_configured_for_trmnl_it_should_return_new_credentia
                     }),
                     playlist: Some(pn("p_1")),
                     context: None,
+                    result_spec: Default::default(),
                 },
             )]
             .into_iter()

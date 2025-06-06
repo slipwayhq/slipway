@@ -14,6 +14,7 @@ use crate::{
     serve::{
         REFRESH_RATE_HEADER, RepositoryConfig, SlipwayServeConfig, SlipwayServeEnvironment,
         create_app,
+        repository::{RigResultFormat, RigResultImageFormat, RigResultPartialSpec},
     },
 };
 
@@ -44,10 +45,26 @@ fn device(name: &str, playlist_name: &str) -> (DeviceName, Device) {
             trmnl: None,
             playlist: Some(pn(playlist_name)),
             context: None,
+            result_spec: Default::default(),
         },
     )
 }
 
+fn device_with_spec(
+    name: &str,
+    playlist_name: &str,
+    result_spec: RigResultPartialSpec,
+) -> (DeviceName, Device) {
+    (
+        dn(name),
+        Device {
+            trmnl: None,
+            playlist: Some(pn(playlist_name)),
+            context: None,
+            result_spec,
+        },
+    )
+}
 fn trmnl_device(name: &str, playlist_name: &str, api_key: &str) -> (DeviceName, Device) {
     (
         dn(name),
@@ -58,6 +75,7 @@ fn trmnl_device(name: &str, playlist_name: &str, api_key: &str) -> (DeviceName, 
             }),
             playlist: Some(pn(playlist_name)),
             context: None,
+            result_spec: Default::default(),
         },
     )
 }
@@ -500,4 +518,88 @@ async fn when_device_auth_supplied_it_should_execute_rigs() {
         let response = test::call_service(&app, request).await;
         assert_response(response, false).await;
     }
+}
+
+#[test_log::test(actix_web::test)]
+async fn when_device_result_spec_it_should_pass_through_to_url() {
+    let config = SlipwayServeConfig {
+        log_level: Some("debug".to_string()),
+        registry_urls: vec![],
+        environment: SlipwayServeEnvironment::for_test(),
+        rig_permissions: HashMap::new(),
+        hashed_api_keys: create_auth_for_key("auth123"),
+        show_api_keys: ShowApiKeys::Never,
+        port: None,
+        repository: RepositoryConfig::Memory {
+            devices: vec![device_with_spec(
+                "d_1",
+                "p_1",
+                RigResultPartialSpec {
+                    format: Some(RigResultFormat::Url),
+                    image_format: Some(RigResultImageFormat::Jpeg),
+                    rotate: Some(90),
+                },
+            )]
+            .into_iter()
+            .collect(),
+            playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
+            rigs: vec![rig("r_1")].into_iter().collect(),
+        },
+    };
+
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
+
+    let request = test::TestRequest::get()
+        .uri("/devices/d_1")
+        .append_header(("Authorization", "auth123"))
+        .to_request();
+    let response = test::call_service(&app, request).await;
+    let status = response.status();
+    let body = get_body(response).await;
+
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(body.contains("/devices/d_1?format=image&image_format=jpeg&rotate=90"));
+}
+
+#[test_log::test(actix_web::test)]
+async fn when_device_result_spec_query_string_should_override() {
+    let config = SlipwayServeConfig {
+        log_level: Some("debug".to_string()),
+        registry_urls: vec![],
+        environment: SlipwayServeEnvironment::for_test(),
+        rig_permissions: HashMap::new(),
+        hashed_api_keys: create_auth_for_key("auth123"),
+        show_api_keys: ShowApiKeys::Never,
+        port: None,
+        repository: RepositoryConfig::Memory {
+            devices: vec![device_with_spec(
+                "d_1",
+                "p_1",
+                RigResultPartialSpec {
+                    format: Some(RigResultFormat::Image),
+                    image_format: Some(RigResultImageFormat::Jpeg),
+                    rotate: Some(90),
+                },
+            )]
+            .into_iter()
+            .collect(),
+            playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
+            rigs: vec![rig("r_1")].into_iter().collect(),
+        },
+    };
+
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
+
+    let request = test::TestRequest::get()
+        .uri("/devices/d_1?format=html&image_format=bmp_1bit&rotate=180")
+        .append_header(("Authorization", "auth123"))
+        .to_request();
+    let response = test::call_service(&app, request).await;
+    let status = response.status();
+    let body = get_body(response).await;
+
+    assert_eq!(status, StatusCode::OK);
+
+    assert!(body.contains("/devices/d_1?format=image&image_format=bmp_1bit&rotate=180"));
 }

@@ -22,6 +22,7 @@ pub async fn add_device(
         trmnl: None,
         playlist,
         context: None,
+        result_spec: Default::default(),
     };
 
     repository.set_device(&name, &device).await?;

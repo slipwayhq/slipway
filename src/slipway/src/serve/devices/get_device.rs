@@ -6,9 +6,8 @@ use serde::Deserialize;
 use tracing::{Instrument, debug_span, info_span};
 
 use crate::primitives::DeviceName;
-use crate::serve::responses::{
-    FormatQuery, PlaylistResponse, RigResultFormat, RigResultImageFormat,
-};
+use crate::serve::repository::{RigResultFormat, RigResultImageFormat, RigResultSpec};
+use crate::serve::responses::{FormatQuery, PlaylistResponse};
 use crate::serve::rigs::get_rig::RequestingDevice;
 
 use super::super::{ServeState, responses::ServeError};
@@ -36,18 +35,15 @@ pub async fn get_device(
     let state = data.into_inner();
 
     let device_name = &path.device_name;
-    let format = query.output.format.unwrap_or_default();
-    let image_format = query.output.image_format.unwrap_or_default();
 
-    get_device_response(device_name, format, image_format, state, req)
+    get_device_response(device_name, query.output, state, req)
         .instrument(info_span!("device", ""=%device_name))
         .await
 }
 
 pub async fn get_device_response(
     device_name: &DeviceName,
-    format: RigResultFormat,
-    image_format: RigResultImageFormat,
+    format_query: FormatQuery,
     state: Arc<ServeState>,
     req: HttpRequest,
 ) -> Result<PlaylistResponse, ServeError> {
@@ -62,14 +58,25 @@ pub async fn get_device_response(
         ));
     };
 
+    let result_spec_defaults = if device.trmnl.is_none() {
+        device.result_spec.into_spec(RigResultSpec::default())
+    } else {
+        device.result_spec.into_spec(RigResultSpec {
+            format: RigResultFormat::Url,
+            image_format: RigResultImageFormat::Bmp1Bit,
+            rotate: 0,
+        })
+    };
+
+    let result_spec = format_query.into_spec_with_defaults(result_spec_defaults);
+
     super::super::playlists::get_playlist::get_playlist_response(
         playlist_name,
         Some(RequestingDevice {
             name: device_name.clone(),
             context: device.context,
         }),
-        format,
-        image_format,
+        result_spec,
         state,
         req,
     )

@@ -6,7 +6,7 @@ use crate::{
     primitives::DeviceName,
     serve::{
         ServeState, ShowApiKeys, SlipwayServeConfig,
-        responses::{RigResponse, RigResultFormat, RigResultImageFormat, ServeError},
+        responses::{FormatQuery, RigResponse, ServeError},
         trmnl::{authenticate_device, get_api_key_from_headers, get_device_id_from_headers},
     },
 };
@@ -43,8 +43,7 @@ pub(crate) async fn trmnl_display(
 
     let device_response = super::super::devices::get_device::get_device_response(
         &device_name,
-        RigResultFormat::Url,
-        RigResultImageFormat::Bmp1Bit,
+        FormatQuery::none(),
         data.into_inner(),
         req,
     )

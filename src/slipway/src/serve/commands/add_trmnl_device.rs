@@ -56,6 +56,7 @@ pub async fn add_trmnl_device(
             }),
             playlist,
             context: None,
+            result_spec: Default::default(),
         };
 
         repository.set_device(&name, &device).await?;

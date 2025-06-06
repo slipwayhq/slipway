@@ -6,9 +6,8 @@ use serde::Deserialize;
 use tracing::{Instrument, debug_span, info_span};
 
 use crate::primitives::{DeviceName, PlaylistName};
-use crate::serve::responses::{
-    FormatQuery, PlaylistResponse, RigResultFormat, RigResultImageFormat, ServeError,
-};
+use crate::serve::repository::RigResultSpec;
+use crate::serve::responses::{FormatQuery, PlaylistResponse, ServeError};
 use crate::serve::rigs::get_rig::RequestingDevice;
 
 use super::super::ServeState;
@@ -38,8 +37,7 @@ pub async fn get_playlist(
     let state = data.into_inner();
 
     let playlist_name = &path.playlist_name;
-    let image_format = query.output.image_format.unwrap_or_default();
-    let format = query.output.format.unwrap_or_default();
+    let result_spec = query.output.into_spec();
 
     let device = match query.device {
         Some(device_name) => {
@@ -49,7 +47,7 @@ pub async fn get_playlist(
         None => None,
     };
 
-    get_playlist_response(playlist_name, device, format, image_format, state, req)
+    get_playlist_response(playlist_name, device, result_spec, state, req)
         .instrument(info_span!("playlist", ""=%playlist_name))
         .await
 }
@@ -57,8 +55,7 @@ pub async fn get_playlist(
 pub async fn get_playlist_response(
     playlist_name: &PlaylistName,
     device: Option<RequestingDevice>,
-    format: RigResultFormat,
-    image_format: RigResultImageFormat,
+    result_spec: RigResultSpec,
     state: Arc<ServeState>,
     req: HttpRequest,
 ) -> Result<PlaylistResponse, ServeError> {
@@ -75,16 +72,10 @@ pub async fn get_playlist_response(
     let rig_name = playlist_item.rig;
     let refresh_rate_seconds = playlist_item.refresh_rate_seconds;
 
-    let rig_response = super::super::rigs::get_rig::get_rig_response(
-        &rig_name,
-        device,
-        format,
-        image_format,
-        state,
-        req,
-    )
-    .instrument(debug_span!("rig", ""=%rig_name))
-    .await?;
+    let rig_response =
+        super::super::rigs::get_rig::get_rig_response(&rig_name, device, result_spec, state, req)
+            .instrument(debug_span!("rig", ""=%rig_name))
+            .await?;
 
     Ok(PlaylistResponse {
         refresh_rate_seconds,

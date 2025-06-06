@@ -4,17 +4,16 @@ use std::sync::Arc;
 use actix_web::http::StatusCode;
 use actix_web::{HttpMessage, HttpRequest, get, web};
 use anyhow::Context;
+use image::imageops::{rotate90, rotate180, rotate270};
 use serde::Deserialize;
 use tracing::{Instrument, info_span};
 
 use crate::primitives::{DeviceName, RigName};
 use crate::serve::auth::compute_signature_parts;
-use crate::serve::{API_GET_RIG_PATH, Device, RequestState, TRMNL_DISPLAY_PATH};
+use crate::serve::repository::{RigResultFormat, RigResultSpec};
+use crate::serve::{API_GET_DEVICE_PATH, Device, RequestState, TRMNL_DISPLAY_PATH};
 
-use crate::serve::responses::{
-    FormatQuery, ImageResponse, RigResponse, RigResultFormat, RigResultImageFormat, ServeError,
-    UrlResponse,
-};
+use crate::serve::responses::{FormatQuery, ImageResponse, RigResponse, ServeError, UrlResponse};
 
 use super::super::ServeState;
 
@@ -43,8 +42,7 @@ pub async fn get_rig(
 
     let state = data.into_inner();
     let rig_name = path.rig_name;
-    let image_format = query.output.image_format.unwrap_or_default();
-    let format = query.output.format.unwrap_or_default();
+    let result_spec = query.output.into_spec();
 
     let device = match query.device {
         Some(device_name) => {
@@ -54,7 +52,7 @@ pub async fn get_rig(
         None => None,
     };
 
-    get_rig_response(&rig_name, device, format, image_format, state, req)
+    get_rig_response(&rig_name, device, result_spec, state, req)
         .instrument(info_span!("rig", ""=%rig_name))
         .await
 }
@@ -76,12 +74,15 @@ impl RequestingDevice {
 pub async fn get_rig_response(
     rig_name: &RigName,
     device: Option<RequestingDevice>,
-    format: RigResultFormat,
-    image_format: RigResultImageFormat,
+    result_spec: RigResultSpec,
     state: Arc<ServeState>,
     req: HttpRequest,
 ) -> Result<RigResponse, ServeError> {
     let rig = state.repository.get_rig(rig_name).await?;
+
+    let format = result_spec.format;
+    let image_format = result_spec.image_format;
+    let rotate = result_spec.rotate;
 
     match format {
         RigResultFormat::Image | RigResultFormat::DataUrl | RigResultFormat::Json => {
@@ -96,6 +97,18 @@ pub async fn get_rig_response(
                 let maybe_image = crate::canvas::get_canvas_image(&result.handle, &result.output);
 
                 if let Ok(image) = maybe_image {
+                    let image = match rotate {
+                        0 => image,
+                        90 => rotate90(&image),
+                        180 => rotate180(&image),
+                        270 => rotate270(&image),
+                        _ => {
+                            return Err(ServeError::UserFacing(
+                                StatusCode::BAD_REQUEST,
+                                format!("Invalid rotation angle specified: {}", rotate),
+                            ));
+                        }
+                    };
                     Ok(RigResponse::Image(ImageResponse {
                         image,
                         format: image_format,
@@ -118,7 +131,13 @@ pub async fn get_rig_response(
                 let path = uri.path();
                 if path.ends_with(TRMNL_DISPLAY_PATH) {
                     let path_without_trmnl = &path[0..path.len() - TRMNL_DISPLAY_PATH.len()];
-                    Cow::Owned(format!("{path_without_trmnl}{API_GET_RIG_PATH}/{rig_name}"))
+                    let device_name = device
+                        .as_ref()
+                        .map(|d| &d.name)
+                        .expect("Trmnl display calls should be associated with a device");
+                    Cow::Owned(format!(
+                        "{path_without_trmnl}{API_GET_DEVICE_PATH}/{device_name}"
+                    ))
                 } else {
                     Cow::Borrowed(path)
                 }
@@ -144,6 +163,8 @@ pub async fn get_rig_response(
                     .as_str()
                     .expect("Image format should be a string"),
             );
+
+            qs.append_pair("rotate", &rotate.to_string());
 
             if let Some(device) = device {
                 qs.append_pair("device", &device.name.0);

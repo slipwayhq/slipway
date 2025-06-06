@@ -2,15 +2,18 @@ use actix_web::body::{BoxBody, EitherBody};
 use actix_web::http::StatusCode;
 use actix_web::http::header::{ContentType, HeaderName, HeaderValue};
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer};
 
 use base64::prelude::*;
 use image::{DynamicImage, ImageFormat, RgbaImage};
 use slipway_host::hash_bytes;
 use std::io::Cursor;
+use std::str::FromStr;
 use thiserror::Error;
 use tracing::{debug, info};
 use url::Url;
+
+use crate::serve::repository::{RigResultFormat, RigResultImageFormat, RigResultSpec};
 
 #[derive(Debug, Error)]
 pub(super) enum ServeError {
@@ -230,47 +233,49 @@ fn get_image_bytes(image: RgbaImage, format: ImageFormat) -> Result<Vec<u8>, ima
     Ok(buf.into_inner())
 }
 
-#[derive(Deserialize, Serialize, Default)]
-#[serde(rename_all = "snake_case")]
-pub(super) enum RigResultImageFormat {
-    Jpeg,
-
-    #[default]
-    Png,
-
-    // Specify serde string as "bmp_1bit", to avoid default of `bmp1_bit`.
-    #[serde(rename = "bmp_1bit")]
-    Bmp1Bit,
-}
-
-#[derive(Deserialize, Serialize, Default)]
-#[serde(rename_all = "snake_case")]
-pub(super) enum RigResultFormat {
-    /// Return an image.
-    #[default]
-    Image,
-
-    /// Return the JSON output of the rig.
-    Json,
-
-    /// Return the image encoded as a data URL.
-    /// We expose this as `html_embed` to the user because while internally this is a data URL,
-    /// the user sees it as an HTML page containing a data URL.
-    #[serde(rename = "html_embed")]
-    DataUrl,
-
-    /// Return a URL which will generate the image.
-    /// We expose this as `html` to the user because while internally this is a URL,
-    /// the user sees it as an HTML page containing a URL.
-    #[serde(rename = "html")]
-    Url,
-}
-
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub(super) struct FormatQuery {
+    #[serde(default)]
+    pub format: Option<RigResultFormat>,
+
     #[serde(default)]
     pub image_format: Option<RigResultImageFormat>,
 
-    #[serde(default)]
-    pub format: Option<RigResultFormat>,
+    #[serde(default, deserialize_with = "deserialize_number_from_string")]
+    pub rotate: Option<u16>,
+}
+
+impl FormatQuery {
+    pub fn none() -> Self {
+        Default::default()
+    }
+
+    pub fn into_spec(self) -> RigResultSpec {
+        RigResultSpec {
+            format: self.format.unwrap_or_default(),
+            image_format: self.image_format.unwrap_or_default(),
+            rotate: self.rotate.unwrap_or_default(),
+        }
+    }
+
+    pub fn into_spec_with_defaults(self, defaults: RigResultSpec) -> RigResultSpec {
+        RigResultSpec {
+            format: self.format.unwrap_or(defaults.format),
+            image_format: self.image_format.unwrap_or(defaults.image_format),
+            rotate: self.rotate.unwrap_or(defaults.rotate),
+        }
+    }
+}
+
+pub fn deserialize_number_from_string<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: FromStr + serde::Deserialize<'de>,
+    T::Err: std::fmt::Display,
+{
+    let s: Option<&str> = Option::deserialize(deserializer)?;
+    match s {
+        Some(s) => s.parse::<T>().map(Some).map_err(serde::de::Error::custom),
+        None => Ok(None),
+    }
 }

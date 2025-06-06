@@ -116,6 +116,84 @@ pub(super) struct Device {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub context: Option<serde_json::Value>,
+
+    #[serde(flatten)]
+    pub result_spec: RigResultPartialSpec,
+}
+
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub(super) struct RigResultPartialSpec {
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub format: Option<RigResultFormat>,
+
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub image_format: Option<RigResultImageFormat>,
+
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rotate: Option<u16>,
+}
+
+impl RigResultPartialSpec {
+    pub fn into_spec(self, defaults: RigResultSpec) -> RigResultSpec {
+        RigResultSpec {
+            format: self.format.unwrap_or(defaults.format),
+            image_format: self.image_format.unwrap_or(defaults.image_format),
+            rotate: self.rotate.unwrap_or(defaults.rotate),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(deny_unknown_fields)]
+pub(super) struct RigResultSpec {
+    #[serde(default)]
+    pub format: RigResultFormat,
+
+    #[serde(default)]
+    pub image_format: RigResultImageFormat,
+
+    #[serde(default)]
+    pub rotate: u16,
+}
+
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum RigResultImageFormat {
+    Jpeg,
+
+    #[default]
+    Png,
+
+    // Specify serde string as "bmp_1bit", to avoid default of `bmp1_bit`.
+    #[serde(rename = "bmp_1bit")]
+    Bmp1Bit,
+}
+
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum RigResultFormat {
+    /// Return an image.
+    #[default]
+    Image,
+
+    /// Return the JSON output of the rig.
+    Json,
+
+    /// Return the image encoded as a data URL.
+    /// We expose this as `html_embed` to the user because while internally this is a data URL,
+    /// the user sees it as an HTML page containing a data URL.
+    #[serde(rename = "html_embed")]
+    DataUrl,
+
+    /// Return a URL which will generate the image.
+    /// We expose this as `html` to the user because while internally this is a URL,
+    /// the user sees it as an HTML page containing a URL.
+    #[serde(rename = "html")]
+    Url,
 }
 
 /// Data specific to devices which make use of the TRMNL API.
