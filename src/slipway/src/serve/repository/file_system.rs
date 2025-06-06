@@ -143,7 +143,8 @@ async fn load_from_file<T: DeserializeOwned>(
 
     let result: T = serde_json::from_slice(&bytes)
         .context(format!(
-            "Failed to parse Slipway {type_name} \"{path:?}\" as JSON.",
+            "Failed to parse Slipway {type_name} {path:?} as {}.",
+            std::any::type_name::<T>()
         ))
         .map_err(ServeError::Internal)?;
 

@@ -14,7 +14,7 @@ use url::Url;
 
 #[derive(Debug, Error)]
 pub(super) enum ServeError {
-    #[error("internal error: {0}")]
+    #[error("internal error: {0:?}")]
     Internal(anyhow::Error),
 
     #[error("{0}: {1}")]
