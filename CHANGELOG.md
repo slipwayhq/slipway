@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.0
+## 0.7.1
 
 Rigs can now specify a default device context, which will be overridden by devices.
 
