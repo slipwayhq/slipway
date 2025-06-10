@@ -62,7 +62,7 @@ pub static SLIPWAY_ALPHANUMERIC_NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 pub const DEFAULT_FONT_SANS_SERIF: &str = "Roboto";
-const ROBOTO_FONT: &[u8] = include_bytes!("../../../fonts/Roboto.ttf");
+const ROBOTO_FONT: &[u8] = include_bytes!("../../fonts/Roboto.ttf");
 
 pub const DEFAULT_FONT_MONOSPACE: &str = "Roboto Mono";
-const ROBOTO_MONO_FONT: &[u8] = include_bytes!("../../../fonts/RobotoMono.ttf");
+const ROBOTO_MONO_FONT: &[u8] = include_bytes!("../../fonts/RobotoMono.ttf");
