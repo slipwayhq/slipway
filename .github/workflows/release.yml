@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-    - '*'
+      - "*"
 
 defaults:
   run:
@@ -20,167 +20,167 @@ jobs:
       value: ${{ steps.prerelease.outputs.value }}
 
     steps:
-    - name: Prerelease Check
-      id: prerelease
-      run: |
-        if [[ ${{ github.ref_name }} =~ ^[0-9]+[.][0-9]+[.][0-9]+$ ]]; then
-            echo value=false >> $GITHUB_OUTPUT
-        else
-            echo value=true >> $GITHUB_OUTPUT
-        fi
+      - name: Prerelease Check
+        id: prerelease
+        run: |
+          if [[ ${{ github.ref_name }} =~ ^[0-9]+[.][0-9]+[.][0-9]+$ ]]; then
+              echo value=false >> $GITHUB_OUTPUT
+          else
+              echo value=true >> $GITHUB_OUTPUT
+          fi
 
   package:
     strategy:
       matrix:
         target:
-        - aarch64-apple-darwin
-        - aarch64-unknown-linux-musl
-        # - aarch64-unknown-linux-gnu
-        # These older ARM targets are disabled because cranelift (used by wasmtime)
-        # only supports aarch64 ARM. It's potentially possible to use an alternative to cranelift.
-        # https://github.com/bytecodealliance/wasmtime/issues/1173
-        # - arm-unknown-linux-musleabihf
-        # - armv7-unknown-linux-musleabihf
-        # x86 Apple build is disabled because we get link issues around sixel.
-        # I've not looked into this much.
-        #- x86_64-apple-darwin
-        - x86_64-unknown-linux-musl
-        - x86_64-unknown-linux-gnu
+          - aarch64-apple-darwin
+          - aarch64-unknown-linux-musl
+          # - aarch64-unknown-linux-gnu
+          # These older ARM targets are disabled because cranelift (used by wasmtime)
+          # only supports aarch64 ARM. It's potentially possible to use an alternative to cranelift.
+          # https://github.com/bytecodealliance/wasmtime/issues/1173
+          # - arm-unknown-linux-musleabihf
+          # - armv7-unknown-linux-musleabihf
+          # x86 Apple build is disabled because we get link issues around sixel.
+          # I've not looked into this much.
+          #- x86_64-apple-darwin
+          - x86_64-unknown-linux-musl
+          - x86_64-unknown-linux-gnu
         include:
-        - target: aarch64-apple-darwin
-          os: macos-latest
-          target_rustflags: ''
-        - target: aarch64-unknown-linux-musl
-          os: ubuntu-latest
-          target_rustflags: '--codegen linker=aarch64-linux-musl-gcc'
-        # - target: aarch64-unknown-linux-gnu
-        #   os: ubuntu-latest
-        #   target_rustflags: ''
-        # - target: arm-unknown-linux-musleabihf
-        #   os: ubuntu-latest
-        #   target_rustflags: '--codegen linker=arm-linux-gnueabihf-gcc'
-        # - target: armv7-unknown-linux-musleabihf
-        #   os: ubuntu-latest
-        #   target_rustflags: '--codegen linker=arm-linux-gnueabihf-gcc'
-        # - target: x86_64-apple-darwin
-        #   os: macos-latest
-        #   target_rustflags: ''
-        - target: x86_64-unknown-linux-musl
-          os: ubuntu-latest
-          target_rustflags: ''
-        - target: x86_64-unknown-linux-gnu
-          os: ubuntu-latest
-          target_rustflags: ''
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            target_rustflags: ""
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            target_rustflags: "--codegen linker=aarch64-linux-musl-gcc"
+          # - target: aarch64-unknown-linux-gnu
+          #   os: ubuntu-latest
+          #   target_rustflags: ''
+          # - target: arm-unknown-linux-musleabihf
+          #   os: ubuntu-latest
+          #   target_rustflags: '--codegen linker=arm-linux-gnueabihf-gcc'
+          # - target: armv7-unknown-linux-musleabihf
+          #   os: ubuntu-latest
+          #   target_rustflags: '--codegen linker=arm-linux-gnueabihf-gcc'
+          # - target: x86_64-apple-darwin
+          #   os: macos-latest
+          #   target_rustflags: ''
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            target_rustflags: ""
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            target_rustflags: ""
 
     runs-on: ${{matrix.os}}
 
     needs:
-    - prerelease
+      - prerelease
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    # - name: Install AArch64 Dependencies
-    #   if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
-    #   run: |
-    #     sudo apt-get update
-    #     sudo apt-get install gcc-aarch64-linux-gnu libc6-dev
+      # - name: Install AArch64 Dependencies
+      #   if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install gcc-aarch64-linux-gnu libc6-dev
 
-    - name: Install Linux Dependencies
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: |
-        sudo apt-get update
-        sudo apt-get install libssl-dev libsixel-bin fontconfig
+      - name: Install Linux Dependencies
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install libssl-dev libsixel-bin fontconfig
 
-    # macOS bits needed by libsixel’s ./configure script + a working dylib
-    - name: Install MacOS deps for sixel
-      if: ${{ matrix.os == 'macos-latest' }}
-      run: |
-        brew update
-        brew install libsixel
-        # make Cargo see the Homebrew dylib
-        echo "RUSTFLAGS=-L$(brew --prefix libsixel)/lib" >> $GITHUB_ENV
-        echo "DYLD_FALLBACK_LIBRARY_PATH=$(brew --prefix libsixel)/lib" >> $GITHUB_ENV
+      # macOS bits needed by libsixel’s ./configure script + a working dylib
+      - name: Install MacOS deps for sixel
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: |
+          brew update
+          brew install libsixel
+          # make Cargo see the Homebrew dylib
+          echo "RUSTFLAGS=-L$(brew --prefix libsixel)/lib" >> $GITHUB_ENV
+          echo "DYLD_FALLBACK_LIBRARY_PATH=$(brew --prefix libsixel)/lib" >> $GITHUB_ENV
 
-    - name: Install cross
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: cargo install cross
+      - name: Install cross
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: cargo install cross
 
-    - name: Package
-      id: package
-      env:
-        TARGET: ${{ matrix.target }}
-        REF: ${{ github.ref }}
-        OS: ${{ matrix.os }}
-        TARGET_RUSTFLAGS: ${{ matrix.target_rustflags }}
-        RUSTFLAGS: ${{ env.RUSTFLAGS }}
-        DYLD_FALLBACK_LIBRARY_PATH: ${{ env.DYLD_FALLBACK_LIBRARY_PATH }}
-      run: ./ci/package.sh
-      shell: bash
+      - name: Package
+        id: package
+        env:
+          TARGET: ${{ matrix.target }}
+          REF: ${{ github.ref }}
+          OS: ${{ matrix.os }}
+          TARGET_RUSTFLAGS: ${{ matrix.target_rustflags }}
+          RUSTFLAGS: ${{ env.RUSTFLAGS }}
+          DYLD_FALLBACK_LIBRARY_PATH: ${{ env.DYLD_FALLBACK_LIBRARY_PATH }}
+        run: ./ci/package.sh
+        shell: bash
 
-    - name: Publish Archive
-      uses: softprops/action-gh-release@v2.2.1
-      if: ${{ startsWith(github.ref, 'refs/tags/') }}
-      with:
-        draft: false
-        files: ${{ steps.package.outputs.archive }}
-        prerelease: ${{ needs.prerelease.outputs.value }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish Archive
+        uses: softprops/action-gh-release@v2.2.1
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        with:
+          draft: false
+          files: ${{ steps.package.outputs.archive }}
+          prerelease: ${{ needs.prerelease.outputs.value }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Publish Changelog and Scripts
-      uses: softprops/action-gh-release@v2.2.1
-      if: >-
-        ${{
-          startsWith(github.ref, 'refs/tags/')
-          && matrix.target == 'aarch64-unknown-linux-musl'
-        }}
-      with:
-        draft: false
-        files: |
-          CHANGELOG.md
-        prerelease: ${{ needs.prerelease.outputs.value }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish Changelog and Scripts
+        uses: softprops/action-gh-release@v2.2.1
+        if: >-
+          ${{
+            startsWith(github.ref, 'refs/tags/')
+            && matrix.target == 'aarch64-unknown-linux-musl'
+          }}
+        with:
+          draft: false
+          files: |
+            CHANGELOG.md
+          prerelease: ${{ needs.prerelease.outputs.value }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   checksum:
     runs-on: ubuntu-latest
 
     needs:
-    - package
-    - prerelease
+      - package
+      - prerelease
 
     steps:
-    - name: Download Release Archives
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: >-
-        gh release download
-        --repo slipwayhq/slipway
-        --pattern '*'
-        --dir release
-        ${{ github.ref_name }}
+      - name: Download Release Archives
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          gh release download
+          --repo slipwayhq/slipway
+          --pattern '*'
+          --dir release
+          ${{ github.ref_name }}
 
-    - name: Create Checksums
-      run: |
-        cd release
-        shasum -a 256 * > ../SHA256SUMS
+      - name: Create Checksums
+        run: |
+          cd release
+          shasum -a 256 * > ../SHA256SUMS
 
-    - name: Publish Checksums
-      uses: softprops/action-gh-release@v2.2.1
-      with:
-        draft: false
-        files: SHA256SUMS
-        prerelease: ${{ needs.prerelease.outputs.value }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish Checksums
+        uses: softprops/action-gh-release@v2.2.1
+        with:
+          draft: false
+          files: SHA256SUMS
+          prerelease: ${{ needs.prerelease.outputs.value }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   docker:
     runs-on: ubuntu-latest
 
     needs:
-    - package
-    - prerelease
+      - package
+      - prerelease
 
     permissions:
       packages: write
@@ -190,6 +190,12 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to Docker Hub
         uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
@@ -215,6 +221,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
