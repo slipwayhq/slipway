@@ -19,6 +19,9 @@ pub(crate) async fn trmnl_display(
     data: web::Data<ServeState>,
     req: HttpRequest,
 ) -> Result<impl Responder, ServeError> {
+    // print all headers for debugging purposes
+    debug!("Received headers: {:?}", req.headers());
+
     let id = get_device_id_from_headers(&req)?;
     debug!(
         "A display request was received from a device with ID \"{}\".",
