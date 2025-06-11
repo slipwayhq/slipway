@@ -11,7 +11,10 @@ use tracing::{Instrument, info_span};
 use crate::primitives::{DeviceName, RigName};
 use crate::serve::auth::compute_signature_parts;
 use crate::serve::repository::{RigResultFormat, RigResultSpec};
-use crate::serve::{API_GET_DEVICE_PATH, Device, RequestState, TRMNL_DISPLAY_PATH};
+use crate::serve::{
+    API_GET_DEVICE_PATH, Device, RequestState, TRMNL_DISPLAY_PATH, truncate_hashed_api_key,
+    try_get_api_key_from_state,
+};
 
 use crate::serve::responses::{FormatQuery, ImageResponse, RigResponse, ServeError, UrlResponse};
 
@@ -71,6 +74,42 @@ impl RequestingDevice {
     }
 }
 
+pub fn assert_api_key_is_valid_for_rig(
+    device: &Option<RequestingDevice>,
+    req: &HttpRequest,
+) -> Result<(), ServeError> {
+    // If there is no API key supplied we must be using a shared access signature to have got this far.
+    let maybe_supplied_api_key = try_get_api_key_from_state(req);
+    if let Some(supplied_api_key) = maybe_supplied_api_key {
+        if let Some(resolved) = supplied_api_key.resolved {
+            // If the API key is not associated with a device, we allow it to access any rig.
+            if let Some(associated_device_name) = resolved.device {
+                if let Some(current_device) = device {
+                    if associated_device_name != current_device.name {
+                        return Err(ServeError::UserFacing(
+                            StatusCode::FORBIDDEN,
+                            format!(
+                                "The hashed API key {} can only be used with the device \"{associated_device_name}\" but was used with \"{}\".",
+                                truncate_hashed_api_key(&resolved.hashed_key),
+                                current_device.name
+                            ),
+                        ));
+                    }
+                } else {
+                    return Err(ServeError::UserFacing(
+                        StatusCode::FORBIDDEN,
+                        format!(
+                            "The hashed API key {} can only be used with the device \"{associated_device_name}\".",
+                            truncate_hashed_api_key(&resolved.hashed_key)
+                        ),
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 pub async fn get_rig_response(
     rig_name: &RigName,
     device: Option<RequestingDevice>,
@@ -78,6 +117,8 @@ pub async fn get_rig_response(
     state: Arc<ServeState>,
     req: HttpRequest,
 ) -> Result<RigResponse, ServeError> {
+    assert_api_key_is_valid_for_rig(&device, &req)?;
+
     let rig = state.repository.get_rig(rig_name).await?;
 
     let format = result_spec.format;
@@ -185,7 +226,7 @@ pub async fn get_rig_response(
                 .and_then(|state| state.supplied_api_key.as_ref())
             {
                 // If we don't have a SLIPWAY_SECRET, we use the API key as a bearer token.
-                qs.append_pair("authorization", authorization);
+                qs.append_pair("authorization", &authorization.api_key);
             }
 
             // Used as a nonce to force Trmnl to reload the image.

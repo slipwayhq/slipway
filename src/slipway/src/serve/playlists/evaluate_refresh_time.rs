@@ -25,12 +25,12 @@ pub(super) fn get_next_refresh_time(
     if let Some(earliest_boundary) = maybe_boundary {
         let result = earliest_boundary.min(specified_next);
         debug!(
-            "Specified refresh is {}. Earliest playlist boundary is at {}. Returning {}.",
+            "Specified refresh is {}. Earliest playlist boundary is at {}. Using {}.",
             specified_next, earliest_boundary, result
         );
         Ok(result)
     } else {
-        debug!("Returning specified refresh {}.", specified_next);
+        debug!("Using specified refresh {}.", specified_next);
         Ok(specified_next)
     }
 }

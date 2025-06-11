@@ -5,9 +5,10 @@ use tracing::{Instrument, debug, info_span, instrument, warn};
 use crate::{
     primitives::DeviceName,
     serve::{
-        ServeState, ShowApiKeys, SlipwayServeConfig,
+        RegisteredApiKey, ServeState, ShowApiKeys, SlipwayServeConfig, get_api_key_from_state,
+        repository::{RigResultFormat, RigResultImageFormat, RigResultSpec},
         responses::{FormatQuery, RigResponse, ServeError},
-        trmnl::{authenticate_device, get_api_key_from_headers, get_device_id_from_headers},
+        truncate_hashed_api_key,
     },
 };
 
@@ -19,34 +20,34 @@ pub(crate) async fn trmnl_display(
     data: web::Data<ServeState>,
     req: HttpRequest,
 ) -> Result<impl Responder, ServeError> {
-    // print all headers for debugging purposes
-    debug!("Received headers: {:?}", req.headers());
+    let supplied_api_key = get_api_key_from_state(&req)?;
 
-    let id = get_device_id_from_headers(&req)?;
-    debug!(
-        "A display request was received from a device with ID \"{}\".",
-        id
-    );
-
-    let hashed_id = hash_string(id);
-
-    let maybe_device = data
-        .repository
-        .try_get_device_by_hashed_id(&hashed_id)
-        .await?;
-    let (device_name, device) = if let Some((device_name, device)) = maybe_device {
-        (device_name, device)
-    } else {
-        return Err(print_unknown_device_message(&req, id, &data.config)?);
+    let Some(resolved) = supplied_api_key.resolved else {
+        return Err(print_unknown_device_message(
+            &supplied_api_key.api_key,
+            &data.config,
+        ));
     };
 
-    let _trmnl_device = authenticate_device(id, &req, &device, data.config.show_api_keys)?;
+    debug!(
+        "A display request was received from a device with hashed API key: {}",
+        truncate_hashed_api_key(&resolved.hashed_key)
+    );
+
+    let Some(device_name) = resolved.device else {
+        return Err(print_no_linked_device_message(&resolved));
+    };
 
     print_optional_headers(&req, &device_name);
 
     let device_response = super::super::devices::get_device::get_device_response(
         &device_name,
         FormatQuery::none(),
+        Some(RigResultSpec {
+            format: RigResultFormat::Url,
+            image_format: RigResultImageFormat::Bmp1Bit,
+            rotate: 0,
+        }),
         data.into_inner(),
         req,
     )
@@ -66,27 +67,31 @@ pub(crate) async fn trmnl_display(
     })))
 }
 
-fn print_unknown_device_message(
-    req: &HttpRequest,
-    id: &str,
-    config: &SlipwayServeConfig,
-) -> Result<ServeError, ServeError> {
-    let api_key = get_api_key_from_headers(req)?;
-    let hashed_id = hash_string(id);
+fn print_unknown_device_message(api_key: &str, config: &SlipwayServeConfig) -> ServeError {
     let hashed_api_key = hash_string(api_key);
 
     let unhashed_data = match config.show_api_keys {
-        ShowApiKeys::Always | ShowApiKeys::New => Some(super::UnhashedData { api_key, id }),
+        ShowApiKeys::Always | ShowApiKeys::New => Some(super::UnhashedData { api_key }),
         ShowApiKeys::Never => None,
     };
 
-    warn!("An unknown device with ID \"{id}\" called the TRMNL display API.");
-    super::print_new_device_message(&hashed_id, &hashed_api_key, unhashed_data, None);
+    warn!("An device called the TRMNL display API with an unrecognized API key.");
+    super::print_new_device_message(&hashed_api_key, unhashed_data);
 
-    Ok(ServeError::UserFacing(
-        actix_web::http::StatusCode::NOT_FOUND,
-        format!("No device with ID \"{}\".", id),
-    ))
+    ServeError::UserFacing(
+        actix_web::http::StatusCode::UNAUTHORIZED,
+        "The supplied API key was not recognized.".to_string(),
+    )
+}
+
+fn print_no_linked_device_message(resolved_api_key: &RegisteredApiKey) -> ServeError {
+    warn!("TRMNL display API called with an API key which is not linked to any device.",);
+    super::print_update_key_message(&resolved_api_key.hashed_key);
+
+    ServeError::UserFacing(
+        actix_web::http::StatusCode::FORBIDDEN,
+        "The supplied API key was not associated with any device.".to_string(),
+    )
 }
 
 fn print_optional_headers(req: &HttpRequest, device_name: &DeviceName) {

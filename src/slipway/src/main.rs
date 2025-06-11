@@ -26,7 +26,7 @@ use clap::{
     },
 };
 use permissions::CommonPermissionsArgs;
-use primitives::{ApiKeyName, DeviceName, PlaylistName, RigName};
+use primitives::{DeviceName, PlaylistName, RigName};
 use semver::Version;
 use slipway_engine::{Name, Publisher, SlipwayReference, clear_components_cache};
 use slipway_host::hash_string;
@@ -255,28 +255,6 @@ enum ServeCommands {
         playlist: Option<PlaylistName>,
     },
 
-    /// Add or update a device with TRMNL API details.
-    #[command(arg_required_else_help = true)]
-    AddTrmnlDevice {
-        /// The name of the device.
-        /// (lowercase alphanumeric plus underscores).
-        #[arg(short, long)]
-        name: DeviceName,
-
-        /// The hashed version of the ID the device uses to register itself (typically a MAC address).
-        #[arg(long)]
-        hashed_id: String,
-
-        /// The hashed version of the API key the device uses to authenticate itself.
-        #[arg(short('k'), long)]
-        hashed_api_key: String,
-
-        /// The optional playlist to use for the device
-        /// (lowercase alphanumeric plus underscores).
-        #[arg(short, long)]
-        playlist: Option<PlaylistName>,
-    },
-
     /// Add a playlist to use when serving HTTP requests.
     #[command(arg_required_else_help = true)]
     AddPlaylist {
@@ -301,12 +279,29 @@ enum ServeCommands {
         permissions: Box<CommonPermissionsArgs>,
     },
 
-    /// Add an API key for accessing endpoints. The key itself will be generated and stored hashed.
+    /// Add an API key for accessing endpoints. The key will be stored hashed, so ensure you securely save a copy of the key elsewhere.
     #[command(arg_required_else_help = true)]
     AddApiKey {
-        /// A name for the API key, to help you identify it (lowercase alphanumeric plus underscores).
+        /// An optional key. If this and --hashed_key are omitted, a strong random key will be generated.
         #[arg(short, long)]
-        name: ApiKeyName,
+        key: Option<String>,
+
+        /// An optional hashed key. If this and --key are omitted, a strong random key will be generated.
+        #[arg(short, long)]
+        hashed_key: Option<String>,
+
+        /// An optional description of the key.
+        #[arg(short, long)]
+        description: Option<String>,
+
+        /// An optional device name. If provided, this key will be associated with the device
+        /// and the device will be created if it does not exist.
+        #[arg(short, long)]
+        device: Option<DeviceName>,
+
+        /// An optional playlist name. If provided, this playlist will be associated with the device.
+        #[arg(short, long)]
+        playlist: Option<PlaylistName>,
     },
 }
 
@@ -547,16 +542,6 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
                 configure_tracing(Default::default());
                 serve::commands::add_device(path, name, playlist).await?;
             }
-            Some(ServeCommands::AddTrmnlDevice {
-                hashed_id,
-                hashed_api_key,
-                name,
-                playlist,
-            }) => {
-                configure_tracing(Default::default());
-                serve::commands::add_trmnl_device(path, hashed_id, hashed_api_key, name, playlist)
-                    .await?;
-            }
             Some(ServeCommands::AddPlaylist { name, rig }) => {
                 configure_tracing(Default::default());
                 serve::commands::add_playlist(path, name, rig).await?;
@@ -565,9 +550,23 @@ async fn main_single_threaded(args: Cli) -> anyhow::Result<()> {
                 configure_tracing(Default::default());
                 serve::commands::add_rig(path, name, *permissions).await?;
             }
-            Some(ServeCommands::AddApiKey { name }) => {
+            Some(ServeCommands::AddApiKey {
+                key: api_key,
+                hashed_key: hashed_api_key,
+                description,
+                device,
+                playlist,
+            }) => {
                 configure_tracing(Default::default());
-                serve::commands::add_api_key(path, name, None).await?;
+                serve::commands::add_api_key(
+                    path,
+                    api_key,
+                    hashed_api_key,
+                    description,
+                    device,
+                    playlist,
+                )
+                .await?;
             }
             None => {
                 panic!(

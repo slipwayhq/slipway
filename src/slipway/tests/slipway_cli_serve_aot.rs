@@ -55,9 +55,9 @@ async fn slipway_cli_serve_aot_and_check_response() {
                 "allow": [ { "permission": "all" } ]
             }
     });
-    config_json["hashed_api_keys"] = serde_json::json!({
-        "test": hash_string("test_api_key")
-    });
+    config_json["api_keys"] = serde_json::json!([{
+        "hashed_key": hash_string("test_api_key")
+    }]);
     config_json["port"] = serde_json::Value::Number(8081.into());
 
     let components_path = get_slipway_test_components_path();

@@ -10,17 +10,17 @@ use slipway_engine::{Rigging, SpecialComponentReference};
 use slipway_host::hash_string;
 
 use crate::{
-    primitives::{ApiKeyName, DeviceName, PlaylistName, RigName},
+    primitives::{DeviceName, PlaylistName, RigName},
     serve::{
-        REFRESH_RATE_HEADER, RepositoryConfig, SlipwayServeConfig, SlipwayServeEnvironment,
-        create_app,
+        REFRESH_RATE_HEADER, RegisteredApiKey, RepositoryConfig, SlipwayServeConfig,
+        SlipwayServeEnvironment, create_app,
         repository::{RigResultFormat, RigResultImageFormat, RigResultPartialSpec},
     },
 };
 
 use super::{
     Device, Playlist, ShowApiKeys,
-    repository::{PlaylistItem, Refresh, TrmnlDevice},
+    repository::{PlaylistItem, Refresh},
 };
 
 mod trmnl_display;
@@ -42,7 +42,6 @@ fn device(name: &str, playlist_name: &str) -> (DeviceName, Device) {
     (
         dn(name),
         Device {
-            trmnl: None,
             playlist: Some(pn(playlist_name)),
             context: None,
             result_spec: Default::default(),
@@ -58,24 +57,9 @@ fn device_with_spec(
     (
         dn(name),
         Device {
-            trmnl: None,
             playlist: Some(pn(playlist_name)),
             context: None,
             result_spec,
-        },
-    )
-}
-fn trmnl_device(name: &str, playlist_name: &str, api_key: &str) -> (DeviceName, Device) {
-    (
-        dn(name),
-        Device {
-            trmnl: Some(TrmnlDevice {
-                hashed_id: hash_string(name),
-                hashed_api_key: hash_string(api_key),
-            }),
-            playlist: Some(pn(playlist_name)),
-            context: None,
-            result_spec: Default::default(),
         },
     )
 }
@@ -124,10 +108,20 @@ fn get_refresh_rate(response: &ServiceResponse<impl MessageBody>) -> Option<u32>
     refresh_rate
 }
 
-fn create_auth_for_key(key: &str) -> HashMap<ApiKeyName, String> {
-    let mut auth = HashMap::new();
-    auth.insert(ApiKeyName::from_str("default").unwrap(), hash_string(key));
-    auth
+fn create_auth_for_key(key: &str) -> Vec<RegisteredApiKey> {
+    vec![RegisteredApiKey {
+        hashed_key: hash_string(key),
+        device: None,
+        description: Some("Test API Key".to_string()),
+    }]
+}
+
+fn create_device_auth_for_key(key: &str, device: &str) -> Vec<RegisteredApiKey> {
+    vec![RegisteredApiKey {
+        hashed_key: hash_string(key),
+        device: Some(DeviceName::from_str(device).unwrap()),
+        description: Some("Test API Key".to_string()),
+    }]
 }
 
 async fn get_body(response: ServiceResponse<impl MessageBody>) -> String {
@@ -151,7 +145,7 @@ async fn when_devices_playlists_and_rigs_do_not_exist_should_return_not_found() 
         registry_urls: vec![],
         environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
-        hashed_api_keys: create_auth_for_key(""),
+        api_keys: create_auth_for_key(""),
         show_api_keys: ShowApiKeys::Never,
         port: None,
         repository: RepositoryConfig::Memory {
@@ -198,7 +192,7 @@ async fn when_devices_playlists_and_rigs_exist_it_should_execute_rigs() {
         registry_urls: vec![],
         environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
-        hashed_api_keys: create_auth_for_key(""),
+        api_keys: create_auth_for_key(""),
         show_api_keys: ShowApiKeys::Never,
         port: None,
         repository: RepositoryConfig::Memory {
@@ -259,7 +253,7 @@ async fn when_auth_not_supplied_it_should_return_unauthorized() {
         registry_urls: vec![],
         environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
-        hashed_api_keys: create_auth_for_key("auth123"),
+        api_keys: create_auth_for_key("auth123"),
         show_api_keys: ShowApiKeys::Never,
         port: None,
         repository: RepositoryConfig::Memory {
@@ -312,7 +306,7 @@ async fn when_auth_not_supplied_it_should_allow_favicon_requests() {
         registry_urls: vec![],
         environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
-        hashed_api_keys: create_auth_for_key("auth123"),
+        api_keys: create_auth_for_key("auth123"),
         show_api_keys: ShowApiKeys::Never,
         port: None,
         repository: RepositoryConfig::Memory {
@@ -337,13 +331,11 @@ async fn when_auth_incorrect_it_should_return_unauthorized() {
         registry_urls: vec![],
         environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
-        hashed_api_keys: create_auth_for_key("auth123"),
+        api_keys: create_device_auth_for_key("auth456", "d_1"),
         show_api_keys: ShowApiKeys::Never,
         port: None,
         repository: RepositoryConfig::Memory {
-            devices: vec![trmnl_device("d_1", "p_1", "auth456")]
-                .into_iter()
-                .collect(),
+            devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
             rigs: vec![rig("r_1")].into_iter().collect(),
         },
@@ -389,19 +381,77 @@ async fn when_auth_incorrect_it_should_return_unauthorized() {
 }
 
 #[test_log::test(actix_web::test)]
+async fn when_auth_for_incorrect_device_it_should_return_unauthorized() {
+    let config = SlipwayServeConfig {
+        log_level: Some("debug".to_string()),
+        registry_urls: vec![],
+        environment: SlipwayServeEnvironment::for_test(),
+        rig_permissions: HashMap::new(),
+        api_keys: create_device_auth_for_key("auth1234", "d_2"),
+        show_api_keys: ShowApiKeys::Never,
+        port: None,
+        repository: RepositoryConfig::Memory {
+            devices: vec![device("d_1", "p_1")].into_iter().collect(),
+            playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
+            rigs: vec![rig("r_1")].into_iter().collect(),
+        },
+    };
+
+    let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
+
+    async fn assert_response(
+        response: Result<ServiceResponse<impl MessageBody>, actix_web::Error>,
+    ) {
+        // This isn't an error response because the forbidden is returned deeper
+        // in the stack.
+        let status_code = match response {
+            Ok(r) => r.status(),
+            Err(e) => e.error_response().status(),
+        };
+
+        assert_eq!(status_code, StatusCode::FORBIDDEN);
+    }
+
+    {
+        let request = test::TestRequest::get()
+            .uri("/devices/d_1?format=json")
+            .append_header(("Authorization", "auth1234"))
+            .to_request();
+        let response = test::try_call_service(&app, request).await;
+        assert_response(response).await;
+    }
+
+    {
+        // Auth in the query string.
+        let request = test::TestRequest::get()
+            .uri("/playlists/p_1?format=json&authorization=auth1234")
+            .to_request();
+        let response = test::try_call_service(&app, request).await;
+        assert_response(response).await;
+    }
+
+    {
+        let request = test::TestRequest::get()
+            .uri("/rigs/r_1?format=json")
+            .append_header(("Authorization", "auth1234"))
+            .to_request();
+        let response = test::try_call_service(&app, request).await;
+        assert_response(response).await;
+    }
+}
+
+#[test_log::test(actix_web::test)]
 async fn when_auth_supplied_it_should_execute_rigs() {
     let config = SlipwayServeConfig {
         log_level: Some("debug".to_string()),
         registry_urls: vec![],
         environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
-        hashed_api_keys: create_auth_for_key("auth123"),
+        api_keys: create_auth_for_key("auth123"),
         show_api_keys: ShowApiKeys::Never,
         port: None,
         repository: RepositoryConfig::Memory {
-            devices: vec![trmnl_device("d_1", "p_1", "auth456")]
-                .into_iter()
-                .collect(),
+            devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
             rigs: vec![rig("r_1")].into_iter().collect(),
         },
@@ -461,13 +511,11 @@ async fn when_device_auth_supplied_it_should_execute_rigs() {
         registry_urls: vec![],
         environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
-        hashed_api_keys: create_auth_for_key("auth123"),
+        api_keys: create_device_auth_for_key("auth456", "d_1"),
         show_api_keys: ShowApiKeys::Never,
         port: None,
         repository: RepositoryConfig::Memory {
-            devices: vec![trmnl_device("d_1", "p_1", "auth456")]
-                .into_iter()
-                .collect(),
+            devices: vec![device("d_1", "p_1")].into_iter().collect(),
             playlists: vec![playlist("p_1", "r_1")].into_iter().collect(),
             rigs: vec![rig("r_1")].into_iter().collect(),
         },
@@ -500,24 +548,6 @@ async fn when_device_auth_supplied_it_should_execute_rigs() {
         let response = test::call_service(&app, request).await;
         assert_response(response, true).await;
     }
-
-    {
-        // Auth in the query string.
-        let request = test::TestRequest::get()
-            .uri("/playlists/p_1?format=json&authorization=auth456")
-            .to_request();
-        let response = test::call_service(&app, request).await;
-        assert_response(response, true).await;
-    }
-
-    {
-        let request = test::TestRequest::get()
-            .uri("/rigs/r_1?format=json")
-            .append_header(("Authorization", "auth456"))
-            .to_request();
-        let response = test::call_service(&app, request).await;
-        assert_response(response, false).await;
-    }
 }
 
 #[test_log::test(actix_web::test)]
@@ -527,7 +557,7 @@ async fn when_device_result_spec_it_should_pass_through_to_url() {
         registry_urls: vec![],
         environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
-        hashed_api_keys: create_auth_for_key("auth123"),
+        api_keys: create_auth_for_key("auth123"),
         show_api_keys: ShowApiKeys::Never,
         port: None,
         repository: RepositoryConfig::Memory {
@@ -569,7 +599,7 @@ async fn when_device_result_spec_query_string_should_override() {
         registry_urls: vec![],
         environment: SlipwayServeEnvironment::for_test(),
         rig_permissions: HashMap::new(),
-        hashed_api_keys: create_auth_for_key("auth123"),
+        api_keys: create_auth_for_key("auth123"),
         show_api_keys: ShowApiKeys::Never,
         port: None,
         repository: RepositoryConfig::Memory {

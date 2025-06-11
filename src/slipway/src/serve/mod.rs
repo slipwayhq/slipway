@@ -4,8 +4,9 @@ use std::path::{Path, PathBuf};
 use actix_cors::Cors;
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
+use actix_web::http::StatusCode;
 use actix_web::middleware::{NormalizePath, TrailingSlash, from_fn};
-use actix_web::{App, HttpServer, web};
+use actix_web::{App, HttpMessage, HttpRequest, HttpServer, web};
 use anyhow::Context;
 use chrono_tz::Tz;
 use repository::{Device, Playlist, ServeRepository};
@@ -15,7 +16,8 @@ use slipway_engine::TEST_TIMEZONE;
 use tracing::{debug, info, warn};
 
 use crate::permissions::PermissionsOwned;
-use crate::primitives::{ApiKeyName, DeviceName, PlaylistName, RigName};
+use crate::primitives::{DeviceName, PlaylistName, RigName};
+use crate::serve::responses::ServeError;
 
 #[cfg(test)]
 mod api_tests;
@@ -34,6 +36,7 @@ const SLIPWAY_SECRET_KEY: &str = "SLIPWAY_SECRET";
 
 const REFRESH_RATE_HEADER: &str = "refresh-rate";
 const ACCESS_TOKEN_HEADER: &str = "access-token";
+const AUTHORIZATION_HEADER: &str = "authorization";
 const ID_HEADER: &str = "id";
 
 const TRMNL_PATH: &str = "/trmnl/api";
@@ -45,8 +48,8 @@ const SERVE_CONFIG_FILE_NAME: &str = "slipway_serve.json";
 
 const GENERATED_API_KEY_LENGTH: usize = 52;
 
-fn create_friendly_id(hashed_api_key: &str) -> String {
-    hashed_api_key[..6].to_string()
+fn truncate_hashed_api_key(hashed_api_key: &str) -> &str {
+    &hashed_api_key[..6]
 }
 
 pub(super) fn create_api_key() -> String {
@@ -96,7 +99,7 @@ struct SlipwayServeConfig {
     rig_permissions: HashMap<RigName, PermissionsOwned>,
 
     #[serde(default)]
-    hashed_api_keys: HashMap<ApiKeyName, String>,
+    api_keys: Vec<RegisteredApiKey>,
 
     #[serde(default, skip_serializing_if = "ShowApiKeys::is_default")]
     show_api_keys: ShowApiKeys,
@@ -125,6 +128,18 @@ impl SlipwayServeEnvironment {
             locale: Some(TEST_TIMEZONE.to_string()),
         }
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(deny_unknown_fields)]
+struct RegisteredApiKey {
+    hashed_key: String,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    device: Option<DeviceName>,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -162,7 +177,19 @@ impl ShowApiKeys {
 
 #[derive(Clone)]
 struct RequestState {
-    pub supplied_api_key: Option<String>,
+    pub supplied_api_key: Option<SuppliedApiKey>,
+}
+
+#[derive(Clone)]
+struct SuppliedApiKey {
+    pub api_key: String,
+    pub resolved: Option<RegisteredApiKey>,
+}
+
+#[derive(Clone)]
+struct SuppliedResolvedApiKey {
+    pub api_key: String,
+    pub resolved: RegisteredApiKey,
 }
 
 pub async fn serve(path: PathBuf, aot_path: Option<PathBuf>) -> anyhow::Result<()> {
@@ -297,4 +324,36 @@ fn create_app(
                 .service(playlists::get_playlist::get_playlist)
                 .service(devices::get_device::get_device),
         )
+}
+
+fn get_api_key_from_state(req: &HttpRequest) -> Result<SuppliedApiKey, ServeError> {
+    try_get_api_key_from_state(req)
+        .ok_or(ServeError::UserFacing(
+            StatusCode::UNAUTHORIZED,
+            format!("Missing authorization. Please supply an {ACCESS_TOKEN_HEADER} header or an {AUTHORIZATION_HEADER} header or query string parameter."),
+        ))
+}
+
+fn get_resolved_api_key_from_state(
+    req: &HttpRequest,
+) -> Result<SuppliedResolvedApiKey, ServeError> {
+    let supplied_api_key = get_api_key_from_state(req)?;
+
+    let Some(resolved) = supplied_api_key.resolved else {
+        return Err(ServeError::UserFacing(
+            StatusCode::UNAUTHORIZED,
+            "API key was not recognized.".to_string(),
+        ));
+    };
+
+    Ok(SuppliedResolvedApiKey {
+        api_key: supplied_api_key.api_key,
+        resolved,
+    })
+}
+
+fn try_get_api_key_from_state(req: &HttpRequest) -> Option<SuppliedApiKey> {
+    req.extensions()
+        .get::<RequestState>()
+        .and_then(|state| state.supplied_api_key.clone())
 }

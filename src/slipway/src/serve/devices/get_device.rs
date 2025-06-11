@@ -6,7 +6,7 @@ use serde::Deserialize;
 use tracing::{Instrument, debug_span, info_span};
 
 use crate::primitives::DeviceName;
-use crate::serve::repository::{RigResultFormat, RigResultImageFormat, RigResultSpec};
+use crate::serve::repository::RigResultSpec;
 use crate::serve::responses::{FormatQuery, PlaylistResponse};
 use crate::serve::rigs::get_rig::RequestingDevice;
 
@@ -36,7 +36,7 @@ pub async fn get_device(
 
     let device_name = &path.device_name;
 
-    get_device_response(device_name, query.output, state, req)
+    get_device_response(device_name, query.output, None, state, req)
         .instrument(info_span!("device", ""=%device_name))
         .await
 }
@@ -44,6 +44,7 @@ pub async fn get_device(
 pub async fn get_device_response(
     device_name: &DeviceName,
     format_query: FormatQuery,
+    default_result_spec: Option<RigResultSpec>,
     state: Arc<ServeState>,
     req: HttpRequest,
 ) -> Result<PlaylistResponse, ServeError> {
@@ -58,16 +59,9 @@ pub async fn get_device_response(
         ));
     };
 
-    let result_spec_defaults = if device.trmnl.is_none() {
-        device.result_spec.into_spec(RigResultSpec::default())
-    } else {
-        device.result_spec.into_spec(RigResultSpec {
-            format: RigResultFormat::Url,
-            image_format: RigResultImageFormat::Bmp1Bit,
-            rotate: 0,
-        })
-    };
-
+    let result_spec_defaults = device
+        .result_spec
+        .into_spec(default_result_spec.unwrap_or_default());
     let result_spec = format_query.into_spec_with_defaults(result_spec_defaults);
 
     super::super::playlists::get_playlist::get_playlist_response(

@@ -19,7 +19,6 @@ pub async fn add_device(
     write_redeploy_warning();
 
     let device = Device {
-        trmnl: None,
         playlist,
         context: None,
         result_spec: Default::default(),

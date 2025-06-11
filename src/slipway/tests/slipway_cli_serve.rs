@@ -93,9 +93,9 @@ async fn slipway_cli_serve_and_check_response() {
                 "allow": [ { "permission": "all" } ]
             }
     });
-    config_json["hashed_api_keys"] = serde_json::json!({
-        "test": hash_string("test_api_key")
-    });
+    config_json["api_keys"] = serde_json::json!([{
+        "hashed_key": hash_string("test_api_key")
+    }]);
     config_json["port"] = serde_json::Value::Number(8081.into());
     std::fs::write(
         path.join("slipway_serve.json"),
@@ -207,9 +207,9 @@ async fn slipway_cli_serve_device_and_check_context() {
                 "allow": [ { "permission": "all" } ]
             }
     });
-    config_json["hashed_api_keys"] = serde_json::json!({
-        "test": hash_string("test_api_key")
-    });
+    config_json["api_keys"] = serde_json::json!([{
+        "hashed_key": hash_string("test_api_key")
+    }]);
     config_json["port"] = serde_json::Value::Number(8081.into());
     config_json["timezone"] = serde_json::Value::String(TEST_TIMEZONE.to_string());
     config_json["locale"] = serde_json::Value::String(TEST_LOCALE.to_string());
@@ -377,10 +377,6 @@ async fn slipway_cli_serve_trmnl() {
         serde_json::json!(
         {
             "playlist": "hello_playlist",
-            "trmnl": {
-                "hashed_id": hash_string("my_trmnl_id"),
-                "hashed_api_key": hash_string("trmnl_test_api_key")
-            },
             "context": {
                 "foo": "bar"
             }
@@ -398,9 +394,10 @@ async fn slipway_cli_serve_trmnl() {
                 "allow": [ { "permission": "all" } ]
             }
     });
-    config_json["hashed_api_keys"] = serde_json::json!({
-        "test": hash_string("test_api_key")
-    });
+    config_json["api_keys"] = serde_json::json!([
+        { "hashed_key": hash_string("test_api_key") },
+        { "hashed_key": hash_string("trmnl_test_api_key"), "device": "hello_device" },
+    ]);
     config_json["port"] = serde_json::Value::Number(8081.into());
     config_json["timezone"] = serde_json::Value::String(TEST_TIMEZONE.to_string());
 
@@ -430,7 +427,6 @@ async fn slipway_cli_serve_trmnl() {
     // Make a request to check the server's response
     let client = Client::new();
     let mut headers = HeaderMap::new();
-    headers.insert("id", HeaderValue::from_static("my_trmnl_id"));
     headers.insert(
         "access-token",
         HeaderValue::from_static("trmnl_test_api_key"),
@@ -476,4 +472,153 @@ async fn slipway_cli_serve_trmnl() {
 
     // When the function returns (even on panic), server_guard will be dropped,
     // shutting down the server once at the end.
+}
+
+#[slipway_test_async]
+async fn slipway_cli_serve_add_api_key_with_device() {
+    // Create a temp dir for the server configuration.
+    let dir = tempdir().unwrap();
+    let path = dir.path();
+
+    // Initialize the slipway server folder.
+    Command::cargo_bin("slipway")
+        .unwrap()
+        .arg("serve")
+        .arg(path)
+        .arg("init")
+        .assert()
+        .success();
+
+    // Add a key with a device.
+    Command::cargo_bin("slipway")
+        .unwrap()
+        .arg("serve")
+        .arg(path)
+        .arg("add-api-key")
+        .arg("--hashed-key")
+        .arg("blah-key")
+        .arg("--device")
+        .arg("d_1")
+        .arg("--playlist")
+        .arg("p_1")
+        .assert()
+        .success();
+
+    // Sanity check the directory structure.
+    print_dir_structure(path, 2).unwrap();
+
+    let config_json: serde_json::Value =
+        serde_json::from_reader(std::fs::File::open(path.join("slipway_serve.json")).unwrap())
+            .unwrap();
+    let api_keys = config_json.get("api_keys").unwrap();
+    assert_eq!(
+        api_keys,
+        &serde_json::json!([
+            {
+                "hashed_key": "blah-key",
+                "device": "d_1",
+            }
+        ])
+    );
+
+    // Assert file "devices/d_1.json" exists.
+    let device_path = path.join("devices").join("d_1.json");
+    assert!(device_path.exists());
+}
+
+#[slipway_test_async]
+async fn slipway_cli_serve_update_api_key_with_device() {
+    // Create a temp dir for the server configuration.
+    let dir = tempdir().unwrap();
+    let path = dir.path();
+
+    // Initialize the slipway server folder.
+    Command::cargo_bin("slipway")
+        .unwrap()
+        .arg("serve")
+        .arg(path)
+        .arg("init")
+        .assert()
+        .success();
+
+    // Add a key.
+    Command::cargo_bin("slipway")
+        .unwrap()
+        .arg("serve")
+        .arg(path)
+        .arg("add-api-key")
+        .arg("--hashed-key")
+        .arg("blah-key-2")
+        .arg("--description")
+        .arg("decoy key")
+        .assert()
+        .success();
+
+    // Add a key.
+    Command::cargo_bin("slipway")
+        .unwrap()
+        .arg("serve")
+        .arg(path)
+        .arg("add-api-key")
+        .arg("--hashed-key")
+        .arg("blah-key")
+        .assert()
+        .success();
+
+    // Sanity check the directory structure.
+    print_dir_structure(path, 2).unwrap();
+
+    let config_json: serde_json::Value =
+        serde_json::from_reader(std::fs::File::open(path.join("slipway_serve.json")).unwrap())
+            .unwrap();
+    let api_keys = config_json.get("api_keys").unwrap();
+    assert_eq!(
+        api_keys,
+        &serde_json::json!([
+            {
+                "hashed_key": "blah-key-2",
+                "description": "decoy key",
+            },
+            {
+                "hashed_key": "blah-key",
+            }
+        ])
+    );
+
+    // Add a key to existing device.
+    Command::cargo_bin("slipway")
+        .unwrap()
+        .arg("serve")
+        .arg(path)
+        .arg("add-api-key")
+        .arg("--hashed-key")
+        .arg("blah-key")
+        .arg("--device")
+        .arg("d_1")
+        .arg("--playlist")
+        .arg("p_1")
+        .assert()
+        .success();
+
+    let config_json: serde_json::Value =
+        serde_json::from_reader(std::fs::File::open(path.join("slipway_serve.json")).unwrap())
+            .unwrap();
+    let api_keys = config_json.get("api_keys").unwrap();
+    assert_eq!(
+        api_keys,
+        &serde_json::json!([
+            {
+                "hashed_key": "blah-key-2",
+                "description": "decoy key",
+            },
+            {
+                "hashed_key": "blah-key",
+                "device": "d_1",
+            }
+        ])
+    );
+
+    // Assert file "devices/d_1.json" exists.
+    let device_path = path.join("devices").join("d_1.json");
+    assert!(device_path.exists());
 }
