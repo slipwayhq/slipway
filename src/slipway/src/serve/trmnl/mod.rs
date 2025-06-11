@@ -39,6 +39,7 @@ fn print_new_device_message(hashed_api_key: &str, unhashed_data: Option<Unhashed
     info!("  slipway serve . add-api-key \\");
     info!("    --hashed-key \"{hashed_api_key}\" \\");
     info!("    --device <DEVICE_NAME>");
+    info!("    --playlist <PLAYLIST_NAME>");
     info!("");
     info!("Then re-deploy the server if necessary.");
 
@@ -62,6 +63,7 @@ fn print_update_key_message(hashed_api_key: &str) {
     info!("  slipway serve . add-api-key \\");
     info!("    --hashed-key \"{hashed_api_key}\" \\");
     info!("    --device <DEVICE_NAME>");
+    info!("    --playlist <PLAYLIST_NAME>");
     info!("");
     info!("Then re-deploy the server if necessary.");
     info!("See the Slipway documentation for more information.");
