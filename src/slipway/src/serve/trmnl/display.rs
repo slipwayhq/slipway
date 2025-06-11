@@ -60,8 +60,9 @@ pub(crate) async fn trmnl_display(
 
     Ok(web::Json(serde_json::json!({
         "status": 0,
-        "image_url": url_response.url,
-        "image_url_timeout": 10, // Make the timeout a bit more generous. We should make this configurable.
+        "image_url": url_response.url, // For connections directly from a TRMNL device.
+        "url": url_response.url, // For connections through the TRMNL redirect plugin.
+        "image_url_timeout": 15, // Make the timeout a bit more generous. We should make this configurable.
         "filename": chrono::Utc::now().format("%Y-%m-%d-%H-%M-%S").to_string(),
         "refresh_rate": device_response.refresh_rate_seconds,
     })))

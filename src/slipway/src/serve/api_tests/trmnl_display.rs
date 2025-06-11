@@ -117,6 +117,8 @@ async fn when_valid_request_and_secret_it_should_return_rig_result_with_sas() {
     assert_eq!(body["status"].as_u64(), Some(0));
 
     let image_url = body["image_url"].as_str().unwrap();
+    let url = body["url"].as_str().unwrap();
+    assert_eq!(image_url, url);
     assert!(image_url.contains("/devices/d_1?format=image&image_format=bmp_1bit&rotate=0&"));
     assert!(!image_url.contains("&authorization="));
     assert!(image_url.contains("&device=d_1"));
@@ -152,6 +154,8 @@ async fn when_valid_request_and_no_secret_it_should_return_rig_result_with_api_k
         assert_eq!(body["status"].as_u64(), Some(0));
 
         let image_url = body["image_url"].as_str().unwrap();
+        let url = body["url"].as_str().unwrap();
+        assert_eq!(image_url, url);
         assert!(image_url.contains("/devices/d_1?format=image&image_format=bmp_1bit&rotate=0"));
         assert!(image_url.contains("&authorization="));
         assert!(image_url.contains("&device=d_1"));
@@ -224,6 +228,8 @@ async fn when_valid_request_and_image_format_overridden_it_should_return_specifi
         assert_eq!(body["status"].as_u64(), Some(0));
 
         let image_url = body["image_url"].as_str().unwrap();
+        let url = body["url"].as_str().unwrap();
+        assert_eq!(image_url, url);
         assert!(image_url.contains("/devices/d_1?format=image&image_format=png&rotate=0&"));
         assert!(image_url.contains("&authorization="));
         assert!(image_url.contains("&device=d_1"));
