@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0
+
+Rename the `html` format option to `html_js`, and rename the `html_embed` format option to `html`.
+This is to reflect that the (new) `html` option is pure HTML, where as the (new) `html_js` option
+will ultimately have to use Javascript to prevent flickering when refreshing the image (not yet implemented).
+
 ## 0.8.0
 
 Significant refactor of API keys and how we associate them with TRMNL devices. This also allows us to

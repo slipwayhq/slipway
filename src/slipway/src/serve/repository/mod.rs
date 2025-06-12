@@ -126,15 +126,17 @@ pub(super) enum RigResultFormat {
     Json,
 
     /// Return the image encoded as a data URL.
-    /// We expose this as `html_embed` to the user because while internally this is a data URL,
+    /// We expose this as `html` to the user because while internally this is a data URL,
     /// the user sees it as an HTML page containing a data URL.
-    #[serde(rename = "html_embed")]
+    #[serde(rename = "html")]
     DataUrl,
 
     /// Return a URL which will generate the image.
-    /// We expose this as `html` to the user because while internally this is a URL,
+    /// We expose this as `html_js` to the user because while internally this is a URL,
     /// the user sees it as an HTML page containing a URL.
-    #[serde(rename = "html")]
+    /// Eventually we'll use JS to refresh the image without reloading the page, hence the
+    /// name.
+    #[serde(rename = "html_js")]
     Url,
 }
 

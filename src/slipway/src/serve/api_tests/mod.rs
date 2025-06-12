@@ -622,7 +622,7 @@ async fn when_device_result_spec_query_string_should_override() {
     let app = test::init_service(create_app(PathBuf::from("."), None, config, None)).await;
 
     let request = test::TestRequest::get()
-        .uri("/devices/d_1?format=html&image_format=bmp_1bit&rotate=180")
+        .uri("/devices/d_1?format=html_js&image_format=bmp_1bit&rotate=180")
         .append_header(("Authorization", "auth123"))
         .to_request();
     let response = test::call_service(&app, request).await;
