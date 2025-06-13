@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1
+
+Allow `slipway serve . add-api-key` to be run without any arguments.
+
+Don't serialize `allow` or `deny` properties in the `slipway_serve.json` file if they are empty.
+
 ## 0.9.0
 
 Rename the `html` format option to `html_js`, and rename the `html_embed` format option to `html`.

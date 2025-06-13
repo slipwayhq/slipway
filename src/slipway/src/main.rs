@@ -280,7 +280,6 @@ enum ServeCommands {
     },
 
     /// Add an API key for accessing endpoints. The key will be stored hashed, so ensure you securely save a copy of the key elsewhere.
-    #[command(arg_required_else_help = true)]
     AddApiKey {
         /// An optional key. If this and --hashed_key are omitted, a strong random key will be generated.
         #[arg(short, long)]
